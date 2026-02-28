@@ -1,0 +1,1089 @@
+export type ExerciseType = "quiz" | "fill" | "order" | "truefalse";
+
+export interface ExerciseOption {
+  id: string;
+  text: string;
+}
+
+export interface Exercise {
+  id: string;
+  type: ExerciseType;
+  question: string;
+  // quiz
+  options?: ExerciseOption[];
+  correctOptionId?: string;
+  // fill
+  codeTemplate?: string;
+  blanks?: { id: string; answer: string }[];
+  // order
+  lines?: { id: string; text: string; order: number }[];
+  // truefalse
+  statement?: string;
+  isTrue?: boolean;
+  explanation?: string;
+  xp: number;
+}
+
+export interface Lesson {
+  id: string;
+  title: string;
+  description: string;
+  exercises: Exercise[];
+  xpReward: number;
+}
+
+export interface Chapter {
+  id: string;
+  number: number;
+  title: string;
+  description: string;
+  icon: string;
+  color: string;
+  lessons: Lesson[];
+}
+
+// Helper to generate IDs
+const eid = (ch: number, le: number, ex: number) => `c${ch}-l${le}-e${ex}`;
+
+export const chapters: Chapter[] = [
+  {
+    id: "ch1",
+    number: 1,
+    title: "Recapitulare & Fundamente",
+    description: "Variabile, structuri de control, gândire computațională și introducere în algoritmi",
+    icon: "🧱",
+    color: "160 100% 50%",
+    lessons: [
+      {
+        id: "c1-l1",
+        title: "Variabile și atribuire",
+        description: "Tipuri de date, operatorul =, conversii (int, float, str)",
+        xpReward: 20,
+        exercises: [
+          {
+            id: eid(1,1,1), type: "quiz", xp: 5,
+            question: "Ce tip de dată are variabila x după: x = 3.14?",
+            options: [
+              { id: "a", text: "int" },
+              { id: "b", text: "float" },
+              { id: "c", text: "str" },
+              { id: "d", text: "bool" },
+            ],
+            correctOptionId: "b",
+          },
+          {
+            id: eid(1,1,2), type: "truefalse", xp: 5,
+            question: "Adevărat sau Fals?",
+            statement: "În Python, variabila x = '5' este de tip int.",
+            isTrue: false,
+            explanation: "Ghilimelele fac ca '5' să fie un string (str), nu un int.",
+          },
+          {
+            id: eid(1,1,3), type: "fill", xp: 5,
+            question: "Completează codul pentru a converti string-ul în număr întreg:",
+            codeTemplate: "varsta = '16'\nvarsta_numar = ___(varsta)\nprint(varsta_numar)",
+            blanks: [{ id: "b1", answer: "int" }],
+          },
+          {
+            id: eid(1,1,4), type: "order", xp: 5,
+            question: "Aranjează liniile pentru a crea o variabilă, a o converti și a o afișa:",
+            lines: [
+              { id: "l1", text: "x = '42'", order: 1 },
+              { id: "l2", text: "x = int(x)", order: 2 },
+              { id: "l3", text: "print(x + 8)", order: 3 },
+            ],
+          },
+          {
+            id: eid(1,1,5), type: "quiz", xp: 5,
+            question: "Ce afișează: print(type(10))?",
+            options: [
+              { id: "a", text: "<class 'float'>" },
+              { id: "b", text: "<class 'int'>" },
+              { id: "c", text: "<class 'str'>" },
+              { id: "d", text: "10" },
+            ],
+            correctOptionId: "b",
+          },
+        ],
+      },
+      {
+        id: "c1-l2",
+        title: "Structura if/elif/else",
+        description: "Condiții, operatori logici, ramificări",
+        xpReward: 20,
+        exercises: [
+          {
+            id: eid(1,2,1), type: "quiz", xp: 5,
+            question: "Ce afișează acest cod?\nx = 15\nif x > 10:\n    print('mare')\nelse:\n    print('mic')",
+            options: [
+              { id: "a", text: "mare" },
+              { id: "b", text: "mic" },
+              { id: "c", text: "15" },
+              { id: "d", text: "Eroare" },
+            ],
+            correctOptionId: "a",
+          },
+          {
+            id: eid(1,2,2), type: "fill", xp: 5,
+            question: "Completează condiția pentru a verifica dacă un număr este par:",
+            codeTemplate: "n = 8\nif n ___ 2 == 0:\n    print('par')",
+            blanks: [{ id: "b1", answer: "%" }],
+          },
+          {
+            id: eid(1,2,3), type: "truefalse", xp: 5,
+            question: "Adevărat sau Fals?",
+            statement: "Cuvântul cheie 'elif' este prescurtarea pentru 'else if' în Python.",
+            isTrue: true,
+            explanation: "elif este echivalentul lui 'else if' din alte limbaje.",
+          },
+          {
+            id: eid(1,2,4), type: "order", xp: 5,
+            question: "Aranjează liniile pentru a verifica dacă un număr este pozitiv, negativ sau zero:",
+            lines: [
+              { id: "l1", text: "x = -5", order: 1 },
+              { id: "l2", text: "if x > 0:", order: 2 },
+              { id: "l3", text: "    print('pozitiv')", order: 3 },
+              { id: "l4", text: "elif x < 0:", order: 4 },
+              { id: "l5", text: "    print('negativ')", order: 5 },
+              { id: "l6", text: "else:", order: 6 },
+              { id: "l7", text: "    print('zero')", order: 7 },
+            ],
+          },
+          {
+            id: eid(1,2,5), type: "quiz", xp: 5,
+            question: "Ce operator logic folosim pentru a verifica dacă AMBELE condiții sunt adevărate?",
+            options: [
+              { id: "a", text: "or" },
+              { id: "b", text: "and" },
+              { id: "c", text: "not" },
+              { id: "d", text: "xor" },
+            ],
+            correctOptionId: "b",
+          },
+        ],
+      },
+      {
+        id: "c1-l3",
+        title: "Structura for",
+        description: "Iterare prin range(), parcurgere liste",
+        xpReward: 20,
+        exercises: [
+          {
+            id: eid(1,3,1), type: "quiz", xp: 5,
+            question: "Câte valori generează range(5)?",
+            options: [
+              { id: "a", text: "4" },
+              { id: "b", text: "5" },
+              { id: "c", text: "6" },
+              { id: "d", text: "3" },
+            ],
+            correctOptionId: "b",
+          },
+          {
+            id: eid(1,3,2), type: "fill", xp: 5,
+            question: "Completează codul pentru a afișa numerele de la 1 la 10:",
+            codeTemplate: "for i in ___(1, 11):\n    print(i)",
+            blanks: [{ id: "b1", answer: "range" }],
+          },
+          {
+            id: eid(1,3,3), type: "truefalse", xp: 5,
+            question: "Adevărat sau Fals?",
+            statement: "range(1, 5) generează valorile 1, 2, 3, 4, 5.",
+            isTrue: false,
+            explanation: "range(1, 5) generează 1, 2, 3, 4 – limita superioară este exclusă.",
+          },
+          {
+            id: eid(1,3,4), type: "order", xp: 5,
+            question: "Aranjează liniile pentru a calcula suma numerelor de la 1 la 5:",
+            lines: [
+              { id: "l1", text: "suma = 0", order: 1 },
+              { id: "l2", text: "for i in range(1, 6):", order: 2 },
+              { id: "l3", text: "    suma = suma + i", order: 3 },
+              { id: "l4", text: "print(suma)", order: 4 },
+            ],
+          },
+          {
+            id: eid(1,3,5), type: "quiz", xp: 5,
+            question: "Ce afișează:\nfor i in range(0, 6, 2):\n    print(i, end=' ')",
+            options: [
+              { id: "a", text: "0 1 2 3 4 5" },
+              { id: "b", text: "0 2 4" },
+              { id: "c", text: "2 4 6" },
+              { id: "d", text: "0 2 4 6" },
+            ],
+            correctOptionId: "b",
+          },
+        ],
+      },
+      {
+        id: "c1-l4",
+        title: "Structura while",
+        description: "Bucle condiționale, controlul execuției",
+        xpReward: 20,
+        exercises: [
+          {
+            id: eid(1,4,1), type: "quiz", xp: 5,
+            question: "De câte ori se execută bucla?\nx = 3\nwhile x > 0:\n    x -= 1",
+            options: [
+              { id: "a", text: "2" },
+              { id: "b", text: "3" },
+              { id: "c", text: "4" },
+              { id: "d", text: "Infinit" },
+            ],
+            correctOptionId: "b",
+          },
+          {
+            id: eid(1,4,2), type: "fill", xp: 5,
+            question: "Completează condiția pentru a repeta cât timp n este pozitiv:",
+            codeTemplate: "n = 10\nwhile n ___ 0:\n    n -= 1",
+            blanks: [{ id: "b1", answer: ">" }],
+          },
+          {
+            id: eid(1,4,3), type: "truefalse", xp: 5,
+            question: "Adevărat sau Fals?",
+            statement: "Instrucțiunea 'break' oprește complet execuția programului.",
+            isTrue: false,
+            explanation: "'break' oprește doar bucla curentă, nu întregul program.",
+          },
+          {
+            id: eid(1,4,4), type: "order", xp: 5,
+            question: "Aranjează liniile pentru a afișa cifrele unui număr:",
+            lines: [
+              { id: "l1", text: "n = 1234", order: 1 },
+              { id: "l2", text: "while n > 0:", order: 2 },
+              { id: "l3", text: "    print(n % 10)", order: 3 },
+              { id: "l4", text: "    n = n // 10", order: 4 },
+            ],
+          },
+          {
+            id: eid(1,4,5), type: "quiz", xp: 5,
+            question: "Ce face 'continue' într-o buclă while?",
+            options: [
+              { id: "a", text: "Oprește bucla" },
+              { id: "b", text: "Sare la următoarea iterație" },
+              { id: "c", text: "Restartează programul" },
+              { id: "d", text: "Nu face nimic" },
+            ],
+            correctOptionId: "b",
+          },
+        ],
+      },
+      {
+        id: "c1-l5",
+        title: "Gândire computațională",
+        description: "Etapele rezolvării unei probleme: analiză, proiectare, implementare, testare",
+        xpReward: 20,
+        exercises: [
+          {
+            id: eid(1,5,1), type: "quiz", xp: 5,
+            question: "Care este prima etapă în rezolvarea unei probleme computaționale?",
+            options: [
+              { id: "a", text: "Implementare" },
+              { id: "b", text: "Testare" },
+              { id: "c", text: "Analiza problemei" },
+              { id: "d", text: "Optimizare" },
+            ],
+            correctOptionId: "c",
+          },
+          {
+            id: eid(1,5,2), type: "truefalse", xp: 5,
+            question: "Adevărat sau Fals?",
+            statement: "Descompunerea problemei în subprobleme mai mici este o tehnică de gândire computațională.",
+            isTrue: true,
+            explanation: "Descompunerea (decomposition) este una dintre cele 4 piloane ale gândirii computaționale.",
+          },
+          {
+            id: eid(1,5,3), type: "order", xp: 5,
+            question: "Aranjează etapele rezolvării unei probleme în ordinea corectă:",
+            lines: [
+              { id: "l1", text: "1. Analiza problemei", order: 1 },
+              { id: "l2", text: "2. Proiectarea soluției", order: 2 },
+              { id: "l3", text: "3. Implementarea codului", order: 3 },
+              { id: "l4", text: "4. Testarea și depanarea", order: 4 },
+            ],
+          },
+          {
+            id: eid(1,5,4), type: "quiz", xp: 5,
+            question: "Ce înseamnă 'abstractizarea' în gândirea computațională?",
+            options: [
+              { id: "a", text: "Scrierea codului abstract" },
+              { id: "b", text: "Ignorarea detaliilor neimportante pentru a se concentra pe esențial" },
+              { id: "c", text: "Crearea de clase abstracte" },
+              { id: "d", text: "Folosirea variabilelor globale" },
+            ],
+            correctOptionId: "b",
+          },
+          {
+            id: eid(1,5,5), type: "truefalse", xp: 5,
+            question: "Adevărat sau Fals?",
+            statement: "Recunoașterea pattern-urilor înseamnă identificarea similitudinilor între probleme diferite.",
+            isTrue: true,
+            explanation: "Pattern recognition este procesul de identificare a tiparelor comune.",
+          },
+        ],
+      },
+      {
+        id: "c1-l6",
+        title: "Introducere în algoritmi",
+        description: "Pseudocod, eficiență de bază, notația O",
+        xpReward: 25,
+        exercises: [
+          {
+            id: eid(1,6,1), type: "quiz", xp: 5,
+            question: "Ce este un algoritm?",
+            options: [
+              { id: "a", text: "Un limbaj de programare" },
+              { id: "b", text: "O secvență finită de pași pentru rezolvarea unei probleme" },
+              { id: "c", text: "Un tip de dată" },
+              { id: "d", text: "O funcție Python" },
+            ],
+            correctOptionId: "b",
+          },
+          {
+            id: eid(1,6,2), type: "truefalse", xp: 5,
+            question: "Adevărat sau Fals?",
+            statement: "Un algoritm cu complexitate O(n) este mai rapid decât unul cu O(n²) pentru date mari.",
+            isTrue: true,
+            explanation: "O(n) crește liniar, pe când O(n²) crește mult mai rapid.",
+          },
+          {
+            id: eid(1,6,3), type: "quiz", xp: 5,
+            question: "Ce complexitate are căutarea unui element într-o listă neordonată?",
+            options: [
+              { id: "a", text: "O(1)" },
+              { id: "b", text: "O(log n)" },
+              { id: "c", text: "O(n)" },
+              { id: "d", text: "O(n²)" },
+            ],
+            correctOptionId: "c",
+          },
+          {
+            id: eid(1,6,4), type: "order", xp: 5,
+            question: "Ordonează complexitățile de la cea mai rapidă la cea mai lentă:",
+            lines: [
+              { id: "l1", text: "O(1) - constantă", order: 1 },
+              { id: "l2", text: "O(log n) - logaritmică", order: 2 },
+              { id: "l3", text: "O(n) - liniară", order: 3 },
+              { id: "l4", text: "O(n²) - pătratică", order: 4 },
+            ],
+          },
+          {
+            id: eid(1,6,5), type: "fill", xp: 5,
+            question: "Completează: pseudocodul folosește limbaj ___ pentru a descrie algoritmul.",
+            codeTemplate: "Pseudocodul folosește limbaj ___",
+            blanks: [{ id: "b1", answer: "natural" }],
+          },
+        ],
+      },
+    ],
+  },
+  {
+    id: "ch2",
+    number: 2,
+    title: "Prelucrări Numerice",
+    description: "Operații cu cifre, algoritmi cu divizori, Euclid, factori primi, conversii",
+    icon: "🔢",
+    color: "200 100% 50%",
+    lessons: [
+      {
+        id: "c2-l1",
+        title: "Operații cu cifrele unui număr",
+        description: "Acces la cifre, adăugare cifre la stânga/dreapta",
+        xpReward: 25,
+        exercises: [
+          {
+            id: eid(2,1,1), type: "quiz", xp: 5,
+            question: "Ce returnează 1234 % 10?",
+            options: [
+              { id: "a", text: "123" }, { id: "b", text: "4" },
+              { id: "c", text: "1" }, { id: "d", text: "34" },
+            ],
+            correctOptionId: "b",
+          },
+          {
+            id: eid(2,1,2), type: "quiz", xp: 5,
+            question: "Ce returnează 1234 // 10?",
+            options: [
+              { id: "a", text: "123" }, { id: "b", text: "4" },
+              { id: "c", text: "123.4" }, { id: "d", text: "1" },
+            ],
+            correctOptionId: "a",
+          },
+          {
+            id: eid(2,1,3), type: "fill", xp: 5,
+            question: "Completează pentru a obține ultima cifră a lui n:",
+            codeTemplate: "n = 567\nultima_cifra = n ___ 10",
+            blanks: [{ id: "b1", answer: "%" }],
+          },
+          {
+            id: eid(2,1,4), type: "order", xp: 5,
+            question: "Aranjează liniile pentru a număra cifrele unui număr:",
+            lines: [
+              { id: "l1", text: "n = 12345", order: 1 },
+              { id: "l2", text: "count = 0", order: 2 },
+              { id: "l3", text: "while n > 0:", order: 3 },
+              { id: "l4", text: "    count += 1", order: 4 },
+              { id: "l5", text: "    n = n // 10", order: 5 },
+            ],
+          },
+          {
+            id: eid(2,1,5), type: "truefalse", xp: 5,
+            question: "Adevărat sau Fals?",
+            statement: "Operatorul // în Python face împărțire întreagă.",
+            isTrue: true,
+            explanation: "// returnează câtul împărțirii (partea întreagă).",
+          },
+        ],
+      },
+      {
+        id: "c2-l2",
+        title: "Parcurgerea cifrelor și divizorilor",
+        description: "Algoritmi de bază pentru cifre și divizori",
+        xpReward: 25,
+        exercises: [
+          {
+            id: eid(2,2,1), type: "quiz", xp: 5,
+            question: "Care sunt divizorii lui 12?",
+            options: [
+              { id: "a", text: "1, 2, 3, 4, 6, 12" },
+              { id: "b", text: "2, 3, 4, 6" },
+              { id: "c", text: "1, 12" },
+              { id: "d", text: "2, 4, 6, 12" },
+            ],
+            correctOptionId: "a",
+          },
+          {
+            id: eid(2,2,2), type: "fill", xp: 5,
+            question: "Completează condiția pentru a verifica dacă d este divizor al lui n:",
+            codeTemplate: "if n ___ d == 0:\n    print(d, 'este divizor')",
+            blanks: [{ id: "b1", answer: "%" }],
+          },
+          {
+            id: eid(2,2,3), type: "truefalse", xp: 5,
+            question: "Adevărat sau Fals?",
+            statement: "Un număr prim are exact 2 divizori: 1 și el însuși.",
+            isTrue: true,
+            explanation: "Definiția numerelor prime: exact doi divizori.",
+          },
+          {
+            id: eid(2,2,4), type: "order", xp: 5,
+            question: "Aranjează codul pentru a afișa suma cifrelor:",
+            lines: [
+              { id: "l1", text: "n = 456", order: 1 },
+              { id: "l2", text: "s = 0", order: 2 },
+              { id: "l3", text: "while n > 0:", order: 3 },
+              { id: "l4", text: "    s += n % 10", order: 4 },
+              { id: "l5", text: "    n //= 10", order: 5 },
+              { id: "l6", text: "print(s)", order: 6 },
+            ],
+          },
+          {
+            id: eid(2,2,5), type: "quiz", xp: 5,
+            question: "Ce este suma cifrelor lui 987?",
+            options: [
+              { id: "a", text: "24" }, { id: "b", text: "25" },
+              { id: "c", text: "23" }, { id: "d", text: "27" },
+            ],
+            correctOptionId: "a",
+          },
+        ],
+      },
+      {
+        id: "c2-l3",
+        title: "Algoritmul lui Euclid",
+        description: "CMMDC cu scăderi și cu împărțiri",
+        xpReward: 30,
+        exercises: [
+          {
+            id: eid(2,3,1), type: "quiz", xp: 5,
+            question: "Cât este CMMDC(12, 8)?",
+            options: [
+              { id: "a", text: "2" }, { id: "b", text: "4" },
+              { id: "c", text: "8" }, { id: "d", text: "6" },
+            ],
+            correctOptionId: "b",
+          },
+          {
+            id: eid(2,3,2), type: "order", xp: 5,
+            question: "Aranjează algoritmul lui Euclid cu împărțiri:",
+            lines: [
+              { id: "l1", text: "a, b = 48, 18", order: 1 },
+              { id: "l2", text: "while b != 0:", order: 2 },
+              { id: "l3", text: "    a, b = b, a % b", order: 3 },
+              { id: "l4", text: "print(a)", order: 4 },
+            ],
+          },
+          {
+            id: eid(2,3,3), type: "fill", xp: 5,
+            question: "Completează linia cheie din algoritmul lui Euclid:",
+            codeTemplate: "while b != 0:\n    a, b = b, a ___ b",
+            blanks: [{ id: "b1", answer: "%" }],
+          },
+          {
+            id: eid(2,3,4), type: "truefalse", xp: 5,
+            question: "Adevărat sau Fals?",
+            statement: "Algoritmul lui Euclid cu împărțiri este mai rapid decât cel cu scăderi.",
+            isTrue: true,
+            explanation: "Varianta cu împărțiri converge mai rapid deoarece reduce numerele mai eficient.",
+          },
+          {
+            id: eid(2,3,5), type: "quiz", xp: 5,
+            question: "CMMDC(17, 5) = ?",
+            options: [
+              { id: "a", text: "5" }, { id: "b", text: "1" },
+              { id: "c", text: "17" }, { id: "d", text: "2" },
+            ],
+            correctOptionId: "b",
+          },
+        ],
+      },
+      {
+        id: "c2-l4",
+        title: "Descompunere în factori primi",
+        description: "Algoritmul de descompunere în factori primi",
+        xpReward: 30,
+        exercises: [
+          {
+            id: eid(2,4,1), type: "quiz", xp: 5,
+            question: "Care este descompunerea lui 12 în factori primi?",
+            options: [
+              { id: "a", text: "2² × 3" }, { id: "b", text: "4 × 3" },
+              { id: "c", text: "2 × 6" }, { id: "d", text: "2 × 3²" },
+            ],
+            correctOptionId: "a",
+          },
+          {
+            id: eid(2,4,2), type: "truefalse", xp: 5,
+            question: "Adevărat sau Fals?",
+            statement: "Orice număr natural > 1 poate fi descompus în factori primi.",
+            isTrue: true,
+            explanation: "Teorema fundamentală a aritmeticii garantează unicitatea descompunerii.",
+          },
+          {
+            id: eid(2,4,3), type: "order", xp: 5,
+            question: "Aranjează algoritmul de descompunere:",
+            lines: [
+              { id: "l1", text: "n = 60", order: 1 },
+              { id: "l2", text: "d = 2", order: 2 },
+              { id: "l3", text: "while n > 1:", order: 3 },
+              { id: "l4", text: "    while n % d == 0:", order: 4 },
+              { id: "l5", text: "        print(d)", order: 5 },
+              { id: "l6", text: "        n //= d", order: 6 },
+              { id: "l7", text: "    d += 1", order: 7 },
+            ],
+          },
+          {
+            id: eid(2,4,4), type: "fill", xp: 5,
+            question: "Completează condiția internă a descompunerii:",
+            codeTemplate: "while n ___ d == 0:\n    n //= d",
+            blanks: [{ id: "b1", answer: "%" }],
+          },
+          {
+            id: eid(2,4,5), type: "quiz", xp: 5,
+            question: "Câți factori primi are 30 (2×3×5)?",
+            options: [
+              { id: "a", text: "2" }, { id: "b", text: "3" },
+              { id: "c", text: "4" }, { id: "d", text: "5" },
+            ],
+            correctOptionId: "b",
+          },
+        ],
+      },
+      {
+        id: "c2-l5",
+        title: "Conversii între baze",
+        description: "Baza 10 ↔ baza 2",
+        xpReward: 30,
+        exercises: [
+          {
+            id: eid(2,5,1), type: "quiz", xp: 5,
+            question: "Cât este 13 în baza 2?",
+            options: [
+              { id: "a", text: "1101" }, { id: "b", text: "1011" },
+              { id: "c", text: "1110" }, { id: "d", text: "1100" },
+            ],
+            correctOptionId: "a",
+          },
+          {
+            id: eid(2,5,2), type: "quiz", xp: 5,
+            question: "Ce funcție Python convertește un număr în binar?",
+            options: [
+              { id: "a", text: "binary()" }, { id: "b", text: "bin()" },
+              { id: "c", text: "toBin()" }, { id: "d", text: "base2()" },
+            ],
+            correctOptionId: "b",
+          },
+          {
+            id: eid(2,5,3), type: "truefalse", xp: 5,
+            question: "Adevărat sau Fals?",
+            statement: "bin(10) returnează '1010'.",
+            isTrue: false,
+            explanation: "bin(10) returnează '0b1010' – cu prefixul '0b'.",
+          },
+          {
+            id: eid(2,5,4), type: "fill", xp: 5,
+            question: "Completează pentru a converti din binar în zecimal:",
+            codeTemplate: "binar = '1010'\nzecimal = ___(binar, 2)\nprint(zecimal)",
+            blanks: [{ id: "b1", answer: "int" }],
+          },
+          {
+            id: eid(2,5,5), type: "order", xp: 5,
+            question: "Aranjează pașii conversiei lui 10 din baza 10 în baza 2:",
+            lines: [
+              { id: "l1", text: "10 ÷ 2 = 5 rest 0", order: 1 },
+              { id: "l2", text: "5 ÷ 2 = 2 rest 1", order: 2 },
+              { id: "l3", text: "2 ÷ 2 = 1 rest 0", order: 3 },
+              { id: "l4", text: "1 ÷ 2 = 0 rest 1", order: 4 },
+            ],
+          },
+        ],
+      },
+    ],
+  },
+  {
+    id: "ch3",
+    number: 3,
+    title: "Liste – Organizare",
+    description: "Model conceptual, stivă, coadă, frecvențe, clasa list și metodele sale",
+    icon: "📋",
+    color: "270 100% 65%",
+    lessons: [
+      {
+        id: "c3-l1", title: "Modelul conceptual de listă", description: "Caracteristici, acces secvențial vs direct", xpReward: 20,
+        exercises: [
+          { id: eid(3,1,1), type: "quiz", xp: 5, question: "Ce index are primul element dintr-o listă Python?",
+            options: [{ id: "a", text: "0" }, { id: "b", text: "1" }, { id: "c", text: "-1" }, { id: "d", text: "first" }], correctOptionId: "a" },
+          { id: eid(3,1,2), type: "truefalse", xp: 5, question: "Adevărat sau Fals?", statement: "Listele Python pot conține elemente de tipuri diferite.", isTrue: true, explanation: "Python permite liste heterogene: [1, 'abc', True]." },
+          { id: eid(3,1,3), type: "quiz", xp: 5, question: "Ce returnează len([10, 20, 30])?",
+            options: [{ id: "a", text: "2" }, { id: "b", text: "3" }, { id: "c", text: "30" }, { id: "d", text: "60" }], correctOptionId: "b" },
+          { id: eid(3,1,4), type: "fill", xp: 5, question: "Completează pentru a accesa ultimul element:",
+            codeTemplate: "lista = [1, 2, 3, 4, 5]\nultimul = lista[___]", blanks: [{ id: "b1", answer: "-1" }] },
+          { id: eid(3,1,5), type: "quiz", xp: 5, question: "Ce tip de acces este lista[2]?",
+            options: [{ id: "a", text: "Secvențial" }, { id: "b", text: "Direct (random)" }, { id: "c", text: "Serial" }, { id: "d", text: "Binar" }], correctOptionId: "b" },
+        ],
+      },
+      {
+        id: "c3-l2", title: "Stiva și coada", description: "LIFO, FIFO, exemple practice", xpReward: 25,
+        exercises: [
+          { id: eid(3,2,1), type: "quiz", xp: 5, question: "Ce principiu folosește stiva?",
+            options: [{ id: "a", text: "FIFO" }, { id: "b", text: "LIFO" }, { id: "c", text: "FILO" }, { id: "d", text: "Random" }], correctOptionId: "b" },
+          { id: eid(3,2,2), type: "truefalse", xp: 5, question: "Adevărat sau Fals?", statement: "La o coadă, elementul care intră primul iese primul.", isTrue: true, explanation: "FIFO = First In, First Out." },
+          { id: eid(3,2,3), type: "quiz", xp: 5, question: "Ce metodă Python simulează pop din stivă?",
+            options: [{ id: "a", text: "list.pop()" }, { id: "b", text: "list.remove()" }, { id: "c", text: "list.delete()" }, { id: "d", text: "list.pop(0)" }], correctOptionId: "a" },
+          { id: eid(3,2,4), type: "fill", xp: 5, question: "Completează pentru a scoate primul element (ca la o coadă):",
+            codeTemplate: "coada = [1, 2, 3]\nelement = coada.pop(___)", blanks: [{ id: "b1", answer: "0" }] },
+          { id: eid(3,2,5), type: "order", xp: 5, question: "Aranjează operațiile pe o stivă (push 1, push 2, pop, push 3):",
+            lines: [
+              { id: "l1", text: "stiva.append(1)", order: 1 },
+              { id: "l2", text: "stiva.append(2)", order: 2 },
+              { id: "l3", text: "stiva.pop()", order: 3 },
+              { id: "l4", text: "stiva.append(3)", order: 4 },
+            ] },
+        ],
+      },
+      {
+        id: "c3-l3", title: "Lista de frecvențe", description: "Construire și utilizare", xpReward: 25,
+        exercises: [
+          { id: eid(3,3,1), type: "quiz", xp: 5, question: "Ce stochează o listă de frecvențe?",
+            options: [{ id: "a", text: "Elementele sortate" }, { id: "b", text: "De câte ori apare fiecare valoare" }, { id: "c", text: "Indexul elementelor" }, { id: "d", text: "Media valorilor" }], correctOptionId: "b" },
+          { id: eid(3,3,2), type: "fill", xp: 5, question: "Completează pentru a incrementa frecvența:",
+            codeTemplate: "freq = [0] * 10\nn = 5\nfreq[___] += 1", blanks: [{ id: "b1", answer: "n" }] },
+          { id: eid(3,3,3), type: "truefalse", xp: 5, question: "Adevărat sau Fals?", statement: "Lista de frecvențe este utilă când valorile sunt într-un interval cunoscut.", isTrue: true, explanation: "Funcționează optim când cunoaștem domeniul valorilor." },
+          { id: eid(3,3,4), type: "quiz", xp: 5, question: "Pentru lista [1,2,1,3,2,1], freq[1] = ?",
+            options: [{ id: "a", text: "1" }, { id: "b", text: "2" }, { id: "c", text: "3" }, { id: "d", text: "0" }], correctOptionId: "c" },
+          { id: eid(3,3,5), type: "order", xp: 5, question: "Aranjează codul pentru a construi lista de frecvențe:",
+            lines: [
+              { id: "l1", text: "lista = [1, 3, 2, 1, 3]", order: 1 },
+              { id: "l2", text: "freq = [0] * 4", order: 2 },
+              { id: "l3", text: "for x in lista:", order: 3 },
+              { id: "l4", text: "    freq[x] += 1", order: 4 },
+            ] },
+        ],
+      },
+      {
+        id: "c3-l4", title: "Parcurgere liniară", description: "Cu și fără memorare", xpReward: 20,
+        exercises: [
+          { id: eid(3,4,1), type: "quiz", xp: 5, question: "Ce înseamnă parcurgere cu memorare?",
+            options: [{ id: "a", text: "Salvezi rezultate intermediare" }, { id: "b", text: "Memorezi codul" }, { id: "c", text: "Folosești RAM" }, { id: "d", text: "Copiezi lista" }], correctOptionId: "a" },
+          { id: eid(3,4,2), type: "fill", xp: 5, question: "Completează pentru a găsi maximul:",
+            codeTemplate: "lista = [3, 7, 2, 9, 1]\nmax_val = lista[0]\nfor x in lista:\n    if x ___ max_val:\n        max_val = x", blanks: [{ id: "b1", answer: ">" }] },
+          { id: eid(3,4,3), type: "truefalse", xp: 5, question: "Adevărat sau Fals?", statement: "Parcurgerea liniară are complexitate O(n).", isTrue: true, explanation: "Vizităm fiecare element o singură dată." },
+          { id: eid(3,4,4), type: "order", xp: 5, question: "Aranjează codul pentru a număra elementele pare:",
+            lines: [
+              { id: "l1", text: "lista = [1, 4, 6, 3, 8]", order: 1 },
+              { id: "l2", text: "count = 0", order: 2 },
+              { id: "l3", text: "for x in lista:", order: 3 },
+              { id: "l4", text: "    if x % 2 == 0:", order: 4 },
+              { id: "l5", text: "        count += 1", order: 5 },
+            ] },
+          { id: eid(3,4,5), type: "quiz", xp: 5, question: "Parcurgerea fără memorare înseamnă:",
+            options: [{ id: "a", text: "Afișezi direct fiecare element" }, { id: "b", text: "Nu folosești variabile suplimentare" }, { id: "c", text: "Procesezi și afișezi pe loc, fără a salva rezultate" }, { id: "d", text: "Nu parcurgi lista" }], correctOptionId: "c" },
+        ],
+      },
+      {
+        id: "c3-l5", title: "Clasa list în Python", description: "Operatori: [], in, +, *", xpReward: 20,
+        exercises: [
+          { id: eid(3,5,1), type: "quiz", xp: 5, question: "Ce returnează [1,2] + [3,4]?",
+            options: [{ id: "a", text: "[1,2,3,4]" }, { id: "b", text: "[4,6]" }, { id: "c", text: "10" }, { id: "d", text: "Eroare" }], correctOptionId: "a" },
+          { id: eid(3,5,2), type: "quiz", xp: 5, question: "Ce returnează [0] * 3?",
+            options: [{ id: "a", text: "[0,0,0]" }, { id: "b", text: "[3]" }, { id: "c", text: "[0,3]" }, { id: "d", text: "0" }], correctOptionId: "a" },
+          { id: eid(3,5,3), type: "truefalse", xp: 5, question: "Adevărat sau Fals?", statement: "Expresia '5 in [1,2,3,4,5]' returnează True.", isTrue: true, explanation: "Operatorul 'in' verifică apartenența la listă." },
+          { id: eid(3,5,4), type: "fill", xp: 5, question: "Completează pentru a obține sublistă (slice):",
+            codeTemplate: "lista = [10,20,30,40,50]\nsub = lista[1___3]", blanks: [{ id: "b1", answer: ":" }] },
+          { id: eid(3,5,5), type: "quiz", xp: 5, question: "Ce returnează lista[1:4] pentru [10,20,30,40,50]?",
+            options: [{ id: "a", text: "[20,30,40]" }, { id: "b", text: "[10,20,30,40]" }, { id: "c", text: "[20,30]" }, { id: "d", text: "[10,20,30]" }], correctOptionId: "a" },
+        ],
+      },
+      {
+        id: "c3-l6", title: "Metode ale clasei list", description: "append, insert, pop, remove, sort, etc.", xpReward: 25,
+        exercises: [
+          { id: eid(3,6,1), type: "quiz", xp: 5, question: "Ce face lista.append(5)?",
+            options: [{ id: "a", text: "Adaugă 5 la început" }, { id: "b", text: "Adaugă 5 la sfârșit" }, { id: "c", text: "Înlocuiește ultimul cu 5" }, { id: "d", text: "Șterge 5" }], correctOptionId: "b" },
+          { id: eid(3,6,2), type: "fill", xp: 5, question: "Completează pentru a insera 99 pe poziția 2:",
+            codeTemplate: "lista = [1, 2, 3]\nlista.___(2, 99)", blanks: [{ id: "b1", answer: "insert" }] },
+          { id: eid(3,6,3), type: "truefalse", xp: 5, question: "Adevărat sau Fals?", statement: "lista.sort() returnează o nouă listă sortată.", isTrue: false, explanation: "sort() modifică lista in-place și returnează None. Pentru copie sortată, folosiți sorted()." },
+          { id: eid(3,6,4), type: "quiz", xp: 5, question: "Ce face lista.pop(0)?",
+            options: [{ id: "a", text: "Șterge ultimul element" }, { id: "b", text: "Șterge și returnează primul element" }, { id: "c", text: "Adaugă 0" }, { id: "d", text: "Returnează 0" }], correctOptionId: "b" },
+          { id: eid(3,6,5), type: "order", xp: 5, question: "Aranjează operațiile pentru a crea, adăuga și sorta:",
+            lines: [
+              { id: "l1", text: "lista = []", order: 1 },
+              { id: "l2", text: "lista.append(3)", order: 2 },
+              { id: "l3", text: "lista.append(1)", order: 3 },
+              { id: "l4", text: "lista.append(2)", order: 4 },
+              { id: "l5", text: "lista.sort()", order: 5 },
+            ] },
+        ],
+      },
+    ],
+  },
+  {
+    id: "ch4",
+    number: 4,
+    title: "Generare și Sortare",
+    description: "Secvențe, Fibonacci, selecție minim, bubble sort, comparare metode",
+    icon: "🔄",
+    color: "45 100% 51%",
+    lessons: [
+      {
+        id: "c4-l1", title: "Generarea secvențelor", description: "Șiruri recurente, Fibonacci", xpReward: 25,
+        exercises: [
+          { id: eid(4,1,1), type: "quiz", xp: 5, question: "Ce este al 7-lea termen Fibonacci? (0,1,1,2,3,5,8,...)",
+            options: [{ id: "a", text: "8" }, { id: "b", text: "13" }, { id: "c", text: "5" }, { id: "d", text: "21" }], correctOptionId: "b" },
+          { id: eid(4,1,2), type: "fill", xp: 5, question: "Completează relația de recurență Fibonacci:",
+            codeTemplate: "a, b = 0, 1\nfor i in range(10):\n    a, b = b, a ___ b", blanks: [{ id: "b1", answer: "+" }] },
+          { id: eid(4,1,3), type: "truefalse", xp: 5, question: "Adevărat sau Fals?", statement: "Primul termen al șirului Fibonacci este 1.", isTrue: false, explanation: "Primul termen este 0 (sau 1, depinde de convenție), dar secvența clasică începe cu 0, 1." },
+          { id: eid(4,1,4), type: "order", xp: 5, question: "Aranjează codul pentru a genera primii n termeni Fibonacci:",
+            lines: [
+              { id: "l1", text: "a, b = 0, 1", order: 1 },
+              { id: "l2", text: "for i in range(n):", order: 2 },
+              { id: "l3", text: "    print(a)", order: 3 },
+              { id: "l4", text: "    a, b = b, a + b", order: 4 },
+            ] },
+          { id: eid(4,1,5), type: "quiz", xp: 5, question: "Ce tip de secvență este 2, 4, 8, 16, 32?",
+            options: [{ id: "a", text: "Aritmetică" }, { id: "b", text: "Geometrică" }, { id: "c", text: "Fibonacci" }, { id: "d", text: "Primes" }], correctOptionId: "b" },
+        ],
+      },
+      {
+        id: "c4-l2", title: "Sortare prin selecția minimului", description: "Algoritm pas cu pas", xpReward: 30,
+        exercises: [
+          { id: eid(4,2,1), type: "quiz", xp: 5, question: "Ce complexitate are sortarea prin selecție?",
+            options: [{ id: "a", text: "O(n)" }, { id: "b", text: "O(n log n)" }, { id: "c", text: "O(n²)" }, { id: "d", text: "O(1)" }], correctOptionId: "c" },
+          { id: eid(4,2,2), type: "truefalse", xp: 5, question: "Adevărat sau Fals?", statement: "Sortarea prin selecție găsește minimul și îl plasează pe poziția corectă, pe rând.", isTrue: true, explanation: "La fiecare pas selectează minimul din sublista nesortată." },
+          { id: eid(4,2,3), type: "order", xp: 5, question: "Aranjează pașii sortării prin selecție pentru [3,1,2]:",
+            lines: [
+              { id: "l1", text: "Găsește min din [3,1,2] → 1", order: 1 },
+              { id: "l2", text: "Interschimbă: [1,3,2]", order: 2 },
+              { id: "l3", text: "Găsește min din [3,2] → 2", order: 3 },
+              { id: "l4", text: "Interschimbă: [1,2,3]", order: 4 },
+            ] },
+          { id: eid(4,2,4), type: "fill", xp: 5, question: "Completează interschimbarea în sortare:",
+            codeTemplate: "lista[i], lista[min_idx] = lista[min_idx], lista[___]", blanks: [{ id: "b1", answer: "i" }] },
+          { id: eid(4,2,5), type: "quiz", xp: 5, question: "Câte comparări face selecția minimului pentru n=5?",
+            options: [{ id: "a", text: "5" }, { id: "b", text: "10" }, { id: "c", text: "25" }, { id: "d", text: "15" }], correctOptionId: "b" },
+        ],
+      },
+      {
+        id: "c4-l3", title: "Sortare cu lista de frecvențe", description: "Când și cum se aplică", xpReward: 25,
+        exercises: [
+          { id: eid(4,3,1), type: "quiz", xp: 5, question: "Când este eficientă sortarea cu frecvențe?",
+            options: [{ id: "a", text: "Întotdeauna" }, { id: "b", text: "Când valorile sunt într-un interval mic" }, { id: "c", text: "Doar pentru stringuri" }, { id: "d", text: "Când lista e mare" }], correctOptionId: "b" },
+          { id: eid(4,3,2), type: "truefalse", xp: 5, question: "Adevărat sau Fals?", statement: "Sortarea cu frecvențe poate avea complexitate O(n).", isTrue: true, explanation: "Dacă domeniul valorilor e mic, complexitatea e O(n + k) ≈ O(n)." },
+          { id: eid(4,3,3), type: "order", xp: 5, question: "Aranjează pașii sortării cu frecvențe pentru [2,1,2,0,1]:",
+            lines: [
+              { id: "l1", text: "Construiește freq: [1, 2, 2]", order: 1 },
+              { id: "l2", text: "Parcurge freq de la 0 la max", order: 2 },
+              { id: "l3", text: "Afișează fiecare valoare de freq[i] ori", order: 3 },
+              { id: "l4", text: "Rezultat: [0, 1, 1, 2, 2]", order: 4 },
+            ] },
+          { id: eid(4,3,4), type: "fill", xp: 5, question: "Completează reconstrucția listei din frecvențe:",
+            codeTemplate: "for i in range(len(freq)):\n    for j in range(freq[___]):\n        result.append(i)", blanks: [{ id: "b1", answer: "i" }] },
+          { id: eid(4,3,5), type: "quiz", xp: 5, question: "Ce complexitate spațială are sortarea cu frecvențe?",
+            options: [{ id: "a", text: "O(1)" }, { id: "b", text: "O(n)" }, { id: "c", text: "O(k) - dimensiunea domeniului" }, { id: "d", text: "O(n²)" }], correctOptionId: "c" },
+        ],
+      },
+      {
+        id: "c4-l4", title: "Metoda bulelor (Bubble Sort)", description: "Comparare și interschimbare", xpReward: 25,
+        exercises: [
+          { id: eid(4,4,1), type: "quiz", xp: 5, question: "Ce face Bubble Sort la fiecare trecere?",
+            options: [{ id: "a", text: "Duce maximul la final" }, { id: "b", text: "Găsește minimul" }, { id: "c", text: "Împarte lista în două" }, { id: "d", text: "Inversează lista" }], correctOptionId: "a" },
+          { id: eid(4,4,2), type: "fill", xp: 5, question: "Completează condiția de interschimbare:",
+            codeTemplate: "if lista[j] ___ lista[j+1]:\n    lista[j], lista[j+1] = lista[j+1], lista[j]", blanks: [{ id: "b1", answer: ">" }] },
+          { id: eid(4,4,3), type: "truefalse", xp: 5, question: "Adevărat sau Fals?", statement: "Bubble Sort are complexitatea O(n²) în cel mai rău caz.", isTrue: true, explanation: "Necesită n×(n-1)/2 comparări în cel mai rău caz." },
+          { id: eid(4,4,4), type: "order", xp: 5, question: "Aranjează algoritmul Bubble Sort:",
+            lines: [
+              { id: "l1", text: "for i in range(len(lista)-1):", order: 1 },
+              { id: "l2", text: "    for j in range(len(lista)-1-i):", order: 2 },
+              { id: "l3", text: "        if lista[j] > lista[j+1]:", order: 3 },
+              { id: "l4", text: "            lista[j], lista[j+1] = lista[j+1], lista[j]", order: 4 },
+            ] },
+          { id: eid(4,4,5), type: "quiz", xp: 5, question: "Câte treceri complete face Bubble Sort pentru [4,3,2,1]?",
+            options: [{ id: "a", text: "2" }, { id: "b", text: "3" }, { id: "c", text: "4" }, { id: "d", text: "6" }], correctOptionId: "b" },
+        ],
+      },
+      {
+        id: "c4-l5", title: "Compararea sortărilor", description: "Eficiență, număr de operații", xpReward: 20,
+        exercises: [
+          { id: eid(4,5,1), type: "quiz", xp: 5, question: "Care sortare este cea mai rapidă în medie?",
+            options: [{ id: "a", text: "Bubble Sort" }, { id: "b", text: "Selecție" }, { id: "c", text: "Cu frecvențe (dacă se aplică)" }, { id: "d", text: "Toate sunt la fel" }], correctOptionId: "c" },
+          { id: eid(4,5,2), type: "truefalse", xp: 5, question: "Adevărat sau Fals?", statement: "Bubble Sort și Selection Sort au aceeași complexitate O(n²).", isTrue: true, explanation: "Ambele au complexitate pătratică în cel mai rău caz." },
+          { id: eid(4,5,3), type: "order", xp: 5, question: "Ordonează metodele de sortare de la cea mai lentă la cea mai rapidă (caz general):",
+            lines: [
+              { id: "l1", text: "Bubble Sort - O(n²)", order: 1 },
+              { id: "l2", text: "Selection Sort - O(n²)", order: 2 },
+              { id: "l3", text: "Counting Sort - O(n+k)", order: 3 },
+            ] },
+          { id: eid(4,5,4), type: "quiz", xp: 5, question: "Ce sortare din Python folosește funcția sorted()?",
+            options: [{ id: "a", text: "Bubble Sort" }, { id: "b", text: "Timsort" }, { id: "c", text: "Selection Sort" }, { id: "d", text: "Counting Sort" }], correctOptionId: "b" },
+          { id: eid(4,5,5), type: "truefalse", xp: 5, question: "Adevărat sau Fals?", statement: "Sortarea cu frecvențe funcționează eficient pentru orice tip de date.", isTrue: false, explanation: "Funcționează eficient doar pentru valori întregi cu domeniu limitat." },
+        ],
+      },
+    ],
+  },
+  {
+    id: "ch5",
+    number: 5,
+    title: "Subprograme",
+    description: "Funcții, parametri, variabile locale/globale, funcții predefinite",
+    icon: "⚙️",
+    color: "340 80% 55%",
+    lessons: [
+      {
+        id: "c5-l1", title: "Conceptul de subprogram", description: "def, parametri, corp, apel", xpReward: 20,
+        exercises: [
+          { id: eid(5,1,1), type: "quiz", xp: 5, question: "Cu ce cuvânt cheie definim o funcție în Python?",
+            options: [{ id: "a", text: "function" }, { id: "b", text: "def" }, { id: "c", text: "func" }, { id: "d", text: "define" }], correctOptionId: "b" },
+          { id: eid(5,1,2), type: "fill", xp: 5, question: "Completează definirea funcției:",
+            codeTemplate: "___ salut(nume):\n    print('Salut', nume)", blanks: [{ id: "b1", answer: "def" }] },
+          { id: eid(5,1,3), type: "truefalse", xp: 5, question: "Adevărat sau Fals?", statement: "O funcție Python trebuie să aibă cel puțin un parametru.", isTrue: false, explanation: "Funcțiile pot fi definite fără parametri: def salut():" },
+          { id: eid(5,1,4), type: "order", xp: 5, question: "Aranjează codul pentru a defini și apela o funcție:",
+            lines: [
+              { id: "l1", text: "def patrat(x):", order: 1 },
+              { id: "l2", text: "    return x * x", order: 2 },
+              { id: "l3", text: "rezultat = patrat(5)", order: 3 },
+              { id: "l4", text: "print(rezultat)", order: 4 },
+            ] },
+          { id: eid(5,1,5), type: "quiz", xp: 5, question: "Ce afișează patrat(4) dacă def patrat(x): return x*x?",
+            options: [{ id: "a", text: "8" }, { id: "b", text: "16" }, { id: "c", text: "4" }, { id: "d", text: "None" }], correctOptionId: "b" },
+        ],
+      },
+      {
+        id: "c5-l2", title: "Variabile locale și globale", description: "Domeniu de vizibilitate", xpReward: 25,
+        exercises: [
+          { id: eid(5,2,1), type: "quiz", xp: 5, question: "O variabilă definită în interiorul unei funcții este:",
+            options: [{ id: "a", text: "Globală" }, { id: "b", text: "Locală" }, { id: "c", text: "Publică" }, { id: "d", text: "Statică" }], correctOptionId: "b" },
+          { id: eid(5,2,2), type: "truefalse", xp: 5, question: "Adevărat sau Fals?", statement: "Cuvântul cheie 'global' permite modificarea unei variabile globale din interiorul unei funcții.", isTrue: true, explanation: "Fără 'global', Python creează o variabilă locală cu același nume." },
+          { id: eid(5,2,3), type: "fill", xp: 5, question: "Completează pentru a accesa variabila globală:",
+            codeTemplate: "x = 10\ndef modifica():\n    ___ x\n    x = 20", blanks: [{ id: "b1", answer: "global" }] },
+          { id: eid(5,2,4), type: "quiz", xp: 5, question: "Ce afișează?\nx = 5\ndef f():\n    x = 10\nf()\nprint(x)",
+            options: [{ id: "a", text: "10" }, { id: "b", text: "5" }, { id: "c", text: "Eroare" }, { id: "d", text: "None" }], correctOptionId: "b" },
+          { id: eid(5,2,5), type: "truefalse", xp: 5, question: "Adevărat sau Fals?", statement: "Variabilele locale nu pot fi accesate în afara funcției.", isTrue: true, explanation: "Domeniul lor de vizibilitate e limitat la corpul funcției." },
+        ],
+      },
+      {
+        id: "c5-l3", title: "Parametri și returnare", description: "return, argumente", xpReward: 25,
+        exercises: [
+          { id: eid(5,3,1), type: "quiz", xp: 5, question: "Ce returnează o funcție fără 'return'?",
+            options: [{ id: "a", text: "0" }, { id: "b", text: "None" }, { id: "c", text: "''" }, { id: "d", text: "Eroare" }], correctOptionId: "b" },
+          { id: eid(5,3,2), type: "fill", xp: 5, question: "Completează funcția care returnează suma:",
+            codeTemplate: "def suma(a, b):\n    ___ a + b", blanks: [{ id: "b1", answer: "return" }] },
+          { id: eid(5,3,3), type: "truefalse", xp: 5, question: "Adevărat sau Fals?", statement: "O funcție Python poate returna mai multe valori simultan.", isTrue: true, explanation: "Python permite: return a, b – returnează un tuplu." },
+          { id: eid(5,3,4), type: "order", xp: 5, question: "Aranjează funcția care returnează min și max:",
+            lines: [
+              { id: "l1", text: "def min_max(lista):", order: 1 },
+              { id: "l2", text: "    return min(lista), max(lista)", order: 2 },
+              { id: "l3", text: "a, b = min_max([3,1,7,2])", order: 3 },
+              { id: "l4", text: "print(a, b)", order: 4 },
+            ] },
+          { id: eid(5,3,5), type: "quiz", xp: 5, question: "Ce afișează?\ndef f(x=5): return x*2\nprint(f())",
+            options: [{ id: "a", text: "10" }, { id: "b", text: "5" }, { id: "c", text: "Eroare" }, { id: "d", text: "None" }], correctOptionId: "a" },
+        ],
+      },
+      {
+        id: "c5-l4", title: "Funcții matematice", description: "abs(), round(), sqrt(), int()", xpReward: 20,
+        exercises: [
+          { id: eid(5,4,1), type: "quiz", xp: 5, question: "Ce returnează abs(-7)?",
+            options: [{ id: "a", text: "-7" }, { id: "b", text: "7" }, { id: "c", text: "0" }, { id: "d", text: "Eroare" }], correctOptionId: "b" },
+          { id: eid(5,4,2), type: "fill", xp: 5, question: "Completează pentru a rotunji la 2 zecimale:",
+            codeTemplate: "x = 3.14159\nrezultat = ___(x, 2)", blanks: [{ id: "b1", answer: "round" }] },
+          { id: eid(5,4,3), type: "truefalse", xp: 5, question: "Adevărat sau Fals?", statement: "Funcția sqrt() este disponibilă direct fără import.", isTrue: false, explanation: "sqrt() necesită: from math import sqrt." },
+          { id: eid(5,4,4), type: "quiz", xp: 5, question: "Ce returnează int(3.9)?",
+            options: [{ id: "a", text: "4" }, { id: "b", text: "3" }, { id: "c", text: "3.0" }, { id: "d", text: "Eroare" }], correctOptionId: "b" },
+          { id: eid(5,4,5), type: "quiz", xp: 5, question: "Ce returnează round(2.5)?",
+            options: [{ id: "a", text: "2" }, { id: "b", text: "3" }, { id: "c", text: "2.5" }, { id: "d", text: "Depinde" }], correctOptionId: "a" },
+        ],
+      },
+      {
+        id: "c5-l5", title: "Funcții pentru colecții", description: "len(), min(), max(), sum()", xpReward: 20,
+        exercises: [
+          { id: eid(5,5,1), type: "quiz", xp: 5, question: "Ce returnează sum([1,2,3,4])?",
+            options: [{ id: "a", text: "4" }, { id: "b", text: "10" }, { id: "c", text: "[1,2,3,4]" }, { id: "d", text: "1234" }], correctOptionId: "b" },
+          { id: eid(5,5,2), type: "fill", xp: 5, question: "Completează pentru a afla lungimea listei:",
+            codeTemplate: "lista = [1, 2, 3]\nn = ___(lista)", blanks: [{ id: "b1", answer: "len" }] },
+          { id: eid(5,5,3), type: "truefalse", xp: 5, question: "Adevărat sau Fals?", statement: "max('abc') returnează 'c'.", isTrue: true, explanation: "'c' are codul ASCII cel mai mare dintre a, b, c." },
+          { id: eid(5,5,4), type: "quiz", xp: 5, question: "Ce returnează min([5, 2, 8, 1, 9])?",
+            options: [{ id: "a", text: "5" }, { id: "b", text: "1" }, { id: "c", text: "9" }, { id: "d", text: "2" }], correctOptionId: "b" },
+          { id: eid(5,5,5), type: "order", xp: 5, question: "Aranjează codul pentru a calcula media:",
+            lines: [
+              { id: "l1", text: "lista = [10, 20, 30]", order: 1 },
+              { id: "l2", text: "total = sum(lista)", order: 2 },
+              { id: "l3", text: "n = len(lista)", order: 3 },
+              { id: "l4", text: "media = total / n", order: 4 },
+            ] },
+        ],
+      },
+      {
+        id: "c5-l6", title: "Proiectare modulară", description: "Descompunerea problemelor în module", xpReward: 25,
+        exercises: [
+          { id: eid(5,6,1), type: "quiz", xp: 5, question: "Ce avantaj principal are proiectarea modulară?",
+            options: [{ id: "a", text: "Codul rulează mai rapid" }, { id: "b", text: "Codul e mai ușor de înțeles și reutilizat" }, { id: "c", text: "Folosește mai puțină memorie" }, { id: "d", text: "Nu are avantaje" }], correctOptionId: "b" },
+          { id: eid(5,6,2), type: "truefalse", xp: 5, question: "Adevărat sau Fals?", statement: "Proiectarea modulară presupune împărțirea programului în funcții specializate.", isTrue: true, explanation: "Fiecare modul/funcție rezolvă o subproblemă specifică." },
+          { id: eid(5,6,3), type: "quiz", xp: 5, question: "Care NU este un principiu al proiectării modulare?",
+            options: [{ id: "a", text: "Reutilizare" }, { id: "b", text: "Responsabilitate unică" }, { id: "c", text: "Duplicare cod" }, { id: "d", text: "Coeziune" }], correctOptionId: "c" },
+          { id: eid(5,6,4), type: "order", xp: 5, question: "Aranjează pașii descompunerii modulare:",
+            lines: [
+              { id: "l1", text: "Identifică subproblemele", order: 1 },
+              { id: "l2", text: "Creează funcții pentru fiecare", order: 2 },
+              { id: "l3", text: "Definește interfețele (parametri/return)", order: 3 },
+              { id: "l4", text: "Integrează modulele", order: 4 },
+            ] },
+          { id: eid(5,6,5), type: "fill", xp: 5, question: "Completează apelul funcției modulare:",
+            codeTemplate: "def citeste_date():\n    return input().split()\n\ndef proceseaza(date):\n    return [int(x) for x in date]\n\ndate = citeste_date()\nnumere = ___(date)", blanks: [{ id: "b1", answer: "proceseaza" }] },
+        ],
+      },
+    ],
+  },
+  {
+    id: "ch6",
+    number: 6,
+    title: "Fișiere și Interfețe",
+    description: "Fișiere text, Tkinter, MessageBox, introducere OOP",
+    icon: "📁",
+    color: "15 90% 55%",
+    lessons: [
+      {
+        id: "c6-l1", title: "Fișiere text", description: "open(), read(), write(), close()", xpReward: 25,
+        exercises: [
+          { id: eid(6,1,1), type: "quiz", xp: 5, question: "Ce mod de deschidere folosim pentru citire?",
+            options: [{ id: "a", text: "'w'" }, { id: "b", text: "'r'" }, { id: "c", text: "'a'" }, { id: "d", text: "'x'" }], correctOptionId: "b" },
+          { id: eid(6,1,2), type: "fill", xp: 5, question: "Completează pentru a deschide fișierul:",
+            codeTemplate: "f = ___('date.txt', 'r')\ncontinut = f.read()\nf.close()", blanks: [{ id: "b1", answer: "open" }] },
+          { id: eid(6,1,3), type: "truefalse", xp: 5, question: "Adevărat sau Fals?", statement: "Modul 'w' suprascrie conținutul fișierului existent.", isTrue: true, explanation: "'w' deschide pentru scriere și șterge conținutul anterior." },
+          { id: eid(6,1,4), type: "order", xp: 5, question: "Aranjează pașii lucrului cu fișiere:",
+            lines: [
+              { id: "l1", text: "f = open('date.txt', 'r')", order: 1 },
+              { id: "l2", text: "continut = f.read()", order: 2 },
+              { id: "l3", text: "print(continut)", order: 3 },
+              { id: "l4", text: "f.close()", order: 4 },
+            ] },
+          { id: eid(6,1,5), type: "quiz", xp: 5, question: "Ce mod adaugă text la sfârșitul fișierului?",
+            options: [{ id: "a", text: "'r'" }, { id: "b", text: "'w'" }, { id: "c", text: "'a'" }, { id: "d", text: "'rw'" }], correctOptionId: "c" },
+        ],
+      },
+      {
+        id: "c6-l2", title: "Citire și scriere fișiere", description: "Moduri de deschidere, with statement", xpReward: 25,
+        exercises: [
+          { id: eid(6,2,1), type: "quiz", xp: 5, question: "Ce avantaj are 'with open(...) as f'?",
+            options: [{ id: "a", text: "E mai rapid" }, { id: "b", text: "Închide automat fișierul" }, { id: "c", text: "Citește mai mult" }, { id: "d", text: "Nu are avantaje" }], correctOptionId: "b" },
+          { id: eid(6,2,2), type: "fill", xp: 5, question: "Completează construcția with:",
+            codeTemplate: "___ open('date.txt') as f:\n    print(f.read())", blanks: [{ id: "b1", answer: "with" }] },
+          { id: eid(6,2,3), type: "truefalse", xp: 5, question: "Adevărat sau Fals?", statement: "readlines() returnează o listă cu liniile din fișier.", isTrue: true, explanation: "Fiecare element al listei este o linie din fișier." },
+          { id: eid(6,2,4), type: "order", xp: 5, question: "Aranjează codul pentru a scrie în fișier:",
+            lines: [
+              { id: "l1", text: "with open('output.txt', 'w') as f:", order: 1 },
+              { id: "l2", text: "    f.write('Linia 1\\n')", order: 2 },
+              { id: "l3", text: "    f.write('Linia 2\\n')", order: 3 },
+            ] },
+          { id: eid(6,2,5), type: "quiz", xp: 5, question: "Ce metodă citește o singură linie?",
+            options: [{ id: "a", text: "read()" }, { id: "b", text: "readline()" }, { id: "c", text: "readlines()" }, { id: "d", text: "readone()" }], correctOptionId: "b" },
+        ],
+      },
+      {
+        id: "c6-l3", title: "Introducere în Tkinter", description: "Ferestre, butoane, etichete", xpReward: 25,
+        exercises: [
+          { id: eid(6,3,1), type: "quiz", xp: 5, question: "Ce este Tkinter?",
+            options: [{ id: "a", text: "Un IDE" }, { id: "b", text: "O bibliotecă pentru interfețe grafice" }, { id: "c", text: "Un framework web" }, { id: "d", text: "Un joc" }], correctOptionId: "b" },
+          { id: eid(6,3,2), type: "fill", xp: 5, question: "Completează importul Tkinter:",
+            codeTemplate: "import ___ as tk\nroot = tk.Tk()", blanks: [{ id: "b1", answer: "tkinter" }] },
+          { id: eid(6,3,3), type: "truefalse", xp: 5, question: "Adevărat sau Fals?", statement: "mainloop() menține fereastra deschisă și ascultă evenimentele.", isTrue: true, explanation: "mainloop() pornește bucla de evenimente a ferestrei." },
+          { id: eid(6,3,4), type: "order", xp: 5, question: "Aranjează codul pentru o fereastră cu buton:",
+            lines: [
+              { id: "l1", text: "import tkinter as tk", order: 1 },
+              { id: "l2", text: "root = tk.Tk()", order: 2 },
+              { id: "l3", text: "btn = tk.Button(root, text='Click')", order: 3 },
+              { id: "l4", text: "btn.pack()", order: 4 },
+              { id: "l5", text: "root.mainloop()", order: 5 },
+            ] },
+          { id: eid(6,3,5), type: "quiz", xp: 5, question: "Ce widget afișează text static în Tkinter?",
+            options: [{ id: "a", text: "Button" }, { id: "b", text: "Label" }, { id: "c", text: "Entry" }, { id: "d", text: "Text" }], correctOptionId: "b" },
+        ],
+      },
+      {
+        id: "c6-l4", title: "Casete text și MessageBox", description: "Entry, Text, messagebox", xpReward: 25,
+        exercises: [
+          { id: eid(6,4,1), type: "quiz", xp: 5, question: "Ce widget folosim pentru input pe o singură linie?",
+            options: [{ id: "a", text: "Text" }, { id: "b", text: "Entry" }, { id: "c", text: "Label" }, { id: "d", text: "Input" }], correctOptionId: "b" },
+          { id: eid(6,4,2), type: "fill", xp: 5, question: "Completează pentru a obține textul din Entry:",
+            codeTemplate: "entry = tk.Entry(root)\nentry.pack()\ntext = entry.___()", blanks: [{ id: "b1", answer: "get" }] },
+          { id: eid(6,4,3), type: "truefalse", xp: 5, question: "Adevărat sau Fals?", statement: "messagebox.showinfo() afișează o fereastră pop-up cu un mesaj.", isTrue: true, explanation: "showinfo() afișează un dialog informativ." },
+          { id: eid(6,4,4), type: "quiz", xp: 5, question: "Ce diferență e între Entry și Text?",
+            options: [{ id: "a", text: "Entry = o linie, Text = mai multe linii" }, { id: "b", text: "Sunt identice" }, { id: "c", text: "Text = o linie, Entry = mai multe" }, { id: "d", text: "Entry nu acceptă text" }], correctOptionId: "a" },
+          { id: eid(6,4,5), type: "order", xp: 5, question: "Aranjează codul pentru input cu Entry:",
+            lines: [
+              { id: "l1", text: "entry = tk.Entry(root)", order: 1 },
+              { id: "l2", text: "entry.pack()", order: 2 },
+              { id: "l3", text: "def afiseaza():", order: 3 },
+              { id: "l4", text: "    print(entry.get())", order: 4 },
+              { id: "l5", text: "btn = tk.Button(root, command=afiseaza)", order: 5 },
+            ] },
+        ],
+      },
+      {
+        id: "c6-l5", title: "Introducere OOP", description: "Clasă, obiect, instanțiere, metode", xpReward: 30,
+        exercises: [
+          { id: eid(6,5,1), type: "quiz", xp: 5, question: "Cu ce cuvânt cheie definim o clasă în Python?",
+            options: [{ id: "a", text: "def" }, { id: "b", text: "class" }, { id: "c", text: "object" }, { id: "d", text: "new" }], correctOptionId: "b" },
+          { id: eid(6,5,2), type: "fill", xp: 5, question: "Completează constructorul clasei:",
+            codeTemplate: "class Elev:\n    def ___(self, nume):\n        self.nume = nume", blanks: [{ id: "b1", answer: "__init__" }] },
+          { id: eid(6,5,3), type: "truefalse", xp: 5, question: "Adevărat sau Fals?", statement: "Parametrul 'self' se referă la instanța curentă a clasei.", isTrue: true, explanation: "self este referința la obiectul curent, similar cu 'this' din alte limbaje." },
+          { id: eid(6,5,4), type: "order", xp: 5, question: "Aranjează codul pentru a defini și folosi o clasă:",
+            lines: [
+              { id: "l1", text: "class Cerc:", order: 1 },
+              { id: "l2", text: "    def __init__(self, raza):", order: 2 },
+              { id: "l3", text: "        self.raza = raza", order: 3 },
+              { id: "l4", text: "    def aria(self):", order: 4 },
+              { id: "l5", text: "        return 3.14 * self.raza ** 2", order: 5 },
+              { id: "l6", text: "c = Cerc(5)", order: 6 },
+            ] },
+          { id: eid(6,5,5), type: "quiz", xp: 5, question: "Ce este o instanță?",
+            options: [{ id: "a", text: "O copie a codului" }, { id: "b", text: "Un obiect creat din clasă" }, { id: "c", text: "O funcție specială" }, { id: "d", text: "Un tip de date" }], correctOptionId: "b" },
+        ],
+      },
+    ],
+  },
+];
+
+export const getTotalXP = (chapters: Chapter[]) =>
+  chapters.reduce((sum, ch) => sum + ch.lessons.reduce((s, l) => s + l.xpReward, 0), 0);
+
+export const getLevelFromXP = (xp: number): number => Math.floor(xp / 100) + 1;
+export const getXPForNextLevel = (xp: number): number => 100 - (xp % 100);
