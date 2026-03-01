@@ -4,6 +4,7 @@ import { useProgress } from "@/hooks/useProgress";
 import { Progress } from "@/components/ui/progress";
 import { motion } from "framer-motion";
 import { Flame, Heart, Zap, Trophy } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 const Index = () => {
   const navigate = useNavigate();
@@ -31,6 +32,14 @@ const Index = () => {
               <Zap className="h-5 w-5" />
               <span className="text-sm font-bold">{progress.xp} XP</span>
             </div>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => navigate("/leaderboard")}
+              className="text-warning hover:text-warning/80"
+            >
+              <Trophy className="h-5 w-5" />
+            </Button>
           </div>
         </div>
       </header>

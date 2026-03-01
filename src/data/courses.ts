@@ -70,6 +70,7 @@ export const chapters: Chapter[] = [
               { id: "d", text: "bool" },
             ],
             correctOptionId: "b",
+            explanation: "3.14 conține un punct zecimal, deci Python îl stochează ca float.",
           },
           {
             id: eid(1,1,2), type: "truefalse", xp: 5,
@@ -103,6 +104,7 @@ export const chapters: Chapter[] = [
               { id: "d", text: "10" },
             ],
             correctOptionId: "b",
+            explanation: "Funcția type() returnează tipul datei. 10 este un întreg, deci <class 'int'>.",
           },
         ],
       },
@@ -122,6 +124,7 @@ export const chapters: Chapter[] = [
               { id: "d", text: "Eroare" },
             ],
             correctOptionId: "a",
+            explanation: "x = 15 > 10 este adevărat, deci se execută ramura 'if' și se afișează 'mare'.",
           },
           {
             id: eid(1,2,2), type: "fill", xp: 5,
@@ -159,6 +162,7 @@ export const chapters: Chapter[] = [
               { id: "d", text: "xor" },
             ],
             correctOptionId: "b",
+            explanation: "'and' verifică dacă ambele condiții sunt adevărate simultan.",
           },
         ],
       },
@@ -178,6 +182,7 @@ export const chapters: Chapter[] = [
               { id: "d", text: "3" },
             ],
             correctOptionId: "b",
+            explanation: "range(5) generează valorile 0, 1, 2, 3, 4 – adică 5 valori.",
           },
           {
             id: eid(1,3,2), type: "fill", xp: 5,
@@ -212,6 +217,7 @@ export const chapters: Chapter[] = [
               { id: "d", text: "0 2 4 6" },
             ],
             correctOptionId: "b",
+            explanation: "range(0, 6, 2) generează 0, 2, 4 – cu pas de 2, fără 6 (exclus).",
           },
         ],
       },

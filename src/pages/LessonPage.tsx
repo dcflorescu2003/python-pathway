@@ -21,34 +21,39 @@ const LessonPage = () => {
 
   const [currentIndex, setCurrentIndex] = useState(0);
   const [correctCount, setCorrectCount] = useState(0);
-  const [lives, setLives] = useState(progress.lives);
+  const [lives, setLives] = useState(3);
   const [isFinished, setIsFinished] = useState(false);
   const [feedback, setFeedback] = useState<"correct" | "wrong" | null>(null);
+  const [lastExplanation, setLastExplanation] = useState<string | null>(null);
 
   const handleAnswer = useCallback(
     (isCorrect: boolean) => {
+      const exercise = lesson?.exercises[currentIndex];
       if (isCorrect) {
         setCorrectCount((c) => c + 1);
         setFeedback("correct");
+        setLastExplanation(null);
       } else {
         setLives((l) => l - 1);
         loseLife();
         setFeedback("wrong");
+        setLastExplanation(exercise?.explanation || null);
       }
 
       setTimeout(() => {
         setFeedback(null);
+        setLastExplanation(null);
         if (!lesson) return;
         if (currentIndex + 1 >= lesson.exercises.length || (!isCorrect && lives <= 1)) {
           setIsFinished(true);
-          if (lesson && (isCorrect || lives > 1)) {
+          if (isCorrect || lives > 1) {
             const finalCorrect = isCorrect ? correctCount + 1 : correctCount;
             completeLesson(lesson.id, lesson.xpReward, finalCorrect);
           }
         } else {
           setCurrentIndex((i) => i + 1);
         }
-      }, 1500);
+      }, 2500);
     },
     [currentIndex, correctCount, lives, lesson, completeLesson, loseLife]
   );
@@ -154,13 +159,18 @@ const LessonPage = () => {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0 }}
-                className={`mt-4 rounded-lg p-4 text-center font-bold ${
+                className={`mt-4 rounded-lg p-4 text-center ${
                   feedback === "correct"
                     ? "bg-primary/10 text-primary border border-primary/30"
                     : "bg-destructive/10 text-destructive border border-destructive/30"
                 }`}
               >
-                {feedback === "correct" ? "✅ Corect!" : "❌ Greșit!"}
+                <p className="font-bold">{feedback === "correct" ? "✅ Corect!" : "❌ Greșit!"}</p>
+                {feedback === "wrong" && lastExplanation && (
+                  <p className="mt-2 text-sm text-muted-foreground font-normal">
+                    💡 {lastExplanation}
+                  </p>
+                )}
               </motion.div>
             )}
           </AnimatePresence>
