@@ -32,31 +32,32 @@ const LessonPage = () => {
       if (isCorrect) {
         setCorrectCount((c) => c + 1);
         setFeedback("correct");
-        setLastExplanation(null);
+        setLastExplanation(exercise?.explanation || null);
       } else {
         setLives((l) => l - 1);
         loseLife();
         setFeedback("wrong");
         setLastExplanation(exercise?.explanation || null);
       }
-
-      setTimeout(() => {
-        setFeedback(null);
-        setLastExplanation(null);
-        if (!lesson) return;
-        if (currentIndex + 1 >= lesson.exercises.length || (!isCorrect && lives <= 1)) {
-          setIsFinished(true);
-          if (isCorrect || lives > 1) {
-            const finalCorrect = isCorrect ? correctCount + 1 : correctCount;
-            completeLesson(lesson.id, lesson.xpReward, finalCorrect);
-          }
-        } else {
-          setCurrentIndex((i) => i + 1);
-        }
-      }, 2500);
     },
-    [currentIndex, correctCount, lives, lesson, completeLesson, loseLife]
+    [currentIndex, lesson, loseLife]
   );
+
+  const handleContinue = useCallback(() => {
+    setFeedback(null);
+    setLastExplanation(null);
+    if (!lesson) return;
+    const wasCorrect = feedback === "correct";
+    if (currentIndex + 1 >= lesson.exercises.length || (!wasCorrect && lives <= 0)) {
+      setIsFinished(true);
+      if (wasCorrect || lives > 0) {
+        const finalCorrect = wasCorrect ? correctCount : correctCount;
+        completeLesson(lesson.id, lesson.xpReward, finalCorrect);
+      }
+    } else {
+      setCurrentIndex((i) => i + 1);
+    }
+  }, [currentIndex, correctCount, lives, lesson, feedback, completeLesson]);
 
   if (!lesson || !chapter) {
     return <div className="p-8 text-center text-foreground">Lecție negăsită</div>;
@@ -159,18 +160,25 @@ const LessonPage = () => {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0 }}
-                className={`mt-4 rounded-lg p-4 text-center ${
+                className={`mt-4 rounded-lg p-4 ${
                   feedback === "correct"
                     ? "bg-primary/10 text-primary border border-primary/30"
                     : "bg-destructive/10 text-destructive border border-destructive/30"
                 }`}
               >
-                <p className="font-bold">{feedback === "correct" ? "✅ Corect!" : "❌ Greșit!"}</p>
-                {feedback === "wrong" && lastExplanation && (
-                  <p className="mt-2 text-sm text-muted-foreground font-normal">
+                <p className="font-bold text-center">{feedback === "correct" ? "✅ Corect!" : "❌ Greșit!"}</p>
+                {lastExplanation && (
+                  <p className="mt-2 text-sm text-muted-foreground font-normal text-center">
                     💡 {lastExplanation}
                   </p>
                 )}
+                <Button
+                  onClick={handleContinue}
+                  className="w-full mt-4"
+                  variant={feedback === "correct" ? "default" : "destructive"}
+                >
+                  Continuă
+                </Button>
               </motion.div>
             )}
           </AnimatePresence>
