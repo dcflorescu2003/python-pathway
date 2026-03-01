@@ -2,7 +2,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { chapters } from "@/data/courses";
 import { useProgress } from "@/hooks/useProgress";
 import { motion } from "framer-motion";
-import { ArrowLeft, Check, Lock, Play } from "lucide-react";
+import { ArrowLeft, Check, Lock, Play, BookOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const ChapterPage = () => {
@@ -20,10 +20,19 @@ const ChapterPage = () => {
           <Button variant="ghost" size="icon" onClick={() => navigate("/")}>
             <ArrowLeft className="h-5 w-5" />
           </Button>
-          <div>
+          <div className="flex-1">
             <p className="text-xs font-mono text-muted-foreground">Capitol {chapter.number}</p>
             <h1 className="text-lg font-bold text-foreground">{chapter.title}</h1>
           </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => navigate(`/chapter/${chapter.id}/theory`)}
+            className="gap-1.5"
+          >
+            <BookOpen className="h-4 w-4" />
+            Teorie
+          </Button>
         </div>
       </header>
 
