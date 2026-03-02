@@ -16,6 +16,19 @@ const TrueFalseExercise = ({ exercise, onAnswer, feedback }: Props) => {
     onAnswer(selected === exercise.isTrue);
   };
 
+  const getButtonClasses = (value: boolean) => {
+    const isCorrectAnswer = value === exercise.isTrue;
+    const isSelected = selected === value;
+
+    if (feedback) {
+      if (isCorrectAnswer) return "border-primary bg-primary/10 text-primary";
+      if (isSelected) return "border-destructive bg-destructive/10 text-destructive";
+      return "border-border bg-card text-muted-foreground opacity-50";
+    }
+    if (isSelected) return "border-primary bg-primary/10 text-primary";
+    return "border-border bg-card text-foreground hover:border-muted-foreground";
+  };
+
   return (
     <div>
       <p className="text-foreground font-bold mb-2">{exercise.question}</p>
@@ -27,44 +40,24 @@ const TrueFalseExercise = ({ exercise, onAnswer, feedback }: Props) => {
         <button
           disabled={feedback !== null}
           onClick={() => setSelected(true)}
-          className={`rounded-lg border p-4 text-center font-bold transition-all ${
-            selected === true
-              ? feedback === "correct"
-                ? "border-primary bg-primary/10 text-primary"
-                : feedback === "wrong"
-                ? "border-destructive bg-destructive/10 text-destructive"
-                : "border-primary bg-primary/10 text-primary"
-              : "border-border bg-card text-foreground hover:border-muted-foreground"
-          }`}
+          className={`rounded-lg border p-4 text-center font-bold transition-all ${getButtonClasses(true)}`}
         >
-          ✅ Adevărat
+          {feedback && exercise.isTrue === true && "✅ "}Adevărat
         </button>
         <button
           disabled={feedback !== null}
           onClick={() => setSelected(false)}
-          className={`rounded-lg border p-4 text-center font-bold transition-all ${
-            selected === false
-              ? feedback === "correct"
-                ? "border-primary bg-primary/10 text-primary"
-                : feedback === "wrong"
-                ? "border-destructive bg-destructive/10 text-destructive"
-                : "border-primary bg-primary/10 text-primary"
-              : "border-border bg-card text-foreground hover:border-muted-foreground"
-          }`}
+          className={`rounded-lg border p-4 text-center font-bold transition-all ${getButtonClasses(false)}`}
         >
-          ❌ Fals
+          {feedback && exercise.isTrue === false && "✅ "}Fals
         </button>
       </div>
 
-      {feedback && exercise.explanation && (
-        <div className="mb-4 rounded-lg bg-secondary p-3 text-sm text-muted-foreground">
-          💡 {exercise.explanation}
-        </div>
+      {!feedback && (
+        <Button onClick={handleSubmit} disabled={selected === null} className="w-full">
+          Verifică
+        </Button>
       )}
-
-      <Button onClick={handleSubmit} disabled={selected === null || feedback !== null} className="w-full">
-        Verifică
-      </Button>
     </div>
   );
 };
