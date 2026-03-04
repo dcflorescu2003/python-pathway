@@ -1,5 +1,5 @@
 import { useParams, useNavigate } from "react-router-dom";
-import { chapters } from "@/data/courses";
+import { getStoredChapters } from "@/hooks/useExerciseStore";
 import { chapterTheories } from "@/data/chapterTheory";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, BookOpen } from "lucide-react";
@@ -9,6 +9,7 @@ const ChapterTheoryPage = () => {
   const { chapterId } = useParams();
   const navigate = useNavigate();
 
+  const chapters = getStoredChapters();
   const chapter = chapters.find((c) => c.id === chapterId);
   const theory = chapterTheories.find((t) => t.chapterId === chapterId);
 

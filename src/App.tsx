@@ -8,6 +8,7 @@ import ChapterPage from "./pages/ChapterPage";
 import ChapterTheoryPage from "./pages/ChapterTheoryPage";
 import LessonPage from "./pages/LessonPage";
 import LeaderboardPage from "./pages/LeaderboardPage";
+import AdminPage from "./pages/AdminPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -24,6 +25,7 @@ const App = () => (
           <Route path="/chapter/:chapterId/theory" element={<ChapterTheoryPage />} />
           <Route path="/lesson/:lessonId" element={<LessonPage />} />
           <Route path="/leaderboard" element={<LeaderboardPage />} />
+          <Route path="/admin" element={<AdminPage />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>

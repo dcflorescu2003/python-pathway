@@ -1,14 +1,16 @@
 import { useNavigate } from "react-router-dom";
-import { chapters, getLevelFromXP, getXPForNextLevel } from "@/data/courses";
+import { getLevelFromXP, getXPForNextLevel } from "@/data/courses";
+import { getStoredChapters } from "@/hooks/useExerciseStore";
 import { useProgress } from "@/hooks/useProgress";
 import { Progress } from "@/components/ui/progress";
 import { motion } from "framer-motion";
-import { Flame, Heart, Zap, Trophy } from "lucide-react";
+import { Flame, Heart, Zap, Trophy, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const Index = () => {
   const navigate = useNavigate();
   const { progress } = useProgress();
+  const chapters = getStoredChapters();
   const level = getLevelFromXP(progress.xp);
   const xpToNext = getXPForNextLevel(progress.xp);
   const xpInLevel = 100 - xpToNext;
@@ -63,6 +65,16 @@ const Index = () => {
           <Progress value={xpInLevel} className="h-2" />
           <p className="mt-1 text-xs text-muted-foreground">{xpInLevel}/100 XP pentru nivelul {level + 1}</p>
         </motion.div>
+
+        {/* Admin link */}
+        <Button
+          variant="outline"
+          size="sm"
+          className="w-full"
+          onClick={() => navigate("/admin")}
+        >
+          <Settings className="h-4 w-4 mr-2" /> Editor Întrebări
+        </Button>
 
         {/* Chapters */}
         <div className="space-y-4">

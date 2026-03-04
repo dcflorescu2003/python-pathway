@@ -1,10 +1,11 @@
 import { useState, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { chapters, Exercise } from "@/data/courses";
+import { Exercise } from "@/data/courses";
+import { getStoredChapters } from "@/hooks/useExerciseStore";
 import { useProgress } from "@/hooks/useProgress";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Heart, X } from "lucide-react";
+import { ArrowLeft, Heart, X, Settings } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import QuizExercise from "@/components/exercises/QuizExercise";
 import FillExercise from "@/components/exercises/FillExercise";
@@ -16,6 +17,7 @@ const LessonPage = () => {
   const navigate = useNavigate();
   const { progress, completeLesson, loseLife } = useProgress();
 
+  const chapters = getStoredChapters();
   const lesson = chapters.flatMap((c) => c.lessons).find((l) => l.id === lessonId);
   const chapter = chapters.find((c) => c.lessons.some((l) => l.id === lessonId));
 
@@ -117,6 +119,9 @@ const LessonPage = () => {
             <X className="h-5 w-5 text-muted-foreground hover:text-foreground" />
           </button>
           <Progress value={progressPercent} className="h-2 flex-1" />
+          <button onClick={() => navigate("/admin")} className="text-muted-foreground hover:text-foreground">
+            <Settings className="h-4 w-4" />
+          </button>
           <div className="flex items-center gap-1 text-destructive">
             {Array.from({ length: 3 }).map((_, i) => (
               <Heart
