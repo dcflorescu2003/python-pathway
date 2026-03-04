@@ -1,5 +1,5 @@
 import { useParams, useNavigate } from "react-router-dom";
-import { chapters } from "@/data/courses";
+import { getStoredChapters } from "@/hooks/useExerciseStore";
 import { useProgress } from "@/hooks/useProgress";
 import { motion } from "framer-motion";
 import { ArrowLeft, Check, Lock, Play, BookOpen } from "lucide-react";
@@ -10,6 +10,7 @@ const ChapterPage = () => {
   const navigate = useNavigate();
   const { progress } = useProgress();
 
+  const chapters = getStoredChapters();
   const chapter = chapters.find((c) => c.id === chapterId);
   if (!chapter) return <div className="p-8 text-center text-foreground">Capitol negăsit</div>;
 
