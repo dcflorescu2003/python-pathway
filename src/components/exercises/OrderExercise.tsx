@@ -72,7 +72,7 @@ const OrderExercise = ({ exercise, onAnswer, feedback }: Props) => {
               } ${feedback !== null ? "cursor-default" : ""}`}
             >
               <GripVertical className="h-4 w-4 text-muted-foreground shrink-0" />
-              <code className="text-foreground">{item.text}</code>
+              <code className="text-foreground whitespace-pre">{item.text}</code>
               <div className="ml-auto flex gap-1">
                 <button
                   onClick={() => idx > 0 && moveItem(idx, idx - 1)}
@@ -98,7 +98,7 @@ const OrderExercise = ({ exercise, onAnswer, feedback }: Props) => {
         <div className="mb-4 rounded-lg border border-primary/30 bg-primary/5 p-3">
           <p className="text-xs text-primary font-bold mb-2">Ordinea corectă:</p>
           {correctOrder.map((line, i) => (
-            <p key={line.id} className="text-xs font-mono text-muted-foreground">
+            <p key={line.id} className="text-xs font-mono text-muted-foreground whitespace-pre">
               {i + 1}. {line.text}
             </p>
           ))}
