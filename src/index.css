@@ -63,10 +63,27 @@
 
   body {
     @apply bg-background text-foreground font-sans;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
+    overscroll-behavior-y: contain;
+  }
+
+  /* Prevent zoom on inputs on iOS */
+  input, select, textarea {
+    font-size: 16px !important;
   }
 
   code, pre, .font-mono {
     font-family: 'Fira Code', monospace;
+  }
+
+  /* Safe area utilities */
+  .safe-top {
+    padding-top: env(safe-area-inset-top);
+  }
+
+  .safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
   }
 }
 
@@ -85,5 +102,11 @@
 
   .code-block {
     @apply bg-muted rounded-lg p-4 font-mono text-sm overflow-x-auto border border-border;
+  }
+
+  /* Touch-friendly tap target */
+  .touch-target {
+    min-height: 48px;
+    min-width: 48px;
   }
 }
