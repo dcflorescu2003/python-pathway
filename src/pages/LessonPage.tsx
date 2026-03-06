@@ -5,7 +5,7 @@ import { getStoredChapters } from "@/hooks/useExerciseStore";
 import { useProgress } from "@/hooks/useProgress";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Heart, X, Settings } from "lucide-react";
+import { Heart, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import QuizExercise from "@/components/exercises/QuizExercise";
 import FillExercise from "@/components/exercises/FillExercise";
@@ -53,8 +53,7 @@ const LessonPage = () => {
     if (currentIndex + 1 >= lesson.exercises.length || (!wasCorrect && lives <= 0)) {
       setIsFinished(true);
       if (wasCorrect || lives > 0) {
-        const finalCorrect = wasCorrect ? correctCount : correctCount;
-        completeLesson(lesson.id, lesson.xpReward, finalCorrect);
+        completeLesson(lesson.id, lesson.xpReward, correctCount);
       }
     } else {
       setCurrentIndex((i) => i + 1);
@@ -68,17 +67,17 @@ const LessonPage = () => {
   if (isFinished) {
     const xpEarned = lives > 0 ? lesson.xpReward : 0;
     return (
-      <div className="flex min-h-screen items-center justify-center bg-background p-4">
+      <div className="fixed inset-0 flex items-center justify-center bg-background p-6 safe-top safe-bottom">
         <motion.div
           initial={{ scale: 0.8, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
-          className="w-full max-w-md rounded-xl border border-border bg-card p-8 text-center"
+          className="w-full max-w-sm rounded-xl border border-border bg-card p-6 text-center"
         >
           {lives > 0 ? (
             <>
               <div className="text-5xl mb-4">🎉</div>
-              <h2 className="text-2xl font-bold text-foreground mb-2">Lecție completă!</h2>
-              <p className="text-muted-foreground mb-4">
+              <h2 className="text-xl font-bold text-foreground mb-2">Lecție completă!</h2>
+              <p className="text-sm text-muted-foreground mb-4">
                 Ai răspuns corect la {correctCount}/{lesson.exercises.length} exerciții
               </p>
               <div className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-4 py-2 text-primary font-bold mb-6">
@@ -88,16 +87,16 @@ const LessonPage = () => {
           ) : (
             <>
               <div className="text-5xl mb-4">💔</div>
-              <h2 className="text-2xl font-bold text-foreground mb-2">Ai rămas fără vieți!</h2>
-              <p className="text-muted-foreground mb-6">Încearcă din nou mai târziu.</p>
+              <h2 className="text-xl font-bold text-foreground mb-2">Ai rămas fără vieți!</h2>
+              <p className="text-sm text-muted-foreground mb-6">Încearcă din nou mai târziu.</p>
             </>
           )}
           <div className="flex gap-3">
-            <Button variant="outline" className="flex-1" onClick={() => navigate(`/chapter/${chapter.id}`)}>
+            <Button variant="outline" className="flex-1 touch-target" onClick={() => navigate(`/chapter/${chapter.id}`)}>
               Înapoi
             </Button>
             {lives > 0 && (
-              <Button className="flex-1" onClick={() => navigate(`/chapter/${chapter.id}`)}>
+              <Button className="flex-1 touch-target" onClick={() => navigate(`/chapter/${chapter.id}`)}>
                 Continuă
               </Button>
             )}
@@ -108,20 +107,17 @@ const LessonPage = () => {
   }
 
   const exercise = lesson.exercises[currentIndex];
-  const progressPercent = ((currentIndex) / lesson.exercises.length) * 100;
+  const progressPercent = (currentIndex / lesson.exercises.length) * 100;
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="fixed inset-0 bg-background flex flex-col">
       {/* Top bar */}
-      <header className="border-b border-border bg-background/80 backdrop-blur-md px-4 py-3">
-        <div className="mx-auto flex max-w-2xl items-center gap-3">
-          <button onClick={() => navigate(`/chapter/${chapter.id}`)}>
-            <X className="h-5 w-5 text-muted-foreground hover:text-foreground" />
+      <header className="border-b border-border bg-background/80 backdrop-blur-md px-4 py-3 pt-[max(env(safe-area-inset-top),12px)]">
+        <div className="flex items-center gap-3">
+          <button onClick={() => navigate(`/chapter/${chapter.id}`)} className="touch-target flex items-center justify-center">
+            <X className="h-6 w-6 text-muted-foreground" />
           </button>
-          <Progress value={progressPercent} className="h-2 flex-1" />
-          <button onClick={() => navigate("/admin")} className="text-muted-foreground hover:text-foreground">
-            <Settings className="h-4 w-4" />
-          </button>
+          <Progress value={progressPercent} className="h-2.5 flex-1" />
           <div className="flex items-center gap-1 text-destructive">
             {Array.from({ length: 3 }).map((_, i) => (
               <Heart
@@ -134,8 +130,8 @@ const LessonPage = () => {
       </header>
 
       {/* Exercise */}
-      <main className="flex-1 flex items-center justify-center p-4">
-        <div className="w-full max-w-2xl">
+      <main className="flex-1 overflow-y-auto px-4 py-6">
+        <div className="max-w-lg mx-auto">
           <AnimatePresence mode="wait">
             <motion.div
               key={exercise.id}
@@ -157,38 +153,44 @@ const LessonPage = () => {
               )}
             </motion.div>
           </AnimatePresence>
-
-          {/* Feedback overlay */}
-          <AnimatePresence>
-            {feedback && (
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0 }}
-                className={`mt-4 rounded-lg p-4 ${
-                  feedback === "correct"
-                    ? "bg-primary/10 text-primary border border-primary/30"
-                    : "bg-destructive/10 text-destructive border border-destructive/30"
-                }`}
-              >
-                <p className="font-bold text-center">{feedback === "correct" ? "✅ Corect!" : "❌ Greșit!"}</p>
-                {lastExplanation && (
-                  <p className="mt-2 text-sm text-muted-foreground font-normal text-center">
-                    💡 {lastExplanation}
-                  </p>
-                )}
-                <Button
-                  onClick={handleContinue}
-                  className="w-full mt-4"
-                  variant={feedback === "correct" ? "default" : "destructive"}
-                >
-                  Continuă
-                </Button>
-              </motion.div>
-            )}
-          </AnimatePresence>
         </div>
       </main>
+
+      {/* Bottom feedback - anchored */}
+      <AnimatePresence>
+        {feedback && (
+          <motion.div
+            initial={{ y: 100 }}
+            animate={{ y: 0 }}
+            exit={{ y: 100 }}
+            className={`border-t px-4 py-4 pb-[max(env(safe-area-inset-bottom),16px)] ${
+              feedback === "correct"
+                ? "bg-primary/10 border-primary/30"
+                : "bg-destructive/10 border-destructive/30"
+            }`}
+          >
+            <div className="max-w-lg mx-auto">
+              <p className={`font-bold text-center mb-1 ${
+                feedback === "correct" ? "text-primary" : "text-destructive"
+              }`}>
+                {feedback === "correct" ? "✅ Corect!" : "❌ Greșit!"}
+              </p>
+              {lastExplanation && (
+                <p className="text-xs text-muted-foreground text-center mb-3">
+                  💡 {lastExplanation}
+                </p>
+              )}
+              <Button
+                onClick={handleContinue}
+                className="w-full touch-target"
+                variant={feedback === "correct" ? "default" : "destructive"}
+              >
+                Continuă
+              </Button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

@@ -1,7 +1,5 @@
-import { useNavigate } from "react-router-dom";
 import { useProgress } from "@/hooks/useProgress";
-import { Button } from "@/components/ui/button";
-import { ArrowLeft, Trophy, Flame, Zap, Medal } from "lucide-react";
+import { Flame, Zap, Medal } from "lucide-react";
 import { motion } from "framer-motion";
 
 const MOCK_LEADERBOARD = [
@@ -24,10 +22,8 @@ const medalColors = [
 ];
 
 const LeaderboardPage = () => {
-  const navigate = useNavigate();
   const { progress } = useProgress();
 
-  // Insert current user into leaderboard
   const userEntry = { name: "Tu", xp: progress.xp, streak: progress.streak, avatar: "🐍" };
   const allEntries = [...MOCK_LEADERBOARD, userEntry]
     .sort((a, b) => b.xp - a.xp)
@@ -35,17 +31,14 @@ const LeaderboardPage = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="sticky top-0 z-50 border-b border-border bg-background/80 backdrop-blur-md">
-        <div className="mx-auto flex max-w-3xl items-center gap-3 px-4 py-3">
-          <Button variant="ghost" size="icon" onClick={() => navigate("/")}>
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-          <Trophy className="h-5 w-5 text-warning" />
+      <header className="sticky top-0 z-40 border-b border-border bg-background/80 backdrop-blur-md pt-[env(safe-area-inset-top)]">
+        <div className="flex items-center gap-3 px-4 py-3">
+          <span className="text-xl">🏆</span>
           <h1 className="text-lg font-bold text-foreground">Clasament</h1>
         </div>
       </header>
 
-      <main className="mx-auto max-w-3xl px-4 py-6">
+      <main className="px-4 py-4">
         <div className="space-y-2">
           {allEntries.map((entry, idx) => {
             const isUser = entry.name === "Tu";
@@ -54,54 +47,50 @@ const LeaderboardPage = () => {
                 key={`${entry.name}-${idx}`}
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: idx * 0.04 }}
-                className={`flex items-center gap-4 rounded-xl border p-4 transition-all ${
+                transition={{ delay: idx * 0.03 }}
+                className={`flex items-center gap-3 rounded-xl border p-3 active:scale-[0.98] transition-all ${
                   isUser
                     ? "border-primary bg-primary/10 glow-primary"
                     : "border-border bg-card"
                 }`}
               >
-                {/* Rank */}
                 <div className="flex h-8 w-8 shrink-0 items-center justify-center">
                   {idx < 3 ? (
-                    <Medal className={`h-6 w-6 ${medalColors[idx]}`} />
+                    <Medal className={`h-5 w-5 ${medalColors[idx]}`} />
                   ) : (
-                    <span className="text-sm font-mono text-muted-foreground font-bold">
+                    <span className="text-xs font-mono text-muted-foreground font-bold">
                       {idx + 1}
                     </span>
                   )}
                 </div>
 
-                {/* Avatar */}
-                <span className="text-2xl">{entry.avatar}</span>
+                <span className="text-xl">{entry.avatar}</span>
 
-                {/* Info */}
                 <div className="flex-1 min-w-0">
                   <p className={`text-sm font-bold truncate ${isUser ? "text-primary" : "text-foreground"}`}>
                     {entry.name}
                   </p>
                   <div className="flex items-center gap-3 mt-0.5">
-                    <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                    <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
                       <Zap className="h-3 w-3 text-xp" />
                       {entry.xp} XP
                     </span>
-                    <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                    <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
                       <Flame className="h-3 w-3 text-warning" />
-                      {entry.streak} zile
+                      {entry.streak}d
                     </span>
                   </div>
                 </div>
 
-                {/* XP badge */}
-                <div className="shrink-0 rounded-full bg-secondary px-3 py-1">
-                  <span className="text-sm font-mono font-bold text-xp">{entry.xp}</span>
+                <div className="shrink-0 rounded-full bg-secondary px-2.5 py-1">
+                  <span className="text-xs font-mono font-bold text-xp">{entry.xp}</span>
                 </div>
               </motion.div>
             );
           })}
         </div>
 
-        <p className="mt-6 text-center text-xs text-muted-foreground">
+        <p className="mt-6 text-center text-[10px] text-muted-foreground">
           🔒 Clasamentul real va fi disponibil după activarea conturilor
         </p>
       </main>
