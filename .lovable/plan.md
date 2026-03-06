@@ -1,88 +1,131 @@
 
 
-# 🐍 PyLearn – Aplicație Duolingo pentru Python (Clasa a IX-a)
-**Design: Dark mode programator | Salvare: Supabase cu conturi | Exerciții: Mix complet**
+# Plan: Transformare PyLearn in aplicație mobilă Android-ready
 
----
+## Sumar
 
-## 🎮 Sistem de Gamification (stil Duolingo)
-- **XP** (experiență) câștigat per lecție completată
-- **Streak** zilnic (câte zile consecutive a învățat)
-- **Vieți** (3 vieți per sesiune, se pierd la răspuns greșit)
-- **Bară de progres** per lecție și per capitol
-- **Profil utilizator** cu statistici și nivel
+Transformarea aplicației PyLearn dintr-un web app responsive într-o experiență mobile-first pregătită pentru Google Play, incluzând: bottom navigation, PWA config, Capacitor readiness, splash screen, lazy loading, stări de eroare/loading, și comportament nativ.
 
----
+## Pagini existente (5 ecrane)
+- **Index** — lista capitole + profil
+- **ChapterPage** — lista lecții (path vertical)
+- **ChapterTheoryPage** — teorie capitol
+- **LessonPage** — exerciții interactive
+- **LeaderboardPage** — clasament
+- **AdminPage** — editor întrebări
 
-## 📚 Structura Capitolelor și Lecțiilor
+## Structura nouă de navigație mobilă
 
-### **Capitolul 1: Recapitulare & Fundamente**
-1. **Variabile și atribuire** – tipuri de date, operatorul `=`, conversii (`int`, `float`, `str`)
-2. **Structura `if/elif/else`** – condiții, operatori logici, ramificări
-3. **Structura `for`** – iterare prin `range()`, parcurgere liste
-4. **Structura `while`** – bucle condiționale, controlul execuției
-5. **Gândire computațională** – ce este, etapele rezolvării unei probleme (analiză, proiectare, implementare, testare)
-6. **Introducere în algoritmi** – pseudocod, blocuri grafice, eficiență de bază, notația O
+```text
+┌─────────────────────────────┐
+│  Status Bar (safe area)     │
+├─────────────────────────────┤
+│                             │
+│     Page Content            │
+│     (scrollable)            │
+│                             │
+├─────────────────────────────┤
+│  🏠    📚    🏆    ⚙️      │
+│  Acasă Lecții Clasam. Admin │
+│  (Bottom Navigation Bar)    │
+└─────────────────────────────┘
+```
 
-### **Capitolul 2: Prelucrări Numerice**
-1. **Operații cu cifrele unui număr** – acces la cifre, adăugare cifre la stânga/dreapta
-2. **Parcurgerea cifrelor și divizorilor** – algoritmi de bază
-3. **Algoritmul lui Euclid** – cmmdc cu scăderi și cu împărțiri
-4. **Descompunere în factori primi**
-5. **Conversii între baze de numerație** – baza 10 ↔ baza 2
+- Paginile Chapter, Theory, Lesson = ecrane secundare fără bottom nav (cu back header)
+- LessonPage rămâne full-screen (fără nav, doar progress + close)
 
-### **Capitolul 3: Liste – Organizare Conceptuală**
-1. **Modelul conceptual de listă** – caracteristici, acces secvențial vs direct
-2. **Stiva și coada** – LIFO, FIFO, exemple practice
-3. **Lista de frecvențe** – construire și utilizare
-4. **Parcurgere liniară** – cu și fără memorare
-5. **Clasa `list` în Python** – operatori (`[]`, `in`, `+`, `*`)
-6. **Metode ale clasei `list`** – `append()`, `insert()`, `pop()`, `remove()`, `sort()`, `copy()`, `count()`, `index()`
+## Modificări tehnice planificate
 
-### **Capitolul 4: Generare și Sortare**
-1. **Generarea sistematică a secvențelor** – șiruri recurente, Fibonacci
-2. **Sortare prin selecția minimului** – algoritm pas cu pas
-3. **Sortare cu lista de frecvențe** – când și cum se aplică
-4. **Metoda bulelor (Bubble Sort)** – comparare și interschimbare
-5. **Compararea metodelor de sortare** – eficiență, număr de operații
+### 1. Layout & Bottom Navigation
+- **Creez `src/components/layout/MobileLayout.tsx`** — wrapper cu bottom tab bar pentru paginile principale (Home, Leaderboard, Admin)
+- **Creez `src/components/layout/BottomNav.tsx`** — 4 tab-uri: Acasă, Lecții (merge pe /, scrollează la capitole), Clasament, Editor
+- Safe area padding (env(safe-area-inset-*)) pe header și bottom nav
+- Paginile secundare (Chapter, Theory, Lesson) nu au bottom nav
 
-### **Capitolul 5: Subprograme**
-1. **Conceptul de subprogram** – `def`, parametri, corp, apel
-2. **Variabile locale și globale** – domeniu de vizibilitate
-3. **Transmitere parametri și returnare** – `return`, argumente
-4. **Funcții predefinite matematice** – `abs()`, `round()`, `sqrt()`, `int()`
-5. **Funcții predefinite pentru colecții** – `len()`, `min()`, `max()`, `sum()`
-6. **Proiectare modulară** – descompunerea problemelor în module
+### 2. Redesign pagini mobile-first
+- **Index.tsx**: Reproiectare card-uri capitole cu touch targets >= 48px, spacing mai generos, profil card compact
+- **ChapterPage.tsx**: Path vertical optimizat, butoane mai mari (80px → touch-friendly), spacing
+- **LessonPage.tsx**: Butoane răspuns mai mari, feedback overlay full-width, bottom-anchored continue button
+- **LeaderboardPage.tsx**: Items mai compacte, pull-to-refresh vizual
+- **AdminPage.tsx**: Form inputs touch-friendly, spacing crescut, confirmări dialog pentru ștergere
 
-### **Capitolul 6: Fișiere și Interfețe**
-1. **Fișiere text** – `open()`, `read()`, `write()`, `close()`
-2. **Citire și scriere din/în fișiere** – moduri de deschidere, sfârșit de fișier
-3. **Introducere în Tkinter** – ferestre, butoane, etichete
-4. **Casete text și MessageBox** – `Entry`, `Text`, `messagebox`
-5. **Introducere OOP** – clasă, obiect, instanțiere, metode
+### 3. Stări aplicație
+- **Creez `src/components/states/LoadingScreen.tsx`** — skeleton/spinner cu logo
+- **Creez `src/components/states/EmptyState.tsx`** — mesaj + icon când nu sunt date
+- **Creez `src/components/states/ErrorState.tsx`** — eroare + retry button
+- **Creez `src/components/states/OfflineState.tsx`** — detectare navigator.onLine, banner offline
+- **Creez `src/hooks/useOnlineStatus.ts`** — hook pentru starea conexiunii
+- Splash screen logic în `src/components/states/SplashScreen.tsx` — apare 1.5s la prima încărcare
 
----
+### 4. PWA Configuration
+- **Instalez `vite-plugin-pwa`** ca dependință
+- **Configurez în `vite.config.ts`**: manifest complet cu name, short_name, icons, theme_color (#0f1219), background_color (#0f1219), display: standalone, start_url, navigateFallbackDenylist pentru /~oauth
+- **Creez icon placeholders**: `public/icon-192.png`, `public/icon-512.png`, `public/icon-maskable-512.png` (SVG placeholder-uri)
+- **Actualizez `index.html`**: meta tags (theme-color, apple-mobile-web-app-capable, viewport cu viewport-fit=cover), apple-touch-icon
+- Service worker cu runtime caching pentru assets și fallback offline
 
-## 🧩 Tipuri de Exerciții (per lecție, 5-8 exerciții)
-- **Quiz cu variante** – „Ce afișează acest cod?", „Care este output-ul?"
-- **Completează codul** – cod cu `___` pe care elevul le completează
-- **Aranjează liniile** – drag & drop pentru a ordona liniile de cod corect
-- **Adevărat/Fals** – afirmații despre concepte
+### 5. Capacitor Readiness
+- **Instalez**: `@capacitor/core`, `@capacitor/cli` (dev)
+- **Creez `capacitor.config.ts`** cu appId, appName, server URL pentru dev
+- Documentez pașii post-export: `npx cap add android`, `npx cap sync`, build AAB
+- Evit dependințe problematice (nu sunt cazuri în proiectul curent)
+- Toate rutele sunt hash-free (deja folosesc BrowserRouter — OK pentru Capacitor)
 
----
+### 6. Performanță
+- **Lazy load** paginile cu `React.lazy` + `Suspense` în App.tsx
+- **Memo-izare** componente exerciții cu `React.memo`
+- Elimină `src/App.css` (neutilizat, e template-ul default Vite)
+- Bundle splitting automat prin lazy loading
 
-## 🔐 Backend (Supabase)
-- **Autentificare** – înregistrare/login cu email
-- **Profil utilizator** – XP, streak, nivel, vieți
-- **Progres lecții** – care lecții sunt completate, scor per lecție
-- **Tabel de clasament** (leaderboard) – top utilizatori după XP
+### 7. UX nativ
+- Tranziții page cu framer-motion (slide stânga/dreapta)
+- Haptic feedback vizual pe butoane (scale animation la tap)
+- Confirmări AlertDialog pentru acțiuni destructive (ștergere exerciții/lecții în admin)
+- Pull-down visual pe main pages
+- Disable zoom pe inputs (font-size >= 16px)
 
----
+### 8. Actualizări index.html
+- `<meta name="theme-color" content="#0f1219">`
+- `<meta name="apple-mobile-web-app-capable" content="yes">`
+- `<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">`
+- Title: "PyLearn - Învață Python"
+- Link manifest.json
 
-## 🎨 Design Dark Mode Programator
-- Fundal întunecat (#1a1a2e / #0d1117)
-- Syntax highlighting colorat pentru blocurile de cod
-- Font monospace pentru cod (Fira Code / JetBrains Mono)
-- Accente verzi/cyan pentru progres și succes
-- Animații subtile la răspuns corect/greșit
+## Fișiere noi (~10)
+- `src/components/layout/MobileLayout.tsx`
+- `src/components/layout/BottomNav.tsx`
+- `src/components/states/SplashScreen.tsx`
+- `src/components/states/LoadingScreen.tsx`
+- `src/components/states/EmptyState.tsx`
+- `src/components/states/ErrorState.tsx`
+- `src/components/states/OfflineState.tsx`
+- `src/hooks/useOnlineStatus.ts`
+- `capacitor.config.ts`
+
+## Fișiere modificate (~9)
+- `vite.config.ts` — PWA plugin
+- `index.html` — meta tags, manifest link, title
+- `src/App.tsx` — lazy loading, MobileLayout wrapper, Suspense
+- `src/pages/Index.tsx` — mobile redesign, remove admin button from here
+- `src/pages/ChapterPage.tsx` — touch optimization
+- `src/pages/LessonPage.tsx` — bottom-anchored buttons, larger targets
+- `src/pages/LeaderboardPage.tsx` — compact mobile layout
+- `src/pages/AdminPage.tsx` — touch-friendly forms, confirm dialogs
+- `src/index.css` — safe area utilities, touch utilities
+- `package.json` — new dependencies
+
+## Dependințe noi
+- `vite-plugin-pwa` — PWA support
+- `@capacitor/core` — Capacitor runtime
+- `@capacitor/cli` (dev) — Capacitor CLI
+
+## Permisiuni
+- Nu sunt necesare permisiuni de device. Aplicația este pur educațională (text + interacțiuni touch). Nici camera, nici notificări, nici locația nu sunt necesare.
+
+## Lista de verificare post-export pentru Google Play
+La final voi furniza:
+1. Lista completă a modificărilor implementate
+2. Pașii exacti: git pull → npm install → npx cap add android → npx cap sync → Android Studio → build AAB
+3. Ce trebuie completat în Android Studio (signing key, version code, privacy policy URL)
+4. Checklist final pentru publicare Play Store
 
