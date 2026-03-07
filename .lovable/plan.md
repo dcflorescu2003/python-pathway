@@ -1,88 +1,54 @@
 
 
-# 🐍 PyLearn – Aplicație Duolingo pentru Python (Clasa a IX-a)
-**Design: Dark mode programator | Salvare: Supabase cu conturi | Exerciții: Mix complet**
+# De ce se deschide Chrome în loc de aplicație
 
----
+## Cauza problemei
 
-## 🎮 Sistem de Gamification (stil Duolingo)
-- **XP** (experiență) câștigat per lecție completată
-- **Streak** zilnic (câte zile consecutive a învățat)
-- **Vieți** (3 vieți per sesiune, se pierd la răspuns greșit)
-- **Bară de progres** per lecție și per capitol
-- **Profil utilizator** cu statistici și nivel
+În `capacitor.config.ts` ai configurat `server.url` care pointează către URL-ul live al proiectului Lovable:
 
----
+```
+server: {
+  url: 'https://4ea1d2d1-61a3-4961-91bb-927d97f397be.lovableproject.com?forceHideBadge=true',
+  cleartext: true,
+}
+```
 
-## 📚 Structura Capitolelor și Lecțiilor
+Această setare este doar pentru **development/hot-reload** — face ca aplicația Android să încarce conținutul de pe serverul Lovable în loc să folosească fișierele locale din `dist/`. Din cauza asta, Android-ul poate deschide URL-ul în Chrome în loc de WebView-ul intern al aplicației.
 
-### **Capitolul 1: Recapitulare & Fundamente**
-1. **Variabile și atribuire** – tipuri de date, operatorul `=`, conversii (`int`, `float`, `str`)
-2. **Structura `if/elif/else`** – condiții, operatori logici, ramificări
-3. **Structura `for`** – iterare prin `range()`, parcurgere liste
-4. **Structura `while`** – bucle condiționale, controlul execuției
-5. **Gândire computațională** – ce este, etapele rezolvării unei probleme (analiză, proiectare, implementare, testare)
-6. **Introducere în algoritmi** – pseudocod, blocuri grafice, eficiență de bază, notația O
+## Soluția
 
-### **Capitolul 2: Prelucrări Numerice**
-1. **Operații cu cifrele unui număr** – acces la cifre, adăugare cifre la stânga/dreapta
-2. **Parcurgerea cifrelor și divizorilor** – algoritmi de bază
-3. **Algoritmul lui Euclid** – cmmdc cu scăderi și cu împărțiri
-4. **Descompunere în factori primi**
-5. **Conversii între baze de numerație** – baza 10 ↔ baza 2
+Pentru a genera un **APK/AAB real** care funcționează ca aplicație nativă (offline, fără Chrome), trebuie să:
 
-### **Capitolul 3: Liste – Organizare Conceptuală**
-1. **Modelul conceptual de listă** – caracteristici, acces secvențial vs direct
-2. **Stiva și coada** – LIFO, FIFO, exemple practice
-3. **Lista de frecvențe** – construire și utilizare
-4. **Parcurgere liniară** – cu și fără memorare
-5. **Clasa `list` în Python** – operatori (`[]`, `in`, `+`, `*`)
-6. **Metode ale clasei `list`** – `append()`, `insert()`, `pop()`, `remove()`, `sort()`, `copy()`, `count()`, `index()`
+1. **Elimini sau comentezi `server`** din `capacitor.config.ts` — astfel Capacitor va folosi fișierele HTML/JS/CSS din folderul `dist/` (bundle-ul local)
+2. **Construiești proiectul** cu `npm run build` pentru a genera folderul `dist/`
+3. **Sincronizezi** cu `npx cap sync` pentru a copia `dist/` în proiectul Android
+4. **Rulezi din Android Studio** — acum aplicația va rula totul local, în WebView-ul Capacitor, fără a deschide Chrome
 
-### **Capitolul 4: Generare și Sortare**
-1. **Generarea sistematică a secvențelor** – șiruri recurente, Fibonacci
-2. **Sortare prin selecția minimului** – algoritm pas cu pas
-3. **Sortare cu lista de frecvențe** – când și cum se aplică
-4. **Metoda bulelor (Bubble Sort)** – comparare și interschimbare
-5. **Compararea metodelor de sortare** – eficiență, număr de operații
+### Modificare `capacitor.config.ts`:
 
-### **Capitolul 5: Subprograme**
-1. **Conceptul de subprogram** – `def`, parametri, corp, apel
-2. **Variabile locale și globale** – domeniu de vizibilitate
-3. **Transmitere parametri și returnare** – `return`, argumente
-4. **Funcții predefinite matematice** – `abs()`, `round()`, `sqrt()`, `int()`
-5. **Funcții predefinite pentru colecții** – `len()`, `min()`, `max()`, `sum()`
-6. **Proiectare modulară** – descompunerea problemelor în module
+Se elimină blocul `server` complet. Configurația finală:
 
-### **Capitolul 6: Fișiere și Interfețe**
-1. **Fișiere text** – `open()`, `read()`, `write()`, `close()`
-2. **Citire și scriere din/în fișiere** – moduri de deschidere, sfârșit de fișier
-3. **Introducere în Tkinter** – ferestre, butoane, etichete
-4. **Casete text și MessageBox** – `Entry`, `Text`, `messagebox`
-5. **Introducere OOP** – clasă, obiect, instanțiere, metode
+```ts
+import type { CapacitorConfig } from '@capacitor/cli';
 
----
+const config: CapacitorConfig = {
+  appId: 'app.lovable.4ea1d2d161a3496191bb927d97f397be',
+  appName: 'PyLearn',
+  webDir: 'dist',
+};
 
-## 🧩 Tipuri de Exerciții (per lecție, 5-8 exerciții)
-- **Quiz cu variante** – „Ce afișează acest cod?", „Care este output-ul?"
-- **Completează codul** – cod cu `___` pe care elevul le completează
-- **Aranjează liniile** – drag & drop pentru a ordona liniile de cod corect
-- **Adevărat/Fals** – afirmații despre concepte
+export default config;
+```
 
----
+### Pași de urmat după modificare:
 
-## 🔐 Backend (Supabase)
-- **Autentificare** – înregistrare/login cu email
-- **Profil utilizator** – XP, streak, nivel, vieți
-- **Progres lecții** – care lecții sunt completate, scor per lecție
-- **Tabel de clasament** (leaderboard) – top utilizatori după XP
+```text
+1. git pull           ← preia modificarea
+2. npm install        ← instalează dependențe
+3. npm run build      ← construiește dist/
+4. npx cap sync       ← copiază dist/ în android/
+5. Android Studio → Run ← acum rulează local, ca aplicație reală
+```
 
----
-
-## 🎨 Design Dark Mode Programator
-- Fundal întunecat (#1a1a2e / #0d1117)
-- Syntax highlighting colorat pentru blocurile de cod
-- Font monospace pentru cod (Fira Code / JetBrains Mono)
-- Accente verzi/cyan pentru progres și succes
-- Animații subtile la răspuns corect/greșit
+**Notă**: Dacă vrei hot-reload în timpul dezvoltării, poți adăuga temporar `server.url` înapoi cu IP-ul calculatorului tău (`http://192.168.x.x:8080`), dar pentru build-ul final de publicare trebuie eliminat.
 
