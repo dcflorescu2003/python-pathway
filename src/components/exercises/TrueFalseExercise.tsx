@@ -54,7 +54,7 @@ const TrueFalseExercise = ({ exercise, onAnswer, feedback }: Props) => {
       </div>
 
       {!feedback && (
-        <Button onClick={handleSubmit} disabled={selected === null} className="w-full">
+        <Button onClick={handleSubmit} disabled={selected === null} className="w-full h-14 text-lg font-bold">
           Verifică
         </Button>
       )}

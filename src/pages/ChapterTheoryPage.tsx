@@ -53,7 +53,7 @@ const ChapterTheoryPage = () => {
               {section.title}
             </h2>
 
-            <div className="text-base text-muted-foreground leading-relaxed whitespace-pre-line mb-4">
+            <div className="text-base text-foreground/80 leading-relaxed whitespace-pre-line mb-4">
               {section.content}
             </div>
 

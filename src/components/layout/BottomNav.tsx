@@ -5,7 +5,6 @@ import { motion } from "framer-motion";
 const tabs = [
   { path: "/", icon: Home, label: "Acasă" },
   { path: "/leaderboard", icon: Trophy, label: "Clasament" },
-  { path: "/admin", icon: Settings, label: "Editor" },
 ];
 
 const BottomNav = () => {

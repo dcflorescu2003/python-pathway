@@ -6,6 +6,7 @@ export interface UserProgress {
   lives: number;
   completedLessons: Record<string, { score: number; completed: boolean }>;
   lastActivityDate: string;
+  isPremium: boolean;
 }
 
 const DEFAULT_PROGRESS: UserProgress = {
@@ -14,6 +15,7 @@ const DEFAULT_PROGRESS: UserProgress = {
   lives: 3,
   completedLessons: {},
   lastActivityDate: new Date().toISOString().split("T")[0],
+  isPremium: false,
 };
 
 const STORAGE_KEY = "pylearn-progress";
@@ -21,7 +23,10 @@ const STORAGE_KEY = "pylearn-progress";
 function loadProgress(): UserProgress {
   try {
     const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) return JSON.parse(stored);
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      return { ...DEFAULT_PROGRESS, ...parsed };
+    }
   } catch {}
   return { ...DEFAULT_PROGRESS };
 }
@@ -59,6 +64,7 @@ export function useProgress() {
 
   const loseLife = useCallback(() => {
     setProgress((prev) => {
+      if (prev.isPremium) return prev; // Premium users don't lose lives
       const newProgress = { ...prev, lives: Math.max(0, prev.lives - 1) };
       saveProgress(newProgress);
       return newProgress;
@@ -73,5 +79,13 @@ export function useProgress() {
     });
   }, []);
 
-  return { progress, completeLesson, loseLife, resetLives };
+  const setPremium = useCallback((value: boolean) => {
+    setProgress((prev) => {
+      const newProgress = { ...prev, isPremium: value };
+      saveProgress(newProgress);
+      return newProgress;
+    });
+  }, []);
+
+  return { progress, completeLesson, loseLife, resetLives, setPremium };
 }

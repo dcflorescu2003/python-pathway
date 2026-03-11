@@ -23,7 +23,7 @@ const LessonPage = () => {
 
   const [currentIndex, setCurrentIndex] = useState(0);
   const [correctCount, setCorrectCount] = useState(0);
-  const [lives, setLives] = useState(3);
+  const [lives, setLives] = useState(progress.isPremium ? Infinity : 3);
   const [isFinished, setIsFinished] = useState(false);
   const [feedback, setFeedback] = useState<"correct" | "wrong" | null>(null);
   const [lastExplanation, setLastExplanation] = useState<string | null>(null);

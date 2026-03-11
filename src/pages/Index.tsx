@@ -1,10 +1,16 @@
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { getLevelFromXP, getXPForNextLevel } from "@/data/courses";
 import { getStoredChapters } from "@/hooks/useExerciseStore";
 import { useProgress } from "@/hooks/useProgress";
+import { schools, getSelectedSchool, setSelectedSchool, clearSelectedSchool } from "@/data/schools";
 import { Progress } from "@/components/ui/progress";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { motion } from "framer-motion";
-import { Flame, Heart, Zap, Trophy } from "lucide-react";
+import { Flame, Heart, Zap, Trophy, Crown, School, ChevronDown, Plus } from "lucide-react";
+import { toast } from "@/hooks/use-toast";
+import PremiumDialog from "@/components/PremiumDialog";
 
 const Index = () => {
   const navigate = useNavigate();
@@ -14,20 +20,53 @@ const Index = () => {
   const xpToNext = getXPForNextLevel(progress.xp);
   const xpInLevel = 100 - xpToNext;
 
+  const [selectedSchool, setSchool] = useState(getSelectedSchool());
+  const [showSchoolPicker, setShowSchoolPicker] = useState(false);
+  const [showAddSchool, setShowAddSchool] = useState(false);
+  const [newSchoolName, setNewSchoolName] = useState("");
+  const [showPremium, setShowPremium] = useState(false);
+
+  const handleSelectSchool = (schoolId: string) => {
+    setSelectedSchool(schoolId);
+    setSchool(schoolId);
+    setShowSchoolPicker(false);
+  };
+
+  const handleAddSchool = () => {
+    if (!newSchoolName.trim()) return;
+    toast({
+      title: "Cerere trimisă! 📬",
+      description: `Liceul "${newSchoolName}" va fi adăugat după aprobare.`,
+    });
+    setNewSchoolName("");
+    setShowAddSchool(false);
+  };
+
+  const handleRemoveSchool = () => {
+    clearSelectedSchool();
+    setSchool(null);
+    setShowSchoolPicker(false);
+  };
+
+  const currentSchool = schools.find((s) => s.id === selectedSchool);
+
   return (
     <div className="min-h-screen bg-background">
-      {/* Header - safe area aware */}
+      {/* Header */}
       <header className="sticky top-0 z-40 border-b border-border bg-background/80 backdrop-blur-md pt-[env(safe-area-inset-top)]">
         <div className="flex items-center justify-between px-4 py-3">
           <h1 className="text-xl font-bold font-mono text-gradient-primary">🐍 PyLearn</h1>
           <div className="flex items-center gap-3">
+            <button onClick={() => setShowPremium(true)} className="text-yellow-500 active:scale-95 transition-transform">
+              <Crown className="h-5 w-5" />
+            </button>
             <div className="flex items-center gap-1 text-warning">
               <Flame className="h-5 w-5" />
               <span className="text-sm font-bold">{progress.streak}</span>
             </div>
             <div className="flex items-center gap-1 text-destructive">
               <Heart className="h-5 w-5" />
-              <span className="text-sm font-bold">{progress.lives}</span>
+              <span className="text-sm font-bold">{progress.isPremium ? "∞" : progress.lives}</span>
             </div>
             <div className="flex items-center gap-1 text-xp">
               <Zap className="h-5 w-5" />
@@ -38,16 +77,99 @@ const Index = () => {
       </header>
 
       <main className="px-4 py-6">
+        {/* School selector */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-4"
+        >
+          <button
+            onClick={() => setShowSchoolPicker(!showSchoolPicker)}
+            className="w-full flex items-center gap-2 rounded-xl border border-border bg-card p-3 text-left active:scale-[0.98] transition-all"
+          >
+            <School className="h-5 w-5 text-primary shrink-0" />
+            <span className="flex-1 text-sm text-foreground font-medium truncate">
+              {currentSchool ? `${currentSchool.name}` : "Alege liceul tău"}
+            </span>
+            <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${showSchoolPicker ? "rotate-180" : ""}`} />
+          </button>
+
+          {showSchoolPicker && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              className="mt-2 rounded-xl border border-border bg-card overflow-hidden"
+            >
+              {schools.length > 0 ? (
+                <div className="max-h-48 overflow-y-auto">
+                  {schools.map((school) => (
+                    <button
+                      key={school.id}
+                      onClick={() => handleSelectSchool(school.id)}
+                      className={`w-full text-left px-4 py-3 text-sm border-b border-border last:border-0 transition-colors ${
+                        selectedSchool === school.id ? "bg-primary/10 text-primary font-bold" : "text-foreground hover:bg-secondary"
+                      }`}
+                    >
+                      {school.name} <span className="text-foreground/50">— {school.city}</span>
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <p className="px-4 py-3 text-sm text-foreground/50">Niciun liceu disponibil încă.</p>
+              )}
+              
+              {selectedSchool && (
+                <button
+                  onClick={handleRemoveSchool}
+                  className="w-full text-left px-4 py-3 text-sm text-destructive border-t border-border"
+                >
+                  Elimină selecția
+                </button>
+              )}
+
+              {!showAddSchool ? (
+                <button
+                  onClick={() => setShowAddSchool(true)}
+                  className="w-full flex items-center gap-2 px-4 py-3 text-sm text-primary border-t border-border"
+                >
+                  <Plus className="h-4 w-4" />
+                  Adaugă liceul tău
+                </button>
+              ) : (
+                <div className="p-3 border-t border-border space-y-2">
+                  <Input
+                    placeholder="Numele liceului..."
+                    value={newSchoolName}
+                    onChange={(e) => setNewSchoolName(e.target.value)}
+                    className="text-sm"
+                  />
+                  <div className="flex gap-2">
+                    <Button size="sm" variant="outline" onClick={() => setShowAddSchool(false)} className="flex-1">
+                      Anulează
+                    </Button>
+                    <Button size="sm" onClick={handleAddSchool} disabled={!newSchoolName.trim()} className="flex-1">
+                      Trimite cererea
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </motion.div>
+          )}
+        </motion.div>
+
         {/* Profile card */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.05 }}
           className="mb-6 rounded-xl border border-border bg-card p-5 glow-primary"
         >
           <div className="flex items-center justify-between mb-3">
             <div>
               <p className="text-sm text-muted-foreground">Nivel {level}</p>
-              <p className="text-lg font-bold text-foreground">Pythonist</p>
+              <p className="text-lg font-bold text-foreground">
+                Pythonist {progress.isPremium && <span className="text-yellow-500">👑</span>}
+              </p>
             </div>
             <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-2xl">
               🐍
@@ -60,16 +182,24 @@ const Index = () => {
         {/* Chapters */}
         <div className="space-y-3">
           {chapters.map((chapter, idx) => {
+            // Exclude practice lessons from unlock calculation
+            const nonPracticeLessons = chapter.lessons.filter(
+              (l) => !l.title.startsWith("Practică:")
+            );
             const completedCount = chapter.lessons.filter(
               (l) => progress.completedLessons[l.id]?.completed
             ).length;
             const totalLessons = chapter.lessons.length;
+            
             const isLocked = idx > 0 && (() => {
               const prevChapter = chapters[idx - 1];
-              const prevCompleted = prevChapter.lessons.filter(
+              const prevNonPractice = prevChapter.lessons.filter(
+                (l) => !l.title.startsWith("Practică:")
+              );
+              const prevCompleted = prevNonPractice.filter(
                 (l) => progress.completedLessons[l.id]?.completed
               ).length;
-              return prevCompleted < Math.ceil(prevChapter.lessons.length * 0.5);
+              return prevCompleted < Math.ceil(prevNonPractice.length * 0.5);
             })();
 
             return (
@@ -119,6 +249,8 @@ const Index = () => {
           })}
         </div>
       </main>
+
+      <PremiumDialog open={showPremium} onOpenChange={setShowPremium} isPremium={progress.isPremium} />
     </div>
   );
 };

@@ -67,7 +67,7 @@ const FillExercise = ({ exercise, onAnswer, feedback }: Props) => {
         <Button
           onClick={handleSubmit}
           disabled={Object.keys(answers).length === 0}
-          className="w-full"
+          className="w-full h-14 text-lg font-bold"
         >
           Verifică
         </Button>
