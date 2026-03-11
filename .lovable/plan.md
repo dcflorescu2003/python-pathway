@@ -1,88 +1,56 @@
 
 
-# 🐍 PyLearn – Aplicație Duolingo pentru Python (Clasa a IX-a)
-**Design: Dark mode programator | Salvare: Supabase cu conturi | Exerciții: Mix complet**
+# Plan de modificări
+
+## 1. Deblocarea capitolelor fără lecții de practică
+
+Lecțiile de practică (cele cu titlu care începe cu "Practică:") nu vor mai fi obligatorii pentru deblocarea capitolului următor. Logica de blocare din `Index.tsx` va exclude lecțiile de practică din calculul procentului necesar (50%).
+
+**Fișiere**: `src/pages/Index.tsx`
+
+## 2. Ascunderea Editorului din navigare
+
+Eliminăm tab-ul "Editor" din bara de jos (`BottomNav.tsx`). Pagina `/admin` rămâne funcțională și accesibilă doar prin URL direct. Se elimină și `/admin` din lista `MAIN_PAGES` din `App.tsx` pentru ca pagina de admin să nu mai aibă bottom nav.
+
+**Fișiere**: `src/components/layout/BottomNav.tsx`, `src/App.tsx`
+
+## 3. Selectare liceu pe prima pagină + clasament pe liceu/național
+
+- Adăugăm un selector de liceu pe pagina principală (`Index.tsx`), stocat în `localStorage`
+- Utilizatorul poate alege dintr-o listă predefinită sau apăsa "Adaugă liceul tău" (care afișează un formular cu un mesaj de confirmare — fără email real deocamdată, doar un `toast` care spune că cererea a fost trimisă)
+- Creăm un fișier nou `src/data/schools.ts` cu o listă goală inițială pe care o poți popula
+- Pe pagina de clasament adăugăm tab-uri "Liceu" / "Național"
+- Mock data va fi etichetată cu licee random pentru demo
+
+**Fișiere**: `src/data/schools.ts` (nou), `src/pages/Index.tsx`, `src/pages/LeaderboardPage.tsx`, `src/hooks/useProgress.ts`
+
+## 4. Font mai mare și mai deschis la explicații
+
+- `ChapterTheoryPage.tsx`: textul de conținut de la `text-base text-muted-foreground` → `text-base text-foreground/80 leading-relaxed` (mai deschis la culoare)
+- Toate exercițiile: explicațiile din feedback-ul de jos (`LessonPage.tsx`) de la `text-xs text-muted-foreground` → `text-sm text-foreground/70`
+
+**Fișiere**: `src/pages/ChapterTheoryPage.tsx`, `src/pages/LessonPage.tsx`
+
+## 5. Butoane "Continuă" și "Verifică" mai mari
+
+- Toate butoanele "Verifică" din exerciții: adăugăm `h-14 text-lg font-bold`
+- Butonul "Continuă" din feedback-ul din `LessonPage.tsx`: la fel `h-14 text-lg font-bold`
+
+**Fișiere**: `src/components/exercises/QuizExercise.tsx`, `src/components/exercises/FillExercise.tsx`, `src/components/exercises/OrderExercise.tsx`, `src/components/exercises/TrueFalseExercise.tsx`, `src/pages/LessonPage.tsx`
+
+## 6. Versiune plătită (Google Play billing) — doar UI
+
+Deoarece plățile vor fi gestionate prin Google Play billing (in-app purchase), implementarea efectivă necesită cod nativ Kotlin/Java în proiectul Android. Ce putem face acum:
+
+- Adăugăm un state `isPremium` în `useProgress` (stocat în localStorage)
+- Creăm o pagină/dialog "Premium" cu beneficiile (inimi nelimitate)
+- Adăugăm un buton "💎 Premium" pe pagina principală
+- Când `isPremium` este true, viețile nu se pierd
+- Activarea efectivă va fi făcută din Android Studio cu Google Play Billing Library
+
+**Fișiere**: `src/hooks/useProgress.ts`, `src/pages/Index.tsx`, `src/pages/LessonPage.tsx`, `src/components/PremiumDialog.tsx` (nou)
 
 ---
 
-## 🎮 Sistem de Gamification (stil Duolingo)
-- **XP** (experiență) câștigat per lecție completată
-- **Streak** zilnic (câte zile consecutive a învățat)
-- **Vieți** (3 vieți per sesiune, se pierd la răspuns greșit)
-- **Bară de progres** per lecție și per capitol
-- **Profil utilizator** cu statistici și nivel
-
----
-
-## 📚 Structura Capitolelor și Lecțiilor
-
-### **Capitolul 1: Recapitulare & Fundamente**
-1. **Variabile și atribuire** – tipuri de date, operatorul `=`, conversii (`int`, `float`, `str`)
-2. **Structura `if/elif/else`** – condiții, operatori logici, ramificări
-3. **Structura `for`** – iterare prin `range()`, parcurgere liste
-4. **Structura `while`** – bucle condiționale, controlul execuției
-5. **Gândire computațională** – ce este, etapele rezolvării unei probleme (analiză, proiectare, implementare, testare)
-6. **Introducere în algoritmi** – pseudocod, blocuri grafice, eficiență de bază, notația O
-
-### **Capitolul 2: Prelucrări Numerice**
-1. **Operații cu cifrele unui număr** – acces la cifre, adăugare cifre la stânga/dreapta
-2. **Parcurgerea cifrelor și divizorilor** – algoritmi de bază
-3. **Algoritmul lui Euclid** – cmmdc cu scăderi și cu împărțiri
-4. **Descompunere în factori primi**
-5. **Conversii între baze de numerație** – baza 10 ↔ baza 2
-
-### **Capitolul 3: Liste – Organizare Conceptuală**
-1. **Modelul conceptual de listă** – caracteristici, acces secvențial vs direct
-2. **Stiva și coada** – LIFO, FIFO, exemple practice
-3. **Lista de frecvențe** – construire și utilizare
-4. **Parcurgere liniară** – cu și fără memorare
-5. **Clasa `list` în Python** – operatori (`[]`, `in`, `+`, `*`)
-6. **Metode ale clasei `list`** – `append()`, `insert()`, `pop()`, `remove()`, `sort()`, `copy()`, `count()`, `index()`
-
-### **Capitolul 4: Generare și Sortare**
-1. **Generarea sistematică a secvențelor** – șiruri recurente, Fibonacci
-2. **Sortare prin selecția minimului** – algoritm pas cu pas
-3. **Sortare cu lista de frecvențe** – când și cum se aplică
-4. **Metoda bulelor (Bubble Sort)** – comparare și interschimbare
-5. **Compararea metodelor de sortare** – eficiență, număr de operații
-
-### **Capitolul 5: Subprograme**
-1. **Conceptul de subprogram** – `def`, parametri, corp, apel
-2. **Variabile locale și globale** – domeniu de vizibilitate
-3. **Transmitere parametri și returnare** – `return`, argumente
-4. **Funcții predefinite matematice** – `abs()`, `round()`, `sqrt()`, `int()`
-5. **Funcții predefinite pentru colecții** – `len()`, `min()`, `max()`, `sum()`
-6. **Proiectare modulară** – descompunerea problemelor în module
-
-### **Capitolul 6: Fișiere și Interfețe**
-1. **Fișiere text** – `open()`, `read()`, `write()`, `close()`
-2. **Citire și scriere din/în fișiere** – moduri de deschidere, sfârșit de fișier
-3. **Introducere în Tkinter** – ferestre, butoane, etichete
-4. **Casete text și MessageBox** – `Entry`, `Text`, `messagebox`
-5. **Introducere OOP** – clasă, obiect, instanțiere, metode
-
----
-
-## 🧩 Tipuri de Exerciții (per lecție, 5-8 exerciții)
-- **Quiz cu variante** – „Ce afișează acest cod?", „Care este output-ul?"
-- **Completează codul** – cod cu `___` pe care elevul le completează
-- **Aranjează liniile** – drag & drop pentru a ordona liniile de cod corect
-- **Adevărat/Fals** – afirmații despre concepte
-
----
-
-## 🔐 Backend (Supabase)
-- **Autentificare** – înregistrare/login cu email
-- **Profil utilizator** – XP, streak, nivel, vieți
-- **Progres lecții** – care lecții sunt completate, scor per lecție
-- **Tabel de clasament** (leaderboard) – top utilizatori după XP
-
----
-
-## 🎨 Design Dark Mode Programator
-- Fundal întunecat (#1a1a2e / #0d1117)
-- Syntax highlighting colorat pentru blocurile de cod
-- Font monospace pentru cod (Fira Code / JetBrains Mono)
-- Accente verzi/cyan pentru progres și succes
-- Animații subtile la răspuns corect/greșit
+**Total**: ~12 fișiere modificate/create. Nicio dependență nouă necesară.
 
