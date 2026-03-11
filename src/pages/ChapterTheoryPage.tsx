@@ -28,8 +28,8 @@ const ChapterTheoryPage = () => {
           </Button>
           <BookOpen className="h-5 w-5 text-primary" />
           <div className="min-w-0">
-            <p className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider">Capitol {chapter.number}</p>
-            <h1 className="text-base font-bold text-foreground truncate">Teorie: {chapter.title}</h1>
+            <p className="text-xs font-mono text-muted-foreground uppercase tracking-wider">Capitol {chapter.number}</p>
+            <h1 className="text-lg font-bold text-foreground truncate">Teorie: {chapter.title}</h1>
           </div>
         </div>
       </header>
