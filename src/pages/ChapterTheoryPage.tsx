@@ -43,7 +43,7 @@ const ChapterTheoryPage = () => {
             transition={{ delay: idx * 0.06 }}
             className="rounded-xl border border-border bg-card p-4"
           >
-            <h2 className="text-base font-bold text-foreground mb-3 flex items-center gap-2">
+            <h2 className="text-lg font-bold text-foreground mb-3 flex items-center gap-2">
               <span
                 className="flex h-7 w-7 items-center justify-center rounded-lg text-xs font-mono font-bold text-primary-foreground"
                 style={{ backgroundColor: `hsl(${chapter.color})` }}
