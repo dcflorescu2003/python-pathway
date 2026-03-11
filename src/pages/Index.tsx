@@ -93,10 +93,10 @@ const Index = () => {
                     {chapter.icon}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider">
+                    <p className="text-xs font-mono text-muted-foreground uppercase tracking-wider">
                       Capitol {chapter.number}
                     </p>
-                    <h2 className="text-sm font-bold text-foreground truncate">
+                    <h2 className="text-base font-bold text-foreground truncate">
                       {chapter.title}
                     </h2>
                     <div className="mt-2 flex items-center gap-2">

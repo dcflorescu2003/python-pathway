@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { Exercise } from "@/data/courses";
 import { Button } from "@/components/ui/button";
 import { GripVertical } from "lucide-react";
@@ -15,7 +15,11 @@ const OrderExercise = ({ exercise, onAnswer, feedback }: Props) => {
     return [...exercise.lines].sort(() => Math.random() - 0.5);
   });
   const [draggedIdx, setDraggedIdx] = useState<number | null>(null);
+  const touchStartY = useRef<number>(0);
+  const touchCurrentIdx = useRef<number | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
+  // Desktop drag
   const handleDragStart = (idx: number) => setDraggedIdx(idx);
 
   const handleDragOver = (e: React.DragEvent, idx: number) => {
@@ -29,6 +33,47 @@ const OrderExercise = ({ exercise, onAnswer, feedback }: Props) => {
   };
 
   const handleDragEnd = () => setDraggedIdx(null);
+
+  // Touch drag
+  const handleTouchStart = (e: React.TouchEvent, idx: number) => {
+    if (feedback !== null) return;
+    touchStartY.current = e.touches[0].clientY;
+    touchCurrentIdx.current = idx;
+    setDraggedIdx(idx);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (touchCurrentIdx.current === null || !containerRef.current) return;
+    e.preventDefault();
+    
+    const touch = e.touches[0];
+    const container = containerRef.current;
+    const children = Array.from(container.children) as HTMLElement[];
+    
+    // Find which item we're over
+    for (let i = 0; i < children.length; i++) {
+      const rect = children[i].getBoundingClientRect();
+      if (touch.clientY >= rect.top && touch.clientY <= rect.bottom) {
+        if (i !== touchCurrentIdx.current) {
+          const fromIdx = touchCurrentIdx.current!;
+          setItems((prev) => {
+            const newItems = [...prev];
+            const [item] = newItems.splice(fromIdx, 1);
+            newItems.splice(i, 0, item);
+            return newItems;
+          });
+          touchCurrentIdx.current = i;
+          setDraggedIdx(i);
+        }
+        break;
+      }
+    }
+  };
+
+  const handleTouchEnd = () => {
+    touchCurrentIdx.current = null;
+    setDraggedIdx(null);
+  };
 
   const moveItem = useCallback((from: number, to: number) => {
     setItems((prev) => {
@@ -50,8 +95,8 @@ const OrderExercise = ({ exercise, onAnswer, feedback }: Props) => {
 
   return (
     <div>
-      <p className="text-foreground font-bold mb-6">{exercise.question}</p>
-      <div className="space-y-2 mb-6">
+      <p className="text-foreground font-bold mb-6 text-base">{exercise.question}</p>
+      <div className="space-y-2 mb-6" ref={containerRef}>
         {items.map((item, idx) => {
           const isCorrectPos = item.order === idx + 1;
           return (
@@ -61,7 +106,10 @@ const OrderExercise = ({ exercise, onAnswer, feedback }: Props) => {
               onDragStart={() => handleDragStart(idx)}
               onDragOver={(e) => handleDragOver(e, idx)}
               onDragEnd={handleDragEnd}
-              className={`flex items-center gap-3 rounded-lg border p-3 font-mono text-sm transition-all cursor-grab active:cursor-grabbing ${
+              onTouchStart={(e) => handleTouchStart(e, idx)}
+              onTouchMove={(e) => handleTouchMove(e)}
+              onTouchEnd={handleTouchEnd}
+              className={`flex items-center gap-3 rounded-lg border p-3 font-mono text-sm transition-all select-none ${
                 feedback
                   ? isCorrectPos
                     ? "border-primary/50 bg-primary/5"
@@ -69,22 +117,22 @@ const OrderExercise = ({ exercise, onAnswer, feedback }: Props) => {
                   : draggedIdx === idx
                   ? "border-primary bg-primary/10 scale-105"
                   : "border-border bg-card"
-              } ${feedback !== null ? "cursor-default" : ""}`}
+              } ${feedback !== null ? "cursor-default" : "cursor-grab active:cursor-grabbing touch-none"}`}
             >
-              <GripVertical className="h-4 w-4 text-muted-foreground shrink-0" />
-              <code className="text-foreground whitespace-pre">{item.text}</code>
+              <GripVertical className="h-5 w-5 text-muted-foreground shrink-0" />
+              <code className="text-foreground whitespace-pre flex-1">{item.text}</code>
               <div className="ml-auto flex gap-1">
                 <button
                   onClick={() => idx > 0 && moveItem(idx, idx - 1)}
                   disabled={idx === 0 || feedback !== null}
-                  className="text-xs text-muted-foreground hover:text-foreground disabled:opacity-30 px-1"
+                  className="text-base text-muted-foreground hover:text-foreground disabled:opacity-30 px-2 py-1"
                 >
                   ▲
                 </button>
                 <button
                   onClick={() => idx < items.length - 1 && moveItem(idx, idx + 1)}
                   disabled={idx === items.length - 1 || feedback !== null}
-                  className="text-xs text-muted-foreground hover:text-foreground disabled:opacity-30 px-1"
+                  className="text-base text-muted-foreground hover:text-foreground disabled:opacity-30 px-2 py-1"
                 >
                   ▼
                 </button>
@@ -96,9 +144,9 @@ const OrderExercise = ({ exercise, onAnswer, feedback }: Props) => {
 
       {feedback === "wrong" && correctOrder && (
         <div className="mb-4 rounded-lg border border-primary/30 bg-primary/5 p-3">
-          <p className="text-xs text-primary font-bold mb-2">Ordinea corectă:</p>
+          <p className="text-sm text-primary font-bold mb-2">Ordinea corectă:</p>
           {correctOrder.map((line, i) => (
-            <p key={line.id} className="text-xs font-mono text-muted-foreground whitespace-pre">
+            <p key={line.id} className="text-sm font-mono text-muted-foreground whitespace-pre">
               {i + 1}. {line.text}
             </p>
           ))}

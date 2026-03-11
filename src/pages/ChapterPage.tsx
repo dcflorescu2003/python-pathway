@@ -52,28 +52,37 @@ const ChapterPage = () => {
                 {idx > 0 && (
                   <div className={`h-8 w-0.5 ${isCompleted ? "bg-primary" : "bg-border"}`} />
                 )}
-                <motion.button
-                  initial={{ opacity: 0, scale: 0.8 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: idx * 0.06 }}
-                  disabled={isLocked}
-                  onClick={() => navigate(`/lesson/${lesson.id}`)}
-                  className={`relative flex h-[72px] w-[72px] items-center justify-center rounded-full border-4 transition-all active:scale-95 ${
-                    isCompleted
-                      ? "border-primary bg-primary/20 text-primary"
-                      : isCurrent
-                      ? "border-primary bg-primary/10 text-primary animate-pulse-glow glow-primary"
-                      : "border-border bg-card text-muted-foreground opacity-50 cursor-not-allowed"
-                  }`}
-                >
-                  {isCompleted ? (
-                    <Check className="h-7 w-7" />
-                  ) : isLocked ? (
-                    <Lock className="h-6 w-6" />
-                  ) : (
-                    <Play className="h-7 w-7 ml-1" />
-                  )}
-                </motion.button>
+                {(() => {
+                  const hueShift = idx * 30;
+                  const lessonColor = `hsl(${parseInt(chapter.color) + hueShift}, 70%, 50%)`;
+                  const lessonColorBg = `hsl(${parseInt(chapter.color) + hueShift}, 70%, 50%, 0.15)`;
+                  const lessonColorBorder = `hsl(${parseInt(chapter.color) + hueShift}, 70%, 50%, 0.6)`;
+                  return (
+                    <motion.button
+                      initial={{ opacity: 0, scale: 0.8 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      transition={{ delay: idx * 0.06 }}
+                      disabled={isLocked}
+                      onClick={() => navigate(`/lesson/${lesson.id}`)}
+                      className={`relative flex h-[72px] w-[72px] items-center justify-center rounded-full border-4 transition-all active:scale-95 ${
+                        isLocked ? "border-border bg-card text-muted-foreground opacity-50 cursor-not-allowed" : ""
+                      } ${isCurrent ? "animate-pulse-glow" : ""}`}
+                      style={!isLocked ? {
+                        borderColor: lessonColorBorder,
+                        backgroundColor: lessonColorBg,
+                        color: lessonColor,
+                      } : undefined}
+                    >
+                      {isCompleted ? (
+                        <Check className="h-7 w-7" />
+                      ) : isLocked ? (
+                        <Lock className="h-6 w-6" />
+                      ) : (
+                        <Play className="h-7 w-7 ml-1" />
+                      )}
+                    </motion.button>
+                  );
+                })()}
 
                 <div className="mt-2 mb-2 text-center max-w-[200px]">
                   <p className="text-base font-bold text-foreground">{lesson.title}</p>
