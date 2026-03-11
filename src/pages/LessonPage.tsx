@@ -176,13 +176,13 @@ const LessonPage = () => {
                 {feedback === "correct" ? "✅ Corect!" : "❌ Greșit!"}
               </p>
               {lastExplanation && (
-                <p className="text-xs text-muted-foreground text-center mb-3">
+                <p className="text-sm text-foreground/70 text-center mb-3">
                   💡 {lastExplanation}
                 </p>
               )}
               <Button
                 onClick={handleContinue}
-                className="w-full touch-target"
+                className="w-full h-14 text-lg font-bold"
                 variant={feedback === "correct" ? "default" : "destructive"}
               >
                 Continuă
