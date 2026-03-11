@@ -28,8 +28,8 @@ const ChapterTheoryPage = () => {
           </Button>
           <BookOpen className="h-5 w-5 text-primary" />
           <div className="min-w-0">
-            <p className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider">Capitol {chapter.number}</p>
-            <h1 className="text-base font-bold text-foreground truncate">Teorie: {chapter.title}</h1>
+            <p className="text-xs font-mono text-muted-foreground uppercase tracking-wider">Capitol {chapter.number}</p>
+            <h1 className="text-lg font-bold text-foreground truncate">Teorie: {chapter.title}</h1>
           </div>
         </div>
       </header>
@@ -43,7 +43,7 @@ const ChapterTheoryPage = () => {
             transition={{ delay: idx * 0.06 }}
             className="rounded-xl border border-border bg-card p-4"
           >
-            <h2 className="text-base font-bold text-foreground mb-3 flex items-center gap-2">
+            <h2 className="text-lg font-bold text-foreground mb-3 flex items-center gap-2">
               <span
                 className="flex h-7 w-7 items-center justify-center rounded-lg text-xs font-mono font-bold text-primary-foreground"
                 style={{ backgroundColor: `hsl(${chapter.color})` }}
@@ -53,7 +53,7 @@ const ChapterTheoryPage = () => {
               {section.title}
             </h2>
 
-            <div className="text-sm text-muted-foreground leading-relaxed whitespace-pre-line mb-4">
+            <div className="text-base text-muted-foreground leading-relaxed whitespace-pre-line mb-4">
               {section.content}
             </div>
 
