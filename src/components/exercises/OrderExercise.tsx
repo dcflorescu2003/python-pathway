@@ -154,7 +154,7 @@ const OrderExercise = ({ exercise, onAnswer, feedback }: Props) => {
       )}
 
       {!feedback && (
-        <Button onClick={handleSubmit} disabled={feedback !== null} className="w-full">
+        <Button onClick={handleSubmit} disabled={feedback !== null} className="w-full h-14 text-lg font-bold">
           Verifică
         </Button>
       )}

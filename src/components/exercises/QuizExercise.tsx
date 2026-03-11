@@ -54,7 +54,7 @@ const QuizExercise = ({ exercise, onAnswer, feedback }: Props) => {
         })}
       </div>
       {!feedback && (
-        <Button onClick={handleSubmit} disabled={!selected} className="w-full">
+        <Button onClick={handleSubmit} disabled={!selected} className="w-full h-14 text-lg font-bold">
           Verifică
         </Button>
       )}

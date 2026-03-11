@@ -23,7 +23,7 @@ const LessonPage = () => {
 
   const [currentIndex, setCurrentIndex] = useState(0);
   const [correctCount, setCorrectCount] = useState(0);
-  const [lives, setLives] = useState(3);
+  const [lives, setLives] = useState(progress.isPremium ? Infinity : 3);
   const [isFinished, setIsFinished] = useState(false);
   const [feedback, setFeedback] = useState<"correct" | "wrong" | null>(null);
   const [lastExplanation, setLastExplanation] = useState<string | null>(null);
@@ -176,13 +176,13 @@ const LessonPage = () => {
                 {feedback === "correct" ? "✅ Corect!" : "❌ Greșit!"}
               </p>
               {lastExplanation && (
-                <p className="text-xs text-muted-foreground text-center mb-3">
+                <p className="text-sm text-foreground/70 text-center mb-3">
                   💡 {lastExplanation}
                 </p>
               )}
               <Button
                 onClick={handleContinue}
-                className="w-full touch-target"
+                className="w-full h-14 text-lg font-bold"
                 variant={feedback === "correct" ? "default" : "destructive"}
               >
                 Continuă

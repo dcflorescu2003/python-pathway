@@ -1,18 +1,22 @@
+import { useState } from "react";
 import { useProgress } from "@/hooks/useProgress";
+import { schools, getSelectedSchool } from "@/data/schools";
 import { Flame, Zap, Medal } from "lucide-react";
 import { motion } from "framer-motion";
 
+const MOCK_SCHOOLS = ["lic1", "lic2", "lic3", "lic1", "lic2", "lic1", "lic3", "lic2", "lic1", "lic3"];
+
 const MOCK_LEADERBOARD = [
-  { name: "Alex P.", xp: 1250, streak: 14, avatar: "🧑‍💻" },
-  { name: "Maria D.", xp: 980, streak: 9, avatar: "👩‍💻" },
-  { name: "Andrei R.", xp: 870, streak: 7, avatar: "🧑‍🎓" },
-  { name: "Elena S.", xp: 750, streak: 12, avatar: "👩‍🎓" },
-  { name: "Mihai C.", xp: 620, streak: 5, avatar: "🎮" },
-  { name: "Ioana B.", xp: 510, streak: 3, avatar: "📚" },
-  { name: "Vlad T.", xp: 440, streak: 6, avatar: "🐍" },
-  { name: "Ana M.", xp: 380, streak: 2, avatar: "⭐" },
-  { name: "Cristian L.", xp: 290, streak: 4, avatar: "🚀" },
-  { name: "Daria F.", xp: 150, streak: 1, avatar: "💡" },
+  { name: "Alex P.", xp: 1250, streak: 14, avatar: "🧑‍💻", schoolId: MOCK_SCHOOLS[0] },
+  { name: "Maria D.", xp: 980, streak: 9, avatar: "👩‍💻", schoolId: MOCK_SCHOOLS[1] },
+  { name: "Andrei R.", xp: 870, streak: 7, avatar: "🧑‍🎓", schoolId: MOCK_SCHOOLS[2] },
+  { name: "Elena S.", xp: 750, streak: 12, avatar: "👩‍🎓", schoolId: MOCK_SCHOOLS[3] },
+  { name: "Mihai C.", xp: 620, streak: 5, avatar: "🎮", schoolId: MOCK_SCHOOLS[4] },
+  { name: "Ioana B.", xp: 510, streak: 3, avatar: "📚", schoolId: MOCK_SCHOOLS[5] },
+  { name: "Vlad T.", xp: 440, streak: 6, avatar: "🐍", schoolId: MOCK_SCHOOLS[6] },
+  { name: "Ana M.", xp: 380, streak: 2, avatar: "⭐", schoolId: MOCK_SCHOOLS[7] },
+  { name: "Cristian L.", xp: 290, streak: 4, avatar: "🚀", schoolId: MOCK_SCHOOLS[8] },
+  { name: "Daria F.", xp: 150, streak: 1, avatar: "💡", schoolId: MOCK_SCHOOLS[9] },
 ];
 
 const medalColors = [
@@ -21,13 +25,21 @@ const medalColors = [
   "text-amber-600",
 ];
 
+type Tab = "national" | "school";
+
 const LeaderboardPage = () => {
   const { progress } = useProgress();
+  const [tab, setTab] = useState<Tab>("national");
+  const userSchool = getSelectedSchool();
 
-  const userEntry = { name: "Tu", xp: progress.xp, streak: progress.streak, avatar: "🐍" };
+  const userEntry = { name: "Tu", xp: progress.xp, streak: progress.streak, avatar: "🐍", schoolId: userSchool || "" };
+  
   const allEntries = [...MOCK_LEADERBOARD, userEntry]
-    .sort((a, b) => b.xp - a.xp)
-    .slice(0, 15);
+    .sort((a, b) => b.xp - a.xp);
+
+  const filteredEntries = tab === "school" && userSchool
+    ? allEntries.filter((e) => e.schoolId === userSchool).slice(0, 15)
+    : allEntries.slice(0, 15);
 
   return (
     <div className="min-h-screen bg-background">
@@ -36,11 +48,42 @@ const LeaderboardPage = () => {
           <span className="text-xl">🏆</span>
           <h1 className="text-lg font-bold text-foreground">Clasament</h1>
         </div>
+        {/* Tabs */}
+        <div className="flex px-4 pb-2 gap-2">
+          <button
+            onClick={() => setTab("national")}
+            className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all ${
+              tab === "national"
+                ? "bg-primary text-primary-foreground"
+                : "bg-secondary text-muted-foreground"
+            }`}
+          >
+            🌍 Național
+          </button>
+          <button
+            onClick={() => setTab("school")}
+            className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all ${
+              tab === "school"
+                ? "bg-primary text-primary-foreground"
+                : "bg-secondary text-muted-foreground"
+            }`}
+          >
+            🏫 Liceu
+          </button>
+        </div>
       </header>
 
       <main className="px-4 py-4">
+        {tab === "school" && !userSchool && (
+          <div className="rounded-xl border border-border bg-card p-4 text-center mb-4">
+            <p className="text-sm text-foreground/70">
+              Alege liceul tău de pe pagina principală pentru a vedea clasamentul pe liceu.
+            </p>
+          </div>
+        )}
+
         <div className="space-y-2">
-          {allEntries.map((entry, idx) => {
+          {filteredEntries.map((entry, idx) => {
             const isUser = entry.name === "Tu";
             return (
               <motion.div
