@@ -5,8 +5,8 @@ export interface School {
 }
 
 export const schools: School[] = [
-  // Lista va fi populată manual. Adaugă liceele aici:
-  // { id: "lic1", name: "Colegiul Național ...", city: "București" },
+  { id: "lic1", name: "Colegiul Național Cantemir Vodă", city: "București" },
+  { id: "lic2", name: "Colegiul Național Spiru Haret", city: "București" },
 ];
 
 const SCHOOL_STORAGE_KEY = "pylearn-school";
