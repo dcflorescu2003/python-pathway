@@ -75,9 +75,9 @@ const ChapterPage = () => {
                   )}
                 </motion.button>
 
-                <div className="mt-2 mb-2 text-center max-w-[180px]">
-                  <p className="text-sm font-bold text-foreground">{lesson.title}</p>
-                  <p className="text-xs text-muted-foreground line-clamp-1">{lesson.description}</p>
+                <div className="mt-2 mb-2 text-center max-w-[200px]">
+                  <p className="text-base font-bold text-foreground">{lesson.title}</p>
+                  <p className="text-sm text-muted-foreground line-clamp-1">{lesson.description}</p>
                   {isCompleted && (
                     <p className="text-xs text-primary font-mono mt-0.5">
                       ★ {score}/{lesson.exercises.length}
