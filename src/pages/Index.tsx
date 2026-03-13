@@ -25,6 +25,13 @@ const Index = () => {
   const [showAddSchool, setShowAddSchool] = useState(false);
   const [newSchoolName, setNewSchoolName] = useState("");
   const [showPremium, setShowPremium] = useState(false);
+  const [schoolSearch, setSchoolSearch] = useState("");
+
+  const filteredSchools = schoolSearch.trim()
+    ? schools.filter((s) =>
+        `${s.name} ${s.city}`.toLowerCase().includes(schoolSearch.toLowerCase())
+      ).slice(0, 50)
+    : schools.slice(0, 50);
 
   const handleSelectSchool = (schoolId: string) => {
     setSelectedSchool(schoolId);
