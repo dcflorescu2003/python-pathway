@@ -12,17 +12,39 @@ import { motion } from "framer-motion";
 import { Flame, Heart, Zap, Trophy, Crown, School, ChevronDown, Plus } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import PremiumDialog from "@/components/PremiumDialog";
+import SchoolOnboarding from "@/components/onboarding/SchoolOnboarding";
+import { supabase } from "@/integrations/supabase/client";
 
 const Index = (): JSX.Element => {
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
   const { progress } = useProgress();
+  const [needsOnboarding, setNeedsOnboarding] = useState<boolean | null>(null);
 
   useEffect(() => {
     if (!authLoading && !user) {
       navigate("/auth", { replace: true });
     }
   }, [authLoading, user, navigate]);
+
+  // Check if user needs onboarding (no school_id set)
+  useEffect(() => {
+    if (!user) return;
+    const checkOnboarding = async () => {
+      const { data } = await supabase
+        .from("profiles")
+        .select("school_id")
+        .eq("user_id", user.id)
+        .single();
+      setNeedsOnboarding(!data?.school_id);
+    };
+    checkOnboarding();
+  }, [user]);
+
+  if (needsOnboarding === true) {
+    return <SchoolOnboarding onComplete={() => setNeedsOnboarding(false)} />;
+  }
+
   const chapters = getStoredChapters();
   const level = getLevelFromXP(progress.xp);
   const xpToNext = getXPForNextLevel(progress.xp);
