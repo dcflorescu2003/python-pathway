@@ -228,6 +228,15 @@ const AuthPage = () => {
               <Button type="submit" className="w-full" disabled={loading}>
                 {loading ? "Se procesează..." : isLogin ? "Conectează-te" : "Creează cont"}
               </Button>
+              {isLogin && (
+                <button
+                  type="button"
+                  onClick={() => setShowForgot(true)}
+                  className="text-xs text-muted-foreground hover:text-primary hover:underline w-full text-right"
+                >
+                  Ai uitat parola?
+                </button>
+              )}
             </form>
 
             <p className="text-center text-sm text-muted-foreground">
