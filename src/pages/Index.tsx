@@ -47,7 +47,10 @@ const Index = (): JSX.Element => {
   }, [user]);
 
   if (needsOnboarding === true) {
-    return <SchoolOnboarding onComplete={() => setNeedsOnboarding(false)} />;
+    return <SchoolOnboarding onComplete={() => {
+      setNeedsOnboarding(false);
+      setSchool(getSelectedSchool());
+    }} />;
   }
 
   const chapters = getStoredChapters();
