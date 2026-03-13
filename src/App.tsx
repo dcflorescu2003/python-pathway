@@ -14,6 +14,8 @@ const ChapterPage = lazy(() => import("./pages/ChapterPage"));
 const ChapterTheoryPage = lazy(() => import("./pages/ChapterTheoryPage"));
 const LessonPage = lazy(() => import("./pages/LessonPage"));
 const LeaderboardPage = lazy(() => import("./pages/LeaderboardPage"));
+const ProblemsPage = lazy(() => import("./pages/ProblemsPage"));
+const ProblemSolvePage = lazy(() => import("./pages/ProblemSolvePage"));
 const AdminPage = lazy(() => import("./pages/AdminPage"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
