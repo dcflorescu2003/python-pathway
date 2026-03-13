@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/hooks/useAuth";
 import { getLevelFromXP, getXPForNextLevel } from "@/data/courses";
 import { getStoredChapters } from "@/hooks/useExerciseStore";
 import { useProgress } from "@/hooks/useProgress";
@@ -14,7 +15,14 @@ import PremiumDialog from "@/components/PremiumDialog";
 
 const Index = () => {
   const navigate = useNavigate();
+  const { user, loading: authLoading } = useAuth();
   const { progress } = useProgress();
+
+  useEffect(() => {
+    if (!authLoading && !user) {
+      navigate("/auth", { replace: true });
+    }
+  }, [authLoading, user, navigate]);
   const chapters = getStoredChapters();
   const level = getLevelFromXP(progress.xp);
   const xpToNext = getXPForNextLevel(progress.xp);
