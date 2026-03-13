@@ -30,6 +30,7 @@ export interface Lesson {
   description: string;
   exercises: Exercise[];
   xpReward: number;
+  isPremium?: boolean;
 }
 
 export interface Chapter {
