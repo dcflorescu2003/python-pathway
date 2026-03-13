@@ -1,58 +1,88 @@
 
 
-# Secțiune de Probleme cu Executare Cod Python
+# 🐍 PyLearn – Aplicație Duolingo pentru Python (Clasa a IX-a)
+**Design: Dark mode programator | Salvare: Supabase cu conturi | Exerciții: Mix complet**
 
-## Concept
-O nouă pagină "Probleme" accesibilă din navigarea de jos, unde utilizatorii văd o cerință, scriu cod Python într-un editor, îl rulează contra unor teste predefinite și primesc un punctaj.
+---
 
-## Executarea codului Python în browser
-Vom folosi **Pyodide** — Python compilat în WebAssembly, rulează 100% în browser, fără server. Suportă `input()` simulat, `print()`, și toate funcțiile standard Python.
+## 🎮 Sistem de Gamification (stil Duolingo)
+- **XP** (experiență) câștigat per lecție completată
+- **Streak** zilnic (câte zile consecutive a învățat)
+- **Vieți** (3 vieți per sesiune, se pierd la răspuns greșit)
+- **Bară de progres** per lecție și per capitol
+- **Profil utilizator** cu statistici și nivel
 
-### Cum funcționează testele
-- Fiecare problemă are test cases cu input/output așteptat
-- Pyodide rulează codul utilizatorului cu fiecare input de test
-- Se captează `stdout` și se compară cu output-ul așteptat
-- Se afișează scor: "3/5 teste trecute"
+---
 
-## Structură tehnică
+## 📚 Structura Capitolelor și Lecțiilor
 
-### Fișiere noi
-- **`src/data/problems.ts`** — lista de probleme cu cerință, test cases (input/output), punctaj, dificultate
-- **`src/pages/ProblemsPage.tsx`** — lista de probleme (card-uri cu titlu, dificultate, punctaj)
-- **`src/pages/ProblemSolvePage.tsx`** — pagina de rezolvare: cerință + editor cod + buton Rulează + rezultate teste
-- **`src/components/CodeEditor.tsx`** — textarea stilizată cu font monospace pentru scrierea codului
-- **`src/hooks/usePyodide.ts`** — hook pentru încărcarea și rularea Pyodide
+### **Capitolul 1: Recapitulare & Fundamente**
+1. **Variabile și atribuire** – tipuri de date, operatorul `=`, conversii (`int`, `float`, `str`)
+2. **Structura `if/elif/else`** – condiții, operatori logici, ramificări
+3. **Structura `for`** – iterare prin `range()`, parcurgere liste
+4. **Structura `while`** – bucle condiționale, controlul execuției
+5. **Gândire computațională** – ce este, etapele rezolvării unei probleme (analiză, proiectare, implementare, testare)
+6. **Introducere în algoritmi** – pseudocod, blocuri grafice, eficiență de bază, notația O
 
-### Fișiere modificate
-- **`src/App.tsx`** — rute noi `/problems` și `/problem/:problemId`, adaugă `/problems` la `MAIN_PAGES`
-- **`src/components/layout/BottomNav.tsx`** — adaugă tab "Probleme" cu icon `Code`
+### **Capitolul 2: Prelucrări Numerice**
+1. **Operații cu cifrele unui număr** – acces la cifre, adăugare cifre la stânga/dreapta
+2. **Parcurgerea cifrelor și divizorilor** – algoritmi de bază
+3. **Algoritmul lui Euclid** – cmmdc cu scăderi și cu împărțiri
+4. **Descompunere în factori primi**
+5. **Conversii între baze de numerație** – baza 10 ↔ baza 2
 
-### Structura unei probleme
-```ts
-interface Problem {
-  id: string;
-  title: string;
-  description: string; // cerința (markdown/text)
-  difficulty: "ușor" | "mediu" | "greu";
-  xpReward: number;
-  testCases: { input: string; expectedOutput: string; hidden?: boolean }[];
-  hint?: string;
-}
-```
+### **Capitolul 3: Liste – Organizare Conceptuală**
+1. **Modelul conceptual de listă** – caracteristici, acces secvențial vs direct
+2. **Stiva și coada** – LIFO, FIFO, exemple practice
+3. **Lista de frecvențe** – construire și utilizare
+4. **Parcurgere liniară** – cu și fără memorare
+5. **Clasa `list` în Python** – operatori (`[]`, `in`, `+`, `*`)
+6. **Metode ale clasei `list`** – `append()`, `insert()`, `pop()`, `remove()`, `sort()`, `copy()`, `count()`, `index()`
 
-### Fluxul utilizatorului
-1. Navighează la "Probleme" din bara de jos
-2. Vede lista de probleme cu dificultate și punctaj
-3. Alege o problemă → vede cerința și un editor de cod
-4. Scrie codul Python, apasă "Rulează teste"
-5. Pyodide execută codul cu fiecare test case
-6. Vede rezultatele: ✅/❌ per test, punctaj total
-7. La rezolvare completă primește XP
+### **Capitolul 4: Generare și Sortare**
+1. **Generarea sistematică a secvențelor** – șiruri recurente, Fibonacci
+2. **Sortare prin selecția minimului** – algoritm pas cu pas
+3. **Sortare cu lista de frecvențe** – când și cum se aplică
+4. **Metoda bulelor (Bubble Sort)** – comparare și interschimbare
+5. **Compararea metodelor de sortare** – eficiență, număr de operații
 
-### Dependență nouă
-- `pyodide` se încarcă de pe CDN (`cdn.jsdelivr.net/pyodide/`), ~10MB la prima încărcare, apoi cache-uit de browser. Nu e nevoie de `npm install`.
+### **Capitolul 5: Subprograme**
+1. **Conceptul de subprogram** – `def`, parametri, corp, apel
+2. **Variabile locale și globale** – domeniu de vizibilitate
+3. **Transmitere parametri și returnare** – `return`, argumente
+4. **Funcții predefinite matematice** – `abs()`, `round()`, `sqrt()`, `int()`
+5. **Funcții predefinite pentru colecții** – `len()`, `min()`, `max()`, `sum()`
+6. **Proiectare modulară** – descompunerea problemelor în module
 
-### Securitate
-- Pyodide rulează sandboxed în browser, nu poate accesa sistemul de fișiere sau rețeaua
-- Timeout de 10 secunde per test case pentru a preveni bucle infinite
+### **Capitolul 6: Fișiere și Interfețe**
+1. **Fișiere text** – `open()`, `read()`, `write()`, `close()`
+2. **Citire și scriere din/în fișiere** – moduri de deschidere, sfârșit de fișier
+3. **Introducere în Tkinter** – ferestre, butoane, etichete
+4. **Casete text și MessageBox** – `Entry`, `Text`, `messagebox`
+5. **Introducere OOP** – clasă, obiect, instanțiere, metode
+
+---
+
+## 🧩 Tipuri de Exerciții (per lecție, 5-8 exerciții)
+- **Quiz cu variante** – „Ce afișează acest cod?", „Care este output-ul?"
+- **Completează codul** – cod cu `___` pe care elevul le completează
+- **Aranjează liniile** – drag & drop pentru a ordona liniile de cod corect
+- **Adevărat/Fals** – afirmații despre concepte
+
+---
+
+## 🔐 Backend (Supabase)
+- **Autentificare** – înregistrare/login cu email
+- **Profil utilizator** – XP, streak, nivel, vieți
+- **Progres lecții** – care lecții sunt completate, scor per lecție
+- **Tabel de clasament** (leaderboard) – top utilizatori după XP
+
+---
+
+## 🎨 Design Dark Mode Programator
+- Fundal întunecat (#1a1a2e / #0d1117)
+- Syntax highlighting colorat pentru blocurile de cod
+- Font monospace pentru cod (Fira Code / JetBrains Mono)
+- Accente verzi/cyan pentru progres și succes
+- Animații subtile la răspuns corect/greșit
 

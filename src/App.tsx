@@ -14,13 +14,15 @@ const ChapterPage = lazy(() => import("./pages/ChapterPage"));
 const ChapterTheoryPage = lazy(() => import("./pages/ChapterTheoryPage"));
 const LessonPage = lazy(() => import("./pages/LessonPage"));
 const LeaderboardPage = lazy(() => import("./pages/LeaderboardPage"));
+const ProblemsPage = lazy(() => import("./pages/ProblemsPage"));
+const ProblemSolvePage = lazy(() => import("./pages/ProblemSolvePage"));
 const AdminPage = lazy(() => import("./pages/AdminPage"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 const queryClient = new QueryClient();
 
 // Pages that show bottom navigation
-const MAIN_PAGES = ["/", "/leaderboard"];
+const MAIN_PAGES = ["/", "/leaderboard", "/problems"];
 
 const AppRoutes = () => {
   const location = useLocation();
@@ -35,6 +37,8 @@ const AppRoutes = () => {
           <Route path="/chapter/:chapterId/theory" element={<ChapterTheoryPage />} />
           <Route path="/lesson/:lessonId" element={<LessonPage />} />
           <Route path="/leaderboard" element={<LeaderboardPage />} />
+          <Route path="/problems" element={<ProblemsPage />} />
+          <Route path="/problem/:problemId" element={<ProblemSolvePage />} />
           <Route path="/admin" element={<AdminPage />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
