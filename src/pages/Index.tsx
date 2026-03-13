@@ -107,9 +107,18 @@ const Index = () => {
               animate={{ opacity: 1, height: "auto" }}
               className="mt-2 rounded-xl border border-border bg-card overflow-hidden"
             >
-              {schools.length > 0 ? (
+              <div className="p-2 border-b border-border">
+                <Input
+                  placeholder="Caută liceu sau oraș..."
+                  value={schoolSearch}
+                  onChange={(e) => setSchoolSearch(e.target.value)}
+                  className="h-9 text-sm"
+                  autoFocus
+                />
+              </div>
+              {filteredSchools.length > 0 ? (
                 <div className="max-h-48 overflow-y-auto">
-                  {schools.map((school) => (
+                  {filteredSchools.map((school) => (
                     <button
                       key={school.id}
                       onClick={() => handleSelectSchool(school.id)}
@@ -120,9 +129,12 @@ const Index = () => {
                       {school.name} <span className="text-foreground/50">— {school.city}</span>
                     </button>
                   ))}
+                  {!schoolSearch.trim() && schools.length > 50 && (
+                    <p className="px-4 py-2 text-xs text-muted-foreground text-center">Caută pentru a vedea mai multe...</p>
+                  )}
                 </div>
               ) : (
-                <p className="px-4 py-3 text-sm text-foreground/50">Niciun liceu disponibil încă.</p>
+                <p className="px-4 py-3 text-sm text-foreground/50">Niciun liceu găsit.</p>
               )}
               
               {selectedSchool && (
