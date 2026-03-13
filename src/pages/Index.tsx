@@ -314,6 +314,7 @@ const Index = (): JSX.Element => {
       </main>
 
       <PremiumDialog open={showPremium} onOpenChange={setShowPremium} />
+      <InstallDialog open={showInstall} onOpenChange={setShowInstall} />
     </div>
   );
 };
