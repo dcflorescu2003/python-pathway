@@ -18,7 +18,8 @@ const DEFAULT_PROGRESS: UserProgress = {
   isPremium: false,
 };
 
-const STORAGE_KEY = "pylearn-progress";
+const STORAGE_KEY = "pyro-progress";
+const LEGACY_KEY = "pylearn-progress";
 
 function loadProgress(): UserProgress {
   try {
