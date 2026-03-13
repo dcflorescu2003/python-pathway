@@ -13,7 +13,7 @@ import { Flame, Heart, Zap, Trophy, Crown, School, ChevronDown, Plus } from "luc
 import { toast } from "@/hooks/use-toast";
 import PremiumDialog from "@/components/PremiumDialog";
 
-const Index = () => {
+const Index = (): JSX.Element => {
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
   const { progress } = useProgress();
