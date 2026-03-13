@@ -1,5 +1,5 @@
 import { useLocation, useNavigate } from "react-router-dom";
-import { Home, Trophy, Settings, BookOpen } from "lucide-react";
+import { Home, Trophy, Code } from "lucide-react";
 import { motion } from "framer-motion";
 
 const tabs = [
