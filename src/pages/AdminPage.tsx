@@ -19,8 +19,11 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 
+const ADMIN_EMAILS = ["dcflorescu2003@gmail.com"];
+
 const AdminPage = () => {
   const navigate = useNavigate();
+  const { user, loading: authLoading } = useAuth();
   const store = useExerciseStore();
   const [expandedChapter, setExpandedChapter] = useState<string | null>(null);
   const [expandedLesson, setExpandedLesson] = useState<string | null>(null);
