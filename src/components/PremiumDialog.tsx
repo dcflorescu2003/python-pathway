@@ -1,18 +1,48 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Heart, Zap, Crown, Infinity } from "lucide-react";
+import { Heart, Zap, Crown, Infinity, Loader2, Settings } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { useAuth } from "@/hooks/useAuth";
+import { useSubscription } from "@/hooks/useSubscription";
+import { useNavigate } from "react-router-dom";
+import { useState } from "react";
+
+const MONTHLY_PRICE_ID = "price_1TAd4JRsFs1XlxrbCSROnd55";
+const YEARLY_PRICE_ID = "price_1TAd4cRsFs1XlxrbtFW1sT6U";
 
 interface PremiumDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  isPremium: boolean;
 }
 
-const PremiumDialog = ({ open, onOpenChange, isPremium }: PremiumDialogProps) => {
-  const handlePurchase = () => {
-    // Google Play Billing va fi integrat din Android Studio
-    // Deocamdată afișăm un mesaj
-    alert("Plata va fi procesată prin Google Play. Funcționalitate disponibilă în curând!");
+const PremiumDialog = ({ open, onOpenChange }: PremiumDialogProps) => {
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const { subscribed, subscriptionEnd, loading, startCheckout, openPortal } = useSubscription();
+  const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null);
+
+  const handlePurchase = async (priceId: string) => {
+    if (!user) {
+      onOpenChange(false);
+      navigate("/auth");
+      return;
+    }
+    setCheckoutLoading(priceId);
+    try {
+      await startCheckout(priceId);
+    } catch (err) {
+      console.error("Checkout error:", err);
+    } finally {
+      setCheckoutLoading(null);
+    }
+  };
+
+  const handleManage = async () => {
+    try {
+      await openPortal();
+    } catch (err) {
+      console.error("Portal error:", err);
+    }
   };
 
   return (
@@ -29,13 +59,26 @@ const PremiumDialog = ({ open, onOpenChange, isPremium }: PremiumDialogProps) =>
         </DialogHeader>
 
         <div className="space-y-4 py-4">
-          {isPremium ? (
+          {loading ? (
+            <div className="flex justify-center py-8">
+              <Loader2 className="h-6 w-6 animate-spin text-primary" />
+            </div>
+          ) : subscribed ? (
             <div className="text-center space-y-3">
               <div className="text-4xl">👑</div>
               <p className="text-lg font-bold text-primary">Ești Premium!</p>
               <p className="text-sm text-foreground/70">
                 Te bucuri de inimi nelimitate și acces complet.
               </p>
+              {subscriptionEnd && (
+                <p className="text-xs text-foreground/50">
+                  Activ până la: {new Date(subscriptionEnd).toLocaleDateString("ro-RO")}
+                </p>
+              )}
+              <Button variant="outline" onClick={handleManage} className="mt-2 gap-2">
+                <Settings className="h-4 w-4" />
+                Gestionează abonamentul
+              </Button>
             </div>
           ) : (
             <>
@@ -63,11 +106,47 @@ const PremiumDialog = ({ open, onOpenChange, isPremium }: PremiumDialogProps) =>
                 </div>
               </div>
 
-              <Button onClick={handlePurchase} className="w-full h-14 text-lg font-bold bg-gradient-to-r from-yellow-500 to-amber-500 hover:from-yellow-600 hover:to-amber-600 text-white">
-                💎 Devino Premium
-              </Button>
+              {/* Pricing cards */}
+              <div className="grid grid-cols-2 gap-3">
+                {/* Monthly */}
+                <button
+                  onClick={() => handlePurchase(MONTHLY_PRICE_ID)}
+                  disabled={!!checkoutLoading}
+                  className="relative rounded-xl border-2 border-border bg-card p-4 text-center hover:border-primary transition-colors disabled:opacity-50"
+                >
+                  <p className="text-xs text-foreground/60 mb-1">Lunar</p>
+                  <p className="text-2xl font-bold text-foreground">5 <span className="text-sm font-normal">RON</span></p>
+                  <p className="text-xs text-foreground/50">/lună</p>
+                  {checkoutLoading === MONTHLY_PRICE_ID && (
+                    <Loader2 className="absolute top-2 right-2 h-4 w-4 animate-spin text-primary" />
+                  )}
+                </button>
+
+                {/* Yearly */}
+                <button
+                  onClick={() => handlePurchase(YEARLY_PRICE_ID)}
+                  disabled={!!checkoutLoading}
+                  className="relative rounded-xl border-2 border-primary bg-card p-4 text-center hover:border-primary/80 transition-colors disabled:opacity-50"
+                >
+                  <Badge className="absolute -top-2 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground text-[10px]">
+                    -17%
+                  </Badge>
+                  <p className="text-xs text-foreground/60 mb-1">Anual</p>
+                  <p className="text-2xl font-bold text-foreground">50 <span className="text-sm font-normal">RON</span></p>
+                  <p className="text-xs text-foreground/50">/an</p>
+                  {checkoutLoading === YEARLY_PRICE_ID && (
+                    <Loader2 className="absolute top-2 right-2 h-4 w-4 animate-spin text-primary" />
+                  )}
+                </button>
+              </div>
+
+              {!user && (
+                <p className="text-[10px] text-center text-foreground/40">
+                  Trebuie să fii autentificat pentru a te abona
+                </p>
+              )}
               <p className="text-[10px] text-center text-foreground/40">
-                Plata se procesează prin Google Play
+                Plata se procesează securizat prin Stripe
               </p>
             </>
           )}
