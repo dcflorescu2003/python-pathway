@@ -1,11 +1,12 @@
 import { useLocation, useNavigate } from "react-router-dom";
-import { Home, Trophy, Code } from "lucide-react";
+import { Home, Trophy, Code, UserCircle } from "lucide-react";
 import { motion } from "framer-motion";
 
 const tabs = [
   { path: "/", icon: Home, label: "Acasă" },
   { path: "/problems", icon: Code, label: "Probleme" },
   { path: "/leaderboard", icon: Trophy, label: "Clasament" },
+  { path: "/auth", icon: UserCircle, label: "Cont" },
 ];
 
 const BottomNav = () => {
