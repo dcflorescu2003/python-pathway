@@ -12,7 +12,9 @@ import { motion } from "framer-motion";
 import { Flame, Heart, Zap, Trophy, Crown, School, ChevronDown, Plus, Download } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import PremiumDialog from "@/components/PremiumDialog";
+import InstallDialog from "@/components/InstallDialog";
 import SchoolOnboarding from "@/components/onboarding/SchoolOnboarding";
+import { useInstallPrompt } from "@/hooks/useInstallPrompt";
 import { supabase } from "@/integrations/supabase/client";
 
 const Index = (): JSX.Element => {
