@@ -100,6 +100,13 @@
     box-shadow: 0 0 20px hsl(190 100% 50% / 0.15), 0 0 60px hsl(190 100% 50% / 0.05);
   }
 
+  .text-tricolor {
+    background: linear-gradient(90deg, #002B7F 0%, #002B7F 33%, #FCD116 33%, #FCD116 66%, #CE1126 66%, #CE1126 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
   .code-block {
     @apply bg-muted rounded-lg p-4 font-mono text-sm overflow-x-auto border border-border;
   }

@@ -18,11 +18,12 @@ const DEFAULT_PROGRESS: UserProgress = {
   isPremium: false,
 };
 
-const STORAGE_KEY = "pylearn-progress";
+const STORAGE_KEY = "pyro-progress";
+const LEGACY_KEY = "pylearn-progress";
 
 function loadProgress(): UserProgress {
   try {
-    const stored = localStorage.getItem(STORAGE_KEY);
+    const stored = localStorage.getItem(STORAGE_KEY) || localStorage.getItem(LEGACY_KEY);
     if (stored) {
       const parsed = JSON.parse(stored);
       return { ...DEFAULT_PROGRESS, ...parsed };

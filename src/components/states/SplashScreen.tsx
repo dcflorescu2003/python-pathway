@@ -10,7 +10,9 @@ const SplashScreen = () => {
         className="flex flex-col items-center gap-4"
       >
         <span className="text-7xl">🐍</span>
-        <h1 className="text-3xl font-bold font-mono text-gradient-primary">PyLearn</h1>
+        <h1 className="text-3xl font-bold font-mono">
+          <span className="text-gradient-primary">Py</span><span className="text-tricolor">Ro</span>
+        </h1>
         <p className="text-sm text-muted-foreground">Învață Python pas cu pas</p>
       </motion.div>
       <motion.div

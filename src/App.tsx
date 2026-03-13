@@ -54,7 +54,7 @@ const AppRoutes = () => {
 
 const App = () => {
   const [showSplash, setShowSplash] = useState(() => {
-    const shown = sessionStorage.getItem("pylearn-splash-shown");
+    const shown = sessionStorage.getItem("pyro-splash-shown");
     return !shown;
   });
 
@@ -62,7 +62,7 @@ const App = () => {
     if (showSplash) {
       const timer = setTimeout(() => {
         setShowSplash(false);
-        sessionStorage.setItem("pylearn-splash-shown", "true");
+        sessionStorage.setItem("pyro-splash-shown", "true");
       }, 1500);
       return () => clearTimeout(timer);
     }

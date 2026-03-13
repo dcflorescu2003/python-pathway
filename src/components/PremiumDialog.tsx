@@ -21,7 +21,7 @@ const PremiumDialog = ({ open, onOpenChange, isPremium }: PremiumDialogProps) =>
         <DialogHeader>
           <DialogTitle className="text-center text-xl flex items-center justify-center gap-2">
             <Crown className="h-6 w-6 text-yellow-500" />
-            PyLearn Premium
+            PyRo Premium
           </DialogTitle>
           <DialogDescription className="text-center text-foreground/70">
             Deblochează experiența completă

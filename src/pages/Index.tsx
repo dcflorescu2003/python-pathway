@@ -62,7 +62,7 @@ const Index = () => {
       {/* Header */}
       <header className="sticky top-0 z-40 border-b border-border bg-background/80 backdrop-blur-md pt-[env(safe-area-inset-top)]">
         <div className="flex items-center justify-between px-4 py-3">
-          <h1 className="text-xl font-bold font-mono text-gradient-primary">🐍 PyLearn</h1>
+          <h1 className="text-xl font-bold font-mono">🐍 <span className="text-gradient-primary">Py</span><span className="text-tricolor">Ro</span></h1>
           <div className="flex items-center gap-3">
             <button onClick={() => setShowPremium(true)} className="text-yellow-500 active:scale-95 transition-transform">
               <Crown className="h-5 w-5" />

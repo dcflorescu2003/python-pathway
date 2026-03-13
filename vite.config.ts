@@ -19,8 +19,8 @@ export default defineConfig(({ mode }) => ({
       registerType: "autoUpdate",
       includeAssets: ["favicon.ico", "icon-192.png", "icon-512.png"],
       manifest: {
-        name: "PyLearn - Învață Python",
-        short_name: "PyLearn",
+        name: "PyRo - Învață Python",
+        short_name: "PyRo",
         description: "Învață Python pas cu pas, stil Duolingo",
         theme_color: "#0f1219",
         background_color: "#0f1219",
