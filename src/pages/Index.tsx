@@ -14,7 +14,14 @@ import PremiumDialog from "@/components/PremiumDialog";
 
 const Index = () => {
   const navigate = useNavigate();
+  const { user, loading: authLoading } = useAuth();
   const { progress } = useProgress();
+
+  useEffect(() => {
+    if (!authLoading && !user) {
+      navigate("/auth", { replace: true });
+    }
+  }, [authLoading, user, navigate]);
   const chapters = getStoredChapters();
   const level = getLevelFromXP(progress.xp);
   const xpToNext = getXPForNextLevel(progress.xp);
