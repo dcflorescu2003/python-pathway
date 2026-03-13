@@ -401,7 +401,7 @@ export const chapters: Chapter[] = [
       },
       // --- PRACTICE LESSONS ---
       {
-        id: "c1-l7", title: "Practică: Condiții și bucle", description: "Exerciții combinate if + for + while", xpReward: 30,
+        id: "c1-l7", title: "Practică: Condiții și bucle", description: "Exerciții combinate if + for + while", xpReward: 30, isPremium: true,
         exercises: [
           { id: eid(1,7,1), type: "quiz", xp: 5, question: "Ce afișează?\nfor i in range(1, 6):\n    if i % 2 == 0:\n        print(i, end=' ')",
             options: [{ id: "a", text: "1 3 5" }, { id: "b", text: "2 4" }, { id: "c", text: "2 4 6" }, { id: "d", text: "1 2 3 4 5" }], correctOptionId: "b",
@@ -431,7 +431,7 @@ export const chapters: Chapter[] = [
         ],
       },
       {
-        id: "c1-l8", title: "Practică: Probleme cu numere", description: "Numere perfecte, palindroame, Fibonacci", xpReward: 35,
+        id: "c1-l8", title: "Practică: Probleme cu numere", description: "Numere perfecte, palindroame, Fibonacci", xpReward: 35, isPremium: true,
         exercises: [
           { id: eid(1,8,1), type: "quiz", xp: 5, question: "Un număr perfect este egal cu suma divizorilor săi (fără el). Care este un număr perfect?",
             options: [{ id: "a", text: "12" }, { id: "b", text: "6" }, { id: "c", text: "8" }, { id: "d", text: "10" }], correctOptionId: "b",
@@ -458,7 +458,7 @@ export const chapters: Chapter[] = [
         ],
       },
       {
-        id: "c1-l9", title: "Practică: Bucle imbricate", description: "Matrici de caractere, tabele, pattern-uri", xpReward: 35,
+        id: "c1-l9", title: "Practică: Bucle imbricate", description: "Matrici de caractere, tabele, pattern-uri", xpReward: 35, isPremium: true,
         exercises: [
           { id: eid(1,9,1), type: "quiz", xp: 5, question: "Câte * afișează?\nfor i in range(3):\n    for j in range(3):\n        print('*', end='')",
             options: [{ id: "a", text: "3" }, { id: "b", text: "6" }, { id: "c", text: "9" }, { id: "d", text: "12" }], correctOptionId: "c",
@@ -482,7 +482,7 @@ export const chapters: Chapter[] = [
         ],
       },
       {
-        id: "c1-l10", title: "Test recapitulativ", description: "Probleme complexe din tot capitolul", xpReward: 40,
+        id: "c1-l10", title: "Test recapitulativ", description: "Probleme complexe din tot capitolul", xpReward: 40, isPremium: true,
         exercises: [
           { id: eid(1,10,1), type: "quiz", xp: 5, question: "Ce afișează?\nx = 0\nfor i in range(5):\n    for j in range(i):\n        x += 1\nprint(x)",
             options: [{ id: "a", text: "10" }, { id: "b", text: "15" }, { id: "c", text: "5" }, { id: "d", text: "20" }], correctOptionId: "a",
@@ -794,7 +794,7 @@ export const chapters: Chapter[] = [
       },
       // --- PRACTICE LESSONS ---
       {
-        id: "c2-l6", title: "Practică: Cifre avansate", description: "Oglinditul, suma cifrelor pare, produsul cifrelor", xpReward: 30,
+        id: "c2-l6", title: "Practică: Cifre avansate", description: "Oglinditul, suma cifrelor pare, produsul cifrelor", xpReward: 30, isPremium: true,
         exercises: [
           { id: eid(2,6,1), type: "quiz", xp: 5, question: "Care este oglinditul numărului 4567?",
             options: [{ id: "a", text: "7654" }, { id: "b", text: "4567" }, { id: "c", text: "7456" }, { id: "d", text: "6754" }], correctOptionId: "a",
@@ -820,7 +820,7 @@ export const chapters: Chapter[] = [
         ],
       },
       {
-        id: "c2-l7", title: "Practică: Divizori complexi", description: "Numere prime, abundente, deficiente", xpReward: 35,
+        id: "c2-l7", title: "Practică: Divizori complexi", description: "Numere prime, abundente, deficiente", xpReward: 35, isPremium: true,
         exercises: [
           { id: eid(2,7,1), type: "quiz", xp: 5, question: "Câți divizori are 24?",
             options: [{ id: "a", text: "6" }, { id: "b", text: "8" }, { id: "c", text: "4" }, { id: "d", text: "10" }], correctOptionId: "b",
@@ -846,7 +846,7 @@ export const chapters: Chapter[] = [
         ],
       },
       {
-        id: "c2-l8", title: "Practică: Baze de numerație", description: "Conversii baza 2, 8, 16 și operații", xpReward: 35,
+        id: "c2-l8", title: "Practică: Baze de numerație", description: "Conversii baza 2, 8, 16 și operații", xpReward: 35, isPremium: true,
         exercises: [
           { id: eid(2,8,1), type: "quiz", xp: 5, question: "Cât este 0b1111 în baza 10?",
             options: [{ id: "a", text: "16" }, { id: "b", text: "15" }, { id: "c", text: "14" }, { id: "d", text: "8" }], correctOptionId: "b",
@@ -871,7 +871,7 @@ export const chapters: Chapter[] = [
         ],
       },
       {
-        id: "c2-l9", title: "Test: Prelucrări numerice", description: "Probleme complexe combinate", xpReward: 40,
+        id: "c2-l9", title: "Test: Prelucrări numerice", description: "Probleme complexe combinate", xpReward: 40, isPremium: true,
         exercises: [
           { id: eid(2,9,1), type: "quiz", xp: 5, question: "Ce afișează?\nn = 123\ns = 0\nwhile n:\n    s += n % 10\n    n //= 10\nprint(s % 9)",
             options: [{ id: "a", text: "6" }, { id: "b", text: "0" }, { id: "c", text: "3" }, { id: "d", text: "9" }], correctOptionId: "a",
@@ -1039,7 +1039,7 @@ export const chapters: Chapter[] = [
       },
       // --- PRACTICE LESSONS ---
       {
-        id: "c3-l7", title: "Practică: Operații cu liste", description: "Filtrare, transformare, căutare", xpReward: 30,
+        id: "c3-l7", title: "Practică: Operații cu liste", description: "Filtrare, transformare, căutare", xpReward: 30, isPremium: true,
         exercises: [
           { id: eid(3,7,1), type: "quiz", xp: 5, question: "Ce returnează [x**2 for x in range(5)]?",
             options: [{ id: "a", text: "[0,1,4,9,16]" }, { id: "b", text: "[1,4,9,16,25]" }, { id: "c", text: "[0,2,4,6,8]" }, { id: "d", text: "[0,1,2,3,4]" }], correctOptionId: "a",
@@ -1064,7 +1064,7 @@ export const chapters: Chapter[] = [
         ],
       },
       {
-        id: "c3-l8", title: "Practică: Liste 2D", description: "Matrice, parcurgere pe linii și coloane", xpReward: 35,
+        id: "c3-l8", title: "Practică: Liste 2D", description: "Matrice, parcurgere pe linii și coloane", xpReward: 35, isPremium: true,
         exercises: [
           { id: eid(3,8,1), type: "quiz", xp: 5, question: "Cum accesăm elementul de pe linia 1, coloana 2?\nm = [[1,2,3],[4,5,6]]",
             options: [{ id: "a", text: "m[1][2]" }, { id: "b", text: "m[2][1]" }, { id: "c", text: "m(1,2)" }, { id: "d", text: "m[1,2]" }], correctOptionId: "a",
@@ -1089,7 +1089,7 @@ export const chapters: Chapter[] = [
         ],
       },
       {
-        id: "c3-l9", title: "Practică: Algoritmi pe liste", description: "Interclasare, rotire, secvențe", xpReward: 35,
+        id: "c3-l9", title: "Practică: Algoritmi pe liste", description: "Interclasare, rotire, secvențe", xpReward: 35, isPremium: true,
         exercises: [
           { id: eid(3,9,1), type: "quiz", xp: 5, question: "Ce face zip([1,2,3], ['a','b','c'])?",
             options: [{ id: "a", text: "[(1,'a'),(2,'b'),(3,'c')]" }, { id: "b", text: "[1,'a',2,'b',3,'c']" }, { id: "c", text: "Eroare" }, { id: "d", text: "{1:'a',2:'b'}" }], correctOptionId: "a",
@@ -1115,7 +1115,7 @@ export const chapters: Chapter[] = [
         ],
       },
       {
-        id: "c3-l10", title: "Test: Liste", description: "Probleme complexe cu liste și algoritmi", xpReward: 40,
+        id: "c3-l10", title: "Test: Liste", description: "Probleme complexe cu liste și algoritmi", xpReward: 40, isPremium: true,
         exercises: [
           { id: eid(3,10,1), type: "quiz", xp: 5, question: "Ce afișează?\na = [1,2,3]\nb = a\nb.append(4)\nprint(len(a))",
             options: [{ id: "a", text: "3" }, { id: "b", text: "4" }, { id: "c", text: "Eroare" }, { id: "d", text: "None" }], correctOptionId: "b",
@@ -1262,7 +1262,7 @@ export const chapters: Chapter[] = [
       },
       // --- PRACTICE LESSONS ---
       {
-        id: "c4-l6", title: "Practică: Sortare pas cu pas", description: "Simularea manuală a algoritmilor", xpReward: 30,
+        id: "c4-l6", title: "Practică: Sortare pas cu pas", description: "Simularea manuală a algoritmilor", xpReward: 30, isPremium: true,
         exercises: [
           { id: eid(4,6,1), type: "quiz", xp: 5, question: "După prima trecere Bubble Sort pe [5,3,1,4,2], care element ajunge la final?",
             options: [{ id: "a", text: "1" }, { id: "b", text: "5" }, { id: "c", text: "2" }, { id: "d", text: "4" }], correctOptionId: "b",
@@ -1285,7 +1285,7 @@ export const chapters: Chapter[] = [
         ],
       },
       {
-        id: "c4-l7", title: "Practică: Generare avansată", description: "Permutări, combinații, secvențe speciale", xpReward: 35,
+        id: "c4-l7", title: "Practică: Generare avansată", description: "Permutări, combinații, secvențe speciale", xpReward: 35, isPremium: true,
         exercises: [
           { id: eid(4,7,1), type: "quiz", xp: 5, question: "Câte permutări are mulțimea {1,2,3}?",
             options: [{ id: "a", text: "3" }, { id: "b", text: "6" }, { id: "c", text: "9" }, { id: "d", text: "8" }], correctOptionId: "b",
@@ -1310,7 +1310,7 @@ export const chapters: Chapter[] = [
         ],
       },
       {
-        id: "c4-l8", title: "Practică: Sortare aplicată", description: "Sortare cu chei, stabilitate, cazuri practice", xpReward: 35,
+        id: "c4-l8", title: "Practică: Sortare aplicată", description: "Sortare cu chei, stabilitate, cazuri practice", xpReward: 35, isPremium: true,
         exercises: [
           { id: eid(4,8,1), type: "quiz", xp: 5, question: "Ce face sorted(['banana','ana','mar'], key=len)?",
             options: [{ id: "a", text: "['ana','mar','banana']" }, { id: "b", text: "['ana','banana','mar']" }, { id: "c", text: "['banana','ana','mar']" }, { id: "d", text: "['mar','ana','banana']" }], correctOptionId: "a",
@@ -1334,7 +1334,7 @@ export const chapters: Chapter[] = [
         ],
       },
       {
-        id: "c4-l9", title: "Test: Generare și sortare", description: "Probleme complexe finale", xpReward: 40,
+        id: "c4-l9", title: "Test: Generare și sortare", description: "Probleme complexe finale", xpReward: 40, isPremium: true,
         exercises: [
           { id: eid(4,9,1), type: "quiz", xp: 5, question: "Ce afișează?\na = [3,1,4,1,5]\nprint(sorted(set(a)))",
             options: [{ id: "a", text: "[1,3,4,5]" }, { id: "b", text: "[1,1,3,4,5]" }, { id: "c", text: "[5,4,3,1]" }, { id: "d", text: "{1,3,4,5}" }], correctOptionId: "a",
@@ -1496,7 +1496,7 @@ export const chapters: Chapter[] = [
       },
       // --- PRACTICE LESSONS ---
       {
-        id: "c5-l7", title: "Practică: Funcții recursive", description: "Recursivitate, cazuri de bază, stiva de apeluri", xpReward: 30,
+        id: "c5-l7", title: "Practică: Funcții recursive", description: "Recursivitate, cazuri de bază, stiva de apeluri", xpReward: 30, isPremium: true,
         exercises: [
           { id: eid(5,7,1), type: "quiz", xp: 5, question: "Ce afișează?\ndef f(n):\n    if n==0: return 1\n    return n*f(n-1)\nprint(f(4))",
             options: [{ id: "a", text: "4" }, { id: "b", text: "10" }, { id: "c", text: "24" }, { id: "d", text: "120" }], correctOptionId: "c",
@@ -1520,7 +1520,7 @@ export const chapters: Chapter[] = [
         ],
       },
       {
-        id: "c5-l8", title: "Practică: Funcții avansate", description: "Lambda, map, filter, funcții de ordin superior", xpReward: 35,
+        id: "c5-l8", title: "Practică: Funcții avansate", description: "Lambda, map, filter, funcții de ordin superior", xpReward: 35, isPremium: true,
         exercises: [
           { id: eid(5,8,1), type: "quiz", xp: 5, question: "Ce returnează list(map(str, [1,2,3]))?",
             options: [{ id: "a", text: "['1','2','3']" }, { id: "b", text: "[1,2,3]" }, { id: "c", text: "'123'" }, { id: "d", text: "Eroare" }], correctOptionId: "a",
@@ -1544,7 +1544,7 @@ export const chapters: Chapter[] = [
         ],
       },
       {
-        id: "c5-l9", title: "Practică: Design modular", description: "Proiecte cu funcții multiple colaborative", xpReward: 35,
+        id: "c5-l9", title: "Practică: Design modular", description: "Proiecte cu funcții multiple colaborative", xpReward: 35, isPremium: true,
         exercises: [
           { id: eid(5,9,1), type: "quiz", xp: 5, question: "Ce principiu spune că o funcție ar trebui să facă un singur lucru?",
             options: [{ id: "a", text: "DRY" }, { id: "b", text: "Single Responsibility" }, { id: "c", text: "KISS" }, { id: "d", text: "YAGNI" }], correctOptionId: "b",
@@ -1569,7 +1569,7 @@ export const chapters: Chapter[] = [
         ],
       },
       {
-        id: "c5-l10", title: "Test: Subprograme", description: "Probleme complexe cu funcții", xpReward: 40,
+        id: "c5-l10", title: "Test: Subprograme", description: "Probleme complexe cu funcții", xpReward: 40, isPremium: true,
         exercises: [
           { id: eid(5,10,1), type: "quiz", xp: 5, question: "Ce afișează?\ndef f(lst=[]):\n    lst.append(1)\n    return lst\nprint(f())\nprint(f())",
             options: [{ id: "a", text: "[1]\\n[1]" }, { id: "b", text: "[1]\\n[1,1]" }, { id: "c", text: "Eroare" }, { id: "d", text: "[1,1]\\n[1,1]" }], correctOptionId: "b",
@@ -1723,7 +1723,7 @@ export const chapters: Chapter[] = [
       },
       // --- PRACTICE LESSONS ---
       {
-        id: "c6-l6", title: "Practică: Procesare fișiere", description: "Citire avansată, CSV, procesare text", xpReward: 30,
+        id: "c6-l6", title: "Practică: Procesare fișiere", description: "Citire avansată, CSV, procesare text", xpReward: 30, isPremium: true,
         exercises: [
           { id: eid(6,6,1), type: "quiz", xp: 5, question: "Ce face f.readlines()?",
             options: [{ id: "a", text: "Citește prima linie" }, { id: "b", text: "Returnează o listă cu toate liniile" }, { id: "c", text: "Numără liniile" }, { id: "d", text: "Citește un caracter" }], correctOptionId: "b",
@@ -1747,7 +1747,7 @@ export const chapters: Chapter[] = [
         ],
       },
       {
-        id: "c6-l7", title: "Practică: GUI cu Tkinter", description: "Layout, grid, bind, variabile Tk", xpReward: 35,
+        id: "c6-l7", title: "Practică: GUI cu Tkinter", description: "Layout, grid, bind, variabile Tk", xpReward: 35, isPremium: true,
         exercises: [
           { id: eid(6,7,1), type: "quiz", xp: 5, question: "Ce manager de layout plasează widget-uri într-o grilă?",
             options: [{ id: "a", text: "pack()" }, { id: "b", text: "grid()" }, { id: "c", text: "place()" }, { id: "d", text: "layout()" }], correctOptionId: "b",
@@ -1772,7 +1772,7 @@ export const chapters: Chapter[] = [
         ],
       },
       {
-        id: "c6-l8", title: "Practică: OOP avansat", description: "Moștenire, metode speciale, încapsulare", xpReward: 35,
+        id: "c6-l8", title: "Practică: OOP avansat", description: "Moștenire, metode speciale, încapsulare", xpReward: 35, isPremium: true,
         exercises: [
           { id: eid(6,8,1), type: "quiz", xp: 5, question: "Ce este moștenirea în OOP?",
             options: [{ id: "a", text: "Copierea codului" }, { id: "b", text: "O clasă preia atributele și metodele altei clase" }, { id: "c", text: "Ștergerea unei clase" }, { id: "d", text: "Importul unui modul" }], correctOptionId: "b",
@@ -1798,7 +1798,7 @@ export const chapters: Chapter[] = [
         ],
       },
       {
-        id: "c6-l9", title: "Test: Fișiere și OOP", description: "Probleme finale complexe", xpReward: 40,
+        id: "c6-l9", title: "Test: Fișiere și OOP", description: "Probleme finale complexe", xpReward: 40, isPremium: true,
         exercises: [
           { id: eid(6,9,1), type: "quiz", xp: 5, question: "Ce afișează?\nclass A:\n    x = 1\nclass B(A):\n    x = 2\nprint(B.x, A.x)",
             options: [{ id: "a", text: "2 1" }, { id: "b", text: "1 1" }, { id: "c", text: "2 2" }, { id: "d", text: "Eroare" }], correctOptionId: "a",
