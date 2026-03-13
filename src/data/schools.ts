@@ -1515,7 +1515,7 @@ export const schools: School[] = [
   { id: "lic1508", name: "Liceul „Româno-Finlandez”", city: "Bucureşti Sectorul 6" },
 ];
 
-const SCHOOL_STORAGE_KEY = "pylearn-school";
+const SCHOOL_STORAGE_KEY = "pyro-school";
 
 export function getSelectedSchool(): string | null {
   return localStorage.getItem(SCHOOL_STORAGE_KEY);

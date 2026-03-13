@@ -23,7 +23,7 @@ const LEGACY_KEY = "pylearn-progress";
 
 function loadProgress(): UserProgress {
   try {
-    const stored = localStorage.getItem(STORAGE_KEY);
+    const stored = localStorage.getItem(STORAGE_KEY) || localStorage.getItem(LEGACY_KEY);
     if (stored) {
       const parsed = JSON.parse(stored);
       return { ...DEFAULT_PROGRESS, ...parsed };
