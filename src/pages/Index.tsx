@@ -20,6 +20,12 @@ const Index = (): JSX.Element => {
   const { user, loading: authLoading } = useAuth();
   const { progress } = useProgress();
   const [needsOnboarding, setNeedsOnboarding] = useState<boolean | null>(null);
+  const [selectedSchool, setSchool] = useState(getSelectedSchool());
+  const [showSchoolPicker, setShowSchoolPicker] = useState(false);
+  const [showAddSchool, setShowAddSchool] = useState(false);
+  const [newSchoolName, setNewSchoolName] = useState("");
+  const [showPremium, setShowPremium] = useState(false);
+  const [schoolSearch, setSchoolSearch] = useState("");
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -27,7 +33,6 @@ const Index = (): JSX.Element => {
     }
   }, [authLoading, user, navigate]);
 
-  // Check if user needs onboarding (no school_id set)
   useEffect(() => {
     if (!user) return;
     const checkOnboarding = async () => {
@@ -49,13 +54,6 @@ const Index = (): JSX.Element => {
   const level = getLevelFromXP(progress.xp);
   const xpToNext = getXPForNextLevel(progress.xp);
   const xpInLevel = 100 - xpToNext;
-
-  const [selectedSchool, setSchool] = useState(getSelectedSchool());
-  const [showSchoolPicker, setShowSchoolPicker] = useState(false);
-  const [showAddSchool, setShowAddSchool] = useState(false);
-  const [newSchoolName, setNewSchoolName] = useState("");
-  const [showPremium, setShowPremium] = useState(false);
-  const [schoolSearch, setSchoolSearch] = useState("");
 
   const filteredSchools = schoolSearch.trim()
     ? schools.filter((s) =>
