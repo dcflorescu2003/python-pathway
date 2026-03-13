@@ -66,6 +66,12 @@ const LessonPage = () => {
     return <div className="p-8 text-center text-foreground">Lecție negăsită</div>;
   }
 
+  // Block premium lessons for non-subscribers
+  if (lesson.isPremium && !subscribed) {
+    navigate(`/chapter/${chapter.id}`);
+    return null;
+  }
+
   if (isFinished) {
     const xpEarned = lives > 0 ? lesson.xpReward : 0;
     return (
