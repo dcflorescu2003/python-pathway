@@ -269,7 +269,7 @@ const Index = () => {
         </div>
       </main>
 
-      <PremiumDialog open={showPremium} onOpenChange={setShowPremium} isPremium={progress.isPremium} />
+      <PremiumDialog open={showPremium} onOpenChange={setShowPremium} />
     </div>
   );
 };
