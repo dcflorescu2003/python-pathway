@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/hooks/useAuth";
 import { useExerciseStore } from "@/hooks/useExerciseStore";
 import { Exercise, Lesson } from "@/data/courses";
 import ExerciseEditor from "@/components/admin/ExerciseEditor";
