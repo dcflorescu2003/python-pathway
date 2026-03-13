@@ -9,10 +9,12 @@ import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { motion } from "framer-motion";
-import { Flame, Heart, Zap, Trophy, Crown, School, ChevronDown, Plus } from "lucide-react";
+import { Flame, Heart, Zap, Trophy, Crown, School, ChevronDown, Plus, Download } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import PremiumDialog from "@/components/PremiumDialog";
+import InstallDialog from "@/components/InstallDialog";
 import SchoolOnboarding from "@/components/onboarding/SchoolOnboarding";
+import { useInstallPrompt } from "@/hooks/useInstallPrompt";
 import { supabase } from "@/integrations/supabase/client";
 
 const Index = (): JSX.Element => {
@@ -25,6 +27,8 @@ const Index = (): JSX.Element => {
   const [showAddSchool, setShowAddSchool] = useState(false);
   const [newSchoolName, setNewSchoolName] = useState("");
   const [showPremium, setShowPremium] = useState(false);
+  const [showInstall, setShowInstall] = useState(false);
+  const { isInstalled } = useInstallPrompt();
   const [schoolSearch, setSchoolSearch] = useState("");
 
   useEffect(() => {
@@ -99,6 +103,11 @@ const Index = (): JSX.Element => {
         <div className="flex items-center justify-between px-4 py-3">
           <h1 className="text-xl font-bold font-mono">🐍 <span className="text-gradient-primary">Py</span><span className="text-tricolor">Ro</span></h1>
           <div className="flex items-center gap-3">
+            {!isInstalled && (
+              <button onClick={() => setShowInstall(true)} className="text-primary active:scale-95 transition-transform">
+                <Download className="h-5 w-5" />
+              </button>
+            )}
             <button onClick={() => setShowPremium(true)} className="text-yellow-500 active:scale-95 transition-transform">
               <Crown className="h-5 w-5" />
             </button>
@@ -305,6 +314,7 @@ const Index = (): JSX.Element => {
       </main>
 
       <PremiumDialog open={showPremium} onOpenChange={setShowPremium} />
+      <InstallDialog open={showInstall} onOpenChange={setShowInstall} />
     </div>
   );
 };
