@@ -22,7 +22,7 @@ const NotFound = lazy(() => import("./pages/NotFound"));
 const queryClient = new QueryClient();
 
 // Pages that show bottom navigation
-const MAIN_PAGES = ["/", "/leaderboard"];
+const MAIN_PAGES = ["/", "/leaderboard", "/problems"];
 
 const AppRoutes = () => {
   const location = useLocation();
