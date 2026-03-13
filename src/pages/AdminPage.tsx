@@ -32,6 +32,18 @@ const AdminPage = () => {
   const [newLessonChapter, setNewLessonChapter] = useState<string | null>(null);
   const [newLessonTitle, setNewLessonTitle] = useState("");
   const [newLessonDesc, setNewLessonDesc] = useState("");
+  const isAdmin = user?.email && ADMIN_EMAILS.includes(user.email);
+
+  if (authLoading) return <div className="flex items-center justify-center min-h-screen text-muted-foreground">Se încarcă...</div>;
+  if (!isAdmin) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen gap-4 text-center px-4">
+        <h1 className="text-2xl font-bold text-foreground">Acces restricționat</h1>
+        <p className="text-muted-foreground">Nu ai permisiuni pentru această pagină.</p>
+        <Button onClick={() => navigate("/")}>Înapoi acasă</Button>
+      </div>
+    );
+  }
 
   const typeLabels: Record<string, string> = {
     quiz: "Quiz",
