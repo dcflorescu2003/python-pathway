@@ -27,6 +27,8 @@ const Index = (): JSX.Element => {
   const [showAddSchool, setShowAddSchool] = useState(false);
   const [newSchoolName, setNewSchoolName] = useState("");
   const [showPremium, setShowPremium] = useState(false);
+  const [showInstall, setShowInstall] = useState(false);
+  const { isInstalled } = useInstallPrompt();
   const [schoolSearch, setSchoolSearch] = useState("");
 
   useEffect(() => {
