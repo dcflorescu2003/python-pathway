@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/hooks/useAuth";
 import { useExerciseStore } from "@/hooks/useExerciseStore";
 import { Exercise, Lesson } from "@/data/courses";
 import ExerciseEditor from "@/components/admin/ExerciseEditor";
@@ -19,8 +20,11 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 
+const ADMIN_EMAILS = ["dcflorescu2003@gmail.com"];
+
 const AdminPage = () => {
   const navigate = useNavigate();
+  const { user, loading: authLoading } = useAuth();
   const store = useExerciseStore();
   const [expandedChapter, setExpandedChapter] = useState<string | null>(null);
   const [expandedLesson, setExpandedLesson] = useState<string | null>(null);
@@ -28,6 +32,18 @@ const AdminPage = () => {
   const [newLessonChapter, setNewLessonChapter] = useState<string | null>(null);
   const [newLessonTitle, setNewLessonTitle] = useState("");
   const [newLessonDesc, setNewLessonDesc] = useState("");
+  const isAdmin = user?.email && ADMIN_EMAILS.includes(user.email);
+
+  if (authLoading) return <div className="flex items-center justify-center min-h-screen text-muted-foreground">Se încarcă...</div>;
+  if (!isAdmin) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen gap-4 text-center px-4">
+        <h1 className="text-2xl font-bold text-foreground">Acces restricționat</h1>
+        <p className="text-muted-foreground">Nu ai permisiuni pentru această pagină.</p>
+        <Button onClick={() => navigate("/")}>Înapoi acasă</Button>
+      </div>
+    );
+  }
 
   const typeLabels: Record<string, string> = {
     quiz: "Quiz",
