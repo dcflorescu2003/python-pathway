@@ -41,6 +41,10 @@ const Index = (): JSX.Element => {
         .select("school_id")
         .eq("user_id", user.id)
         .single();
+      if (data?.school_id && data.school_id !== "skipped") {
+        setSelectedSchool(data.school_id);
+        setSchool(data.school_id);
+      }
       setNeedsOnboarding(!data?.school_id);
     };
     checkOnboarding();
