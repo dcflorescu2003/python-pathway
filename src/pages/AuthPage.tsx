@@ -104,6 +104,9 @@ const AuthPage = () => {
   const navigate = useNavigate();
   const { user, signUp, signIn, signInWithGoogle, signInWithApple } = useAuth();
   const [isLogin, setIsLogin] = useState(true);
+  const [showForgot, setShowForgot] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState("");
+  const [forgotLoading, setForgotLoading] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
