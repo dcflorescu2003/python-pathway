@@ -19,6 +19,7 @@ const ProblemsPage = lazy(() => import("./pages/ProblemsPage"));
 const ProblemSolvePage = lazy(() => import("./pages/ProblemSolvePage"));
 const AuthPage = lazy(() => import("./pages/AuthPage"));
 const AdminPage = lazy(() => import("./pages/AdminPage"));
+const ResetPasswordPage = lazy(() => import("./pages/ResetPasswordPage"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 const queryClient = new QueryClient();
