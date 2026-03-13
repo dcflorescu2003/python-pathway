@@ -1,15 +1,20 @@
+import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { getStoredChapters } from "@/hooks/useExerciseStore";
 import { useProgress } from "@/hooks/useProgress";
+import { useSubscription } from "@/hooks/useSubscription";
 import { motion } from "framer-motion";
-import { ArrowLeft, Check, Lock, Play, BookOpen } from "lucide-react";
+import { ArrowLeft, Check, Lock, Play, BookOpen, Crown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import OfflineBanner from "@/components/states/OfflineBanner";
+import PremiumDialog from "@/components/PremiumDialog";
 
 const ChapterPage = () => {
   const { chapterId } = useParams();
   const navigate = useNavigate();
   const { progress } = useProgress();
+  const { subscribed } = useSubscription();
+  const [showPremium, setShowPremium] = useState(false);
 
   const chapters = getStoredChapters();
   const chapter = chapters.find((c) => c.id === chapterId);
@@ -46,6 +51,7 @@ const ChapterPage = () => {
             const score = progress.completedLessons[lesson.id]?.score ?? 0;
             const isLocked = idx > 0 && !progress.completedLessons[chapter.lessons[idx - 1].id]?.completed;
             const isCurrent = !isCompleted && !isLocked;
+            const isPremiumLocked = lesson.isPremium && !subscribed;
 
             return (
               <div key={lesson.id} className="flex flex-col items-center">
@@ -62,18 +68,26 @@ const ChapterPage = () => {
                       initial={{ opacity: 0, scale: 0.8 }}
                       animate={{ opacity: 1, scale: 1 }}
                       transition={{ delay: idx * 0.06 }}
-                      disabled={isLocked}
-                      onClick={() => navigate(`/lesson/${lesson.id}`)}
+                      disabled={isLocked && !isPremiumLocked}
+                      onClick={() => {
+                        if (isPremiumLocked) {
+                          setShowPremium(true);
+                        } else if (!isLocked) {
+                          navigate(`/lesson/${lesson.id}`);
+                        }
+                      }}
                       className={`relative flex h-[72px] w-[72px] items-center justify-center rounded-full border-4 transition-all active:scale-95 ${
-                        isLocked ? "border-border bg-card text-muted-foreground opacity-50 cursor-not-allowed" : ""
-                      } ${isCurrent ? "animate-pulse-glow" : ""}`}
-                      style={!isLocked ? {
+                        isLocked || isPremiumLocked ? "border-border bg-card text-muted-foreground opacity-50 cursor-not-allowed" : ""
+                      } ${isCurrent && !isPremiumLocked ? "animate-pulse-glow" : ""}`}
+                      style={!isLocked && !isPremiumLocked ? {
                         borderColor: lessonColorBorder,
                         backgroundColor: lessonColorBg,
                         color: lessonColor,
                       } : undefined}
                     >
-                      {isCompleted ? (
+                      {isPremiumLocked ? (
+                        <Crown className="h-6 w-6 text-yellow-500" />
+                      ) : isCompleted ? (
                         <Check className="h-7 w-7" />
                       ) : isLocked ? (
                         <Lock className="h-6 w-6" />
@@ -85,7 +99,12 @@ const ChapterPage = () => {
                 })()}
 
                 <div className="mt-2 mb-2 text-center max-w-[200px]">
-                  <p className="text-base font-bold text-foreground">{lesson.title}</p>
+                  <p className="text-base font-bold text-foreground flex items-center justify-center gap-1">
+                    {lesson.title}
+                    {lesson.isPremium && !subscribed && (
+                      <Crown className="h-3.5 w-3.5 text-yellow-500 inline" />
+                    )}
+                  </p>
                   <p className="text-sm text-muted-foreground line-clamp-1">{lesson.description}</p>
                   {isCompleted && (
                     <p className="text-xs text-primary font-mono mt-0.5">
@@ -98,6 +117,8 @@ const ChapterPage = () => {
           })}
         </div>
       </main>
+
+      <PremiumDialog open={showPremium} onOpenChange={setShowPremium} />
     </div>
   );
 };
