@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { useAuth } from "@/hooks/useAuth";
 import { useProgress } from "@/hooks/useProgress";
 import { getStoredChapters } from "@/hooks/useExerciseStore";
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
@@ -103,6 +104,9 @@ const AuthPage = () => {
   const navigate = useNavigate();
   const { user, signUp, signIn, signInWithGoogle, signInWithApple } = useAuth();
   const [isLogin, setIsLogin] = useState(true);
+  const [showForgot, setShowForgot] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState("");
+  const [forgotLoading, setForgotLoading] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
@@ -224,6 +228,15 @@ const AuthPage = () => {
               <Button type="submit" className="w-full" disabled={loading}>
                 {loading ? "Se procesează..." : isLogin ? "Conectează-te" : "Creează cont"}
               </Button>
+              {isLogin && (
+                <button
+                  type="button"
+                  onClick={() => setShowForgot(true)}
+                  className="text-xs text-muted-foreground hover:text-primary hover:underline w-full text-right"
+                >
+                  Ai uitat parola?
+                </button>
+              )}
             </form>
 
             <p className="text-center text-sm text-muted-foreground">
@@ -235,6 +248,72 @@ const AuthPage = () => {
           </CardContent>
         </Card>
       </div>
+      {/* Forgot password modal */}
+      {showForgot && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-center justify-center px-6"
+          onClick={() => setShowForgot(false)}
+        >
+          <motion.div
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <Card className="w-full max-w-sm border-border">
+              <CardContent className="p-5 space-y-4">
+                <div className="text-center">
+                  <span className="text-3xl block mb-2">📧</span>
+                  <h2 className="text-lg font-bold text-foreground">Recuperare parolă</h2>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Introdu emailul și vei primi un link de resetare.
+                  </p>
+                </div>
+                <form
+                  onSubmit={async (e) => {
+                    e.preventDefault();
+                    if (!forgotEmail.trim()) return;
+                    setForgotLoading(true);
+                    const { error } = await supabase.auth.resetPasswordForEmail(forgotEmail, {
+                      redirectTo: `${window.location.origin}/reset-password`,
+                    });
+                    setForgotLoading(false);
+                    if (error) {
+                      toast.error(error.message);
+                    } else {
+                      toast.success("Email trimis! Verifică inbox-ul. 📬");
+                      setShowForgot(false);
+                    }
+                  }}
+                  className="space-y-3"
+                >
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      type="email"
+                      placeholder="Email"
+                      value={forgotEmail}
+                      onChange={(e) => setForgotEmail(e.target.value)}
+                      className="pl-10"
+                      autoFocus
+                    />
+                  </div>
+                  <Button type="submit" className="w-full" disabled={forgotLoading}>
+                    {forgotLoading ? "Se trimite..." : "Trimite linkul"}
+                  </Button>
+                </form>
+                <button
+                  onClick={() => setShowForgot(false)}
+                  className="text-xs text-muted-foreground hover:underline w-full text-center"
+                >
+                  Înapoi
+                </button>
+              </CardContent>
+            </Card>
+          </motion.div>
+        </motion.div>
+      )}
     </motion.div>
   );
 };
