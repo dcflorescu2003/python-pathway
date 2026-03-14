@@ -229,7 +229,8 @@ const Index = (): JSX.Element => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.05 }}
-          className="mb-6 rounded-xl border border-border bg-card p-5 glow-primary"
+          onClick={() => setShowRoadmap(true)}
+          className="mb-6 rounded-xl border border-border bg-card p-5 glow-primary cursor-pointer active:scale-[0.98] transition-transform"
         >
           <div className="flex items-center justify-between mb-3">
             <div>
