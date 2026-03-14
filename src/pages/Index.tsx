@@ -130,7 +130,29 @@ const Index = (): JSX.Element => {
       </header>
 
       <main className="px-4 py-6">
-        {/* School selector */}
+        {/* Install button */}
+        {!isInstalled && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-4"
+          >
+            <Button
+              onClick={async () => {
+                if (canPrompt) {
+                  await promptInstall();
+                } else {
+                  setShowInstall(true);
+                }
+              }}
+              className="w-full py-6 text-lg font-bold rounded-xl gap-2"
+              size="lg"
+            >
+              📲 Instalează PyRo
+            </Button>
+          </motion.div>
+        )}
+
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
