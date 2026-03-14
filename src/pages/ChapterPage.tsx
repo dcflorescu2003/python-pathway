@@ -13,7 +13,6 @@ const ChapterPage = () => {
   const { chapterId } = useParams();
   const navigate = useNavigate();
   const { progress } = useProgress();
-  const { subscribed } = useSubscription();
   const [showPremium, setShowPremium] = useState(false);
 
   const chapters = getStoredChapters();
