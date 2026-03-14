@@ -43,6 +43,50 @@ const Index = (): JSX.Element => {
     }
   }, [authLoading, user, navigate]);
 
+  // Auto-grant premium when app is installed (standalone mode)
+  useEffect(() => {
+    if (!isInstalled || !user) return;
+    const alreadyGranted = localStorage.getItem("pyro-install-premium-granted");
+    if (alreadyGranted === user.id) return;
+
+    const grantInstallPremium = async () => {
+      try {
+        // Check if user already has an install redemption
+        const { data: existing } = await supabase
+          .from("coupon_redemptions")
+          .select("id")
+          .eq("user_id", user.id)
+          .eq("coupon_id", "42b385ff-eb24-4604-8e36-595e9424387b")
+          .limit(1);
+
+        if (existing && existing.length > 0) {
+          localStorage.setItem("pyro-install-premium-granted", user.id);
+          return;
+        }
+
+        // Insert redemption
+        await supabase.from("coupon_redemptions").insert({
+          user_id: user.id,
+          coupon_id: "42b385ff-eb24-4604-8e36-595e9424387b",
+          premium_until: "2026-08-31T23:59:59Z",
+        });
+
+        // Update profile
+        await supabase.from("profiles").update({ is_premium: true }).eq("user_id", user.id);
+
+        localStorage.setItem("pyro-install-premium-granted", user.id);
+        toast({
+          title: "Premium activat! 🎉",
+          description: "Ai Premium gratuit până pe 31 august 2026!",
+        });
+      } catch (err) {
+        console.error("Failed to grant install premium:", err);
+      }
+    };
+
+    grantInstallPremium();
+  }, [isInstalled, user]);
+
   useEffect(() => {
     if (!user) return;
     const checkOnboarding = async () => {
