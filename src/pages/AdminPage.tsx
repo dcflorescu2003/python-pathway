@@ -114,6 +114,7 @@ const AdminPage = () => {
       </header>
 
       <main className="px-4 py-4 space-y-3">
+        <CouponManager />
         {store.chapters.map(chapter => {
           const isExpanded = expandedChapter === chapter.id;
           return (

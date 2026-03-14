@@ -88,9 +88,11 @@ const AccountView = () => {
           </CardContent>
         </Card>
 
+        <CouponRedemption />
+
         <Button
           variant="destructive"
-          className="w-full max-w-sm mt-6 gap-2"
+          className="w-full max-w-sm mt-4 gap-2"
           onClick={handleSignOut}
         >
           <LogOut className="h-4 w-4" />
