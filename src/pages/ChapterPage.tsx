@@ -100,7 +100,6 @@ const ChapterPage = () => {
                 <div className="mt-2 mb-2 text-center max-w-[200px]">
                   <p className="text-base font-bold text-foreground flex items-center justify-center gap-1">
                     {lesson.title}
-                    )}
                   </p>
                   <p className="text-sm text-muted-foreground line-clamp-1">{lesson.description}</p>
                   {isCompleted && (
