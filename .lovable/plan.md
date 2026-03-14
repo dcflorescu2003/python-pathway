@@ -1,88 +1,39 @@
 
 
-# 🐍 PyLearn – Aplicație Duolingo pentru Python (Clasa a IX-a)
-**Design: Dark mode programator | Salvare: Supabase cu conturi | Exerciții: Mix complet**
+# Premium automat la instalare + text actualizat pe buton
 
----
+## Ce facem
+1. **Text buton**: Schimbăm textul de pe butonul de instalare din "📲 Instalează PyRo" în "📲 Instalează și ai Premium gratuit!"
+2. **Premium automat la instalare**: Când app-ul detectează că rulează în mod standalone (instalat), setăm automat contul ca Premium cu `premium_until = 2026-08-31` în baza de date
+3. **Detectare instalare**: Folosim `isInstalled` din `useInstallPrompt` — când e `true` și userul e logat, inserăm o redemption specială și setăm `is_premium = true`
 
-## 🎮 Sistem de Gamification (stil Duolingo)
-- **XP** (experiență) câștigat per lecție completată
-- **Streak** zilnic (câte zile consecutive a învățat)
-- **Vieți** (3 vieți per sesiune, se pierd la răspuns greșit)
-- **Bară de progres** per lecție și per capitol
-- **Profil utilizator** cu statistici și nivel
+## Modificări
 
----
+### `src/pages/Index.tsx`
+- Schimbăm textul butonului: `"📲 Instalează și ai Premium gratuit!"`
+- Adăugăm un `useEffect` care, când `isInstalled === true` și `user` există, verifică dacă userul are deja o redemption de tip "install" — dacă nu, creează una cu `premium_until = 2026-08-31T23:59:59Z` și setează `is_premium = true` pe profil
 
-## 📚 Structura Capitolelor și Lecțiilor
+### `src/hooks/useInstallPrompt.ts`
+- După ce `promptInstall()` reușește (outcome "accepted"), setăm `isInstalled = true` — deja face asta
 
-### **Capitolul 1: Recapitulare & Fundamente**
-1. **Variabile și atribuire** – tipuri de date, operatorul `=`, conversii (`int`, `float`, `str`)
-2. **Structura `if/elif/else`** – condiții, operatori logici, ramificări
-3. **Structura `for`** – iterare prin `range()`, parcurgere liste
-4. **Structura `while`** – bucle condiționale, controlul execuției
-5. **Gândire computațională** – ce este, etapele rezolvării unei probleme (analiză, proiectare, implementare, testare)
-6. **Introducere în algoritmi** – pseudocod, blocuri grafice, eficiență de bază, notația O
+### Logica de activare Premium
+- La detectarea instalării, facem un upsert în `coupon_redemptions` cu un `coupon_id` special (sau direct pe profiles)
+- Cel mai simplu: setăm direct `is_premium = true` pe profil și salvăm în localStorage un flag `pyro-install-premium-granted` ca să nu repetăm operația
+- Edge function `check-subscription` va continua să valideze premium-ul — trebuie să adăugăm și o verificare pentru "install premium" care expiră pe 31.08.2026
 
-### **Capitolul 2: Prelucrări Numerice**
-1. **Operații cu cifrele unui număr** – acces la cifre, adăugare cifre la stânga/dreapta
-2. **Parcurgerea cifrelor și divizorilor** – algoritmi de bază
-3. **Algoritmul lui Euclid** – cmmdc cu scăderi și cu împărțiri
-4. **Descompunere în factori primi**
-5. **Conversii între baze de numerație** – baza 10 ↔ baza 2
+### `supabase/functions/check-subscription/index.ts`
+- Adăugăm verificare: dacă userul a primit premium prin instalare (verificăm un câmp sau o redemption specială), și data curentă < 2026-08-31, contul rămâne premium
+- Cea mai simplă abordare: folosim tabela `coupon_redemptions` cu un coupon_id NULL și `premium_until = 2026-08-31` marcat cu o convenție specială
 
-### **Capitolul 3: Liste – Organizare Conceptuală**
-1. **Modelul conceptual de listă** – caracteristici, acces secvențial vs direct
-2. **Stiva și coada** – LIFO, FIFO, exemple practice
-3. **Lista de frecvențe** – construire și utilizare
-4. **Parcurgere liniară** – cu și fără memorare
-5. **Clasa `list` în Python** – operatori (`[]`, `in`, `+`, `*`)
-6. **Metode ale clasei `list`** – `append()`, `insert()`, `pop()`, `remove()`, `sort()`, `copy()`, `count()`, `index()`
+### Migrare DB
+- Facem coloana `coupon_id` din `coupon_redemptions` nullable (pentru redemptions de tip "install" care nu au cupon asociat)
+- Sau alternativ, cream un cupon sistem "INSTALL-PREMIUM" în DB și îl folosim
 
-### **Capitolul 4: Generare și Sortare**
-1. **Generarea sistematică a secvențelor** – șiruri recurente, Fibonacci
-2. **Sortare prin selecția minimului** – algoritm pas cu pas
-3. **Sortare cu lista de frecvențe** – când și cum se aplică
-4. **Metoda bulelor (Bubble Sort)** – comparare și interschimbare
-5. **Compararea metodelor de sortare** – eficiență, număr de operații
+**Abordare aleasă**: Cream un cupon de sistem `INSTALL-PREMIUM` automat prin migrare, și la detectarea instalării facem redeem pe acest cupon. Astfel logica existentă din `check-subscription` funcționează fără modificări.
 
-### **Capitolul 5: Subprograme**
-1. **Conceptul de subprogram** – `def`, parametri, corp, apel
-2. **Variabile locale și globale** – domeniu de vizibilitate
-3. **Transmitere parametri și returnare** – `return`, argumente
-4. **Funcții predefinite matematice** – `abs()`, `round()`, `sqrt()`, `int()`
-5. **Funcții predefinite pentru colecții** – `len()`, `min()`, `max()`, `sum()`
-6. **Proiectare modulară** – descompunerea problemelor în module
-
-### **Capitolul 6: Fișiere și Interfețe**
-1. **Fișiere text** – `open()`, `read()`, `write()`, `close()`
-2. **Citire și scriere din/în fișiere** – moduri de deschidere, sfârșit de fișier
-3. **Introducere în Tkinter** – ferestre, butoane, etichete
-4. **Casete text și MessageBox** – `Entry`, `Text`, `messagebox`
-5. **Introducere OOP** – clasă, obiect, instanțiere, metode
-
----
-
-## 🧩 Tipuri de Exerciții (per lecție, 5-8 exerciții)
-- **Quiz cu variante** – „Ce afișează acest cod?", „Care este output-ul?"
-- **Completează codul** – cod cu `___` pe care elevul le completează
-- **Aranjează liniile** – drag & drop pentru a ordona liniile de cod corect
-- **Adevărat/Fals** – afirmații despre concepte
-
----
-
-## 🔐 Backend (Supabase)
-- **Autentificare** – înregistrare/login cu email
-- **Profil utilizator** – XP, streak, nivel, vieți
-- **Progres lecții** – care lecții sunt completate, scor per lecție
-- **Tabel de clasament** (leaderboard) – top utilizatori după XP
-
----
-
-## 🎨 Design Dark Mode Programator
-- Fundal întunecat (#1a1a2e / #0d1117)
-- Syntax highlighting colorat pentru blocurile de cod
-- Font monospace pentru cod (Fira Code / JetBrains Mono)
-- Accente verzi/cyan pentru progres și succes
-- Animații subtile la răspuns corect/greșit
+### Flux:
+1. User vede butonul "📲 Instalează și ai Premium gratuit!"
+2. Click → prompt nativ (Android) sau dialog instrucțiuni (iOS)
+3. App detectează `display-mode: standalone` → inserează redemption cu cuponul INSTALL-PREMIUM, `premium_until = 2026-08-31`
+4. `check-subscription` validează automat premium-ul prin redemption existentă
 
