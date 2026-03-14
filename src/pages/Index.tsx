@@ -148,7 +148,7 @@ const Index = (): JSX.Element => {
               className="w-full py-6 text-lg font-bold rounded-xl gap-2"
               size="lg"
             >
-              📲 Instalează PyRo
+              📲 Instalează și ai Premium gratuit!
             </Button>
           </motion.div>
         )}
