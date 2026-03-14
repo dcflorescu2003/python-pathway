@@ -235,15 +235,27 @@ const Index = (): JSX.Element => {
             <div>
               <p className="text-sm text-muted-foreground">Nivel {level}</p>
               <p className="text-lg font-bold text-foreground">
-                Pythonist {progress.isPremium && <span className="text-yellow-500">👑</span>}
+                {levelInfo.name} {progress.isPremium && <span className="text-yellow-500">👑</span>}
               </p>
             </div>
-            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-2xl">
-              🐍
+            <div
+              className="flex items-center justify-center rounded-full bg-primary/10 transition-all"
+              style={{
+                width: `${Math.round(48 * levelInfo.scale)}px`,
+                height: `${Math.round(48 * levelInfo.scale)}px`,
+                fontSize: `${Math.round(24 * levelInfo.scale)}px`,
+              }}
+            >
+              {levelInfo.emoji}
             </div>
           </div>
-          <Progress value={xpInLevel} className="h-2" />
-          <p className="mt-1 text-xs text-muted-foreground">{xpInLevel}/100 XP pentru nivelul {level + 1}</p>
+          <button
+            onClick={() => setShowRoadmap(true)}
+            className="w-full text-left active:scale-[0.98] transition-transform"
+          >
+            <Progress value={xpInLevel} className="h-2 cursor-pointer" />
+            <p className="mt-1 text-xs text-muted-foreground">{xpInLevel}/100 XP pentru nivelul {level + 1} · <span className="text-primary">Vezi drumul →</span></p>
+          </button>
         </motion.div>
 
         {/* Chapters */}
