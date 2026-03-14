@@ -68,6 +68,7 @@ const Index = (): JSX.Element => {
   const level = getLevelFromXP(progress.xp);
   const xpToNext = getXPForNextLevel(progress.xp);
   const xpInLevel = 100 - xpToNext;
+  const levelInfo = getLevelInfo(level);
 
   const filteredSchools = schoolSearch.trim()
     ? schools.filter((s) =>
