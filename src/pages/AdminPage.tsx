@@ -4,6 +4,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useExerciseStore } from "@/hooks/useExerciseStore";
 import { Exercise, Lesson } from "@/data/courses";
 import ExerciseEditor from "@/components/admin/ExerciseEditor";
+import CouponManager from "@/components/admin/CouponManager";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ChevronDown, ChevronRight, Edit2, Trash2, Plus, RotateCcw, Eye } from "lucide-react";
