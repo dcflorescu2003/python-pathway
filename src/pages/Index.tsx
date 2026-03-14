@@ -10,7 +10,7 @@ import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { motion } from "framer-motion";
-import { Flame, Heart, Zap, Trophy, Crown, School, ChevronDown, Plus, Download } from "lucide-react";
+import { Flame, Heart, Zap, Trophy, Crown, School, ChevronDown, Plus } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import PremiumDialog from "@/components/PremiumDialog";
 import LevelRoadmap from "@/components/LevelRoadmap";
@@ -33,7 +33,7 @@ const Index = (): JSX.Element => {
   const [showPremium, setShowPremium] = useState(false);
   const [showInstall, setShowInstall] = useState(false);
   const [showRoadmap, setShowRoadmap] = useState(false);
-  const { isInstalled } = useInstallPrompt();
+  const { isInstalled, canPrompt, promptInstall } = useInstallPrompt();
   const { couponExpired, dismissCouponExpired, startCheckout } = useSubscription();
   const [schoolSearch, setSchoolSearch] = useState("");
 
@@ -110,11 +110,6 @@ const Index = (): JSX.Element => {
         <div className="flex items-center justify-between px-4 py-3">
           <h1 className="text-xl font-bold font-mono">🐍 <span className="text-gradient-primary">Py</span><span className="text-tricolor">Ro</span></h1>
           <div className="flex items-center gap-3">
-            {!isInstalled && (
-              <button onClick={() => setShowInstall(true)} className="text-primary active:scale-95 transition-transform">
-                <Download className="h-5 w-5" />
-              </button>
-            )}
             <button onClick={() => setShowPremium(true)} className="text-yellow-500 active:scale-95 transition-transform">
               <Crown className="h-5 w-5" />
             </button>
@@ -135,6 +130,29 @@ const Index = (): JSX.Element => {
       </header>
 
       <main className="px-4 py-6">
+        {/* Install button */}
+        {!isInstalled && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-4"
+          >
+            <Button
+              onClick={async () => {
+                if (canPrompt) {
+                  await promptInstall();
+                } else {
+                  setShowInstall(true);
+                }
+              }}
+              className="w-full py-6 text-lg font-bold rounded-xl gap-2"
+              size="lg"
+            >
+              📲 Instalează PyRo
+            </Button>
+          </motion.div>
+        )}
+
         {/* School selector */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
