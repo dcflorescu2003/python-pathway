@@ -254,7 +254,7 @@ const Index = (): JSX.Element => {
             className="w-full text-left active:scale-[0.98] transition-transform"
           >
             <Progress value={xpInLevel} className="h-2 cursor-pointer" />
-            <p className="mt-1 text-xs text-muted-foreground">{xpInLevel}/100 XP pentru nivelul {level + 1} · <span className="text-primary">Vezi drumul →</span></p>
+            <p className="mt-1 text-xs text-muted-foreground">{xpInLevel}/100 XP pentru nivelul {level + 1} · <span className="text-primary">Drumul spre Master of Python →</span></p>
           </button>
         </motion.div>
 
