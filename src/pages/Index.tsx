@@ -30,6 +30,7 @@ const Index = (): JSX.Element => {
   const [newSchoolName, setNewSchoolName] = useState("");
   const [showPremium, setShowPremium] = useState(false);
   const [showInstall, setShowInstall] = useState(false);
+  const [showRoadmap, setShowRoadmap] = useState(false);
   const { isInstalled } = useInstallPrompt();
   const [schoolSearch, setSchoolSearch] = useState("");
 
