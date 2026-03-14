@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { getStoredChapters } from "@/hooks/useExerciseStore";
 import { useProgress } from "@/hooks/useProgress";
@@ -14,9 +14,17 @@ const ChapterPage = () => {
   const navigate = useNavigate();
   const { progress } = useProgress();
   const [showPremium, setShowPremium] = useState(false);
+  const currentLessonRef = useRef<HTMLDivElement>(null);
 
   const chapters = getStoredChapters();
   const chapter = chapters.find((c) => c.id === chapterId);
+
+  useEffect(() => {
+    if (currentLessonRef.current) {
+      currentLessonRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  }, [chapterId]);
+
   if (!chapter) return <div className="p-8 text-center text-foreground">Capitol negăsit</div>;
 
   return (
@@ -53,7 +61,7 @@ const ChapterPage = () => {
             const isPremiumLocked = false;
 
             return (
-              <div key={lesson.id} className="flex flex-col items-center">
+              <div key={lesson.id} className="flex flex-col items-center" ref={isCurrent ? currentLessonRef : undefined}>
                 {idx > 0 && (
                   <div className={`h-8 w-0.5 ${isCompleted ? "bg-primary" : "bg-border"}`} />
                 )}
