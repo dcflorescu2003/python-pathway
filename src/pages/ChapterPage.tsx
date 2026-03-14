@@ -14,9 +14,17 @@ const ChapterPage = () => {
   const navigate = useNavigate();
   const { progress } = useProgress();
   const [showPremium, setShowPremium] = useState(false);
+  const currentLessonRef = useRef<HTMLDivElement>(null);
 
   const chapters = getStoredChapters();
   const chapter = chapters.find((c) => c.id === chapterId);
+
+  useEffect(() => {
+    if (currentLessonRef.current) {
+      currentLessonRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  }, [chapterId]);
+
   if (!chapter) return <div className="p-8 text-center text-foreground">Capitol negăsit</div>;
 
   return (
