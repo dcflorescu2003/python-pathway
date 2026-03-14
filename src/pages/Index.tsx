@@ -331,6 +331,7 @@ const Index = (): JSX.Element => {
 
       <PremiumDialog open={showPremium} onOpenChange={setShowPremium} />
       <InstallDialog open={showInstall} onOpenChange={setShowInstall} />
+      <LevelRoadmap open={showRoadmap} onOpenChange={setShowRoadmap} currentLevel={level} />
     </div>
   );
 };
