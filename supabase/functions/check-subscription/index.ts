@@ -53,7 +53,7 @@ serve(async (req) => {
     const { data: redemptions } = await supabaseClient
       .from("coupon_redemptions")
       .select("premium_until")
-      .eq("user_id", user.id)
+      .eq("user_id", userId)
       .order("premium_until", { ascending: false })
       .limit(1);
 
