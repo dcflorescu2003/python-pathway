@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { getLevelFromXP, getXPForNextLevel } from "@/data/courses";
+import { getLevelInfo } from "@/data/levels";
 import { getStoredChapters } from "@/hooks/useExerciseStore";
 import { useProgress } from "@/hooks/useProgress";
 import { schools, getSelectedSchool, setSelectedSchool, clearSelectedSchool } from "@/data/schools";
@@ -12,6 +13,7 @@ import { motion } from "framer-motion";
 import { Flame, Heart, Zap, Trophy, Crown, School, ChevronDown, Plus, Download } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import PremiumDialog from "@/components/PremiumDialog";
+import LevelRoadmap from "@/components/LevelRoadmap";
 import InstallDialog from "@/components/InstallDialog";
 import SchoolOnboarding from "@/components/onboarding/SchoolOnboarding";
 import { useInstallPrompt } from "@/hooks/useInstallPrompt";
@@ -28,6 +30,7 @@ const Index = (): JSX.Element => {
   const [newSchoolName, setNewSchoolName] = useState("");
   const [showPremium, setShowPremium] = useState(false);
   const [showInstall, setShowInstall] = useState(false);
+  const [showRoadmap, setShowRoadmap] = useState(false);
   const { isInstalled } = useInstallPrompt();
   const [schoolSearch, setSchoolSearch] = useState("");
 
@@ -65,6 +68,7 @@ const Index = (): JSX.Element => {
   const level = getLevelFromXP(progress.xp);
   const xpToNext = getXPForNextLevel(progress.xp);
   const xpInLevel = 100 - xpToNext;
+  const levelInfo = getLevelInfo(level);
 
   const filteredSchools = schoolSearch.trim()
     ? schools.filter((s) =>
@@ -231,15 +235,27 @@ const Index = (): JSX.Element => {
             <div>
               <p className="text-sm text-muted-foreground">Nivel {level}</p>
               <p className="text-lg font-bold text-foreground">
-                Pythonist {progress.isPremium && <span className="text-yellow-500">👑</span>}
+                {levelInfo.name} {progress.isPremium && <span className="text-yellow-500">👑</span>}
               </p>
             </div>
-            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-2xl">
-              🐍
+            <div
+              className="flex items-center justify-center rounded-full bg-primary/10 transition-all"
+              style={{
+                width: `${Math.round(48 * levelInfo.scale)}px`,
+                height: `${Math.round(48 * levelInfo.scale)}px`,
+                fontSize: `${Math.round(24 * levelInfo.scale)}px`,
+              }}
+            >
+              {levelInfo.emoji}
             </div>
           </div>
-          <Progress value={xpInLevel} className="h-2" />
-          <p className="mt-1 text-xs text-muted-foreground">{xpInLevel}/100 XP pentru nivelul {level + 1}</p>
+          <button
+            onClick={() => setShowRoadmap(true)}
+            className="w-full text-left active:scale-[0.98] transition-transform"
+          >
+            <Progress value={xpInLevel} className="h-2 cursor-pointer" />
+            <p className="mt-1 text-xs text-muted-foreground">{xpInLevel}/100 XP pentru nivelul {level + 1} · <span className="text-primary">Vezi drumul →</span></p>
+          </button>
         </motion.div>
 
         {/* Chapters */}
@@ -315,6 +331,7 @@ const Index = (): JSX.Element => {
 
       <PremiumDialog open={showPremium} onOpenChange={setShowPremium} />
       <InstallDialog open={showInstall} onOpenChange={setShowInstall} />
+      <LevelRoadmap open={showRoadmap} onOpenChange={setShowRoadmap} currentLevel={level} />
     </div>
   );
 };
