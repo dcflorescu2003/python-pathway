@@ -50,7 +50,7 @@ const ChapterPage = () => {
             const score = progress.completedLessons[lesson.id]?.score ?? 0;
             const isLocked = idx > 0 && !progress.completedLessons[chapter.lessons[idx - 1].id]?.completed;
             const isCurrent = !isCompleted && !isLocked;
-            const isPremiumLocked = lesson.isPremium && !subscribed;
+            const isPremiumLocked = false;
 
             return (
               <div key={lesson.id} className="flex flex-col items-center">
