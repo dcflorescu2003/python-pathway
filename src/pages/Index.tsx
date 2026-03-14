@@ -10,7 +10,7 @@ import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { motion } from "framer-motion";
-import { Flame, Heart, Zap, Trophy, Crown, School, ChevronDown, Plus, Download } from "lucide-react";
+import { Flame, Heart, Zap, Trophy, Crown, School, ChevronDown, Plus } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import PremiumDialog from "@/components/PremiumDialog";
 import LevelRoadmap from "@/components/LevelRoadmap";
