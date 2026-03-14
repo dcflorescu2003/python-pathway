@@ -17,7 +17,7 @@ const LessonPage = () => {
   const { lessonId } = useParams();
   const navigate = useNavigate();
   const { progress, completeLesson, loseLife } = useProgress();
-  const { subscribed } = useSubscription();
+  
 
   const chapters = getStoredChapters();
   const lesson = chapters.flatMap((c) => c.lessons).find((l) => l.id === lessonId);
