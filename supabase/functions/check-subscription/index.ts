@@ -102,7 +102,7 @@ serve(async (req) => {
     const isPremium = stripeActive || couponActive;
 
     // Sync premium status to profile
-    await supabaseClient.from("profiles").update({ is_premium: isPremium }).eq("user_id", user.id);
+    await supabaseClient.from("profiles").update({ is_premium: isPremium }).eq("user_id", userId);
 
     return new Response(JSON.stringify({
       subscribed: isPremium,
