@@ -1,88 +1,54 @@
 
 
-# 🐍 PyLearn – Aplicație Duolingo pentru Python (Clasa a IX-a)
-**Design: Dark mode programator | Salvare: Supabase cu conturi | Exerciții: Mix complet**
+# Sistem de Nivele cu Denumiri și Avatar Șarpe
 
----
+## Ce construim
+Un sistem vizual de progresie în cardul de profil de pe homepage:
+- **Denumiri unice per nivel** (Ou → Baby Python → ... → Master of Python)
+- **Emoji/avatar de șarpe** care crește la fiecare 3 niveluri (ou mic → șarpe mare)
+- **Bară de progres interactivă** — la tap/click deschide un dialog/sheet cu tot drumul de la Lvl 1 până la Master of Python
 
-## 🎮 Sistem de Gamification (stil Duolingo)
-- **XP** (experiență) câștigat per lecție completată
-- **Streak** zilnic (câte zile consecutive a învățat)
-- **Vieți** (3 vieți per sesiune, se pierd la răspuns greșit)
-- **Bară de progres** per lecție și per capitol
-- **Profil utilizator** cu statistici și nivel
+## Denumiri și avataruri propuse
 
----
+| Nivel | Denumire | Avatar |
+|-------|----------|--------|
+| 1 | Oul Misterios | 🥒 (ou) |
+| 2-3 | Baby Python Lvl 1-2 | 🐣 |
+| 4-6 | Little Snake | 🐍 (mic) |
+| 7-9 | Code Crawler | 🐍 |
+| 10-12 | Script Serpent | 🐍 |
+| 13-15 | Loop Viper | 🐍 |
+| 16-18 | Data Cobra | 🐍 |
+| 19-21 | Algorithm Anaconda | 🐍 |
+| 22-24 | Recursion King | 🐍 |
+| 25+ | Master of Python | 👑🐍 |
 
-## 📚 Structura Capitolelor și Lecțiilor
+Avatarurile cresc vizual la fiecare 3 niveluri (dimensiunea emoji-ului/containerului crește).
 
-### **Capitolul 1: Recapitulare & Fundamente**
-1. **Variabile și atribuire** – tipuri de date, operatorul `=`, conversii (`int`, `float`, `str`)
-2. **Structura `if/elif/else`** – condiții, operatori logici, ramificări
-3. **Structura `for`** – iterare prin `range()`, parcurgere liste
-4. **Structura `while`** – bucle condiționale, controlul execuției
-5. **Gândire computațională** – ce este, etapele rezolvării unei probleme (analiză, proiectare, implementare, testare)
-6. **Introducere în algoritmi** – pseudocod, blocuri grafice, eficiență de bază, notația O
+## Plan tehnic
 
-### **Capitolul 2: Prelucrări Numerice**
-1. **Operații cu cifrele unui număr** – acces la cifre, adăugare cifre la stânga/dreapta
-2. **Parcurgerea cifrelor și divizorilor** – algoritmi de bază
-3. **Algoritmul lui Euclid** – cmmdc cu scăderi și cu împărțiri
-4. **Descompunere în factori primi**
-5. **Conversii între baze de numerație** – baza 10 ↔ baza 2
+### 1. Creare `src/data/levels.ts`
+- Array cu definițiile nivelurilor: `{ minLevel, name, emoji, scale }`
+- Funcție `getLevelInfo(level)` → returnează denumirea și emoji-ul corespunzător
+- Scala crește la fiecare 3 niveluri (de la 32px la 64px+)
 
-### **Capitolul 3: Liste – Organizare Conceptuală**
-1. **Modelul conceptual de listă** – caracteristici, acces secvențial vs direct
-2. **Stiva și coada** – LIFO, FIFO, exemple practice
-3. **Lista de frecvențe** – construire și utilizare
-4. **Parcurgere liniară** – cu și fără memorare
-5. **Clasa `list` în Python** – operatori (`[]`, `in`, `+`, `*`)
-6. **Metode ale clasei `list`** – `append()`, `insert()`, `pop()`, `remove()`, `sort()`, `copy()`, `count()`, `index()`
+### 2. Creare `src/components/LevelRoadmap.tsx`
+- Dialog/Sheet care se deschide la tap pe bara de progres
+- Afișează tot drumul: toate nivelurile cu denumiri, emoji-uri, și care e nivelul curent
+- Design vertical timeline/roadmap
+- Nivelul curent evidențiat, cele viitoare ușor estompate
 
-### **Capitolul 4: Generare și Sortare**
-1. **Generarea sistematică a secvențelor** – șiruri recurente, Fibonacci
-2. **Sortare prin selecția minimului** – algoritm pas cu pas
-3. **Sortare cu lista de frecvențe** – când și cum se aplică
-4. **Metoda bulelor (Bubble Sort)** – comparare și interschimbare
-5. **Compararea metodelor de sortare** – eficiență, număr de operații
+### 3. Editare `src/pages/Index.tsx` — cardul de profil
+- Înlocuiește emoji-ul static 🐍 cu avatar-ul dinamic bazat pe nivel
+- Înlocuiește textul "Pythonist" cu denumirea nivelului curent
+- Face bara de progres clickabilă → deschide LevelRoadmap
+- Containerul avatar-ului crește vizual cu nivelul
 
-### **Capitolul 5: Subprograme**
-1. **Conceptul de subprogram** – `def`, parametri, corp, apel
-2. **Variabile locale și globale** – domeniu de vizibilitate
-3. **Transmitere parametri și returnare** – `return`, argumente
-4. **Funcții predefinite matematice** – `abs()`, `round()`, `sqrt()`, `int()`
-5. **Funcții predefinite pentru colecții** – `len()`, `min()`, `max()`, `sum()`
-6. **Proiectare modulară** – descompunerea problemelor în module
+### 4. Editare `src/data/courses.ts`
+- Fără modificări la logica XP (100 XP per nivel rămâne)
 
-### **Capitolul 6: Fișiere și Interfețe**
-1. **Fișiere text** – `open()`, `read()`, `write()`, `close()`
-2. **Citire și scriere din/în fișiere** – moduri de deschidere, sfârșit de fișier
-3. **Introducere în Tkinter** – ferestre, butoane, etichete
-4. **Casete text și MessageBox** – `Entry`, `Text`, `messagebox`
-5. **Introducere OOP** – clasă, obiect, instanțiere, metode
-
----
-
-## 🧩 Tipuri de Exerciții (per lecție, 5-8 exerciții)
-- **Quiz cu variante** – „Ce afișează acest cod?", „Care este output-ul?"
-- **Completează codul** – cod cu `___` pe care elevul le completează
-- **Aranjează liniile** – drag & drop pentru a ordona liniile de cod corect
-- **Adevărat/Fals** – afirmații despre concepte
-
----
-
-## 🔐 Backend (Supabase)
-- **Autentificare** – înregistrare/login cu email
-- **Profil utilizator** – XP, streak, nivel, vieți
-- **Progres lecții** – care lecții sunt completate, scor per lecție
-- **Tabel de clasament** (leaderboard) – top utilizatori după XP
-
----
-
-## 🎨 Design Dark Mode Programator
-- Fundal întunecat (#1a1a2e / #0d1117)
-- Syntax highlighting colorat pentru blocurile de cod
-- Font monospace pentru cod (Fira Code / JetBrains Mono)
-- Accente verzi/cyan pentru progres și succes
-- Animații subtile la răspuns corect/greșit
+## Fișiere
+- **Creare** `src/data/levels.ts`
+- **Creare** `src/components/LevelRoadmap.tsx`
+- **Editare** `src/pages/Index.tsx`
 
