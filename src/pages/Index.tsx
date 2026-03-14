@@ -34,6 +34,7 @@ const Index = (): JSX.Element => {
   const [showInstall, setShowInstall] = useState(false);
   const [showRoadmap, setShowRoadmap] = useState(false);
   const { isInstalled } = useInstallPrompt();
+  const { couponExpired, dismissCouponExpired, startCheckout } = useSubscription();
   const [schoolSearch, setSchoolSearch] = useState("");
 
   useEffect(() => {
