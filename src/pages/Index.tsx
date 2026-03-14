@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { getLevelFromXP, getXPForNextLevel } from "@/data/courses";
+import { getLevelInfo } from "@/data/levels";
 import { getStoredChapters } from "@/hooks/useExerciseStore";
 import { useProgress } from "@/hooks/useProgress";
 import { schools, getSelectedSchool, setSelectedSchool, clearSelectedSchool } from "@/data/schools";
