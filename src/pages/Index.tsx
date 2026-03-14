@@ -17,6 +17,8 @@ import LevelRoadmap from "@/components/LevelRoadmap";
 import InstallDialog from "@/components/InstallDialog";
 import SchoolOnboarding from "@/components/onboarding/SchoolOnboarding";
 import { useInstallPrompt } from "@/hooks/useInstallPrompt";
+import { useSubscription } from "@/hooks/useSubscription";
+import CouponExpiredDialog from "@/components/CouponExpiredDialog";
 import { supabase } from "@/integrations/supabase/client";
 
 const Index = (): JSX.Element => {
@@ -32,6 +34,7 @@ const Index = (): JSX.Element => {
   const [showInstall, setShowInstall] = useState(false);
   const [showRoadmap, setShowRoadmap] = useState(false);
   const { isInstalled } = useInstallPrompt();
+  const { couponExpired, dismissCouponExpired, startCheckout } = useSubscription();
   const [schoolSearch, setSchoolSearch] = useState("");
 
   useEffect(() => {
@@ -333,6 +336,12 @@ const Index = (): JSX.Element => {
       <PremiumDialog open={showPremium} onOpenChange={setShowPremium} />
       <InstallDialog open={showInstall} onOpenChange={setShowInstall} />
       <LevelRoadmap open={showRoadmap} onOpenChange={setShowRoadmap} currentLevel={level} />
+      <CouponExpiredDialog
+        open={couponExpired}
+        onOpenChange={(open) => { if (!open) dismissCouponExpired(); }}
+        onSubscribe={startCheckout}
+        onStayFree={dismissCouponExpired}
+      />
     </div>
   );
 };

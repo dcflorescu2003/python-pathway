@@ -5,6 +5,8 @@ import { useAuth } from "@/hooks/useAuth";
 interface SubscriptionState {
   subscribed: boolean;
   subscriptionEnd: string | null;
+  source: "stripe" | "coupon" | null;
+  couponExpired: boolean;
   loading: boolean;
 }
 
@@ -13,6 +15,8 @@ export function useSubscription() {
   const [state, setState] = useState<SubscriptionState>({
     subscribed: false,
     subscriptionEnd: null,
+    source: null,
+    couponExpired: false,
     loading: false,
   });
 
@@ -27,6 +31,8 @@ export function useSubscription() {
       setState({
         subscribed: data?.subscribed ?? false,
         subscriptionEnd: data?.subscription_end ?? null,
+        source: data?.source ?? null,
+        couponExpired: data?.coupon_expired ?? false,
         loading: false,
       });
     } catch (err) {
@@ -38,7 +44,7 @@ export function useSubscription() {
   // Check on mount and every 60s
   useEffect(() => {
     if (!user) {
-      setState({ subscribed: false, subscriptionEnd: null, loading: false });
+      setState({ subscribed: false, subscriptionEnd: null, source: null, couponExpired: false, loading: false });
       return;
     }
     checkSubscription();
@@ -50,12 +56,14 @@ export function useSubscription() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get("checkout") === "success") {
-      // Small delay for Stripe to process
       setTimeout(checkSubscription, 2000);
-      // Clean URL
       window.history.replaceState({}, "", window.location.pathname);
     }
   }, [checkSubscription]);
+
+  const dismissCouponExpired = useCallback(() => {
+    setState((s) => ({ ...s, couponExpired: false }));
+  }, []);
 
   const startCheckout = useCallback(
     async (priceId: string) => {
@@ -79,5 +87,5 @@ export function useSubscription() {
     if (data?.url) window.open(data.url, "_blank");
   }, [session?.access_token]);
 
-  return { ...state, checkSubscription, startCheckout, openPortal };
+  return { ...state, checkSubscription, startCheckout, openPortal, dismissCouponExpired };
 }
