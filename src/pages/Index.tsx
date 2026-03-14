@@ -17,6 +17,8 @@ import LevelRoadmap from "@/components/LevelRoadmap";
 import InstallDialog from "@/components/InstallDialog";
 import SchoolOnboarding from "@/components/onboarding/SchoolOnboarding";
 import { useInstallPrompt } from "@/hooks/useInstallPrompt";
+import { useSubscription } from "@/hooks/useSubscription";
+import CouponExpiredDialog from "@/components/CouponExpiredDialog";
 import { supabase } from "@/integrations/supabase/client";
 
 const Index = (): JSX.Element => {
