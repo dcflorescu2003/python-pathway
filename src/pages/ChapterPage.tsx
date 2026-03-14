@@ -61,7 +61,7 @@ const ChapterPage = () => {
             const isPremiumLocked = false;
 
             return (
-              <div key={lesson.id} className="flex flex-col items-center">
+              <div key={lesson.id} className="flex flex-col items-center" ref={isCurrent ? currentLessonRef : undefined}>
                 {idx > 0 && (
                   <div className={`h-8 w-0.5 ${isCompleted ? "bg-primary" : "bg-border"}`} />
                 )}
