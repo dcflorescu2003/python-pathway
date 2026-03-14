@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { getStoredChapters } from "@/hooks/useExerciseStore";
 import { useProgress } from "@/hooks/useProgress";
-import { useSubscription } from "@/hooks/useSubscription";
+
 import { motion } from "framer-motion";
 import { ArrowLeft, Check, Lock, Play, BookOpen, Crown } from "lucide-react";
 import { Button } from "@/components/ui/button";
