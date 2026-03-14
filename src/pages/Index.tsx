@@ -336,6 +336,12 @@ const Index = (): JSX.Element => {
       <PremiumDialog open={showPremium} onOpenChange={setShowPremium} />
       <InstallDialog open={showInstall} onOpenChange={setShowInstall} />
       <LevelRoadmap open={showRoadmap} onOpenChange={setShowRoadmap} currentLevel={level} />
+      <CouponExpiredDialog
+        open={couponExpired}
+        onOpenChange={(open) => { if (!open) dismissCouponExpired(); }}
+        onSubscribe={startCheckout}
+        onStayFree={dismissCouponExpired}
+      />
     </div>
   );
 };
