@@ -3,7 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { Exercise } from "@/data/courses";
 import { getStoredChapters } from "@/hooks/useExerciseStore";
 import { useProgress } from "@/hooks/useProgress";
-import { useSubscription } from "@/hooks/useSubscription";
+
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { Heart, X } from "lucide-react";
