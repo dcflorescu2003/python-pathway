@@ -150,13 +150,24 @@ const Index = (): JSX.Element => {
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="sticky top-0 z-40 border-b border-border bg-background/80 backdrop-blur-md pt-[env(safe-area-inset-top)]">
+      <header className={`sticky top-0 z-40 border-b backdrop-blur-md pt-[env(safe-area-inset-top)] ${
+        progress.isPremium 
+          ? "border-yellow-500/30 bg-gradient-to-r from-yellow-500/10 via-background/90 to-yellow-500/10" 
+          : "border-border bg-background/80"
+      }`}>
         <div className="flex items-center justify-between px-4 py-3">
-          <h1 className="text-xl font-bold font-mono">🐍 <span className="text-gradient-primary">Py</span><span className="text-tricolor">Ro</span></h1>
+          <h1 className="text-xl font-bold font-mono">
+            {progress.isPremium ? "🐲" : "🐍"}{" "}
+            <span className="text-gradient-primary">Py</span>
+            <span className="text-tricolor">Ro</span>
+            {progress.isPremium && <span className="ml-1 text-xs text-yellow-500 font-bold">PRO</span>}
+          </h1>
           <div className="flex items-center gap-3">
-            <button onClick={() => setShowPremium(true)} className="text-yellow-500 active:scale-95 transition-transform">
-              <Crown className="h-5 w-5" />
-            </button>
+            {!progress.isPremium && (
+              <button onClick={() => setShowPremium(true)} className="text-yellow-500 active:scale-95 transition-transform">
+                <Crown className="h-5 w-5" />
+              </button>
+            )}
             <div className="flex items-center gap-1 text-warning">
               <Flame className="h-5 w-5" />
               <span className="text-sm font-bold">{progress.streak}</span>
