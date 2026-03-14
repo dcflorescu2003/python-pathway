@@ -39,40 +39,66 @@ serve(async (req) => {
     if (!user?.email) throw new Error("User not authenticated");
     logStep("User authenticated", { email: user.email });
 
+    // Check coupon-based premium first
+    const { data: redemptions } = await supabaseClient
+      .from("coupon_redemptions")
+      .select("premium_until")
+      .eq("user_id", user.id)
+      .order("premium_until", { ascending: false })
+      .limit(1);
+
+    const latestRedemption = redemptions?.[0];
+    const now = new Date();
+    let couponActive = false;
+    let couponEnd: string | null = null;
+    let couponExpired = false;
+
+    if (latestRedemption) {
+      const premiumUntil = new Date(latestRedemption.premium_until);
+      if (premiumUntil > now) {
+        couponActive = true;
+        couponEnd = latestRedemption.premium_until;
+        logStep("Active coupon premium", { until: couponEnd });
+      } else {
+        // Coupon existed but expired
+        couponExpired = true;
+        logStep("Coupon premium expired", { expired_at: latestRedemption.premium_until });
+      }
+    }
+
+    // Check Stripe subscription
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
     const customers = await stripe.customers.list({ email: user.email, limit: 1 });
 
-    if (customers.data.length === 0) {
-      logStep("No Stripe customer found");
-      // Update profile to not premium
-      await supabaseClient.from("profiles").update({ is_premium: false }).eq("user_id", user.id);
-      return new Response(JSON.stringify({ subscribed: false }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+    let stripeActive = false;
+    let subscriptionEnd: string | null = null;
+
+    if (customers.data.length > 0) {
+      const customerId = customers.data[0].id;
+      const subscriptions = await stripe.subscriptions.list({
+        customer: customerId,
+        status: "active",
+        limit: 1,
       });
+
+      if (subscriptions.data.length > 0) {
+        stripeActive = true;
+        const sub = subscriptions.data[0];
+        subscriptionEnd = new Date(sub.current_period_end * 1000).toISOString();
+        logStep("Active Stripe subscription", { end: subscriptionEnd });
+      }
     }
 
-    const customerId = customers.data[0].id;
-    const subscriptions = await stripe.subscriptions.list({
-      customer: customerId,
-      status: "active",
-      limit: 1,
-    });
-
-    const hasActiveSub = subscriptions.data.length > 0;
-    let subscriptionEnd = null;
-
-    if (hasActiveSub) {
-      const sub = subscriptions.data[0];
-      subscriptionEnd = new Date(sub.current_period_end * 1000).toISOString();
-      logStep("Active subscription found", { end: subscriptionEnd });
-    }
+    const isPremium = stripeActive || couponActive;
 
     // Sync premium status to profile
-    await supabaseClient.from("profiles").update({ is_premium: hasActiveSub }).eq("user_id", user.id);
+    await supabaseClient.from("profiles").update({ is_premium: isPremium }).eq("user_id", user.id);
 
     return new Response(JSON.stringify({
-      subscribed: hasActiveSub,
-      subscription_end: subscriptionEnd,
+      subscribed: isPremium,
+      subscription_end: subscriptionEnd || couponEnd,
+      source: stripeActive ? "stripe" : couponActive ? "coupon" : null,
+      coupon_expired: couponExpired && !stripeActive,
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
