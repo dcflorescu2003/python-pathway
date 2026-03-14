@@ -1,4 +1,5 @@
 import { useState } from "react";
+import CouponRedemption from "@/components/CouponRedemption";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { useAuth } from "@/hooks/useAuth";
@@ -87,9 +88,11 @@ const AccountView = () => {
           </CardContent>
         </Card>
 
+        <CouponRedemption />
+
         <Button
           variant="destructive"
-          className="w-full max-w-sm mt-6 gap-2"
+          className="w-full max-w-sm mt-4 gap-2"
           onClick={handleSignOut}
         >
           <LogOut className="h-4 w-4" />

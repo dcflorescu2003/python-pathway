@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { getStoredChapters } from "@/hooks/useExerciseStore";
 import { useProgress } from "@/hooks/useProgress";
-import { useSubscription } from "@/hooks/useSubscription";
+
 import { motion } from "framer-motion";
 import { ArrowLeft, Check, Lock, Play, BookOpen, Crown } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -13,7 +13,6 @@ const ChapterPage = () => {
   const { chapterId } = useParams();
   const navigate = useNavigate();
   const { progress } = useProgress();
-  const { subscribed } = useSubscription();
   const [showPremium, setShowPremium] = useState(false);
 
   const chapters = getStoredChapters();
@@ -51,7 +50,7 @@ const ChapterPage = () => {
             const score = progress.completedLessons[lesson.id]?.score ?? 0;
             const isLocked = idx > 0 && !progress.completedLessons[chapter.lessons[idx - 1].id]?.completed;
             const isCurrent = !isCompleted && !isLocked;
-            const isPremiumLocked = lesson.isPremium && !subscribed;
+            const isPremiumLocked = false;
 
             return (
               <div key={lesson.id} className="flex flex-col items-center">
@@ -101,9 +100,6 @@ const ChapterPage = () => {
                 <div className="mt-2 mb-2 text-center max-w-[200px]">
                   <p className="text-base font-bold text-foreground flex items-center justify-center gap-1">
                     {lesson.title}
-                    {lesson.isPremium && !subscribed && (
-                      <Crown className="h-3.5 w-3.5 text-yellow-500 inline" />
-                    )}
                   </p>
                   <p className="text-sm text-muted-foreground line-clamp-1">{lesson.description}</p>
                   {isCompleted && (

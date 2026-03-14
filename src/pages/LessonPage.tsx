@@ -3,7 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { Exercise } from "@/data/courses";
 import { getStoredChapters } from "@/hooks/useExerciseStore";
 import { useProgress } from "@/hooks/useProgress";
-import { useSubscription } from "@/hooks/useSubscription";
+
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { Heart, X } from "lucide-react";
@@ -17,7 +17,7 @@ const LessonPage = () => {
   const { lessonId } = useParams();
   const navigate = useNavigate();
   const { progress, completeLesson, loseLife } = useProgress();
-  const { subscribed } = useSubscription();
+  
 
   const chapters = getStoredChapters();
   const lesson = chapters.flatMap((c) => c.lessons).find((l) => l.id === lessonId);
@@ -25,7 +25,7 @@ const LessonPage = () => {
 
   const [currentIndex, setCurrentIndex] = useState(0);
   const [correctCount, setCorrectCount] = useState(0);
-  const [lives, setLives] = useState(subscribed ? Infinity : 3);
+  const [lives, setLives] = useState(3);
   const [isFinished, setIsFinished] = useState(false);
   const [feedback, setFeedback] = useState<"correct" | "wrong" | null>(null);
   const [lastExplanation, setLastExplanation] = useState<string | null>(null);
@@ -66,11 +66,6 @@ const LessonPage = () => {
     return <div className="p-8 text-center text-foreground">Lecție negăsită</div>;
   }
 
-  // Block premium lessons for non-subscribers
-  if (lesson.isPremium && !subscribed) {
-    navigate(`/chapter/${chapter.id}`);
-    return null;
-  }
 
   if (isFinished) {
     const xpEarned = lives > 0 ? lesson.xpReward : 0;
