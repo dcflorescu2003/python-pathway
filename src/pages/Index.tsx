@@ -229,7 +229,8 @@ const Index = (): JSX.Element => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.05 }}
-          className="mb-6 rounded-xl border border-border bg-card p-5 glow-primary"
+          onClick={() => setShowRoadmap(true)}
+          className="mb-6 rounded-xl border border-border bg-card p-5 glow-primary cursor-pointer active:scale-[0.98] transition-transform"
         >
           <div className="flex items-center justify-between mb-3">
             <div>
@@ -254,7 +255,7 @@ const Index = (): JSX.Element => {
             className="w-full text-left active:scale-[0.98] transition-transform"
           >
             <Progress value={xpInLevel} className="h-2 cursor-pointer" />
-            <p className="mt-1 text-xs text-muted-foreground">{xpInLevel}/100 XP pentru nivelul {level + 1} · <span className="text-primary">Vezi drumul →</span></p>
+            <p className="mt-1 text-xs text-muted-foreground">{xpInLevel}/100 XP pentru nivelul {level + 1} · <span className="text-primary">Drumul spre Master of Python →</span></p>
           </button>
         </motion.div>
 
