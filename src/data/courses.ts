@@ -46,7 +46,7 @@ export interface Chapter {
 // Helper to generate IDs
 const eid = (ch: number, le: number, ex: number) => `c${ch}-l${le}-e${ex}`;
 
-export const chapters: Chapter[] = [
+const rawChapters: Chapter[] = [
   {
     id: "ch1",
     number: 1,
@@ -1825,6 +1825,39 @@ export const chapters: Chapter[] = [
     ],
   },
 ];
+
+// Auto-generate "Fixare" lessons after each non-practice, non-test lesson
+function addFixareLessons(chs: Chapter[]): Chapter[] {
+  return chs.map(ch => {
+    const newLessons: Lesson[] = [];
+    const nonPracticeLessons = ch.lessons.filter(l =>
+      !l.title.startsWith("Practică:") && !l.title.startsWith("Test")
+    );
+    const practiceLessons = ch.lessons.filter(l =>
+      l.title.startsWith("Practică:") || l.title.startsWith("Test")
+    );
+
+    nonPracticeLessons.forEach(lesson => {
+      newLessons.push(lesson);
+      const fixareLesson: Lesson = {
+        id: lesson.id + "f",
+        title: "Fixare: " + lesson.title,
+        description: "Exerciții de fixare – " + lesson.description.charAt(0).toLowerCase() + lesson.description.slice(1),
+        xpReward: lesson.xpReward,
+        exercises: lesson.exercises.map(ex => ({
+          ...ex,
+          id: ex.id + "f",
+        })),
+      };
+      newLessons.push(fixareLesson);
+    });
+
+    newLessons.push(...practiceLessons);
+    return { ...ch, lessons: newLessons };
+  });
+}
+
+export const chapters: Chapter[] = addFixareLessons(rawChapters);
 
 export const getTotalXP = (chapters: Chapter[]) =>
   chapters.reduce((sum, ch) => sum + ch.lessons.reduce((s, l) => s + l.xpReward, 0), 0);
