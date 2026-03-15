@@ -1826,6 +1826,93 @@ const rawChapters: Chapter[] = [
   },
 ];
 
+// Transform an exercise into a different type for fixare lessons
+function transformExercise(ex: Exercise, index: number): Exercise {
+  const fid = ex.id + "f";
+
+  // Quiz → TrueFalse: take the correct answer and make a statement
+  if (ex.type === "quiz" && ex.options && ex.correctOptionId) {
+    const correctOption = ex.options.find(o => o.id === ex.correctOptionId);
+    const wrongOption = ex.options.find(o => o.id !== ex.correctOptionId);
+    // Alternate between true and false statements
+    const useTrue = index % 2 === 0;
+    const chosenOption = useTrue ? correctOption : wrongOption;
+    return {
+      id: fid, type: "truefalse", xp: ex.xp,
+      question: "Adevărat sau Fals?",
+      statement: `Răspunsul la „${ex.question}" este: ${chosenOption?.text || "necunoscut"}.`,
+      isTrue: useTrue,
+      explanation: ex.explanation,
+    };
+  }
+
+  // TrueFalse → Quiz: convert statement into a multiple choice
+  if (ex.type === "truefalse") {
+    return {
+      id: fid, type: "quiz", xp: ex.xp,
+      question: `Ce este corect despre afirmația: „${ex.statement}"?`,
+      options: [
+        { id: "a", text: "Afirmația este adevărată" },
+        { id: "b", text: "Afirmația este falsă" },
+        { id: "c", text: "Depinde de context" },
+        { id: "d", text: "Nu se poate determina" },
+      ],
+      correctOptionId: ex.isTrue ? "a" : "b",
+      explanation: ex.explanation,
+    };
+  }
+
+  // Fill → Order: convert blanks into ordering lines
+  if (ex.type === "fill" && ex.codeTemplate && ex.blanks && ex.blanks.length > 0) {
+    const templateLines = ex.codeTemplate.split("\n").filter(l => l.trim());
+    const filledLines = templateLines.map(line => {
+      let result = line;
+      (ex.blanks || []).forEach(b => {
+        result = result.replace("___", b.answer);
+      });
+      return result;
+    });
+    return {
+      id: fid, type: "order", xp: ex.xp,
+      question: "Aranjează liniile de cod în ordinea corectă:",
+      lines: filledLines.map((text, i) => ({
+        id: `l${i + 1}`, text, order: i + 1,
+      })),
+      explanation: ex.explanation,
+    };
+  }
+
+  // Order → Fill: convert ordered lines into a fill exercise
+  if (ex.type === "order" && ex.lines && ex.lines.length > 0) {
+    const sorted = [...ex.lines].sort((a, b) => a.order - b.order);
+    // Pick one line to blank out a keyword
+    const targetIdx = index % sorted.length;
+    const targetLine = sorted[targetIdx];
+    // Find a word to blank (pick longest word)
+    const words = targetLine.text.split(/([a-zA-Z_]+)/).filter(w => /^[a-zA-Z_]+$/.test(w));
+    const blankWord = words.length > 0 ? words.reduce((a, b) => a.length >= b.length ? a : b) : targetLine.text;
+    const template = sorted.map((l, i) =>
+      i === targetIdx ? l.text.replace(blankWord, "___") : l.text
+    ).join("\n");
+    return {
+      id: fid, type: "fill", xp: ex.xp,
+      question: "Completează cuvântul lipsă din cod:",
+      codeTemplate: template,
+      blanks: [{ id: "b1", answer: blankWord }],
+      explanation: ex.explanation,
+    };
+  }
+
+  // Fallback: return a truefalse based on the question
+  return {
+    id: fid, type: "truefalse", xp: ex.xp,
+    question: "Adevărat sau Fals?",
+    statement: ex.question,
+    isTrue: true,
+    explanation: ex.explanation,
+  };
+}
+
 // Auto-generate "Fixare" lessons after each non-practice, non-test lesson
 function addFixareLessons(chs: Chapter[]): Chapter[] {
   return chs.map(ch => {
@@ -1844,10 +1931,7 @@ function addFixareLessons(chs: Chapter[]): Chapter[] {
         title: "Fixare: " + lesson.title,
         description: "Exerciții de fixare – " + lesson.description.charAt(0).toLowerCase() + lesson.description.slice(1),
         xpReward: lesson.xpReward,
-        exercises: lesson.exercises.map(ex => ({
-          ...ex,
-          id: ex.id + "f",
-        })),
+        exercises: lesson.exercises.map((ex, i) => transformExercise(ex, i)),
       };
       newLessons.push(fixareLesson);
     });
