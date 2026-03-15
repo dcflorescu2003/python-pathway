@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect } from "react";
 import { chapters as defaultChapters, Chapter, Lesson, Exercise } from "@/data/courses";
 
-const STORAGE_KEY = "custom_chapters";
+const STORAGE_KEY = "custom_chapters_v2";
 
 const loadChapters = (): Chapter[] => {
   try {
