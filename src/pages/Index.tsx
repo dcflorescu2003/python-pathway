@@ -186,7 +186,7 @@ const Index = (): JSX.Element => {
 
       <main className="px-4 py-6">
         {/* Install button */}
-        {!isInstalled && (
+        {!isInstalled && !progress.isPremium && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
