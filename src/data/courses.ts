@@ -46,7 +46,7 @@ export interface Chapter {
 // Helper to generate IDs
 const eid = (ch: number, le: number, ex: number) => `c${ch}-l${le}-e${ex}`;
 
-export const chapters: Chapter[] = [
+const rawChapters: Chapter[] = [
   {
     id: "ch1",
     number: 1,
