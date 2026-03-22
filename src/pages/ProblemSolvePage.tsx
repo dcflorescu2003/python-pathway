@@ -22,6 +22,7 @@ const ProblemSolvePage = () => {
   const [results, setResults] = useState<TestResult[] | null>(null);
   const [showHint, setShowHint] = useState(false);
   const [showHiddenTests, setShowHiddenTests] = useState(false);
+  const [showSolution, setShowSolution] = useState(false);
 
   if (!problem) {
     return (
