@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ArrowLeft, Play, Loader2, CheckCircle2, XCircle, Lightbulb, Eye, EyeOff } from "lucide-react";
+import { ArrowLeft, Play, Loader2, CheckCircle2, XCircle, Lightbulb, Eye, EyeOff, BookOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
