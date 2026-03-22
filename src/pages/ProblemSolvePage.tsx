@@ -42,6 +42,7 @@ const ProblemSolvePage = () => {
 
     const testResults = await runCode(code, problem.testCases);
     setResults(testResults);
+    setShowSolution(false);
 
     const passed = testResults.filter((r) => r.passed).length;
     const total = testResults.length;
