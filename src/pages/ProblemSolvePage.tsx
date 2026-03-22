@@ -218,6 +218,29 @@ const ProblemSolvePage = () => {
                 </CardContent>
               </Card>
             ))}
+
+            {passedCount < totalCount && (
+              <div className="space-y-3 pt-2">
+                <Button
+                  onClick={() => setShowSolution(!showSolution)}
+                  variant="outline"
+                  className="w-full gap-2 border-accent/30 text-accent hover:bg-accent/10"
+                >
+                  <BookOpen className="h-4 w-4" />
+                  {showSolution ? "Ascunde rezolvarea" : "Vezi rezolvarea"}
+                </Button>
+                {showSolution && (
+                  <Card className="border-accent/30 bg-accent/5">
+                    <CardContent className="p-4">
+                      <p className="text-xs text-muted-foreground mb-2 font-medium">O posibilă rezolvare:</p>
+                      <pre className="bg-muted/50 p-3 rounded-lg font-mono text-sm overflow-x-auto text-foreground whitespace-pre-wrap">
+                        <code>{problem.solution}</code>
+                      </pre>
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
+            )}
           </div>
         )}
       </div>
