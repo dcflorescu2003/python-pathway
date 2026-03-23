@@ -47,6 +47,8 @@ const AppRoutes = () => {
           <Route path="/problem/:problemId" element={<ProblemSolvePage />} />
           <Route path="/admin" element={<AdminPage />} />
           <Route path="/reset-password" element={<ResetPasswordPage />} />
+          <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
+          <Route path="/delete-account" element={<DeleteAccountPage />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </AnimatePresence>
