@@ -14,6 +14,36 @@ export type Database = {
   }
   public: {
     Tables: {
+      chapters: {
+        Row: {
+          color: string
+          created_at: string
+          description: string
+          icon: string
+          id: string
+          number: number
+          title: string
+        }
+        Insert: {
+          color?: string
+          created_at?: string
+          description: string
+          icon?: string
+          id: string
+          number: number
+          title: string
+        }
+        Update: {
+          color?: string
+          created_at?: string
+          description?: string
+          icon?: string
+          id?: string
+          number?: number
+          title?: string
+        }
+        Relationships: []
+      }
       completed_lessons: {
         Row: {
           completed_at: string
@@ -102,6 +132,165 @@ export type Database = {
           used_count?: number
         }
         Relationships: []
+      }
+      exercises: {
+        Row: {
+          blanks: Json | null
+          code_template: string | null
+          correct_option_id: string | null
+          explanation: string | null
+          id: string
+          is_true: boolean | null
+          lesson_id: string
+          lines: Json | null
+          options: Json | null
+          question: string
+          sort_order: number
+          statement: string | null
+          type: string
+          xp: number
+        }
+        Insert: {
+          blanks?: Json | null
+          code_template?: string | null
+          correct_option_id?: string | null
+          explanation?: string | null
+          id: string
+          is_true?: boolean | null
+          lesson_id: string
+          lines?: Json | null
+          options?: Json | null
+          question: string
+          sort_order?: number
+          statement?: string | null
+          type: string
+          xp?: number
+        }
+        Update: {
+          blanks?: Json | null
+          code_template?: string | null
+          correct_option_id?: string | null
+          explanation?: string | null
+          id?: string
+          is_true?: boolean | null
+          lesson_id?: string
+          lines?: Json | null
+          options?: Json | null
+          question?: string
+          sort_order?: number
+          statement?: string | null
+          type?: string
+          xp?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "exercises_lesson_id_fkey"
+            columns: ["lesson_id"]
+            isOneToOne: false
+            referencedRelation: "lessons"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lessons: {
+        Row: {
+          chapter_id: string
+          description: string
+          id: string
+          is_premium: boolean
+          sort_order: number
+          title: string
+          xp_reward: number
+        }
+        Insert: {
+          chapter_id: string
+          description: string
+          id: string
+          is_premium?: boolean
+          sort_order?: number
+          title: string
+          xp_reward?: number
+        }
+        Update: {
+          chapter_id?: string
+          description?: string
+          id?: string
+          is_premium?: boolean
+          sort_order?: number
+          title?: string
+          xp_reward?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lessons_chapter_id_fkey"
+            columns: ["chapter_id"]
+            isOneToOne: false
+            referencedRelation: "chapters"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      problem_chapters: {
+        Row: {
+          icon: string
+          id: string
+          title: string
+        }
+        Insert: {
+          icon?: string
+          id: string
+          title: string
+        }
+        Update: {
+          icon?: string
+          id?: string
+          title?: string
+        }
+        Relationships: []
+      }
+      problems: {
+        Row: {
+          chapter_id: string
+          description: string
+          difficulty: string
+          hint: string | null
+          id: string
+          solution: string
+          test_cases: Json
+          title: string
+          xp_reward: number
+        }
+        Insert: {
+          chapter_id: string
+          description: string
+          difficulty?: string
+          hint?: string | null
+          id: string
+          solution?: string
+          test_cases?: Json
+          title: string
+          xp_reward?: number
+        }
+        Update: {
+          chapter_id?: string
+          description?: string
+          difficulty?: string
+          hint?: string | null
+          id?: string
+          solution?: string
+          test_cases?: Json
+          title?: string
+          xp_reward?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "problems_chapter_id_fkey"
+            columns: ["chapter_id"]
+            isOneToOne: false
+            referencedRelation: "problem_chapters"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profiles: {
         Row: {
