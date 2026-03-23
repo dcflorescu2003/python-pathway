@@ -4,21 +4,21 @@ import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { useAuth } from "@/hooks/useAuth";
 import { useProgress } from "@/hooks/useProgress";
-import { getStoredChapters } from "@/hooks/useExerciseStore";
+import { useChapters } from "@/hooks/useChapters";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
-import { ArrowLeft, Mail, Lock, User, Eye, EyeOff, LogOut, BookOpen, XCircle, Code, Zap, Flame, Trophy } from "lucide-react";
+import { ArrowLeft, Mail, Lock, User, Eye, EyeOff, LogOut, BookOpen, XCircle, Code, Zap, Flame, Trophy, Shield, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 const AccountView = () => {
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
   const { progress } = useProgress();
-  const chapters = getStoredChapters();
+  const { data: chapters } = useChapters();
 
-  const totalLessons = chapters.reduce((sum, ch) => sum + ch.lessons.length, 0);
+  const totalLessons = (chapters || []).reduce((sum, ch) => sum + ch.lessons.length, 0);
   const completedCount = Object.values(progress.completedLessons).filter(l => l.completed).length;
   
   // Calculate total mistakes (lessons where score < 100)
@@ -91,13 +91,30 @@ const AccountView = () => {
         <CouponRedemption />
 
         <Button
-          variant="destructive"
+          variant="outline"
           className="w-full max-w-sm mt-4 gap-2"
+          onClick={() => navigate("/privacy-policy")}
+        >
+          <Shield className="h-4 w-4" />
+          Politica de confidențialitate
+        </Button>
+
+        <Button
+          variant="destructive"
+          className="w-full max-w-sm mt-2 gap-2"
           onClick={handleSignOut}
         >
           <LogOut className="h-4 w-4" />
           Deconectează-te
         </Button>
+
+        <button
+          onClick={() => navigate("/delete-account")}
+          className="mt-4 text-xs text-muted-foreground hover:text-destructive transition-colors flex items-center gap-1"
+        >
+          <Trash2 className="h-3 w-3" />
+          Șterge contul
+        </button>
       </div>
     </motion.div>
   );
