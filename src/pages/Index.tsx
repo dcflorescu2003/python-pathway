@@ -1,9 +1,8 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
-import { getLevelFromXP, getXPForNextLevel } from "@/data/courses";
+import { useChapters, getLevelFromXP, getXPForNextLevel } from "@/hooks/useChapters";
 import { getLevelInfo } from "@/data/levels";
-import { getStoredChapters } from "@/hooks/useExerciseStore";
 import { useProgress } from "@/hooks/useProgress";
 import { schools, getSelectedSchool, setSelectedSchool, clearSelectedSchool } from "@/data/schools";
 import { Progress } from "@/components/ui/progress";
@@ -20,11 +19,13 @@ import { useInstallPrompt } from "@/hooks/useInstallPrompt";
 import { useSubscription } from "@/hooks/useSubscription";
 import CouponExpiredDialog from "@/components/CouponExpiredDialog";
 import { supabase } from "@/integrations/supabase/client";
+import LoadingScreen from "@/components/states/LoadingScreen";
 
 const Index = (): JSX.Element => {
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
   const { progress } = useProgress();
+  const { data: chapters, isLoading: chaptersLoading } = useChapters();
   const [needsOnboarding, setNeedsOnboarding] = useState<boolean | null>(null);
   const [selectedSchool, setSchool] = useState(getSelectedSchool());
   const [showSchoolPicker, setShowSchoolPicker] = useState(false);
@@ -43,7 +44,6 @@ const Index = (): JSX.Element => {
     }
   }, [authLoading, user, navigate]);
 
-  // Auto-grant premium when app is installed (standalone mode)
   useEffect(() => {
     if (!isInstalled || !user) return;
     const alreadyGranted = localStorage.getItem("pyro-install-premium-granted");
@@ -51,7 +51,6 @@ const Index = (): JSX.Element => {
 
     const grantInstallPremium = async () => {
       try {
-        // Check if user already has an install redemption
         const { data: existing } = await supabase
           .from("coupon_redemptions")
           .select("id")
@@ -64,14 +63,12 @@ const Index = (): JSX.Element => {
           return;
         }
 
-        // Insert redemption
         await supabase.from("coupon_redemptions").insert({
           user_id: user.id,
           coupon_id: "42b385ff-eb24-4604-8e36-595e9424387b",
           premium_until: "2026-08-31T23:59:59Z",
         });
 
-        // Update profile
         await supabase.from("profiles").update({ is_premium: true }).eq("user_id", user.id);
 
         localStorage.setItem("pyro-install-premium-granted", user.id);
@@ -111,7 +108,8 @@ const Index = (): JSX.Element => {
     }} />;
   }
 
-  const chapters = getStoredChapters();
+  if (chaptersLoading || !chapters) return <LoadingScreen />;
+
   const level = getLevelFromXP(progress.xp);
   const xpToNext = getXPForNextLevel(progress.xp);
   const xpInLevel = 100 - xpToNext;
@@ -149,7 +147,6 @@ const Index = (): JSX.Element => {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
       <header className={`sticky top-0 z-40 border-b backdrop-blur-md pt-[env(safe-area-inset-top)] ${
         progress.isPremium 
           ? "border-yellow-500/30 bg-gradient-to-r from-yellow-500/10 via-background/90 to-yellow-500/10" 
@@ -185,20 +182,11 @@ const Index = (): JSX.Element => {
       </header>
 
       <main className="px-4 py-6">
-        {/* Install button */}
         {!isInstalled && !progress.isPremium && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="mb-4"
-          >
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mb-4">
             <Button
               onClick={async () => {
-                if (canPrompt) {
-                  await promptInstall();
-                } else {
-                  setShowInstall(true);
-                }
+                if (canPrompt) { await promptInstall(); } else { setShowInstall(true); }
               }}
               className="w-full py-6 text-lg font-bold rounded-xl gap-2"
               size="lg"
@@ -208,12 +196,7 @@ const Index = (): JSX.Element => {
           </motion.div>
         )}
 
-        {/* School selector */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mb-4"
-        >
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mb-4">
           <button
             onClick={() => setShowSchoolPicker(!showSchoolPicker)}
             className="w-full flex items-center gap-2 rounded-xl border border-border bg-card p-3 text-left active:scale-[0.98] transition-all"
@@ -226,30 +209,17 @@ const Index = (): JSX.Element => {
           </button>
 
           {showSchoolPicker && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: "auto" }}
-              className="mt-2 rounded-xl border border-border bg-card overflow-hidden"
-            >
+            <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} className="mt-2 rounded-xl border border-border bg-card overflow-hidden">
               <div className="p-2 border-b border-border">
-                <Input
-                  placeholder="Caută liceu sau oraș..."
-                  value={schoolSearch}
-                  onChange={(e) => setSchoolSearch(e.target.value)}
-                  className="h-9 text-sm"
-                  autoFocus
-                />
+                <Input placeholder="Caută liceu sau oraș..." value={schoolSearch} onChange={(e) => setSchoolSearch(e.target.value)} className="h-9 text-sm" autoFocus />
               </div>
               {filteredSchools.length > 0 ? (
                 <div className="max-h-48 overflow-y-auto">
                   {filteredSchools.map((school) => (
-                    <button
-                      key={school.id}
-                      onClick={() => handleSelectSchool(school.id)}
+                    <button key={school.id} onClick={() => handleSelectSchool(school.id)}
                       className={`w-full text-left px-4 py-3 text-sm border-b border-border last:border-0 transition-colors ${
                         selectedSchool === school.id ? "bg-primary/10 text-primary font-bold" : "text-foreground hover:bg-secondary"
-                      }`}
-                    >
+                      }`}>
                       {school.name} <span className="text-foreground/50">— {school.city}</span>
                     </button>
                   ))}
@@ -260,39 +230,19 @@ const Index = (): JSX.Element => {
               ) : (
                 <p className="px-4 py-3 text-sm text-foreground/50">Niciun liceu găsit.</p>
               )}
-              
               {selectedSchool && (
-                <button
-                  onClick={handleRemoveSchool}
-                  className="w-full text-left px-4 py-3 text-sm text-destructive border-t border-border"
-                >
-                  Elimină selecția
-                </button>
+                <button onClick={handleRemoveSchool} className="w-full text-left px-4 py-3 text-sm text-destructive border-t border-border">Elimină selecția</button>
               )}
-
               {!showAddSchool ? (
-                <button
-                  onClick={() => setShowAddSchool(true)}
-                  className="w-full flex items-center gap-2 px-4 py-3 text-sm text-primary border-t border-border"
-                >
-                  <Plus className="h-4 w-4" />
-                  Adaugă liceul tău
+                <button onClick={() => setShowAddSchool(true)} className="w-full flex items-center gap-2 px-4 py-3 text-sm text-primary border-t border-border">
+                  <Plus className="h-4 w-4" /> Adaugă liceul tău
                 </button>
               ) : (
                 <div className="p-3 border-t border-border space-y-2">
-                  <Input
-                    placeholder="Numele liceului..."
-                    value={newSchoolName}
-                    onChange={(e) => setNewSchoolName(e.target.value)}
-                    className="text-sm"
-                  />
+                  <Input placeholder="Numele liceului..." value={newSchoolName} onChange={(e) => setNewSchoolName(e.target.value)} className="text-sm" />
                   <div className="flex gap-2">
-                    <Button size="sm" variant="outline" onClick={() => setShowAddSchool(false)} className="flex-1">
-                      Anulează
-                    </Button>
-                    <Button size="sm" onClick={handleAddSchool} disabled={!newSchoolName.trim()} className="flex-1">
-                      Trimite cererea
-                    </Button>
+                    <Button size="sm" variant="outline" onClick={() => setShowAddSchool(false)} className="flex-1">Anulează</Button>
+                    <Button size="sm" onClick={handleAddSchool} disabled={!newSchoolName.trim()} className="flex-1">Trimite cererea</Button>
                   </div>
                 </div>
               )}
@@ -300,14 +250,9 @@ const Index = (): JSX.Element => {
           )}
         </motion.div>
 
-        {/* Profile card */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.05 }}
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}
           onClick={() => setShowRoadmap(true)}
-          className="mb-6 rounded-xl border border-border bg-card p-5 glow-primary cursor-pointer active:scale-[0.98] transition-transform"
-        >
+          className="mb-6 rounded-xl border border-border bg-card p-5 glow-primary cursor-pointer active:scale-[0.98] transition-transform">
           <div className="flex items-center justify-between mb-3">
             <div>
               <p className="text-sm text-muted-foreground">Nivel {level}</p>
@@ -315,90 +260,50 @@ const Index = (): JSX.Element => {
                 {levelInfo.name} {progress.isPremium && <span className="text-yellow-500">👑</span>}
               </p>
             </div>
-            <div
-              className="flex items-center justify-center rounded-full bg-primary/10 transition-all"
-              style={{
-                width: `${Math.round(48 * levelInfo.scale)}px`,
-                height: `${Math.round(48 * levelInfo.scale)}px`,
-                fontSize: `${Math.round(24 * levelInfo.scale)}px`,
-              }}
-            >
+            <div className="flex items-center justify-center rounded-full bg-primary/10 transition-all"
+              style={{ width: `${Math.round(48 * levelInfo.scale)}px`, height: `${Math.round(48 * levelInfo.scale)}px`, fontSize: `${Math.round(24 * levelInfo.scale)}px` }}>
               {levelInfo.emoji}
             </div>
           </div>
-          <button
-            onClick={() => setShowRoadmap(true)}
-            className="w-full text-left active:scale-[0.98] transition-transform"
-          >
+          <button onClick={() => setShowRoadmap(true)} className="w-full text-left active:scale-[0.98] transition-transform">
             <Progress value={xpInLevel} className="h-2 cursor-pointer" />
             <p className="mt-1 text-xs text-muted-foreground">{xpInLevel}/100 XP pentru nivelul {level + 1} · <span className="text-primary">Drumul spre Master of Python →</span></p>
           </button>
         </motion.div>
 
-        {/* Chapters */}
         <div className="space-y-3">
           {chapters.map((chapter, idx) => {
-            // Exclude practice lessons from unlock calculation
-            const nonPracticeLessons = chapter.lessons.filter(
-              (l) => !l.title.startsWith("Practică:")
-            );
-            const completedCount = chapter.lessons.filter(
-              (l) => progress.completedLessons[l.id]?.completed
-            ).length;
+            const completedCount = chapter.lessons.filter((l) => progress.completedLessons[l.id]?.completed).length;
             const totalLessons = chapter.lessons.length;
             
             const isLocked = idx > 0 && (() => {
               const prevChapter = chapters[idx - 1];
-              const prevNonPractice = prevChapter.lessons.filter(
-                (l) => !l.title.startsWith("Practică:")
-              );
-              const prevCompleted = prevNonPractice.filter(
-                (l) => progress.completedLessons[l.id]?.completed
-              ).length;
+              const prevNonPractice = prevChapter.lessons.filter((l) => !l.title.startsWith("Practică:"));
+              const prevCompleted = prevNonPractice.filter((l) => progress.completedLessons[l.id]?.completed).length;
               return prevCompleted < Math.ceil(prevNonPractice.length * 0.5);
             })();
 
             return (
-              <motion.div
-                key={chapter.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: idx * 0.06 }}
+              <motion.div key={chapter.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.06 }}
                 onClick={() => !isLocked && navigate(`/chapter/${chapter.id}`)}
                 className={`group relative overflow-hidden rounded-xl border p-4 transition-all active:scale-[0.98] ${
-                  isLocked
-                    ? "border-border/50 bg-card/50 opacity-50 cursor-not-allowed"
-                    : "border-border bg-card hover:border-primary/50 cursor-pointer"
-                }`}
-              >
+                  isLocked ? "border-border/50 bg-card/50 opacity-50 cursor-not-allowed" : "border-border bg-card hover:border-primary/50 cursor-pointer"
+                }`}>
                 <div className="flex items-center gap-3">
-                  <div
-                    className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl text-xl"
-                    style={{ backgroundColor: `hsl(${chapter.color} / 0.15)` }}
-                  >
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl text-xl"
+                    style={{ backgroundColor: `hsl(${chapter.color} / 0.15)` }}>
                     {chapter.icon}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-xs font-mono text-muted-foreground uppercase tracking-wider">
-                      Capitol {chapter.number}
-                    </p>
-                    <h2 className="text-base font-bold text-foreground truncate">
-                      {chapter.title}
-                    </h2>
+                    <p className="text-xs font-mono text-muted-foreground uppercase tracking-wider">Capitol {chapter.number}</p>
+                    <h2 className="text-base font-bold text-foreground truncate">{chapter.title}</h2>
                     <div className="mt-2 flex items-center gap-2">
-                      <Progress
-                        value={(completedCount / totalLessons) * 100}
-                        className="h-1.5 flex-1"
-                      />
-                      <span className="text-[10px] font-mono text-muted-foreground whitespace-nowrap">
-                        {completedCount}/{totalLessons}
-                      </span>
+                      <Progress value={(completedCount / totalLessons) * 100} className="h-1.5 flex-1" />
+                      <span className="text-[10px] font-mono text-muted-foreground whitespace-nowrap">{completedCount}/{totalLessons}</span>
                     </div>
                   </div>
                   {isLocked && <span className="text-lg">🔒</span>}
-                  {completedCount === totalLessons && totalLessons > 0 && (
-                    <Trophy className="h-5 w-5 text-warning" />
-                  )}
+                  {completedCount === totalLessons && totalLessons > 0 && <Trophy className="h-5 w-5 text-warning" />}
                 </div>
               </motion.div>
             );
@@ -409,12 +314,7 @@ const Index = (): JSX.Element => {
       <PremiumDialog open={showPremium} onOpenChange={setShowPremium} />
       <InstallDialog open={showInstall} onOpenChange={setShowInstall} />
       <LevelRoadmap open={showRoadmap} onOpenChange={setShowRoadmap} currentLevel={level} />
-      <CouponExpiredDialog
-        open={couponExpired}
-        onOpenChange={(open) => { if (!open) dismissCouponExpired(); }}
-        onSubscribe={startCheckout}
-        onStayFree={dismissCouponExpired}
-      />
+      <CouponExpiredDialog open={couponExpired} onOpenChange={(open) => { if (!open) dismissCouponExpired(); }} onSubscribe={startCheckout} onStayFree={dismissCouponExpired} />
     </div>
   );
 };
