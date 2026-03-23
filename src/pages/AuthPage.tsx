@@ -16,7 +16,7 @@ const AccountView = () => {
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
   const { progress } = useProgress();
-  const chapters = getStoredChapters();
+  const { data: chapters } = useChapters();
 
   const totalLessons = chapters.reduce((sum, ch) => sum + ch.lessons.length, 0);
   const completedCount = Object.values(progress.completedLessons).filter(l => l.completed).length;
