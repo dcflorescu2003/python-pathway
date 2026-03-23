@@ -91,13 +91,30 @@ const AccountView = () => {
         <CouponRedemption />
 
         <Button
-          variant="destructive"
+          variant="outline"
           className="w-full max-w-sm mt-4 gap-2"
+          onClick={() => navigate("/privacy-policy")}
+        >
+          <Shield className="h-4 w-4" />
+          Politica de confidențialitate
+        </Button>
+
+        <Button
+          variant="destructive"
+          className="w-full max-w-sm mt-2 gap-2"
           onClick={handleSignOut}
         >
           <LogOut className="h-4 w-4" />
           Deconectează-te
         </Button>
+
+        <button
+          onClick={() => navigate("/delete-account")}
+          className="mt-4 text-xs text-muted-foreground hover:text-destructive transition-colors flex items-center gap-1"
+        >
+          <Trash2 className="h-3 w-3" />
+          Șterge contul
+        </button>
       </div>
     </motion.div>
   );
