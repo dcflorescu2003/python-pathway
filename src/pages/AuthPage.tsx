@@ -18,7 +18,7 @@ const AccountView = () => {
   const { progress } = useProgress();
   const { data: chapters } = useChapters();
 
-  const totalLessons = chapters.reduce((sum, ch) => sum + ch.lessons.length, 0);
+  const totalLessons = (chapters || []).reduce((sum, ch) => sum + ch.lessons.length, 0);
   const completedCount = Object.values(progress.completedLessons).filter(l => l.completed).length;
   
   // Calculate total mistakes (lessons where score < 100)
