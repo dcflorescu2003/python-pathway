@@ -83,6 +83,16 @@ const ExerciseEditor = ({ exercise, onSave, onCancel, lessonId, nextIndex }: Pro
           isTrue: true,
         });
         break;
+      case "match":
+        setData({
+          ...base,
+          pairs: [
+            { id: "p1", left: "", right: "" },
+            { id: "p2", left: "", right: "" },
+            { id: "p3", left: "", right: "" },
+          ],
+        });
+        break;
     }
   };
 
