@@ -146,7 +146,7 @@ const MatchExercise = ({ exercise, onAnswer, feedback }: Props) => {
         </p>
       </div>
 
-      {/* Progress indicator */}
+      {/* Progress indicator + reset */}
       <div className="flex items-center gap-2">
         <div className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden">
           <motion.div
@@ -159,6 +159,15 @@ const MatchExercise = ({ exercise, onAnswer, feedback }: Props) => {
         <span className="text-xs font-medium text-muted-foreground tabular-nums">
           {matchedCount}/{totalPairs}
         </span>
+        {matchedCount > 0 && !submitted && (
+          <button
+            onClick={() => { setMatched(new Map()); setSelectedLeft(null); setSelectedRight(null); }}
+            className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+            title="Resetează perechile"
+          >
+            <RotateCcw className="h-4 w-4" />
+          </button>
+        )}
       </div>
 
       <div className="grid grid-cols-2 gap-4">
