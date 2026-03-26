@@ -162,6 +162,7 @@ export type Database = {
           lesson_id: string
           lines: Json | null
           options: Json | null
+          pairs: Json | null
           question: string
           sort_order: number
           statement: string | null
@@ -178,6 +179,7 @@ export type Database = {
           lesson_id: string
           lines?: Json | null
           options?: Json | null
+          pairs?: Json | null
           question: string
           sort_order?: number
           statement?: string | null
@@ -194,6 +196,7 @@ export type Database = {
           lesson_id?: string
           lines?: Json | null
           options?: Json | null
+          pairs?: Json | null
           question?: string
           sort_order?: number
           statement?: string | null
