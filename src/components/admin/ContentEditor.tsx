@@ -240,6 +240,7 @@ const ContentEditor = () => {
       lines: exercise.lines ? JSON.parse(JSON.stringify(exercise.lines)) : null,
       statement: exercise.statement || null, is_true: exercise.isTrue ?? null,
       explanation: exercise.explanation || null, xp: exercise.xp, sort_order: isNew ? sortOrder : undefined,
+      pairs: exercise.pairs ? JSON.parse(JSON.stringify(exercise.pairs)) : null,
     };
     if (isNew) {
       const { error } = await supabase.from("exercises").insert(row as any);
