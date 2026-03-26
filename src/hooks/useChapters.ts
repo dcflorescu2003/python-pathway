@@ -120,6 +120,18 @@ function transformExercise(ex: Exercise, index: number): Exercise {
     };
   }
 
+  if (ex.type === "match" && ex.pairs && ex.pairs.length > 0) {
+    const target = ex.pairs[index % ex.pairs.length];
+    const shuffledOpts = [...ex.pairs].sort(() => Math.random() - 0.5);
+    return {
+      id: fid, type: "quiz", xp: ex.xp,
+      question: `Ce se asociază cu „${target.left}"?`,
+      options: shuffledOpts.map((p, i) => ({ id: String.fromCharCode(97 + i), text: p.right })),
+      correctOptionId: String.fromCharCode(97 + shuffledOpts.findIndex(p => p.id === target.id)),
+      explanation: ex.explanation,
+    };
+  }
+
   return {
     id: fid, type: "truefalse", xp: ex.xp,
     question: "Adevărat sau Fals?",
