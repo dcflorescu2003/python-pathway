@@ -1,53 +1,52 @@
 
 
-## Plan: Migrate Content to Database + Privacy Policy + Account Deletion
+# Acces Admin dinamic — tab "Setări" + buton rapid în app
 
-### 1. Migrate Chapters, Lessons, Exercises & Problems to Database
+## Ce facem
 
-**New tables** (via migration):
+1. **Tabel nou `admin_emails`** în baza de date — stochează email-urile autorizate pentru admin (înlocuiește hardcoded `ADMIN_EMAILS`)
+2. **Tab nou "Setări"** în panoul admin — permite adăugarea/ștergerea email-urilor admin autorizate
+3. **Buton "Admin"** vizibil în pagina de cont (`AuthPage`) — apare doar dacă email-ul utilizatorului curent este în lista `admin_emails`
 
-- **`chapters`** — id, number, title, description, icon, color, created_at
-- **`lessons`** — id, chapter_id (FK), title, description, xp_reward, is_premium, sort_order
-- **`exercises`** — id, lesson_id (FK), type, question, options (jsonb), correct_option_id, code_template, blanks (jsonb), lines (jsonb), statement, is_true, explanation, xp, sort_order
-- **`problem_chapters`** — id, title, icon
-- **`problems`** — id, chapter_id (FK to problem_chapters), title, description, difficulty, xp_reward, test_cases (jsonb), hint, solution
+## Modificări
 
-All tables with RLS: SELECT open to all authenticated users (content is public). INSERT/UPDATE/DELETE restricted to admins only (via `has_role` function + `user_roles` table).
+### 1. Migrare DB — tabel `admin_emails`
+```sql
+CREATE TABLE public.admin_emails (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  email text NOT NULL UNIQUE,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+ALTER TABLE public.admin_emails ENABLE ROW LEVEL SECURITY;
+-- Toți autentificații pot citi (pentru a verifica dacă sunt admin)
+CREATE POLICY "Anyone can read admin_emails" ON public.admin_emails FOR SELECT TO authenticated USING (true);
+-- Doar adminii (din user_roles) pot modifica
+CREATE POLICY "Admins can insert" ON public.admin_emails FOR INSERT TO authenticated WITH CHECK (has_role(auth.uid(), 'admin'));
+CREATE POLICY "Admins can delete" ON public.admin_emails FOR DELETE TO authenticated USING (has_role(auth.uid(), 'admin'));
+-- Seed cu email-ul existent
+INSERT INTO public.admin_emails (email) VALUES ('dcflorescu2003@gmail.com');
+```
 
-**Seed data**: A migration will INSERT all current hardcoded data from `courses.ts` and `problems.ts` into the new tables.
+### 2. Hook nou `src/hooks/useAdminAccess.ts`
+- Query pe `admin_emails` pentru a verifica dacă `user.email` este în tabel
+- Returnează `{ isAdmin, isLoading }`
+- Folosit atât în `AdminPage` cât și în `AuthPage`
 
-**Code changes**:
-- Create `src/hooks/useChapters.ts` — fetches chapters/lessons/exercises from DB using React Query, with caching
-- Create `src/hooks/useProblems.ts` — fetches problems/problem chapters from DB
-- Update `Index.tsx`, `ChapterPage.tsx`, `LessonPage.tsx`, `ProblemsPage.tsx`, `ProblemSolvePage.tsx`, `AuthPage.tsx` to use the new hooks instead of `getStoredChapters()` and static imports
-- Remove `useExerciseStore.ts` dependency from main pages (keep for admin editing if needed)
-- Remove direct imports of `problems` and `problemChapters` from data files in pages
+### 3. `src/pages/AdminPage.tsx`
+- Înlocuiește `ADMIN_EMAILS` hardcoded cu hook-ul `useAdminAccess`
+- Adaugă tab "Setări" cu icon `Settings`
+- Tab-ul conține:
+  - Lista email-urilor admin existente (din `admin_emails`)
+  - Input + buton "Adaugă" pentru email nou
+  - Buton ștergere pe fiecare email (cu protecție să nu te ștergi pe tine)
 
-### 2. Privacy Policy Page
+### 4. `src/pages/AuthPage.tsx` (AccountView)
+- Importă `useAdminAccess`
+- Dacă `isAdmin === true`, afișează un buton "⚙️ Panou Admin" care navighează la `/admin`
+- Plasat între statistici și butonul de deconectare
 
-- Create `src/pages/PrivacyPolicyPage.tsx` — static page with GDPR-compliant privacy policy in Romanian
-- Add route `/privacy-policy` in `App.tsx`
-- Add link to it from the account page (AuthPage) and optionally from the auth/signup form
-
-### 3. Account Deletion
-
-- Create `src/pages/DeleteAccountPage.tsx` — confirmation flow with warning, password re-entry, and final confirmation
-- Add route `/delete-account` in `App.tsx`
-- Create edge function `supabase/functions/delete-account/index.ts` that:
-  - Validates the user's JWT
-  - Deletes user data from `profiles`, `completed_lessons`, `coupon_redemptions`
-  - Calls Supabase Admin API to delete the auth user
-- Add "Șterge contul" button in the account view (AuthPage)
-
-### Technical Details
-
-**Database migration** will create 5 new content tables + seed ~1950 lines of course data and ~2200 lines of problem data as INSERT statements. Tables use `jsonb` columns for complex nested data (options, blanks, lines, test_cases) to keep the schema flat.
-
-**React Query** will cache the content data, so it loads once and stays in memory. The `staleTime` will be set high (e.g., 1 hour) since content rarely changes.
-
-**Edge function for deletion** uses the service role key to perform admin-level deletion of the auth user, which cannot be done client-side.
-
-**Files to create**: `src/hooks/useChapters.ts`, `src/hooks/useProblems.ts`, `src/pages/PrivacyPolicyPage.tsx`, `src/pages/DeleteAccountPage.tsx`, `supabase/functions/delete-account/index.ts`
-
-**Files to modify**: `src/App.tsx` (routes), `src/pages/Index.tsx`, `src/pages/ChapterPage.tsx`, `src/pages/LessonPage.tsx`, `src/pages/ProblemsPage.tsx`, `src/pages/ProblemSolvePage.tsx`, `src/pages/AuthPage.tsx`
+## Detalii tehnice
+- Tabelul `admin_emails` este separat de `user_roles` — `user_roles` controlează RLS-ul la nivel DB, iar `admin_emails` controlează accesul la UI-ul admin
+- Email-ul curent (`dcflorescu2003@gmail.com`) este seed-uit automat prin migrare
+- Hook-ul folosește React Query cu `staleTime` mare (conținut rar schimbat)
 
