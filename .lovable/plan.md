@@ -1,52 +1,48 @@
 
 
-# Acces Admin dinamic — tab "Setări" + buton rapid în app
+# Plan: Tip nou de exercițiu — Asociere (Matching)
 
 ## Ce facem
-
-1. **Tabel nou `admin_emails`** în baza de date — stochează email-urile autorizate pentru admin (înlocuiește hardcoded `ADMIN_EMAILS`)
-2. **Tab nou "Setări"** în panoul admin — permite adăugarea/ștergerea email-urilor admin autorizate
-3. **Buton "Admin"** vizibil în pagina de cont (`AuthPage`) — apare doar dacă email-ul utilizatorului curent este în lista `admin_emails`
+Adăugăm un nou tip de exercițiu „match" unde utilizatorul vede 2 coloane de butoane (3-5 pe fiecare) și trebuie să asocieze fiecare element din stânga cu perechea corectă din dreapta.
 
 ## Modificări
 
-### 1. Migrare DB — tabel `admin_emails`
+### 1. Migrare DB — coloana `pairs` pe tabelul `exercises`
 ```sql
-CREATE TABLE public.admin_emails (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  email text NOT NULL UNIQUE,
-  created_at timestamptz NOT NULL DEFAULT now()
-);
-ALTER TABLE public.admin_emails ENABLE ROW LEVEL SECURITY;
--- Toți autentificații pot citi (pentru a verifica dacă sunt admin)
-CREATE POLICY "Anyone can read admin_emails" ON public.admin_emails FOR SELECT TO authenticated USING (true);
--- Doar adminii (din user_roles) pot modifica
-CREATE POLICY "Admins can insert" ON public.admin_emails FOR INSERT TO authenticated WITH CHECK (has_role(auth.uid(), 'admin'));
-CREATE POLICY "Admins can delete" ON public.admin_emails FOR DELETE TO authenticated USING (has_role(auth.uid(), 'admin'));
--- Seed cu email-ul existent
-INSERT INTO public.admin_emails (email) VALUES ('dcflorescu2003@gmail.com');
+ALTER TABLE public.exercises ADD COLUMN pairs jsonb DEFAULT NULL;
 ```
+Format: `[{ "id": "p1", "left": "len()", "right": "lungimea listei" }, ...]`
 
-### 2. Hook nou `src/hooks/useAdminAccess.ts`
-- Query pe `admin_emails` pentru a verifica dacă `user.email` este în tabel
-- Returnează `{ isAdmin, isLoading }`
-- Folosit atât în `AdminPage` cât și în `AuthPage`
+### 2. Tipuri — `src/hooks/useChapters.ts`
+- Adaugă `"match"` la `ExerciseType`
+- Adaugă `pairs?: { id: string; left: string; right: string }[]` la interfața `Exercise`
+- În `mapExercise`, mapează `row.pairs`
+- În `transformExercise`, adaugă un caz pentru `"match"` (de ex. transformă în quiz)
 
-### 3. `src/pages/AdminPage.tsx`
-- Înlocuiește `ADMIN_EMAILS` hardcoded cu hook-ul `useAdminAccess`
-- Adaugă tab "Setări" cu icon `Settings`
-- Tab-ul conține:
-  - Lista email-urilor admin existente (din `admin_emails`)
-  - Input + buton "Adaugă" pentru email nou
-  - Buton ștergere pe fiecare email (cu protecție să nu te ștergi pe tine)
+### 3. Componentă nouă — `src/components/exercises/MatchExercise.tsx`
+- **State**: `selectedLeft: string | null`, `selectedRight: string | null`, `matchedPairs: Map<string, string>` (left→right)
+- **Logică**: 
+  - Click stânga → selectează; click dreapta → selectează; când ambele sunt selectate, se înregistrează perechea
+  - Butoanele deja asociate devin inactive/colorate
+  - Buton „Verifică" apare când toate perechile sunt formate
+  - La verificare: compară `matchedPairs` cu `pairs` din exercițiu
+- **UI**: 2 coloane (`grid grid-cols-2 gap-4`), butoane cu stil similar celorlalte exerciții, evidențiere la selecție, feedback corect/greșit per pereche
 
-### 4. `src/pages/AuthPage.tsx` (AccountView)
-- Importă `useAdminAccess`
-- Dacă `isAdmin === true`, afișează un buton "⚙️ Panou Admin" care navighează la `/admin`
-- Plasat între statistici și butonul de deconectare
+### 4. `src/pages/LessonPage.tsx`
+- Import `MatchExercise`
+- Adaugă `{exercise.type === "match" && <MatchExercise ... />}`
+
+### 5. `src/components/admin/ExerciseEditor.tsx`
+- Adaugă opțiunea `"match"` / `"Asociere"` în select-ul de tip
+- `handleTypeChange` — inițializează cu 3 perechi goale
+- `renderMatchFields()` — editor pentru perechi: 2 input-uri pe rând (stânga + dreapta), butoane de adăugare/ștergere
+
+### 6. `useChapters.ts` — Fixare
+- În `transformExercise`, cazul `"match"`: generează un quiz din prima pereche (ex: „Ce se asociază cu X?" cu opțiuni din valorile din dreapta)
 
 ## Detalii tehnice
-- Tabelul `admin_emails` este separat de `user_roles` — `user_roles` controlează RLS-ul la nivel DB, iar `admin_emails` controlează accesul la UI-ul admin
-- Email-ul curent (`dcflorescu2003@gmail.com`) este seed-uit automat prin migrare
-- Hook-ul folosește React Query cu `staleTime` mare (conținut rar schimbat)
+- Coloanele din dreapta se afișează **amestecate** random la render
+- Un buton selectat din stânga + un buton selectat din dreapta = o pereche formată (evidențiată cu aceeași culoare)
+- Răspunsul e corect doar dacă **toate** perechile sunt corecte
+- Minim 3, maxim 5 perechi (validat în editor)
 
