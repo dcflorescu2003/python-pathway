@@ -57,6 +57,7 @@ function mapExercise(row: any): Exercise {
     statement: row.statement ?? undefined,
     isTrue: row.is_true ?? undefined,
     explanation: row.explanation ?? undefined,
+    pairs: row.pairs ?? undefined,
     xp: row.xp,
   };
 }
