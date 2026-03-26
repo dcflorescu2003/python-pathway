@@ -2,7 +2,7 @@ import { useState, useMemo, useCallback, useEffect } from "react";
 import { Exercise } from "@/hooks/useChapters";
 import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
-import { Check, X, Link2 } from "lucide-react";
+import { Check, X, Link2, RotateCcw } from "lucide-react";
 
 const PAIR_COLORS = [
   { bg: "bg-primary/15", border: "border-primary", text: "text-primary", glow: "shadow-primary/20" },
