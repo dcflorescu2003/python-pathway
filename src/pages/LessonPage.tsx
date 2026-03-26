@@ -10,6 +10,7 @@ import QuizExercise from "@/components/exercises/QuizExercise";
 import FillExercise from "@/components/exercises/FillExercise";
 import OrderExercise from "@/components/exercises/OrderExercise";
 import TrueFalseExercise from "@/components/exercises/TrueFalseExercise";
+import MatchExercise from "@/components/exercises/MatchExercise";
 import LoadingScreen from "@/components/states/LoadingScreen";
 
 const LessonPage = () => {
