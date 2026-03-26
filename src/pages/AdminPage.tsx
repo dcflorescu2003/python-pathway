@@ -1,21 +1,21 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
+import { useAdminAccess } from "@/hooks/useAdminAccess";
 import ContentEditor from "@/components/admin/ContentEditor";
 import ProblemsEditor from "@/components/admin/ProblemsEditor";
 import CouponManager from "@/components/admin/CouponManager";
+import AdminSettings from "@/components/admin/AdminSettings";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { BookOpen, Ticket, Code2 } from "lucide-react";
-
-const ADMIN_EMAILS = ["dcflorescu2003@gmail.com"];
+import { BookOpen, Ticket, Code2, Settings } from "lucide-react";
 
 const AdminPage = () => {
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
-  const isAdmin = user?.email && ADMIN_EMAILS.includes(user.email);
+  const { isAdmin, isLoading: adminLoading } = useAdminAccess();
 
-  if (authLoading) return <div className="flex items-center justify-center min-h-screen text-muted-foreground">Se încarcă...</div>;
+  if (authLoading || adminLoading) return <div className="flex items-center justify-center min-h-screen text-muted-foreground">Se încarcă...</div>;
   if (!isAdmin) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen gap-4 text-center px-4">
@@ -50,6 +50,10 @@ const AdminPage = () => {
               <Ticket className="h-4 w-4" />
               Cupoane
             </TabsTrigger>
+            <TabsTrigger value="settings" className="flex-1 gap-2">
+              <Settings className="h-4 w-4" />
+              Setări
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="editor">
@@ -62,6 +66,10 @@ const AdminPage = () => {
 
           <TabsContent value="coupons">
             <CouponManager />
+          </TabsContent>
+
+          <TabsContent value="settings">
+            <AdminSettings currentUserEmail={user?.email || ""} />
           </TabsContent>
         </Tabs>
       </main>
