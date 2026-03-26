@@ -350,6 +350,7 @@ const ExerciseEditor = ({ exercise, onSave, onCancel, lessonId, nextIndex }: Pro
       {data.type === "fill" && renderFillFields()}
       {data.type === "order" && renderOrderFields()}
       {data.type === "truefalse" && renderTrueFalseFields()}
+      {data.type === "match" && renderMatchFields()}
 
       <div>
         <Label className="text-foreground">Explicație (apare după răspuns)</Label>
