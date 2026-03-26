@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
-export type ExerciseType = "quiz" | "fill" | "order" | "truefalse";
+export type ExerciseType = "quiz" | "fill" | "order" | "truefalse" | "match";
 
 export interface ExerciseOption {
   id: string;
