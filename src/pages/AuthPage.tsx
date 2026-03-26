@@ -9,7 +9,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
-import { ArrowLeft, Mail, Lock, User, Eye, EyeOff, LogOut, BookOpen, XCircle, Code, Zap, Flame, Trophy, Shield, Trash2 } from "lucide-react";
+import { ArrowLeft, Mail, Lock, User, Eye, EyeOff, LogOut, BookOpen, XCircle, Code, Zap, Flame, Trophy, Shield, Trash2, Settings } from "lucide-react";
+import { useAdminAccess } from "@/hooks/useAdminAccess";
 import { toast } from "sonner";
 
 const AccountView = () => {
@@ -17,6 +18,7 @@ const AccountView = () => {
   const { user, signOut } = useAuth();
   const { progress } = useProgress();
   const { data: chapters } = useChapters();
+  const { isAdmin } = useAdminAccess();
 
   const totalLessons = (chapters || []).reduce((sum, ch) => sum + ch.lessons.length, 0);
   const completedCount = Object.values(progress.completedLessons).filter(l => l.completed).length;
@@ -89,6 +91,17 @@ const AccountView = () => {
         </Card>
 
         <CouponRedemption />
+
+        {isAdmin && (
+          <Button
+            variant="outline"
+            className="w-full max-w-sm mt-4 gap-2"
+            onClick={() => navigate("/admin")}
+          >
+            <Settings className="h-4 w-4" />
+            Panou Admin
+          </Button>
+        )}
 
         <Button
           variant="outline"
