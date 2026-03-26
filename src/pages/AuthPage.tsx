@@ -92,6 +92,17 @@ const AccountView = () => {
 
         <CouponRedemption />
 
+        {isAdmin && (
+          <Button
+            variant="outline"
+            className="w-full max-w-sm mt-4 gap-2"
+            onClick={() => navigate("/admin")}
+          >
+            <Settings className="h-4 w-4" />
+            Panou Admin
+          </Button>
+        )}
+
         <Button
           variant="outline"
           className="w-full max-w-sm mt-4 gap-2"
