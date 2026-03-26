@@ -2,7 +2,7 @@ import { useState, useMemo, useCallback, useEffect } from "react";
 import { Exercise } from "@/hooks/useChapters";
 import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
-import { Check, X, Link2 } from "lucide-react";
+import { Check, X, Link2, RotateCcw } from "lucide-react";
 
 const PAIR_COLORS = [
   { bg: "bg-primary/15", border: "border-primary", text: "text-primary", glow: "shadow-primary/20" },
@@ -146,7 +146,7 @@ const MatchExercise = ({ exercise, onAnswer, feedback }: Props) => {
         </p>
       </div>
 
-      {/* Progress indicator */}
+      {/* Progress indicator + reset */}
       <div className="flex items-center gap-2">
         <div className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden">
           <motion.div
@@ -159,6 +159,15 @@ const MatchExercise = ({ exercise, onAnswer, feedback }: Props) => {
         <span className="text-xs font-medium text-muted-foreground tabular-nums">
           {matchedCount}/{totalPairs}
         </span>
+        {matchedCount > 0 && !submitted && (
+          <button
+            onClick={() => { setMatched(new Map()); setSelectedLeft(null); setSelectedRight(null); }}
+            className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+            title="Resetează perechile"
+          >
+            <RotateCcw className="h-4 w-4" />
+          </button>
+        )}
       </div>
 
       <div className="grid grid-cols-2 gap-4">
