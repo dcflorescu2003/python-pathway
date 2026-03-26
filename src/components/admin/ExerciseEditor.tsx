@@ -323,6 +323,7 @@ const ExerciseEditor = ({ exercise, onSave, onCancel, lessonId, nextIndex }: Pro
               <SelectItem value="fill">Completare cod</SelectItem>
               <SelectItem value="order">Ordonare linii</SelectItem>
               <SelectItem value="truefalse">Adevărat / Fals</SelectItem>
+              <SelectItem value="match">Asociere</SelectItem>
             </SelectContent>
           </Select>
         </div>
