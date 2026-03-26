@@ -21,6 +21,7 @@ export interface Exercise {
   statement?: string;
   isTrue?: boolean;
   explanation?: string;
+  pairs?: { id: string; left: string; right: string }[];
   xp: number;
 }
 
