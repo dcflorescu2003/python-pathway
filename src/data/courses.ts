@@ -1,4 +1,4 @@
-export type ExerciseType = "quiz" | "fill" | "order" | "truefalse";
+export type ExerciseType = "quiz" | "fill" | "order" | "truefalse" | "match";
 
 export interface ExerciseOption {
   id: string;
@@ -21,6 +21,7 @@ export interface Exercise {
   statement?: string;
   isTrue?: boolean;
   explanation?: string;
+  pairs?: { id: string; left: string; right: string }[];
   xp: number;
 }
 

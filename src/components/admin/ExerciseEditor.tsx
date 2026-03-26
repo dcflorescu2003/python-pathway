@@ -83,6 +83,16 @@ const ExerciseEditor = ({ exercise, onSave, onCancel, lessonId, nextIndex }: Pro
           isTrue: true,
         });
         break;
+      case "match":
+        setData({
+          ...base,
+          pairs: [
+            { id: "p1", left: "", right: "" },
+            { id: "p2", left: "", right: "" },
+            { id: "p3", left: "", right: "" },
+          ],
+        });
+        break;
     }
   };
 
@@ -243,6 +253,60 @@ const ExerciseEditor = ({ exercise, onSave, onCancel, lessonId, nextIndex }: Pro
     </div>
   );
 
+  const renderMatchFields = () => (
+    <div className="space-y-3">
+      <Label className="text-foreground">Perechi (3-5)</Label>
+      {data.pairs?.map((pair, i) => (
+        <div key={pair.id} className="flex items-center gap-2">
+          <span className="text-xs text-muted-foreground w-6">#{i + 1}</span>
+          <Input
+            value={pair.left}
+            onChange={(e) => {
+              const newPairs = [...(data.pairs || [])];
+              newPairs[i] = { ...newPairs[i], left: e.target.value };
+              updateField("pairs", newPairs);
+            }}
+            placeholder="Stânga"
+          />
+          <span className="text-muted-foreground">↔</span>
+          <Input
+            value={pair.right}
+            onChange={(e) => {
+              const newPairs = [...(data.pairs || [])];
+              newPairs[i] = { ...newPairs[i], right: e.target.value };
+              updateField("pairs", newPairs);
+            }}
+            placeholder="Dreapta"
+          />
+          {(data.pairs?.length || 0) > 3 && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => {
+                const newPairs = (data.pairs || []).filter((_, j) => j !== i);
+                updateField("pairs", newPairs);
+              }}
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          )}
+        </div>
+      ))}
+      {(data.pairs?.length || 0) < 5 && (
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => {
+            const newPairs = [...(data.pairs || []), { id: `p${(data.pairs?.length || 0) + 1}`, left: "", right: "" }];
+            updateField("pairs", newPairs);
+          }}
+        >
+          <Plus className="h-4 w-4 mr-1" /> Adaugă pereche
+        </Button>
+      )}
+    </div>
+  );
+
   return (
     <div className="space-y-4 rounded-xl border border-border bg-card p-6">
       <h3 className="text-lg font-bold text-foreground">
@@ -259,6 +323,7 @@ const ExerciseEditor = ({ exercise, onSave, onCancel, lessonId, nextIndex }: Pro
               <SelectItem value="fill">Completare cod</SelectItem>
               <SelectItem value="order">Ordonare linii</SelectItem>
               <SelectItem value="truefalse">Adevărat / Fals</SelectItem>
+              <SelectItem value="match">Asociere</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -286,6 +351,7 @@ const ExerciseEditor = ({ exercise, onSave, onCancel, lessonId, nextIndex }: Pro
       {data.type === "fill" && renderFillFields()}
       {data.type === "order" && renderOrderFields()}
       {data.type === "truefalse" && renderTrueFalseFields()}
+      {data.type === "match" && renderMatchFields()}
 
       <div>
         <Label className="text-foreground">Explicație (apare după răspuns)</Label>

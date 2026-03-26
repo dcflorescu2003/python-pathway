@@ -10,6 +10,7 @@ import QuizExercise from "@/components/exercises/QuizExercise";
 import FillExercise from "@/components/exercises/FillExercise";
 import OrderExercise from "@/components/exercises/OrderExercise";
 import TrueFalseExercise from "@/components/exercises/TrueFalseExercise";
+import MatchExercise from "@/components/exercises/MatchExercise";
 import LoadingScreen from "@/components/states/LoadingScreen";
 
 const LessonPage = () => {
@@ -118,6 +119,7 @@ const LessonPage = () => {
               {exercise.type === "fill" && <FillExercise exercise={exercise} onAnswer={handleAnswer} feedback={feedback} />}
               {exercise.type === "order" && <OrderExercise exercise={exercise} onAnswer={handleAnswer} feedback={feedback} />}
               {exercise.type === "truefalse" && <TrueFalseExercise exercise={exercise} onAnswer={handleAnswer} feedback={feedback} />}
+              {exercise.type === "match" && <MatchExercise exercise={exercise} onAnswer={handleAnswer} feedback={feedback} />}
             </motion.div>
           </AnimatePresence>
         </div>

@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
-export type ExerciseType = "quiz" | "fill" | "order" | "truefalse";
+export type ExerciseType = "quiz" | "fill" | "order" | "truefalse" | "match";
 
 export interface ExerciseOption {
   id: string;
@@ -20,6 +20,7 @@ export interface Exercise {
   statement?: string;
   isTrue?: boolean;
   explanation?: string;
+  pairs?: { id: string; left: string; right: string }[];
   xp: number;
 }
 
@@ -56,6 +57,7 @@ function mapExercise(row: any): Exercise {
     statement: row.statement ?? undefined,
     isTrue: row.is_true ?? undefined,
     explanation: row.explanation ?? undefined,
+    pairs: row.pairs ?? undefined,
     xp: row.xp,
   };
 }
@@ -114,6 +116,18 @@ function transformExercise(ex: Exercise, index: number): Exercise {
       question: "Completează cuvântul lipsă din cod:",
       codeTemplate: template,
       blanks: [{ id: "b1", answer: blankWord }],
+      explanation: ex.explanation,
+    };
+  }
+
+  if (ex.type === "match" && ex.pairs && ex.pairs.length > 0) {
+    const target = ex.pairs[index % ex.pairs.length];
+    const shuffledOpts = [...ex.pairs].sort(() => Math.random() - 0.5);
+    return {
+      id: fid, type: "quiz", xp: ex.xp,
+      question: `Ce se asociază cu „${target.left}"?`,
+      options: shuffledOpts.map((p, i) => ({ id: String.fromCharCode(97 + i), text: p.right })),
+      correctOptionId: String.fromCharCode(97 + shuffledOpts.findIndex(p => p.id === target.id)),
       explanation: ex.explanation,
     };
   }
