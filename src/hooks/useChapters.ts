@@ -45,6 +45,19 @@ export interface Chapter {
   lessons: Lesson[];
 }
 
+function getNativeFallbackChapters() {
+  return localChapters as Chapter[];
+}
+
+function handleNativeFallback<T>(isNativePlatform: boolean, error: T, message: string): Chapter[] {
+  if (!isNativePlatform) {
+    throw error;
+  }
+
+  console.error(message, error);
+  return getNativeFallbackChapters();
+}
+
 // Transform exercise from DB row to typed Exercise
 function mapExercise(row: any): Exercise {
   return {
@@ -179,9 +192,11 @@ async function fetchChapters(): Promise<Chapter[]> {
     .order("number");
 
   if (chaptersError) {
-    if (!isNativePlatform) throw chaptersError;
-    console.error("Failed to load chapters from Supabase, using local fallback:", chaptersError);
-    return localChapters as Chapter[];
+    return handleNativeFallback(
+      isNativePlatform,
+      chaptersError,
+      "Failed to load chapters from Supabase, using local fallback:"
+    );
   }
 
   const { data: lessonsData, error: lessonsError } = await supabase
@@ -190,9 +205,11 @@ async function fetchChapters(): Promise<Chapter[]> {
     .order("sort_order");
 
   if (lessonsError) {
-    if (!isNativePlatform) throw lessonsError;
-    console.error("Failed to load lessons from Supabase, using local fallback:", lessonsError);
-    return localChapters as Chapter[];
+    return handleNativeFallback(
+      isNativePlatform,
+      lessonsError,
+      "Failed to load lessons from Supabase, using local fallback:"
+    );
   }
 
   const { data: exercisesData, error: exercisesError } = await supabase
@@ -201,9 +218,11 @@ async function fetchChapters(): Promise<Chapter[]> {
     .order("sort_order");
 
   if (exercisesError) {
-    if (!isNativePlatform) throw exercisesError;
-    console.error("Failed to load exercises from Supabase, using local fallback:", exercisesError);
-    return localChapters as Chapter[];
+    return handleNativeFallback(
+      isNativePlatform,
+      exercisesError,
+      "Failed to load exercises from Supabase, using local fallback:"
+    );
   }
 
   if (!chaptersData?.length || !lessonsData?.length) {
@@ -211,7 +230,7 @@ async function fetchChapters(): Promise<Chapter[]> {
       throw new Error("Supabase returned empty chapter data on web.");
     }
     console.warn("Supabase returned empty chapter data, using local fallback.");
-    return localChapters as Chapter[];
+    return getNativeFallbackChapters();
   }
 
   // Group exercises by lesson
@@ -250,7 +269,7 @@ async function fetchChapters(): Promise<Chapter[]> {
   if (!isNativePlatform) {
     throw new Error("Hydrated chapters are empty on web.");
   }
-  return localChapters as Chapter[];
+  return getNativeFallbackChapters();
 }
 
 export function useChapters() {

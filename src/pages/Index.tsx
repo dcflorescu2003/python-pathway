@@ -22,6 +22,7 @@ import CouponExpiredDialog from "@/components/CouponExpiredDialog";
 import { supabase } from "@/integrations/supabase/client";
 import LoadingScreen from "@/components/states/LoadingScreen";
 import LevelUpDialog from "@/components/LevelUpDialog";
+import { Capacitor } from "@capacitor/core";
 
 const Index = (): JSX.Element => {
   const navigate = useNavigate();
@@ -109,6 +110,7 @@ const Index = (): JSX.Element => {
   const xpToNext = getXPForNextLevel(progress.xp);
   const xpInLevel = 100 - xpToNext;
   const levelInfo = getLevelInfo(level);
+  const showInstallCta = !Capacitor.isNativePlatform() && !isInstalled && !progress.isPremium;
 
   useEffect(() => {
     if (prevLevelRef.current !== null && level > prevLevelRef.current) {
@@ -193,7 +195,7 @@ const Index = (): JSX.Element => {
       </header>
 
       <main className="px-4 py-6">
-        {!isInstalled && !progress.isPremium && (
+        {showInstallCta && (
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mb-4">
             <Button
               onClick={async () => {

@@ -47,6 +47,19 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+async function initializeNativeGoogleLogin() {
+  if (!GOOGLE_WEB_CLIENT_ID) {
+    throw new Error("Lipsește VITE_GOOGLE_WEB_CLIENT_ID pentru login-ul Google nativ pe Android.");
+  }
+
+  await SocialLogin.initialize({
+    google: {
+      webClientId: GOOGLE_WEB_CLIENT_ID,
+      mode: "online",
+    },
+  });
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
@@ -55,12 +68,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!isNativeAndroid || !GOOGLE_WEB_CLIENT_ID) return;
 
-    SocialLogin.initialize({
-      google: {
-        webClientId: GOOGLE_WEB_CLIENT_ID,
-        mode: "online",
-      },
-    }).catch((error) => {
+    initializeNativeGoogleLogin().catch((error) => {
       console.error("Failed to initialize native Google login:", error);
     });
   }, []);
@@ -100,16 +108,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signInWithNativeGoogle = async () => {
     try {
-      if (!GOOGLE_WEB_CLIENT_ID) {
-        throw new Error("Lipsește VITE_GOOGLE_WEB_CLIENT_ID pentru login-ul Google nativ pe Android.");
-      }
-
-      await SocialLogin.initialize({
-        google: {
-          webClientId: GOOGLE_WEB_CLIENT_ID,
-          mode: "online",
-        },
-      });
+      await initializeNativeGoogleLogin();
 
       const response = await SocialLogin.login({
         provider: "google",
