@@ -104,13 +104,6 @@ const Index = (): JSX.Element => {
     checkOnboarding();
   }, [user]);
 
-  if (needsOnboarding === true) {
-    return <SchoolOnboarding onComplete={() => {
-      setNeedsOnboarding(false);
-      setSchool(getSelectedSchool());
-    }} />;
-  }
-
   const level = getLevelFromXP(progress.xp);
   const xpToNext = getXPForNextLevel(progress.xp);
   const xpInLevel = 100 - xpToNext;
@@ -122,6 +115,13 @@ const Index = (): JSX.Element => {
     }
     prevLevelRef.current = level;
   }, [level]);
+
+  if (needsOnboarding === true) {
+    return <SchoolOnboarding onComplete={() => {
+      setNeedsOnboarding(false);
+      setSchool(getSelectedSchool());
+    }} />;
+  }
 
   if (chaptersLoading || !chapters) return <LoadingScreen />;
 
