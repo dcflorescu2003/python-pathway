@@ -38,6 +38,8 @@ const Index = (): JSX.Element => {
   const { isInstalled, canPrompt, promptInstall } = useInstallPrompt();
   const { couponExpired, dismissCouponExpired, startCheckout } = useSubscription();
   const [schoolSearch, setSchoolSearch] = useState("");
+  const [showLevelUp, setShowLevelUp] = useState(false);
+  const prevLevelRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (!authLoading && !user) {
