@@ -3,6 +3,14 @@ import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable";
 import type { User, Session } from "@supabase/supabase-js";
 
+const getRedirectUri = () => {
+  const origin = window.location.origin;
+  if (origin.includes('localhost') || origin.includes('capacitor://')) {
+    return 'https://pyro-learn.lovable.app';
+  }
+  return origin;
+};
+
 interface AuthContextType {
   user: User | null;
   session: Session | null;
