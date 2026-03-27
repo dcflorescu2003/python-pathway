@@ -260,10 +260,9 @@ const Index = (): JSX.Element => {
                 {levelInfo.name} {progress.isPremium && <span className="text-yellow-500">👑</span>}
               </p>
             </div>
-            <div className="flex items-center justify-center rounded-full bg-primary/10 transition-all"
-              style={{ width: `${Math.round(48 * levelInfo.scale)}px`, height: `${Math.round(48 * levelInfo.scale)}px`, fontSize: `${Math.round(24 * levelInfo.scale)}px` }}>
-              {levelInfo.emoji}
-            </div>
+            <img src={levelInfo.image} alt={levelInfo.name}
+              className="rounded-full object-cover"
+              style={{ width: `${Math.round(48 * levelInfo.scale)}px`, height: `${Math.round(48 * levelInfo.scale)}px` }} />
           </div>
           <button onClick={() => setShowRoadmap(true)} className="w-full text-left active:scale-[0.98] transition-transform">
             <Progress value={xpInLevel} className="h-2 cursor-pointer" />
