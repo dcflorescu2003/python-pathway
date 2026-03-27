@@ -1,4 +1,5 @@
 import { useState } from "react";
+import logo from "@/assets/logo.png";
 import CouponRedemption from "@/components/CouponRedemption";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
