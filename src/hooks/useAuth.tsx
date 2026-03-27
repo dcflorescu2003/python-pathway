@@ -5,12 +5,12 @@ import { Capacitor } from "@capacitor/core";
 import { Browser } from "@capacitor/browser";
 import type { User, Session } from "@supabase/supabase-js";
 
-const PRODUCTION_URL = 'https://pyro-learn.lovable.app';
+const PRODUCTION_URL = 'https://pyroskill.info';
 const OAUTH_BROKER_URL = `${PRODUCTION_URL}/~oauth/initiate`;
 
 const getRedirectUri = () => {
   if (Capacitor.isNativePlatform()) {
-    return 'pyro://auth';
+    return `${PRODUCTION_URL}?native_callback=1`;
   }
   return window.location.origin;
 };
