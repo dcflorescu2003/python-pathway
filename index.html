@@ -43,9 +43,22 @@
     <script>
       (function() {
         try {
-          var url = new URL(window.location.href);
-          if (url.searchParams.has('native_callback') && window.location.hash && window.location.hash.indexOf('access_token') !== -1) {
-            window.location.href = 'pyro://auth' + window.location.hash;
+          var hash = window.location.hash || '';
+          var search = window.location.search || '';
+          var hashParams = hash ? new URLSearchParams(hash.slice(1)) : new URLSearchParams();
+          var searchParams = search ? new URLSearchParams(search.slice(1)) : new URLSearchParams();
+          var hasTokensInHash = hash.indexOf('access_token') !== -1 || hash.indexOf('refresh_token') !== -1;
+          var hasTokensInQuery = searchParams.has('access_token') || searchParams.has('refresh_token');
+          var hasCodeInHash = hashParams.has('code');
+          var hasCodeInQuery = searchParams.has('code');
+          var state = hashParams.get('state') || searchParams.get('state') || '';
+
+          if ((hasTokensInHash || hasTokensInQuery || hasCodeInHash || hasCodeInQuery) && state.indexOf('native:') === 0) {
+            var payload = hasTokensInHash || hasCodeInHash
+              ? hashParams.toString()
+              : searchParams.toString();
+            var intentUrl = 'intent://auth?' + payload + '#Intent;scheme=pyro;package=ro.pythonpathway.app;end';
+            window.location.replace(intentUrl);
           }
         } catch(e) {}
       })();

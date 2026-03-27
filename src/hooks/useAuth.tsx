@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { SocialLogin } from "@capgo/capacitor-social-login";
 import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable";
 import { Capacitor } from "@capacitor/core";
@@ -7,10 +8,12 @@ import type { User, Session } from "@supabase/supabase-js";
 
 const PRODUCTION_URL = 'https://pyroskill.info';
 const OAUTH_BROKER_URL = `${PRODUCTION_URL}/~oauth/initiate`;
+const GOOGLE_WEB_CLIENT_ID = import.meta.env.VITE_GOOGLE_WEB_CLIENT_ID;
+const isNativeAndroid = Capacitor.isNativePlatform() && Capacitor.getPlatform() === "android";
 
 const getRedirectUri = () => {
   if (Capacitor.isNativePlatform()) {
-    return `${PRODUCTION_URL}?native_callback=1`;
+    return PRODUCTION_URL;
   }
   return window.location.origin;
 };
@@ -50,6 +53,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (!isNativeAndroid || !GOOGLE_WEB_CLIENT_ID) return;
+
+    SocialLogin.initialize({
+      google: {
+        webClientId: GOOGLE_WEB_CLIENT_ID,
+        mode: "online",
+      },
+    }).catch((error) => {
+      console.error("Failed to initialize native Google login:", error);
+    });
+  }, []);
+
+  useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
       setUser(session?.user ?? null);
@@ -82,13 +98,50 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { error };
   };
 
+  const signInWithNativeGoogle = async () => {
+    try {
+      if (!GOOGLE_WEB_CLIENT_ID) {
+        throw new Error("Lipsește VITE_GOOGLE_WEB_CLIENT_ID pentru login-ul Google nativ pe Android.");
+      }
+
+      await SocialLogin.initialize({
+        google: {
+          webClientId: GOOGLE_WEB_CLIENT_ID,
+          mode: "online",
+        },
+      });
+
+      const response = await SocialLogin.login({
+        provider: "google",
+      } as any);
+
+      if (response.result.responseType !== "online") {
+        throw new Error("Google login a revenit într-un mod neașteptat.");
+      }
+
+      if (!response.result.idToken) {
+        throw new Error("Google login nu a returnat un ID token.");
+      }
+
+      const { error } = await supabase.auth.signInWithIdToken({
+        provider: "google",
+        token: response.result.idToken,
+        access_token: response.result.accessToken?.token ?? undefined,
+      });
+
+      return { error };
+    } catch (error) {
+      return { error };
+    }
+  };
+
   const signInWithOAuthNative = async (provider: "google" | "apple") => {
     try {
       const redirectUri = getRedirectUri();
       const params = new URLSearchParams({
         provider,
         redirect_uri: redirectUri,
-        state: generateOAuthState(),
+        state: `native:${generateOAuthState()}`,
       });
 
       await Browser.open({
@@ -103,6 +156,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signInWithGoogle = async () => {
+    if (isNativeAndroid) {
+      return signInWithNativeGoogle();
+    }
     if (Capacitor.isNativePlatform()) {
       return signInWithOAuthNative("google");
     }
@@ -123,6 +179,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signOut = async () => {
+    if (isNativeAndroid) {
+      await SocialLogin.logout({ provider: "google" }).catch(() => undefined);
+    }
     await supabase.auth.signOut();
   };
 

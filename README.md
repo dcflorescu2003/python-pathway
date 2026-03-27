@@ -71,3 +71,28 @@ Yes, you can!
 To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
 
 Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+
+## Android release notes
+
+This project also ships as a Capacitor Android app.
+
+Important Android identifiers:
+
+- Package name: `ro.pythonpathway.app`
+- Capacitor app id: `ro.pythonpathway.app`
+- OAuth callback scheme: `pyro://auth`
+
+Recommended local release flow:
+
+```sh
+npm run android:sync
+npx cap open android
+```
+
+Then build the release in Android Studio, or from the `android` folder with Gradle.
+
+Google login for the Android app depends on external configuration too:
+
+- Google Play Console App Signing SHA-1 / SHA-256 must be registered in the Google OAuth Android client
+- The Android OAuth client must use package name `ro.pythonpathway.app`
+- Supabase / Lovable auth settings must stay aligned with the production domain and mobile callback flow

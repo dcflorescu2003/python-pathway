@@ -1,5 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { chapters as localChapters } from "@/data/courses";
+import { Capacitor } from "@capacitor/core";
 
 export type ExerciseType = "quiz" | "fill" | "order" | "truefalse" | "match";
 
@@ -170,26 +172,47 @@ function addFixareLessons(chapters: Chapter[]): Chapter[] {
 }
 
 async function fetchChapters(): Promise<Chapter[]> {
+  const isNativePlatform = Capacitor.isNativePlatform();
   const { data: chaptersData, error: chaptersError } = await supabase
     .from("chapters")
     .select("*")
     .order("number");
 
-  if (chaptersError) throw chaptersError;
+  if (chaptersError) {
+    if (!isNativePlatform) throw chaptersError;
+    console.error("Failed to load chapters from Supabase, using local fallback:", chaptersError);
+    return localChapters as Chapter[];
+  }
 
   const { data: lessonsData, error: lessonsError } = await supabase
     .from("lessons")
     .select("*")
     .order("sort_order");
 
-  if (lessonsError) throw lessonsError;
+  if (lessonsError) {
+    if (!isNativePlatform) throw lessonsError;
+    console.error("Failed to load lessons from Supabase, using local fallback:", lessonsError);
+    return localChapters as Chapter[];
+  }
 
   const { data: exercisesData, error: exercisesError } = await supabase
     .from("exercises")
     .select("*")
     .order("sort_order");
 
-  if (exercisesError) throw exercisesError;
+  if (exercisesError) {
+    if (!isNativePlatform) throw exercisesError;
+    console.error("Failed to load exercises from Supabase, using local fallback:", exercisesError);
+    return localChapters as Chapter[];
+  }
+
+  if (!chaptersData?.length || !lessonsData?.length) {
+    if (!isNativePlatform) {
+      throw new Error("Supabase returned empty chapter data on web.");
+    }
+    console.warn("Supabase returned empty chapter data, using local fallback.");
+    return localChapters as Chapter[];
+  }
 
   // Group exercises by lesson
   const exercisesByLesson: Record<string, Exercise[]> = {};
@@ -222,7 +245,12 @@ async function fetchChapters(): Promise<Chapter[]> {
     lessons: lessonsByChapter[ch.id] || [],
   }));
 
-  return addFixareLessons(rawChapters);
+  const hydratedChapters = addFixareLessons(rawChapters);
+  if (hydratedChapters.length > 0) return hydratedChapters;
+  if (!isNativePlatform) {
+    throw new Error("Hydrated chapters are empty on web.");
+  }
+  return localChapters as Chapter[];
 }
 
 export function useChapters() {

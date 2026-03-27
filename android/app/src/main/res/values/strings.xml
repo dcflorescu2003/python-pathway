@@ -3,5 +3,5 @@
     <string name="app_name">PyRo</string>
     <string name="title_activity_main">PyRo</string>
     <string name="package_name">ro.pythonpathway.app</string>
-    <string name="custom_url_scheme">ro.pythonpathway.app</string>
+    <string name="custom_url_scheme">pyro</string>
 </resources>

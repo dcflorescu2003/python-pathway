@@ -65,29 +65,26 @@ const AppRoutes = () => {
 // Handle deep link OAuth tokens
 const handleDeepLinkUrl = async (url: string) => {
   try {
-    // Extract tokens from URL hash or query params
-    // URL can be: pyro://auth#access_token=...&refresh_token=...
-    // or: https://pyro-learn.lovable.app/#access_token=...&refresh_token=...
-    let hashPart = '';
-    
-    if (url.includes('#')) {
-      hashPart = url.split('#')[1];
-    } else if (url.includes('?')) {
-      hashPart = url.split('?')[1];
-    }
-    
-    if (!hashPart) return;
-    
-    const params = new URLSearchParams(hashPart);
+    const parsedUrl = new URL(url);
+    const hashPart = parsedUrl.hash ? parsedUrl.hash.slice(1) : "";
+    const searchPart = parsedUrl.search ? parsedUrl.search.slice(1) : "";
+    const params = new URLSearchParams(hashPart || searchPart);
     const accessToken = params.get('access_token');
     const refreshToken = params.get('refresh_token');
-    
+    const code = params.get("code");
+
     if (accessToken && refreshToken) {
       await Browser.close().catch(() => undefined);
       await supabase.auth.setSession({
         access_token: accessToken,
         refresh_token: refreshToken,
       });
+      return;
+    }
+
+    if (code) {
+      await Browser.close().catch(() => undefined);
+      await supabase.auth.exchangeCodeForSession(code);
     }
   } catch (error) {
     console.error('Error handling deep link auth:', error);
