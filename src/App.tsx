@@ -7,6 +7,7 @@ import { lazy, Suspense, useState, useEffect } from "react";
 import { AnimatePresence } from "framer-motion";
 import { Capacitor } from "@capacitor/core";
 import { App as CapApp } from "@capacitor/app";
+import { Browser } from "@capacitor/browser";
 import { supabase } from "@/integrations/supabase/client";
 import { AuthProvider } from "@/hooks/useAuth";
 import MobileLayout from "@/components/layout/MobileLayout";
@@ -82,6 +83,7 @@ const handleDeepLinkUrl = async (url: string) => {
     const refreshToken = params.get('refresh_token');
     
     if (accessToken && refreshToken) {
+      await Browser.close().catch(() => undefined);
       await supabase.auth.setSession({
         access_token: accessToken,
         refresh_token: refreshToken,
