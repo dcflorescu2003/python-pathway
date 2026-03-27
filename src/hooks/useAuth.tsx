@@ -3,6 +3,14 @@ import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable";
 import type { User, Session } from "@supabase/supabase-js";
 
+const getRedirectUri = () => {
+  const origin = window.location.origin;
+  if (origin.includes('localhost') || origin.includes('capacitor://')) {
+    return 'https://pyro-learn.lovable.app';
+  }
+  return origin;
+};
+
 interface AuthContextType {
   user: User | null;
   session: Session | null;
@@ -56,14 +64,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signInWithGoogle = async () => {
     const result = await lovable.auth.signInWithOAuth("google", {
-      redirect_uri: window.location.origin,
+      redirect_uri: getRedirectUri(),
     });
     return { error: result.error || null };
   };
 
   const signInWithApple = async () => {
     const result = await lovable.auth.signInWithOAuth("apple", {
-      redirect_uri: window.location.origin,
+      redirect_uri: getRedirectUri(),
     });
     return { error: result.error || null };
   };
