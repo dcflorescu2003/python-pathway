@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useChapters, getLevelFromXP, getXPForNextLevel } from "@/hooks/useChapters";
@@ -20,6 +20,7 @@ import { useSubscription } from "@/hooks/useSubscription";
 import CouponExpiredDialog from "@/components/CouponExpiredDialog";
 import { supabase } from "@/integrations/supabase/client";
 import LoadingScreen from "@/components/states/LoadingScreen";
+import LevelUpDialog from "@/components/LevelUpDialog";
 
 const Index = (): JSX.Element => {
   const navigate = useNavigate();
@@ -37,6 +38,8 @@ const Index = (): JSX.Element => {
   const { isInstalled, canPrompt, promptInstall } = useInstallPrompt();
   const { couponExpired, dismissCouponExpired, startCheckout } = useSubscription();
   const [schoolSearch, setSchoolSearch] = useState("");
+  const [showLevelUp, setShowLevelUp] = useState(false);
+  const prevLevelRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -101,6 +104,18 @@ const Index = (): JSX.Element => {
     checkOnboarding();
   }, [user]);
 
+  const level = getLevelFromXP(progress.xp);
+  const xpToNext = getXPForNextLevel(progress.xp);
+  const xpInLevel = 100 - xpToNext;
+  const levelInfo = getLevelInfo(level);
+
+  useEffect(() => {
+    if (prevLevelRef.current !== null && level > prevLevelRef.current) {
+      setShowLevelUp(true);
+    }
+    prevLevelRef.current = level;
+  }, [level]);
+
   if (needsOnboarding === true) {
     return <SchoolOnboarding onComplete={() => {
       setNeedsOnboarding(false);
@@ -109,11 +124,6 @@ const Index = (): JSX.Element => {
   }
 
   if (chaptersLoading || !chapters) return <LoadingScreen />;
-
-  const level = getLevelFromXP(progress.xp);
-  const xpToNext = getXPForNextLevel(progress.xp);
-  const xpInLevel = 100 - xpToNext;
-  const levelInfo = getLevelInfo(level);
 
   const filteredSchools = schoolSearch.trim()
     ? schools.filter((s) =>
@@ -314,6 +324,7 @@ const Index = (): JSX.Element => {
       <InstallDialog open={showInstall} onOpenChange={setShowInstall} />
       <LevelRoadmap open={showRoadmap} onOpenChange={setShowRoadmap} currentLevel={level} />
       <CouponExpiredDialog open={couponExpired} onOpenChange={(open) => { if (!open) dismissCouponExpired(); }} onSubscribe={startCheckout} onStayFree={dismissCouponExpired} />
+      <LevelUpDialog open={showLevelUp} onOpenChange={setShowLevelUp} levelInfo={levelInfo} newLevel={level} />
     </div>
   );
 };
