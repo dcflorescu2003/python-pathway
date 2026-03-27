@@ -1,59 +1,43 @@
 
 
-# Fix: Google OAuth „redirect_uri is not allowed" pe Android
+# Fix: Revenire în aplicație după Google OAuth pe Android
 
 ## Problema
-
-Când aplicația rulează ca APK nativ (prin Capacitor), `window.location.origin` returnează ceva de genul `http://localhost` sau `capacitor://localhost`. Acest URI nu este în lista de redirect URI-uri autorizate din Google OAuth, de aceea apare eroarea `invalid_request`.
+După autentificarea Google în browser, redirect-ul ajunge pe `https://pyro-learn.lovable.app` dar rămâi în Chrome — aplicația nativă nu interceptează link-ul. Cauza: `android:autoVerify="true"` necesită un fișier `/.well-known/assetlinks.json` pe domeniu, pe care nu-l controlăm.
 
 ## Soluția
 
-Trebuie să ne asigurăm că `redirect_uri` trimis la Google OAuth este unul valid — adică URL-ul publicat al aplicației web (`https://pyro-learn.lovable.app`), nu `localhost`.
+### 1. Instalare `@capacitor/app` și `@capacitor/browser`
+- `@capacitor/app` — permite ascultarea evenimentelor de deep link (`appUrlOpen`)
+- `@capacitor/browser` — deschide OAuth într-un In-App Browser (Custom Tab) în loc de Chrome extern, ceea ce permite revenirea automată în app
 
-### Modificări
+### 2. Modificare `useAuth.tsx` — OAuth nativ cu In-App Browser
+- Detectăm dacă rulăm pe Capacitor (via `@capacitor/core` → `Capacitor.isNativePlatform()`)
+- Pe nativ: deschidem URL-ul OAuth în In-App Browser (`Browser.open()`) cu redirect_uri setat la un custom scheme (ex: `pyro://auth`)
+- Pe web: păstrăm flow-ul actual cu `lovable.auth.signInWithOAuth`
 
-**Fișier: `src/hooks/useAuth.tsx`**
-
-- Detectăm dacă aplicația rulează în Capacitor (nativ) verificând dacă `window.location.origin` conține `localhost` sau `capacitor://`
-- Dacă da, folosim URL-ul publicat (`https://pyro-learn.lovable.app`) ca `redirect_uri`
-- Dacă nu (web normal), păstrăm `window.location.origin`
-
-```typescript
-const getRedirectUri = () => {
-  const origin = window.location.origin;
-  // In Capacitor (native app), origin is localhost or capacitor://
-  if (origin.includes('localhost') || origin.includes('capacitor://')) {
-    return 'https://pyro-learn.lovable.app';
-  }
-  return origin;
-};
-```
-
-Apoi folosim `getRedirectUri()` în loc de `window.location.origin` în `signInWithGoogle` și `signInWithApple`.
-
-**Fișier: `android/app/src/main/AndroidManifest.xml`**
-
-- Adăugăm un `intent-filter` pentru deep links, astfel încât după autentificarea Google, Android-ul să redirecționeze înapoi în aplicație:
-
+### 3. Custom URL scheme în `AndroidManifest.xml`
+- Adăugăm un `intent-filter` cu scheme-ul `pyro` (fără `autoVerify`, care nu necesită assetlinks.json):
 ```xml
-<intent-filter android:autoVerify="true">
+<intent-filter>
     <action android:name="android.intent.action.VIEW" />
     <category android:name="android.intent.category.DEFAULT" />
     <category android:name="android.intent.category.BROWSABLE" />
-    <data android:scheme="https" android:host="pyro-learn.lovable.app" />
+    <data android:scheme="pyro" android:host="auth" />
 </intent-filter>
 ```
 
-**Fișier: `capacitor.config.ts`**
+### 4. Listener deep link în `App.tsx`
+- La pornirea aplicației, înregistrăm un listener pe `App.addListener('appUrlOpen')` 
+- Când primim un URL de tipul `pyro://auth?...` sau `https://pyro-learn.lovable.app/...`, extragem token-urile din URL și apelăm `supabase.auth.setSession()` pentru a finaliza autentificarea
 
-- Adăugăm configurare pentru server URL în producție, permițând Capacitor să intercepteze redirect-urile:
+### 5. Păstrăm intent-filter-ul `https` existent
+- Eliminăm `autoVerify="true"` (nu funcționează fără `assetlinks.json`)
+- Păstrăm ca fallback pentru cazuri în care utilizatorul deschide manual link-ul
 
-```typescript
-server: {
-  androidScheme: 'https',
-}
-```
-
-### Notă importantă
-După rebuild-ul APK-ului, URL-ul `https://pyro-learn.lovable.app` trebuie să fie adăugat ca **Authorized redirect URI** în consola Google Cloud (dacă folosești credențiale proprii). Dacă folosești Lovable Cloud managed Google OAuth, acesta ar trebui să fie deja autorizat automat.
+## Detalii tehnice
+- `@capacitor/browser` folosește Chrome Custom Tabs pe Android — browserul apare ca un overlay peste app, nu ca o fereastră separată, și se închide automat la redirect
+- Capacitor `App` plugin interceptează automat URL-urile care match-uiesc scheme-ul custom
+- Flow-ul web rămâne neschimbat — modificările afectează doar build-ul nativ
+- După implementare: `npx cap sync` + rebuild APK
 
