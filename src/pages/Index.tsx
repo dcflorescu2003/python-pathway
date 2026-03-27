@@ -111,12 +111,19 @@ const Index = (): JSX.Element => {
     }} />;
   }
 
-  if (chaptersLoading || !chapters) return <LoadingScreen />;
-
   const level = getLevelFromXP(progress.xp);
   const xpToNext = getXPForNextLevel(progress.xp);
   const xpInLevel = 100 - xpToNext;
   const levelInfo = getLevelInfo(level);
+
+  useEffect(() => {
+    if (prevLevelRef.current !== null && level > prevLevelRef.current) {
+      setShowLevelUp(true);
+    }
+    prevLevelRef.current = level;
+  }, [level]);
+
+  if (chaptersLoading || !chapters) return <LoadingScreen />;
 
   const filteredSchools = schoolSearch.trim()
     ? schools.filter((s) =>
