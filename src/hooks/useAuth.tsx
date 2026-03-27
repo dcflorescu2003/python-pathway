@@ -6,12 +6,29 @@ import { Browser } from "@capacitor/browser";
 import type { User, Session } from "@supabase/supabase-js";
 
 const PRODUCTION_URL = 'https://pyro-learn.lovable.app';
+const OAUTH_BROKER_URL = `${PRODUCTION_URL}/~oauth/initiate`;
 
 const getRedirectUri = () => {
   if (Capacitor.isNativePlatform()) {
     return 'pyro://auth';
   }
   return window.location.origin;
+};
+
+const generateOAuthState = () => {
+  const browserCrypto = globalThis.crypto;
+
+  if (browserCrypto?.randomUUID) {
+    return browserCrypto.randomUUID();
+  }
+
+  if (browserCrypto?.getRandomValues) {
+    return Array.from(browserCrypto.getRandomValues(new Uint8Array(16)))
+      .map((value) => value.toString(16).padStart(2, "0"))
+      .join("");
+  }
+
+  return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 };
 
 interface AuthContextType {
@@ -67,16 +84,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signInWithOAuthNative = async (provider: "google" | "apple") => {
     try {
-      // Get the OAuth URL from Lovable but don't let it redirect
-      // We need to manually open it in an in-app browser
       const redirectUri = getRedirectUri();
-      
-      // For native, we use the production URL as redirect and handle the deep link
-      const result = await lovable.auth.signInWithOAuth(provider, {
-        redirect_uri: PRODUCTION_URL,
+      const params = new URLSearchParams({
+        provider,
+        redirect_uri: redirectUri,
+        state: generateOAuthState(),
       });
-      
-      return { error: result.error || null };
+
+      await Browser.open({
+        url: `${OAUTH_BROKER_URL}?${params.toString()}`,
+        presentationStyle: "popover",
+      });
+
+      return { error: null };
     } catch (err) {
       return { error: err };
     }
