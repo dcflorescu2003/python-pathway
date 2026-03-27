@@ -61,9 +61,7 @@ const AccountView = () => {
       </div>
 
       <div className="flex-1 flex flex-col items-center px-6 pt-8 pb-12">
-        <div className="flex h-20 w-20 items-center justify-center rounded-full bg-primary/10 text-4xl mb-4">
-          🐍
-        </div>
+        <img src={logo} alt="PyRo" className="h-20 w-20 rounded-2xl mb-4" />
         <h1 className="text-xl font-bold text-foreground mb-1">
           {user?.user_metadata?.full_name || user?.email?.split("@")[0] || "Pythonist"}
         </h1>
