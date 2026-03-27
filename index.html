@@ -40,6 +40,16 @@
 </head>
 
   <body>
+    <script>
+      (function() {
+        try {
+          var url = new URL(window.location.href);
+          if (url.searchParams.has('native_callback') && window.location.hash && window.location.hash.indexOf('access_token') !== -1) {
+            window.location.href = 'pyro://auth' + window.location.hash;
+          }
+        } catch(e) {}
+      })();
+    </script>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
