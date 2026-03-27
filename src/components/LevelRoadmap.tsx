@@ -60,12 +60,9 @@ const LevelRoadmap = ({ open, onOpenChange, currentLevel }: LevelRoadmapProps) =
                   )}
                 >
                   <div className="flex items-center gap-2">
-                    <span
-                      className="text-lg"
-                      style={{ transform: `scale(${tier.scale})`, display: "inline-block" }}
-                    >
-                      {tier.emoji}
-                    </span>
+                    <img src={tier.image} alt={tier.name}
+                      className="rounded-full object-cover"
+                      style={{ width: `${Math.round(36 * tier.scale)}px`, height: `${Math.round(36 * tier.scale)}px` }} />
                     <div>
                       <p className={cn("text-sm font-bold", isCurrent ? "text-primary" : "text-foreground")}>
                         {tier.name}
