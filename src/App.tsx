@@ -5,6 +5,9 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import { lazy, Suspense, useState, useEffect } from "react";
 import { AnimatePresence } from "framer-motion";
+import { Capacitor } from "@capacitor/core";
+import { App as CapApp } from "@capacitor/app";
+import { supabase } from "@/integrations/supabase/client";
 import { AuthProvider } from "@/hooks/useAuth";
 import MobileLayout from "@/components/layout/MobileLayout";
 import LoadingScreen from "@/components/states/LoadingScreen";
@@ -58,7 +61,38 @@ const AppRoutes = () => {
   return isMainPage ? <MobileLayout>{content}</MobileLayout> : content;
 };
 
-const App = () => {
+// Handle deep link OAuth tokens
+const handleDeepLinkUrl = async (url: string) => {
+  try {
+    // Extract tokens from URL hash or query params
+    // URL can be: pyro://auth#access_token=...&refresh_token=...
+    // or: https://pyro-learn.lovable.app/#access_token=...&refresh_token=...
+    let hashPart = '';
+    
+    if (url.includes('#')) {
+      hashPart = url.split('#')[1];
+    } else if (url.includes('?')) {
+      hashPart = url.split('?')[1];
+    }
+    
+    if (!hashPart) return;
+    
+    const params = new URLSearchParams(hashPart);
+    const accessToken = params.get('access_token');
+    const refreshToken = params.get('refresh_token');
+    
+    if (accessToken && refreshToken) {
+      await supabase.auth.setSession({
+        access_token: accessToken,
+        refresh_token: refreshToken,
+      });
+    }
+  } catch (error) {
+    console.error('Error handling deep link auth:', error);
+  }
+};
+
+const AppComponent = () => {
   const [showSplash, setShowSplash] = useState(() => {
     const shown = sessionStorage.getItem("pyro-splash-shown");
     return !shown;
@@ -73,6 +107,29 @@ const App = () => {
       return () => clearTimeout(timer);
     }
   }, [showSplash]);
+
+  // Listen for deep link events on native platforms
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return;
+
+    // Handle URL that opened the app
+    CapApp.getLaunchUrl().then((result) => {
+      if (result?.url) {
+        handleDeepLinkUrl(result.url);
+      }
+    });
+
+    // Handle URL while app is running
+    const listener = CapApp.addListener('appUrlOpen', (event) => {
+      if (event.url) {
+        handleDeepLinkUrl(event.url);
+      }
+    });
+
+    return () => {
+      listener.then(l => l.remove());
+    };
+  }, []);
 
   if (showSplash) return <SplashScreen />;
 
@@ -91,4 +148,4 @@ const App = () => {
   );
 };
 
-export default App;
+export default AppComponent;
