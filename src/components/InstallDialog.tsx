@@ -1,3 +1,4 @@
+import logo from "@/assets/logo.png";
 import {
   Dialog,
   DialogContent,
@@ -26,7 +27,7 @@ const InstallDialog = ({ open, onOpenChange }: InstallDialogProps) => {
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-sm rounded-2xl">
         <DialogHeader className="text-center items-center">
-          <div className="text-4xl mb-2">🐍</div>
+          <img src={logo} alt="PyRo" className="h-14 w-14 rounded-xl mb-2" />
           <DialogTitle className="text-xl font-bold">
             Instalează PyRo 🚀
           </DialogTitle>
