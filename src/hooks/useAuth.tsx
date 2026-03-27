@@ -16,12 +16,14 @@ const getRedirectUri = () => {
 };
 
 const generateOAuthState = () => {
-  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
-    return crypto.randomUUID();
+  const browserCrypto = globalThis.crypto;
+
+  if (browserCrypto?.randomUUID) {
+    return browserCrypto.randomUUID();
   }
 
-  if (typeof crypto !== "undefined" && "getRandomValues" in crypto) {
-    return Array.from(crypto.getRandomValues(new Uint8Array(16)))
+  if (browserCrypto?.getRandomValues) {
+    return Array.from(browserCrypto.getRandomValues(new Uint8Array(16)))
       .map((value) => value.toString(16).padStart(2, "0"))
       .join("");
   }
