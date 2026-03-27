@@ -20,6 +20,7 @@ import { useSubscription } from "@/hooks/useSubscription";
 import CouponExpiredDialog from "@/components/CouponExpiredDialog";
 import { supabase } from "@/integrations/supabase/client";
 import LoadingScreen from "@/components/states/LoadingScreen";
+import LevelUpDialog from "@/components/LevelUpDialog";
 
 const Index = (): JSX.Element => {
   const navigate = useNavigate();
