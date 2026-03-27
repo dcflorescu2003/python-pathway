@@ -1,43 +1,43 @@
 
 
-# Fix: Revenire în aplicație după Google OAuth pe Android
+# Fix: OAuth Android cu domeniu propriu `pyroskill.info`
 
-## Problema
-După autentificarea Google în browser, redirect-ul ajunge pe `https://pyro-learn.lovable.app` dar rămâi în Chrome — aplicația nativă nu interceptează link-ul. Cauza: `android:autoVerify="true"` necesită un fișier `/.well-known/assetlinks.json` pe domeniu, pe care nu-l controlăm.
+Domeniul `pyroskill.info` este deja conectat. Implementăm bridge-ul web→native pentru ca login-ul Google să revină în aplicație.
 
-## Soluția
+## Modificări
 
-### 1. Instalare `@capacitor/app` și `@capacitor/browser`
-- `@capacitor/app` — permite ascultarea evenimentelor de deep link (`appUrlOpen`)
-- `@capacitor/browser` — deschide OAuth într-un In-App Browser (Custom Tab) în loc de Chrome extern, ceea ce permite revenirea automată în app
+### 1. `src/hooks/useAuth.tsx`
+- Schimbăm `PRODUCTION_URL` de la `https://pyro-learn.lovable.app` la `https://pyroskill.info`
+- `getRedirectUri()` pe nativ returnează `https://pyroskill.info?native_callback=1` (nu mai folosim `pyro://auth` — broker-ul îl respinge)
 
-### 2. Modificare `useAuth.tsx` — OAuth nativ cu In-App Browser
-- Detectăm dacă rulăm pe Capacitor (via `@capacitor/core` → `Capacitor.isNativePlatform()`)
-- Pe nativ: deschidem URL-ul OAuth în In-App Browser (`Browser.open()`) cu redirect_uri setat la un custom scheme (ex: `pyro://auth`)
-- Pe web: păstrăm flow-ul actual cu `lovable.auth.signInWithOAuth`
+### 2. `index.html`
+- Adăugăm un script inline **înainte** de `<div id="root">` care:
+  - Verifică dacă URL-ul conține `?native_callback=1` ȘI `#access_token=...`
+  - Dacă da, redirecționează instant la `pyro://auth#access_token=...&refresh_token=...`
+  - Android interceptează `pyro://auth`, listener-ul `appUrlOpen` din `App.tsx` preia token-urile și face `setSession()` + `Browser.close()`
+  - Pe web (fără `native_callback`), script-ul nu face nimic
 
-### 3. Custom URL scheme în `AndroidManifest.xml`
-- Adăugăm un `intent-filter` cu scheme-ul `pyro` (fără `autoVerify`, care nu necesită assetlinks.json):
-```xml
-<intent-filter>
-    <action android:name="android.intent.action.VIEW" />
-    <category android:name="android.intent.category.DEFAULT" />
-    <category android:name="android.intent.category.BROWSABLE" />
-    <data android:scheme="pyro" android:host="auth" />
-</intent-filter>
+### 3. `android/app/src/main/AndroidManifest.xml`
+- Actualizăm intent-filter-ul HTTPS de la `pyro-learn.lovable.app` la `pyroskill.info`
+- Păstrăm intent-filter-ul `pyro://auth` (custom scheme)
+
+## Flow complet
+
+```text
+App → Browser.open(https://pyroskill.info/~oauth/initiate?provider=google&redirect_uri=https://pyroskill.info?native_callback=1)
+  → Google OAuth consent
+  → Redirect la https://pyroskill.info?native_callback=1#access_token=...
+  → Script inline din index.html detectează native_callback + tokens
+  → window.location.href = pyro://auth#access_token=...
+  → Android interceptează pyro://auth (intent-filter)
+  → appUrlOpen → setSession() → Browser.close()
+  → Utilizatorul e logat în app
 ```
 
-### 4. Listener deep link în `App.tsx`
-- La pornirea aplicației, înregistrăm un listener pe `App.addListener('appUrlOpen')` 
-- Când primim un URL de tipul `pyro://auth?...` sau `https://pyro-learn.lovable.app/...`, extragem token-urile din URL și apelăm `supabase.auth.setSession()` pentru a finaliza autentificarea
+## Fișiere modificate
+1. `src/hooks/useAuth.tsx` — PRODUCTION_URL + redirect nativ
+2. `index.html` — script bridge web→native
+3. `android/app/src/main/AndroidManifest.xml` — domeniu HTTPS actualizat
 
-### 5. Păstrăm intent-filter-ul `https` existent
-- Eliminăm `autoVerify="true"` (nu funcționează fără `assetlinks.json`)
-- Păstrăm ca fallback pentru cazuri în care utilizatorul deschide manual link-ul
-
-## Detalii tehnice
-- `@capacitor/browser` folosește Chrome Custom Tabs pe Android — browserul apare ca un overlay peste app, nu ca o fereastră separată, și se închide automat la redirect
-- Capacitor `App` plugin interceptează automat URL-urile care match-uiesc scheme-ul custom
-- Flow-ul web rămâne neschimbat — modificările afectează doar build-ul nativ
-- După implementare: `npx cap sync` + rebuild APK
+După implementare: rebuild APK cu `npx cap sync`.
 
