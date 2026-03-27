@@ -1,48 +1,59 @@
 
 
-# Plan: Tip nou de exercițiu — Asociere (Matching)
+# Fix: Google OAuth „redirect_uri is not allowed" pe Android
 
-## Ce facem
-Adăugăm un nou tip de exercițiu „match" unde utilizatorul vede 2 coloane de butoane (3-5 pe fiecare) și trebuie să asocieze fiecare element din stânga cu perechea corectă din dreapta.
+## Problema
 
-## Modificări
+Când aplicația rulează ca APK nativ (prin Capacitor), `window.location.origin` returnează ceva de genul `http://localhost` sau `capacitor://localhost`. Acest URI nu este în lista de redirect URI-uri autorizate din Google OAuth, de aceea apare eroarea `invalid_request`.
 
-### 1. Migrare DB — coloana `pairs` pe tabelul `exercises`
-```sql
-ALTER TABLE public.exercises ADD COLUMN pairs jsonb DEFAULT NULL;
+## Soluția
+
+Trebuie să ne asigurăm că `redirect_uri` trimis la Google OAuth este unul valid — adică URL-ul publicat al aplicației web (`https://pyro-learn.lovable.app`), nu `localhost`.
+
+### Modificări
+
+**Fișier: `src/hooks/useAuth.tsx`**
+
+- Detectăm dacă aplicația rulează în Capacitor (nativ) verificând dacă `window.location.origin` conține `localhost` sau `capacitor://`
+- Dacă da, folosim URL-ul publicat (`https://pyro-learn.lovable.app`) ca `redirect_uri`
+- Dacă nu (web normal), păstrăm `window.location.origin`
+
+```typescript
+const getRedirectUri = () => {
+  const origin = window.location.origin;
+  // In Capacitor (native app), origin is localhost or capacitor://
+  if (origin.includes('localhost') || origin.includes('capacitor://')) {
+    return 'https://pyro-learn.lovable.app';
+  }
+  return origin;
+};
 ```
-Format: `[{ "id": "p1", "left": "len()", "right": "lungimea listei" }, ...]`
 
-### 2. Tipuri — `src/hooks/useChapters.ts`
-- Adaugă `"match"` la `ExerciseType`
-- Adaugă `pairs?: { id: string; left: string; right: string }[]` la interfața `Exercise`
-- În `mapExercise`, mapează `row.pairs`
-- În `transformExercise`, adaugă un caz pentru `"match"` (de ex. transformă în quiz)
+Apoi folosim `getRedirectUri()` în loc de `window.location.origin` în `signInWithGoogle` și `signInWithApple`.
 
-### 3. Componentă nouă — `src/components/exercises/MatchExercise.tsx`
-- **State**: `selectedLeft: string | null`, `selectedRight: string | null`, `matchedPairs: Map<string, string>` (left→right)
-- **Logică**: 
-  - Click stânga → selectează; click dreapta → selectează; când ambele sunt selectate, se înregistrează perechea
-  - Butoanele deja asociate devin inactive/colorate
-  - Buton „Verifică" apare când toate perechile sunt formate
-  - La verificare: compară `matchedPairs` cu `pairs` din exercițiu
-- **UI**: 2 coloane (`grid grid-cols-2 gap-4`), butoane cu stil similar celorlalte exerciții, evidențiere la selecție, feedback corect/greșit per pereche
+**Fișier: `android/app/src/main/AndroidManifest.xml`**
 
-### 4. `src/pages/LessonPage.tsx`
-- Import `MatchExercise`
-- Adaugă `{exercise.type === "match" && <MatchExercise ... />}`
+- Adăugăm un `intent-filter` pentru deep links, astfel încât după autentificarea Google, Android-ul să redirecționeze înapoi în aplicație:
 
-### 5. `src/components/admin/ExerciseEditor.tsx`
-- Adaugă opțiunea `"match"` / `"Asociere"` în select-ul de tip
-- `handleTypeChange` — inițializează cu 3 perechi goale
-- `renderMatchFields()` — editor pentru perechi: 2 input-uri pe rând (stânga + dreapta), butoane de adăugare/ștergere
+```xml
+<intent-filter android:autoVerify="true">
+    <action android:name="android.intent.action.VIEW" />
+    <category android:name="android.intent.category.DEFAULT" />
+    <category android:name="android.intent.category.BROWSABLE" />
+    <data android:scheme="https" android:host="pyro-learn.lovable.app" />
+</intent-filter>
+```
 
-### 6. `useChapters.ts` — Fixare
-- În `transformExercise`, cazul `"match"`: generează un quiz din prima pereche (ex: „Ce se asociază cu X?" cu opțiuni din valorile din dreapta)
+**Fișier: `capacitor.config.ts`**
 
-## Detalii tehnice
-- Coloanele din dreapta se afișează **amestecate** random la render
-- Un buton selectat din stânga + un buton selectat din dreapta = o pereche formată (evidențiată cu aceeași culoare)
-- Răspunsul e corect doar dacă **toate** perechile sunt corecte
-- Minim 3, maxim 5 perechi (validat în editor)
+- Adăugăm configurare pentru server URL în producție, permițând Capacitor să intercepteze redirect-urile:
+
+```typescript
+server: {
+  androidScheme: 'https',
+}
+```
+
+### Notă importantă
+După rebuild-ul APK-ului, URL-ul `https://pyro-learn.lovable.app` trebuie să fie adăugat ca **Authorized redirect URI** în consola Google Cloud (dacă folosești credențiale proprii). Dacă folosești Lovable Cloud managed Google OAuth, acesta ar trebui să fie deja autorizat automat.
 
