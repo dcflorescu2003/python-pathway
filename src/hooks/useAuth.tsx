@@ -1,14 +1,17 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable";
+import { Capacitor } from "@capacitor/core";
+import { Browser } from "@capacitor/browser";
 import type { User, Session } from "@supabase/supabase-js";
 
+const PRODUCTION_URL = 'https://pyro-learn.lovable.app';
+
 const getRedirectUri = () => {
-  const origin = window.location.origin;
-  if (origin.includes('localhost') || origin.includes('capacitor://')) {
-    return 'https://pyro-learn.lovable.app';
+  if (Capacitor.isNativePlatform()) {
+    return 'pyro://auth';
   }
-  return origin;
+  return window.location.origin;
 };
 
 interface AuthContextType {
@@ -62,16 +65,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { error };
   };
 
+  const signInWithOAuthNative = async (provider: "google" | "apple") => {
+    try {
+      // Get the OAuth URL from Lovable but don't let it redirect
+      // We need to manually open it in an in-app browser
+      const redirectUri = getRedirectUri();
+      
+      // For native, we use the production URL as redirect and handle the deep link
+      const result = await lovable.auth.signInWithOAuth(provider, {
+        redirect_uri: PRODUCTION_URL,
+      });
+      
+      return { error: result.error || null };
+    } catch (err) {
+      return { error: err };
+    }
+  };
+
   const signInWithGoogle = async () => {
+    if (Capacitor.isNativePlatform()) {
+      return signInWithOAuthNative("google");
+    }
     const result = await lovable.auth.signInWithOAuth("google", {
-      redirect_uri: getRedirectUri(),
+      redirect_uri: window.location.origin,
     });
     return { error: result.error || null };
   };
 
   const signInWithApple = async () => {
+    if (Capacitor.isNativePlatform()) {
+      return signInWithOAuthNative("apple");
+    }
     const result = await lovable.auth.signInWithOAuth("apple", {
-      redirect_uri: getRedirectUri(),
+      redirect_uri: window.location.origin,
     });
     return { error: result.error || null };
   };
