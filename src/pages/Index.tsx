@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import logo from "@/assets/logo.png";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useChapters, getLevelFromXP, getXPForNextLevel } from "@/hooks/useChapters";
