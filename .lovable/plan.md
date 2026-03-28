@@ -1,32 +1,30 @@
 
 
-# Plan: Reordonare probleme și capitole de probleme (drag-and-drop)
+# CRUD capitole de probleme în panoul admin
 
 ## Ce facem
-Adăugăm drag-and-drop reordering în `ProblemsEditor` — atât pentru capitolele de probleme, cât și pentru problemele din fiecare capitol. Urmăm exact pattern-ul existent din `ContentEditor` (care folosește `@dnd-kit`).
+Adăugăm în `ProblemsEditor` posibilitatea de a crea, edita și șterge capitole de probleme (`problem_chapters`), nu doar problemele din ele.
 
 ## Modificări
 
-### 1. Migrare DB — coloane `sort_order`
-```sql
-ALTER TABLE public.problem_chapters ADD COLUMN sort_order integer NOT NULL DEFAULT 0;
-ALTER TABLE public.problems ADD COLUMN sort_order integer NOT NULL DEFAULT 0;
-```
+### Fișier: `src/components/admin/ProblemsEditor.tsx`
 
-### 2. `src/hooks/useProblems.ts`
-- Adăugăm `sort_order` pe interfețele `Problem` și `ProblemChapter`
-- Sortăm rezultatele după `sort_order` ascendent în `fetchProblems`
+**1. State nou pentru editare/creare capitole:**
+- `editingChapter: string | null` — ID-ul capitolului în editare
+- `creatingChapter: boolean` — flag pentru formular capitol nou
+- `chapterForm: { title: string; icon: string }` — formular capitol
 
-### 3. `src/components/admin/ProblemsEditor.tsx`
-- Import `@dnd-kit/core`, `@dnd-kit/sortable`, `@dnd-kit/utilities` (deja instalate în proiect)
-- Creăm componente `SortableProblemChapter` și `SortableProblem` (identic ca pattern din ContentEditor)
-- Adăugăm `DndContext` + `SortableContext` pentru lista de capitole
-- Adăugăm `DndContext` + `SortableContext` pentru lista de probleme din fiecare capitol expandat
-- Handler-ele `onDragEnd` fac `arrayMove` + update `sort_order` în DB via `supabase.from("problem_chapters").update(...)` / `supabase.from("problems").update(...)`
-- Adăugăm iconița `GripVertical` pe fiecare element sortabil
+**2. Buton „Adaugă capitol" la sfârșitul listei:**
+- Afișează un formular inline cu câmpuri Title + Icon (emoji)
+- La salvare: `supabase.from("problem_chapters").insert({ id: "pc-{timestamp}", title, icon, sort_order: chapters.length })`
 
-## Detalii tehnice
-- Pattern identic cu cel din `ContentEditor` — `SortableChapter` / `SortableLesson`
-- `@dnd-kit` e deja instalat, nu trebuie dependențe noi
-- Salvarea ordinii se face instant la `onDragEnd` (batch update pe fiecare element cu noul `sort_order`)
+**3. Butoane Edit/Delete pe header-ul fiecărui capitol (lângă chevron):**
+- **Edit**: Deschide formular inline cu titlu + icon pre-populat, salvare via `.update()`
+- **Delete**: `AlertDialog` de confirmare, cu ștergere în cascadă (șterge mai întâi problemele din capitol, apoi capitolul)
+
+**4. Formular capitol (inline, similar cu cel de probleme):**
+- Input titlu + Input icon (emoji)
+- Butoane Salvează / Anulează
+
+Nu sunt necesare modificări DB — tabelul `problem_chapters` are deja RLS corect pentru admin CRUD.
 
