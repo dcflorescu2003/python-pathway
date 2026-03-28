@@ -114,18 +114,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         provider: "google",
       } as any);
 
-      if (response.result.responseType !== "online") {
+      const result = response.result as any;
+
+      if (result.responseType !== "online") {
         throw new Error("Google login a revenit într-un mod neașteptat.");
       }
 
-      if (!response.result.idToken) {
+      if (!result.idToken) {
         throw new Error("Google login nu a returnat un ID token.");
       }
 
       const { error } = await supabase.auth.signInWithIdToken({
         provider: "google",
-        token: response.result.idToken,
-        access_token: response.result.accessToken?.token ?? undefined,
+        token: result.idToken,
+        access_token: result.accessToken?.token ?? undefined,
       });
 
       return { error };
