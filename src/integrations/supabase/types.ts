@@ -255,16 +255,19 @@ export type Database = {
         Row: {
           icon: string
           id: string
+          sort_order: number
           title: string
         }
         Insert: {
           icon?: string
           id: string
+          sort_order?: number
           title: string
         }
         Update: {
           icon?: string
           id?: string
+          sort_order?: number
           title?: string
         }
         Relationships: []
@@ -277,6 +280,7 @@ export type Database = {
           hint: string | null
           id: string
           solution: string
+          sort_order: number
           test_cases: Json
           title: string
           xp_reward: number
@@ -288,6 +292,7 @@ export type Database = {
           hint?: string | null
           id: string
           solution?: string
+          sort_order?: number
           test_cases?: Json
           title: string
           xp_reward?: number
@@ -299,6 +304,7 @@ export type Database = {
           hint?: string | null
           id?: string
           solution?: string
+          sort_order?: number
           test_cases?: Json
           title?: string
           xp_reward?: number

@@ -7,13 +7,49 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ChevronDown, ChevronRight, Edit2, Trash2, Plus, Save, X } from "lucide-react";
+import { ChevronDown, ChevronRight, Edit2, Trash2, Plus, Save, X, GripVertical } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import {
+  DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+
+// --- Sortable wrappers ---
+function SortableProblemChapter({ id, children }: { id: string; children: React.ReactNode }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
+  const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.5 : 1, position: "relative" as const, zIndex: isDragging ? 50 : "auto" as any };
+  return (
+    <div ref={setNodeRef} style={style}>
+      <div className="absolute left-0 top-0 bottom-0 flex items-center pl-1 cursor-grab active:cursor-grabbing z-10" {...attributes} {...listeners}>
+        <GripVertical className="h-5 w-5 text-muted-foreground/50" />
+      </div>
+      <div className="pl-7">{children}</div>
+    </div>
+  );
+}
+
+function SortableProblem({ id, children }: { id: string; children: React.ReactNode }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
+  const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.5 : 1, position: "relative" as const, zIndex: isDragging ? 50 : "auto" as any };
+  return (
+    <div ref={setNodeRef} style={style}>
+      <div className="absolute left-0 top-0 bottom-0 flex items-center pl-1 cursor-grab active:cursor-grabbing z-10" {...attributes} {...listeners}>
+        <GripVertical className="h-4 w-4 text-muted-foreground/50" />
+      </div>
+      <div className="pl-6">{children}</div>
+    </div>
+  );
+}
 
 interface TestCaseForm {
   input: string;
@@ -30,6 +66,7 @@ const emptyProblem = (chapterId: string): Omit<Problem, "id"> => ({
   hint: "",
   chapter: chapterId,
   solution: "",
+  sortOrder: 0,
 });
 
 const ProblemsEditor = () => {
@@ -39,6 +76,11 @@ const ProblemsEditor = () => {
   const [editingProblem, setEditingProblem] = useState<string | null>(null);
   const [creatingFor, setCreatingFor] = useState<string | null>(null);
   const [form, setForm] = useState<Omit<Problem, "id"> & { id?: string }>(emptyProblem(""));
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
 
   const invalidate = () => queryClient.invalidateQueries({ queryKey: ["problems"] });
 
@@ -74,7 +116,9 @@ const ProblemsEditor = () => {
       toast.success("Problemă salvată!");
     } else {
       const newId = `p-${Date.now()}`;
-      const { error } = await supabase.from("problems").insert({ ...row, id: newId } as any);
+      const chapterProblems = data?.problems.filter(p => p.chapter === form.chapter) || [];
+      const sortOrder = chapterProblems.length;
+      const { error } = await supabase.from("problems").insert({ ...row, id: newId, sort_order: sortOrder } as any);
       if (error) { toast.error(error.message); return; }
       toast.success("Problemă creată!");
     }
@@ -98,6 +142,35 @@ const ProblemsEditor = () => {
 
   const addTestCase = () => setForm(f => ({ ...f, testCases: [...f.testCases, { input: "", expectedOutput: "", hidden: false }] }));
   const removeTestCase = (i: number) => setForm(f => ({ ...f, testCases: f.testCases.filter((_, j) => j !== i) }));
+
+  // --- Reorder handlers ---
+  const handleChapterReorder = async (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id || !data) return;
+    const { problemChapters } = data;
+    const oldIndex = problemChapters.findIndex(c => c.id === active.id);
+    const newIndex = problemChapters.findIndex(c => c.id === over.id);
+    if (oldIndex === -1 || newIndex === -1) return;
+    const reordered = arrayMove(problemChapters, oldIndex, newIndex);
+    const updates = reordered.map((ch, i) => supabase.from("problem_chapters").update({ sort_order: i } as any).eq("id", ch.id));
+    await Promise.all(updates);
+    toast.success("Ordine capitole actualizată!");
+    invalidate();
+  };
+
+  const handleProblemReorder = async (chapterId: string, event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id || !data) return;
+    const chapterProblems = data.problems.filter(p => p.chapter === chapterId);
+    const oldIndex = chapterProblems.findIndex(p => p.id === active.id);
+    const newIndex = chapterProblems.findIndex(p => p.id === over.id);
+    if (oldIndex === -1 || newIndex === -1) return;
+    const reordered = arrayMove(chapterProblems, oldIndex, newIndex);
+    const updates = reordered.map((p, i) => supabase.from("problems").update({ sort_order: i } as any).eq("id", p.id));
+    await Promise.all(updates);
+    toast.success("Ordine probleme actualizată!");
+    invalidate();
+  };
 
   if (isLoading) return <p className="text-sm text-muted-foreground p-4">Se încarcă...</p>;
   if (!data) return <p className="text-sm text-destructive p-4">Eroare la încărcare.</p>;
@@ -176,72 +249,84 @@ const ProblemsEditor = () => {
 
   return (
     <div className="space-y-3">
-      {problemChapters.map(ch => {
-        const isExpanded = expandedChapter === ch.id;
-        const chapterProblems = problems.filter(p => p.chapter === ch.id);
+      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleChapterReorder}>
+        <SortableContext items={problemChapters.map(c => c.id)} strategy={verticalListSortingStrategy}>
+          {problemChapters.map(ch => {
+            const isExpanded = expandedChapter === ch.id;
+            const chapterProblems = problems.filter(p => p.chapter === ch.id);
 
-        return (
-          <div key={ch.id} className="rounded-xl border border-border bg-card overflow-hidden">
-            <button
-              onClick={() => setExpandedChapter(isExpanded ? null : ch.id)}
-              className="w-full flex items-center gap-3 p-4 text-left"
-            >
-              <span className="text-xl">{ch.icon}</span>
-              <div className="flex-1 min-w-0">
-                <h2 className="font-bold text-foreground text-sm truncate">{ch.title}</h2>
-                <p className="text-xs text-muted-foreground">{chapterProblems.length} probleme</p>
-              </div>
-              {isExpanded ? <ChevronDown className="h-5 w-5 text-muted-foreground" /> : <ChevronRight className="h-5 w-5 text-muted-foreground" />}
-            </button>
+            return (
+              <SortableProblemChapter key={ch.id} id={ch.id}>
+                <div className="rounded-xl border border-border bg-card overflow-hidden">
+                  <button
+                    onClick={() => setExpandedChapter(isExpanded ? null : ch.id)}
+                    className="w-full flex items-center gap-3 p-4 text-left"
+                  >
+                    <span className="text-xl">{ch.icon}</span>
+                    <div className="flex-1 min-w-0">
+                      <h2 className="font-bold text-foreground text-sm truncate">{ch.title}</h2>
+                      <p className="text-xs text-muted-foreground">{chapterProblems.length} probleme</p>
+                    </div>
+                    {isExpanded ? <ChevronDown className="h-5 w-5 text-muted-foreground" /> : <ChevronRight className="h-5 w-5 text-muted-foreground" />}
+                  </button>
 
-            <AnimatePresence>
-              {isExpanded && (
-                <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="border-t border-border">
-                  <div className="p-3 space-y-2">
-                    {chapterProblems.map(p => (
-                      <div key={p.id} className="flex items-center gap-2 rounded-lg border border-border bg-secondary/30 p-3">
-                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
-                          p.difficulty === "ușor" ? "bg-green-500/10 text-green-500" :
-                          p.difficulty === "mediu" ? "bg-yellow-500/10 text-yellow-500" :
-                          "bg-red-500/10 text-red-500"
-                        }`}>{p.difficulty}</span>
-                        <p className="flex-1 text-sm text-foreground truncate">{p.title}</p>
-                        <span className="text-[10px] text-muted-foreground">{p.xpReward}XP · {p.testCases.length} teste</span>
-                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => startEdit(p)}>
-                          <Edit2 className="h-3.5 w-3.5" />
-                        </Button>
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive"><Trash2 className="h-3.5 w-3.5" /></Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>Șterge problema</AlertDialogTitle>
-                              <AlertDialogDescription>Sigur vrei să ștergi "{p.title}"?</AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Anulează</AlertDialogCancel>
-                              <AlertDialogAction onClick={() => deleteProblem(p.id)}>Șterge</AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
-                      </div>
-                    ))}
+                  <AnimatePresence>
+                    {isExpanded && (
+                      <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="border-t border-border">
+                        <div className="p-3 space-y-2">
+                          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={(e) => handleProblemReorder(ch.id, e)}>
+                            <SortableContext items={chapterProblems.map(p => p.id)} strategy={verticalListSortingStrategy}>
+                              {chapterProblems.map(p => (
+                                <SortableProblem key={p.id} id={p.id}>
+                                  <div className="flex items-center gap-2 rounded-lg border border-border bg-secondary/30 p-3">
+                                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
+                                      p.difficulty === "ușor" ? "bg-green-500/10 text-green-500" :
+                                      p.difficulty === "mediu" ? "bg-yellow-500/10 text-yellow-500" :
+                                      "bg-red-500/10 text-red-500"
+                                    }`}>{p.difficulty}</span>
+                                    <p className="flex-1 text-sm text-foreground truncate">{p.title}</p>
+                                    <span className="text-[10px] text-muted-foreground">{p.xpReward}XP · {p.testCases.length} teste</span>
+                                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => startEdit(p)}>
+                                      <Edit2 className="h-3.5 w-3.5" />
+                                    </Button>
+                                    <AlertDialog>
+                                      <AlertDialogTrigger asChild>
+                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive"><Trash2 className="h-3.5 w-3.5" /></Button>
+                                      </AlertDialogTrigger>
+                                      <AlertDialogContent>
+                                        <AlertDialogHeader>
+                                          <AlertDialogTitle>Șterge problema</AlertDialogTitle>
+                                          <AlertDialogDescription>Sigur vrei să ștergi "{p.title}"?</AlertDialogDescription>
+                                        </AlertDialogHeader>
+                                        <AlertDialogFooter>
+                                          <AlertDialogCancel>Anulează</AlertDialogCancel>
+                                          <AlertDialogAction onClick={() => deleteProblem(p.id)}>Șterge</AlertDialogAction>
+                                        </AlertDialogFooter>
+                                      </AlertDialogContent>
+                                    </AlertDialog>
+                                  </div>
+                                </SortableProblem>
+                              ))}
+                            </SortableContext>
+                          </DndContext>
 
-                    {(editingProblem && problems.find(p => p.id === editingProblem)?.chapter === ch.id) || creatingFor === ch.id
-                      ? renderForm()
-                      : (
-                        <Button variant="outline" size="sm" className="w-full" onClick={() => startCreate(ch.id)}>
-                          <Plus className="h-4 w-4 mr-1" /> Adaugă problemă
-                        </Button>
-                      )}
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
-        );
-      })}
+                          {(editingProblem && problems.find(p => p.id === editingProblem)?.chapter === ch.id) || creatingFor === ch.id
+                            ? renderForm()
+                            : (
+                              <Button variant="outline" size="sm" className="w-full" onClick={() => startCreate(ch.id)}>
+                                <Plus className="h-4 w-4 mr-1" /> Adaugă problemă
+                              </Button>
+                            )}
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              </SortableProblemChapter>
+            );
+          })}
+        </SortableContext>
+      </DndContext>
     </div>
   );
 };

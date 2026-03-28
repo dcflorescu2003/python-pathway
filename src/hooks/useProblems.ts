@@ -17,24 +17,28 @@ export interface Problem {
   hint?: string;
   chapter: string;
   solution: string;
+  sortOrder: number;
 }
 
 export interface ProblemChapter {
   id: string;
   title: string;
   icon: string;
+  sortOrder: number;
 }
 
 async function fetchProblems(): Promise<{ problems: Problem[]; problemChapters: ProblemChapter[] }> {
   const { data: chaptersData, error: chaptersError } = await supabase
     .from("problem_chapters")
-    .select("*");
+    .select("*")
+    .order("sort_order", { ascending: true });
 
   if (chaptersError) throw chaptersError;
 
   const { data: problemsData, error: problemsError } = await supabase
     .from("problems")
-    .select("*");
+    .select("*")
+    .order("sort_order", { ascending: true });
 
   if (problemsError) throw problemsError;
 
@@ -42,6 +46,7 @@ async function fetchProblems(): Promise<{ problems: Problem[]; problemChapters: 
     id: ch.id,
     title: ch.title,
     icon: ch.icon,
+    sortOrder: ch.sort_order,
   }));
 
   const problems: Problem[] = problemsData.map(p => ({
@@ -54,6 +59,7 @@ async function fetchProblems(): Promise<{ problems: Problem[]; problemChapters: 
     hint: p.hint ?? undefined,
     chapter: p.chapter_id,
     solution: p.solution,
+    sortOrder: p.sort_order,
   }));
 
   return { problems, problemChapters };
