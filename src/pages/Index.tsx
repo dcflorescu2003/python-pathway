@@ -107,9 +107,10 @@ const Index = (): JSX.Element => {
     checkOnboarding();
   }, [user]);
 
-  const level = getLevelFromXP(progress.xp);
-  const xpToNext = getXPForNextLevel(progress.xp);
-  const xpInLevel = 100 - xpToNext;
+  const { xpPerLevel } = useXPThresholds();
+  const level = getLevelFromXP(progress.xp, xpPerLevel);
+  const xpToNext = getXPForNextLevel(progress.xp, xpPerLevel);
+  const xpInLevel = Math.round(xpPerLevel) - xpToNext;
   const levelInfo = getLevelInfo(level);
   const showInstallCta = !Capacitor.isNativePlatform() && !isInstalled && !progress.isPremium;
 
