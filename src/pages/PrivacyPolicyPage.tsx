@@ -84,7 +84,7 @@ const PrivacyPolicyPage = () => {
 
         <h2 className="text-base font-bold text-foreground mt-6 mb-2">10. Contact</h2>
         <p className="text-sm text-muted-foreground leading-relaxed">
-          Pentru orice întrebări legate de datele dumneavoastră, ne puteți contacta la adresa de email: <span className="text-primary">contact@pyro-learn.app</span>
+          Pentru orice întrebări legate de datele dumneavoastră, ne puteți contacta la adresa de email: <span className="text-primary">gdpr@pyroskill.info</span>
         </p>
 
         <div className="h-12" />
