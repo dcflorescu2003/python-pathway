@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
-import { getSelectedSchool } from "@/data/schools";
+import { getSelectedSchool, schools } from "@/data/schools";
 import { Flame, Zap, Medal, Loader2 } from "lucide-react";
 import { motion } from "framer-motion";
 
@@ -12,7 +12,7 @@ const medalColors = [
   "text-amber-600",
 ];
 
-type Tab = "national" | "school";
+type Tab = "national" | "school" | "city";
 
 interface LeaderboardEntry {
   user_id: string;

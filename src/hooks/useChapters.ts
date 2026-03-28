@@ -158,8 +158,7 @@ async function fetchChapters(): Promise<Chapter[]> {
     lessons: lessonsByChapter[ch.id] || [],
   }));
 
-  const hydratedChapters = addFixareLessons(rawChapters);
-  if (hydratedChapters.length > 0) return hydratedChapters;
+  if (rawChapters.length > 0) return rawChapters;
   if (!isNativePlatform) {
     throw new Error("Hydrated chapters are empty on web.");
   }
