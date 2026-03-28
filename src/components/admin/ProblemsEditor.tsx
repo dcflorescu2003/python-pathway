@@ -77,12 +77,53 @@ const ProblemsEditor = () => {
   const [creatingFor, setCreatingFor] = useState<string | null>(null);
   const [form, setForm] = useState<Omit<Problem, "id"> & { id?: string }>(emptyProblem(""));
 
+  // Chapter CRUD state
+  const [editingChapter, setEditingChapter] = useState<string | null>(null);
+  const [creatingChapter, setCreatingChapter] = useState(false);
+  const [chapterForm, setChapterForm] = useState({ title: "", icon: "📘" });
+
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
 
   const invalidate = () => queryClient.invalidateQueries({ queryKey: ["problems"] });
+
+  // Chapter CRUD
+  const startEditChapter = (ch: ProblemChapter) => {
+    setEditingChapter(ch.id);
+    setCreatingChapter(false);
+    setChapterForm({ title: ch.title, icon: ch.icon });
+  };
+
+  const saveChapter = async () => {
+    if (!chapterForm.title.trim()) { toast.error("Titlul e obligatoriu"); return; }
+    if (editingChapter) {
+      const { error } = await supabase.from("problem_chapters").update({ title: chapterForm.title, icon: chapterForm.icon }).eq("id", editingChapter);
+      if (error) { toast.error(error.message); return; }
+      toast.success("Capitol salvat!");
+    } else {
+      const newId = `pc-${Date.now()}`;
+      const sortOrder = data?.problemChapters.length || 0;
+      const { error } = await supabase.from("problem_chapters").insert({ id: newId, title: chapterForm.title, icon: chapterForm.icon, sort_order: sortOrder });
+      if (error) { toast.error(error.message); return; }
+      toast.success("Capitol creat!");
+    }
+    setEditingChapter(null);
+    setCreatingChapter(false);
+    invalidate();
+  };
+
+  const deleteChapter = async (chapterId: string) => {
+    // Delete problems first, then chapter
+    const { error: pErr } = await supabase.from("problems").delete().eq("chapter_id", chapterId);
+    if (pErr) { toast.error(pErr.message); return; }
+    const { error } = await supabase.from("problem_chapters").delete().eq("id", chapterId);
+    if (error) { toast.error(error.message); return; }
+    toast.success("Capitol șters!");
+    if (expandedChapter === chapterId) setExpandedChapter(null);
+    invalidate();
+  };
 
   const startEdit = (p: Problem) => {
     setEditingProblem(p.id);
@@ -258,17 +299,51 @@ const ProblemsEditor = () => {
             return (
               <SortableProblemChapter key={ch.id} id={ch.id}>
                 <div className="rounded-xl border border-border bg-card overflow-hidden">
-                  <button
-                    onClick={() => setExpandedChapter(isExpanded ? null : ch.id)}
-                    className="w-full flex items-center gap-3 p-4 text-left"
-                  >
-                    <span className="text-xl">{ch.icon}</span>
-                    <div className="flex-1 min-w-0">
-                      <h2 className="font-bold text-foreground text-sm truncate">{ch.title}</h2>
-                      <p className="text-xs text-muted-foreground">{chapterProblems.length} probleme</p>
+                  {editingChapter === ch.id ? (
+                    <div className="p-4 space-y-3">
+                      <h3 className="font-bold text-foreground text-sm">Editează capitol</h3>
+                      <div className="flex gap-2">
+                        <Input value={chapterForm.icon} onChange={e => setChapterForm(f => ({ ...f, icon: e.target.value }))} className="w-16 text-center" placeholder="📘" />
+                        <Input value={chapterForm.title} onChange={e => setChapterForm(f => ({ ...f, title: e.target.value }))} className="flex-1" placeholder="Titlu capitol" />
+                      </div>
+                      <div className="flex gap-2">
+                        <Button size="sm" onClick={saveChapter} className="flex-1"><Save className="h-4 w-4 mr-1" />Salvează</Button>
+                        <Button size="sm" variant="outline" onClick={() => setEditingChapter(null)} className="flex-1">Anulează</Button>
+                      </div>
                     </div>
-                    {isExpanded ? <ChevronDown className="h-5 w-5 text-muted-foreground" /> : <ChevronRight className="h-5 w-5 text-muted-foreground" />}
-                  </button>
+                  ) : (
+                    <div className="w-full flex items-center gap-3 p-4">
+                      <button
+                        onClick={() => setExpandedChapter(isExpanded ? null : ch.id)}
+                        className="flex items-center gap-3 flex-1 min-w-0 text-left"
+                      >
+                        <span className="text-xl">{ch.icon}</span>
+                        <div className="flex-1 min-w-0">
+                          <h2 className="font-bold text-foreground text-sm truncate">{ch.title}</h2>
+                          <p className="text-xs text-muted-foreground">{chapterProblems.length} probleme</p>
+                        </div>
+                      </button>
+                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={(e) => { e.stopPropagation(); startEditChapter(ch); }}>
+                        <Edit2 className="h-3.5 w-3.5" />
+                      </Button>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive"><Trash2 className="h-3.5 w-3.5" /></Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Șterge capitolul</AlertDialogTitle>
+                            <AlertDialogDescription>Sigur vrei să ștergi "{ch.title}" și toate problemele din el?</AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Anulează</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => deleteChapter(ch.id)}>Șterge</AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                      {isExpanded ? <ChevronDown className="h-5 w-5 text-muted-foreground" /> : <ChevronRight className="h-5 w-5 text-muted-foreground" />}
+                    </div>
+                  )}
 
                   <AnimatePresence>
                     {isExpanded && (
@@ -327,6 +402,24 @@ const ProblemsEditor = () => {
           })}
         </SortableContext>
       </DndContext>
+
+      {creatingChapter ? (
+        <div className="rounded-xl border border-primary/30 bg-primary/5 p-4 space-y-3">
+          <h3 className="font-bold text-foreground text-sm">Capitol nou</h3>
+          <div className="flex gap-2">
+            <Input value={chapterForm.icon} onChange={e => setChapterForm(f => ({ ...f, icon: e.target.value }))} className="w-16 text-center" placeholder="📘" />
+            <Input value={chapterForm.title} onChange={e => setChapterForm(f => ({ ...f, title: e.target.value }))} className="flex-1" placeholder="Titlu capitol" />
+          </div>
+          <div className="flex gap-2">
+            <Button size="sm" onClick={saveChapter} className="flex-1"><Save className="h-4 w-4 mr-1" />Salvează</Button>
+            <Button size="sm" variant="outline" onClick={() => setCreatingChapter(false)} className="flex-1">Anulează</Button>
+          </div>
+        </div>
+      ) : (
+        <Button variant="outline" className="w-full" onClick={() => { setCreatingChapter(true); setEditingChapter(null); setChapterForm({ title: "", icon: "📘" }); }}>
+          <Plus className="h-4 w-4 mr-1" /> Adaugă capitol
+        </Button>
+      )}
     </div>
   );
 };
