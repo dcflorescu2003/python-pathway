@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
-import { getSelectedSchool } from "@/data/schools";
+import { getSelectedSchool, schools } from "@/data/schools";
 import { Flame, Zap, Medal, Loader2 } from "lucide-react";
 import { motion } from "framer-motion";
 
@@ -12,7 +12,7 @@ const medalColors = [
   "text-amber-600",
 ];
 
-type Tab = "national" | "school";
+type Tab = "national" | "school" | "city";
 
 interface LeaderboardEntry {
   user_id: string;
@@ -41,9 +41,18 @@ const LeaderboardPage = () => {
     },
   });
 
-  const filteredEntries = tab === "school" && userSchool
-    ? entries.filter((e) => e.school_id === userSchool).slice(0, 15)
-    : entries.slice(0, 15);
+  const userCity = userSchool ? schools.find(s => s.id === userSchool)?.city : null;
+  const citySchoolIds = userCity ? schools.filter(s => s.city === userCity).map(s => s.id) : [];
+
+  const filteredEntries = (() => {
+    if (tab === "school" && userSchool) {
+      return entries.filter((e) => e.school_id === userSchool).slice(0, 15);
+    }
+    if (tab === "city" && citySchoolIds.length > 0) {
+      return entries.filter((e) => e.school_id && citySchoolIds.includes(e.school_id)).slice(0, 15);
+    }
+    return entries.slice(0, 15);
+  })();
 
   return (
     <div className="min-h-screen bg-background">
@@ -64,6 +73,16 @@ const LeaderboardPage = () => {
             🌍 Național
           </button>
           <button
+            onClick={() => setTab("city")}
+            className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all ${
+              tab === "city"
+                ? "bg-primary text-primary-foreground"
+                : "bg-secondary text-muted-foreground"
+            }`}
+          >
+            🏙️ Oraș
+          </button>
+          <button
             onClick={() => setTab("school")}
             className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all ${
               tab === "school"
@@ -77,10 +96,10 @@ const LeaderboardPage = () => {
       </header>
 
       <main className="px-4 py-4">
-        {tab === "school" && !userSchool && (
+        {(tab === "school" || tab === "city") && !userSchool && (
           <div className="rounded-xl border border-border bg-card p-4 text-center mb-4">
             <p className="text-sm text-foreground/70">
-              Alege liceul tău de pe pagina principală pentru a vedea clasamentul pe liceu.
+              Alege liceul tău de pe pagina principală pentru a vedea clasamentul pe {tab === "city" ? "oraș" : "liceu"}.
             </p>
           </div>
         )}
