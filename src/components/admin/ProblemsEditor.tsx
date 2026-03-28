@@ -77,6 +77,11 @@ const ProblemsEditor = () => {
   const [creatingFor, setCreatingFor] = useState<string | null>(null);
   const [form, setForm] = useState<Omit<Problem, "id"> & { id?: string }>(emptyProblem(""));
 
+  // Chapter CRUD state
+  const [editingChapter, setEditingChapter] = useState<string | null>(null);
+  const [creatingChapter, setCreatingChapter] = useState(false);
+  const [chapterForm, setChapterForm] = useState({ title: "", icon: "📘" });
+
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
