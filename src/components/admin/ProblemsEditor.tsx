@@ -299,17 +299,51 @@ const ProblemsEditor = () => {
             return (
               <SortableProblemChapter key={ch.id} id={ch.id}>
                 <div className="rounded-xl border border-border bg-card overflow-hidden">
-                  <button
-                    onClick={() => setExpandedChapter(isExpanded ? null : ch.id)}
-                    className="w-full flex items-center gap-3 p-4 text-left"
-                  >
-                    <span className="text-xl">{ch.icon}</span>
-                    <div className="flex-1 min-w-0">
-                      <h2 className="font-bold text-foreground text-sm truncate">{ch.title}</h2>
-                      <p className="text-xs text-muted-foreground">{chapterProblems.length} probleme</p>
+                  {editingChapter === ch.id ? (
+                    <div className="p-4 space-y-3">
+                      <h3 className="font-bold text-foreground text-sm">Editează capitol</h3>
+                      <div className="flex gap-2">
+                        <Input value={chapterForm.icon} onChange={e => setChapterForm(f => ({ ...f, icon: e.target.value }))} className="w-16 text-center" placeholder="📘" />
+                        <Input value={chapterForm.title} onChange={e => setChapterForm(f => ({ ...f, title: e.target.value }))} className="flex-1" placeholder="Titlu capitol" />
+                      </div>
+                      <div className="flex gap-2">
+                        <Button size="sm" onClick={saveChapter} className="flex-1"><Save className="h-4 w-4 mr-1" />Salvează</Button>
+                        <Button size="sm" variant="outline" onClick={() => setEditingChapter(null)} className="flex-1">Anulează</Button>
+                      </div>
                     </div>
-                    {isExpanded ? <ChevronDown className="h-5 w-5 text-muted-foreground" /> : <ChevronRight className="h-5 w-5 text-muted-foreground" />}
-                  </button>
+                  ) : (
+                    <div className="w-full flex items-center gap-3 p-4">
+                      <button
+                        onClick={() => setExpandedChapter(isExpanded ? null : ch.id)}
+                        className="flex items-center gap-3 flex-1 min-w-0 text-left"
+                      >
+                        <span className="text-xl">{ch.icon}</span>
+                        <div className="flex-1 min-w-0">
+                          <h2 className="font-bold text-foreground text-sm truncate">{ch.title}</h2>
+                          <p className="text-xs text-muted-foreground">{chapterProblems.length} probleme</p>
+                        </div>
+                      </button>
+                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={(e) => { e.stopPropagation(); startEditChapter(ch); }}>
+                        <Edit2 className="h-3.5 w-3.5" />
+                      </Button>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive"><Trash2 className="h-3.5 w-3.5" /></Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Șterge capitolul</AlertDialogTitle>
+                            <AlertDialogDescription>Sigur vrei să ștergi "{ch.title}" și toate problemele din el?</AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Anulează</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => deleteChapter(ch.id)}>Șterge</AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                      {isExpanded ? <ChevronDown className="h-5 w-5 text-muted-foreground" /> : <ChevronRight className="h-5 w-5 text-muted-foreground" />}
+                    </div>
+                  )}
 
                   <AnimatePresence>
                     {isExpanded && (
