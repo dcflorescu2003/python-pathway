@@ -280,7 +280,7 @@ const Index = (): JSX.Element => {
               style={{ width: `${Math.round(48 * levelInfo.scale)}px`, height: `${Math.round(48 * levelInfo.scale)}px` }} />
           </div>
           <button onClick={() => setShowRoadmap(true)} className="w-full text-left active:scale-[0.98] transition-transform">
-            <Progress value={xpInLevel} className="h-2 cursor-pointer" />
+            <Progress value={(xpInLevel / Math.round(xpPerLevel)) * 100} className="h-2 cursor-pointer" />
             <p className="mt-1 text-xs text-muted-foreground">{xpInLevel}/{Math.round(xpPerLevel)} XP pentru nivelul {level + 1} · <span className="text-primary">Drumul spre Master of Python →</span></p>
           </button>
         </motion.div>
