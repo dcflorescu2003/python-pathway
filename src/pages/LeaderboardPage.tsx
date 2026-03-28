@@ -41,9 +41,18 @@ const LeaderboardPage = () => {
     },
   });
 
-  const filteredEntries = tab === "school" && userSchool
-    ? entries.filter((e) => e.school_id === userSchool).slice(0, 15)
-    : entries.slice(0, 15);
+  const userCity = userSchool ? schools.find(s => s.id === userSchool)?.city : null;
+  const citySchoolIds = userCity ? schools.filter(s => s.city === userCity).map(s => s.id) : [];
+
+  const filteredEntries = (() => {
+    if (tab === "school" && userSchool) {
+      return entries.filter((e) => e.school_id === userSchool).slice(0, 15);
+    }
+    if (tab === "city" && citySchoolIds.length > 0) {
+      return entries.filter((e) => e.school_id && citySchoolIds.includes(e.school_id)).slice(0, 15);
+    }
+    return entries.slice(0, 15);
+  })();
 
   return (
     <div className="min-h-screen bg-background">
