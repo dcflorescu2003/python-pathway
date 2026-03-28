@@ -1,23 +1,32 @@
 
 
-# Fix build error + Clasament real din baza de date
+# Plan: Reordonare probleme și capitole de probleme (drag-and-drop)
 
 ## Ce facem
+Adăugăm drag-and-drop reordering în `ProblemsEditor` — atât pentru capitolele de probleme, cât și pentru problemele din fiecare capitol. Urmăm exact pattern-ul existent din `ContentEditor` (care folosește `@dnd-kit`).
 
-### 1. Fix build error în `useAuth.tsx` (linia 117-128)
-Eroarea e cauzată de tipizarea strictă a `SocialLogin.login()` — proprietățile `responseType`, `idToken`, `accessToken` nu există pe toate tipurile din union. Soluția: cast `response.result` ca `any` pentru a evita erorile TS.
+## Modificări
 
-### 2. Clasament real din tabelul `profiles`
-Înlocuim `MOCK_LEADERBOARD` cu date reale din `profiles`, ordonat descrescător după XP.
+### 1. Migrare DB — coloane `sort_order`
+```sql
+ALTER TABLE public.problem_chapters ADD COLUMN sort_order integer NOT NULL DEFAULT 0;
+ALTER TABLE public.problems ADD COLUMN sort_order integer NOT NULL DEFAULT 0;
+```
 
-**Fișier: `src/pages/LeaderboardPage.tsx`**
-- Import `supabase` client și `useQuery`
-- Query: `SELECT display_name, xp, streak, avatar_url, school_id FROM profiles ORDER BY xp DESC LIMIT 50`
-- Afișăm utilizatorul curent evidențiat (match pe `user_id`)
-- Tab-ul „Liceu" filtrează după `school_id`
-- Eliminăm `MOCK_LEADERBOARD` și mesajul „clasamentul real va fi disponibil"
+### 2. `src/hooks/useProblems.ts`
+- Adăugăm `sort_order` pe interfețele `Problem` și `ProblemChapter`
+- Sortăm rezultatele după `sort_order` ascendent în `fetchProblems`
 
-### Fișiere modificate
-1. **`src/hooks/useAuth.tsx`** — cast `response.result as any` pentru fix TS
-2. **`src/pages/LeaderboardPage.tsx`** — query real din `profiles`, eliminare mock data
+### 3. `src/components/admin/ProblemsEditor.tsx`
+- Import `@dnd-kit/core`, `@dnd-kit/sortable`, `@dnd-kit/utilities` (deja instalate în proiect)
+- Creăm componente `SortableProblemChapter` și `SortableProblem` (identic ca pattern din ContentEditor)
+- Adăugăm `DndContext` + `SortableContext` pentru lista de capitole
+- Adăugăm `DndContext` + `SortableContext` pentru lista de probleme din fiecare capitol expandat
+- Handler-ele `onDragEnd` fac `arrayMove` + update `sort_order` în DB via `supabase.from("problem_chapters").update(...)` / `supabase.from("problems").update(...)`
+- Adăugăm iconița `GripVertical` pe fiecare element sortabil
+
+## Detalii tehnice
+- Pattern identic cu cel din `ContentEditor` — `SortableChapter` / `SortableLesson`
+- `@dnd-kit` e deja instalat, nu trebuie dependențe noi
+- Salvarea ordinii se face instant la `onDragEnd` (batch update pe fiecare element cu noul `sort_order`)
 
