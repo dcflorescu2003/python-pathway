@@ -89,6 +89,42 @@ const ProblemsEditor = () => {
 
   const invalidate = () => queryClient.invalidateQueries({ queryKey: ["problems"] });
 
+  // Chapter CRUD
+  const startEditChapter = (ch: ProblemChapter) => {
+    setEditingChapter(ch.id);
+    setCreatingChapter(false);
+    setChapterForm({ title: ch.title, icon: ch.icon });
+  };
+
+  const saveChapter = async () => {
+    if (!chapterForm.title.trim()) { toast.error("Titlul e obligatoriu"); return; }
+    if (editingChapter) {
+      const { error } = await supabase.from("problem_chapters").update({ title: chapterForm.title, icon: chapterForm.icon }).eq("id", editingChapter);
+      if (error) { toast.error(error.message); return; }
+      toast.success("Capitol salvat!");
+    } else {
+      const newId = `pc-${Date.now()}`;
+      const sortOrder = data?.problemChapters.length || 0;
+      const { error } = await supabase.from("problem_chapters").insert({ id: newId, title: chapterForm.title, icon: chapterForm.icon, sort_order: sortOrder });
+      if (error) { toast.error(error.message); return; }
+      toast.success("Capitol creat!");
+    }
+    setEditingChapter(null);
+    setCreatingChapter(false);
+    invalidate();
+  };
+
+  const deleteChapter = async (chapterId: string) => {
+    // Delete problems first, then chapter
+    const { error: pErr } = await supabase.from("problems").delete().eq("chapter_id", chapterId);
+    if (pErr) { toast.error(pErr.message); return; }
+    const { error } = await supabase.from("problem_chapters").delete().eq("id", chapterId);
+    if (error) { toast.error(error.message); return; }
+    toast.success("Capitol șters!");
+    if (expandedChapter === chapterId) setExpandedChapter(null);
+    invalidate();
+  };
+
   const startEdit = (p: Problem) => {
     setEditingProblem(p.id);
     setCreatingFor(null);
