@@ -17,12 +17,14 @@ export interface Problem {
   hint?: string;
   chapter: string;
   solution: string;
+  sortOrder: number;
 }
 
 export interface ProblemChapter {
   id: string;
   title: string;
   icon: string;
+  sortOrder: number;
 }
 
 async function fetchProblems(): Promise<{ problems: Problem[]; problemChapters: ProblemChapter[] }> {
