@@ -1,30 +1,40 @@
 
 
-# CRUD capitole de probleme în panoul admin
+# 1. Ștergere logică Fixare + 2. Clasament pe oraș
 
-## Ce facem
-Adăugăm în `ProblemsEditor` posibilitatea de a crea, edita și șterge capitole de probleme (`problem_chapters`), nu doar problemele din ele.
+## Partea 1: Eliminare lecții de Fixare generate programatic
 
-## Modificări
+### Ce se schimbă
 
-### Fișier: `src/components/admin/ProblemsEditor.tsx`
+Din `src/hooks/useChapters.ts`:
+- Ștergem funcțiile `transformExercise` și `addFixareLessons` (~100 linii)
+- Eliminăm apelul `addFixareLessons(rawChapters)` din `fetchChapters()` — returnăm direct `rawChapters`
+- De acum, toate lecțiile (inclusiv cele de fixare) vor fi gestionate exclusiv din panoul admin și stocate în DB
 
-**1. State nou pentru editare/creare capitole:**
-- `editingChapter: string | null` — ID-ul capitolului în editare
-- `creatingChapter: boolean` — flag pentru formular capitol nou
-- `chapterForm: { title: string; icon: string }` — formular capitol
+### Fișier afectat
+- `src/hooks/useChapters.ts` — eliminare ~100 linii de cod (funcțiile de generare + apelul lor)
 
-**2. Buton „Adaugă capitol" la sfârșitul listei:**
-- Afișează un formular inline cu câmpuri Title + Icon (emoji)
-- La salvare: `supabase.from("problem_chapters").insert({ id: "pc-{timestamp}", title, icon, sort_order: chapters.length })`
+---
 
-**3. Butoane Edit/Delete pe header-ul fiecărui capitol (lângă chevron):**
-- **Edit**: Deschide formular inline cu titlu + icon pre-populat, salvare via `.update()`
-- **Delete**: `AlertDialog` de confirmare, cu ștergere în cascadă (șterge mai întâi problemele din capitol, apoi capitolul)
+## Partea 2: Clasament pe oraș (tab nou)
 
-**4. Formular capitol (inline, similar cu cel de probleme):**
-- Input titlu + Input icon (emoji)
-- Butoane Salvează / Anulează
+### Cum funcționează
+- Lista de școli (`src/data/schools.ts`) conține deja proprietatea `city` pentru fiecare liceu
+- Când utilizatorul are un liceu selectat, putem determina orașul din lista locală
+- Filtrăm clasamentul pentru toți utilizatorii care au `school_id` setat pe un liceu din același oraș
 
-Nu sunt necesare modificări DB — tabelul `problem_chapters` are deja RLS corect pentru admin CRUD.
+### Modificări în `src/pages/LeaderboardPage.tsx`
+- Adăugăm tab-ul `"city"` lângă „Național" și „Liceu"
+- Type `Tab = "national" | "school" | "city"`
+- Import `schools` din `@/data/schools` pentru a mapa `school_id → city`
+- La filtrare pe tab `"city"`:
+  1. Găsim orașul utilizatorului: `schools.find(s => s.id === userSchool)?.city`
+  2. Găsim toate `school_id`-urile din același oraș: `schools.filter(s => s.city === userCity).map(s => s.id)`
+  3. Filtrăm entries unde `school_id` e în lista de mai sus
+- Header cu 3 butoane: 🌍 Național | 🏫 Liceu | 🏙️ Oraș
+- Mesaj informativ dacă nu are liceu selectat (similar cu cel existent)
+
+### Fișiere modificate
+1. `src/hooks/useChapters.ts` — eliminare Fixare
+2. `src/pages/LeaderboardPage.tsx` — tab nou „Oraș"
 
