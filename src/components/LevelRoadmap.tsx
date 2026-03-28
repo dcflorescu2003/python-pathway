@@ -6,10 +6,13 @@ interface LevelRoadmapProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   currentLevel: number;
+  xpPerLevel?: number;
 }
 
-const LevelRoadmap = ({ open, onOpenChange, currentLevel }: LevelRoadmapProps) => {
+const LevelRoadmap = ({ open, onOpenChange, currentLevel, xpPerLevel = 100 }: LevelRoadmapProps) => {
   const tiers = getAllLevelTiers();
+
+  const xpForLevel = (lvl: number) => Math.round((lvl - 1) * xpPerLevel);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -31,6 +34,8 @@ const LevelRoadmap = ({ open, onOpenChange, currentLevel }: LevelRoadmapProps) =
               idx < tiers.length - 1
                 ? currentLevel >= tier.minLevel && currentLevel < tiers[idx + 1].minLevel
                 : currentLevel >= tier.minLevel;
+
+            const nextTierMin = tiers[idx + 1]?.minLevel ?? 26;
 
             return (
               <div key={tier.minLevel} className="relative flex items-start gap-3 mb-5 last:mb-0">
@@ -68,7 +73,7 @@ const LevelRoadmap = ({ open, onOpenChange, currentLevel }: LevelRoadmapProps) =
                         {tier.name}
                       </p>
                       <p className="text-[10px] font-mono text-muted-foreground">
-                        Nivel {tier.minLevel}{tier.minLevel < 25 ? `–${(tiers[idx + 1]?.minLevel ?? 25) - 1}` : "+"}
+                        Nivel {tier.minLevel}{tier.minLevel < 25 ? `–${nextTierMin - 1}` : "+"} · {xpForLevel(tier.minLevel)} XP
                       </p>
                     </div>
                   </div>

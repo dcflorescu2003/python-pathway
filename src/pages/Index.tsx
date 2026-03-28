@@ -2,7 +2,8 @@ import { useState, useEffect, useRef } from "react";
 import logo from "@/assets/logo.png";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
-import { useChapters, getLevelFromXP, getXPForNextLevel } from "@/hooks/useChapters";
+import { useChapters } from "@/hooks/useChapters";
+import { useXPThresholds, getLevelFromXP, getXPForNextLevel } from "@/hooks/useXPThresholds";
 import { getLevelInfo } from "@/data/levels";
 import { useProgress } from "@/hooks/useProgress";
 import { schools, getSelectedSchool, setSelectedSchool, clearSelectedSchool } from "@/data/schools";
@@ -106,9 +107,10 @@ const Index = (): JSX.Element => {
     checkOnboarding();
   }, [user]);
 
-  const level = getLevelFromXP(progress.xp);
-  const xpToNext = getXPForNextLevel(progress.xp);
-  const xpInLevel = 100 - xpToNext;
+  const { xpPerLevel } = useXPThresholds();
+  const level = getLevelFromXP(progress.xp, xpPerLevel);
+  const xpToNext = getXPForNextLevel(progress.xp, xpPerLevel);
+  const xpInLevel = Math.round(xpPerLevel) - xpToNext;
   const levelInfo = getLevelInfo(level);
   const showInstallCta = !Capacitor.isNativePlatform() && !isInstalled && !progress.isPremium;
 
@@ -278,8 +280,8 @@ const Index = (): JSX.Element => {
               style={{ width: `${Math.round(48 * levelInfo.scale)}px`, height: `${Math.round(48 * levelInfo.scale)}px` }} />
           </div>
           <button onClick={() => setShowRoadmap(true)} className="w-full text-left active:scale-[0.98] transition-transform">
-            <Progress value={xpInLevel} className="h-2 cursor-pointer" />
-            <p className="mt-1 text-xs text-muted-foreground">{xpInLevel}/100 XP pentru nivelul {level + 1} · <span className="text-primary">Drumul spre Master of Python →</span></p>
+            <Progress value={(xpInLevel / Math.round(xpPerLevel)) * 100} className="h-2 cursor-pointer" />
+            <p className="mt-1 text-xs text-muted-foreground">{xpInLevel}/{Math.round(xpPerLevel)} XP pentru nivelul {level + 1} · <span className="text-primary">Drumul spre Master of Python →</span></p>
           </button>
         </motion.div>
 
@@ -325,7 +327,7 @@ const Index = (): JSX.Element => {
 
       <PremiumDialog open={showPremium} onOpenChange={setShowPremium} />
       <InstallDialog open={showInstall} onOpenChange={setShowInstall} />
-      <LevelRoadmap open={showRoadmap} onOpenChange={setShowRoadmap} currentLevel={level} />
+      <LevelRoadmap open={showRoadmap} onOpenChange={setShowRoadmap} currentLevel={level} xpPerLevel={xpPerLevel} />
       <CouponExpiredDialog open={couponExpired} onOpenChange={(open) => { if (!open) dismissCouponExpired(); }} onSubscribe={startCheckout} onStayFree={dismissCouponExpired} />
       <LevelUpDialog open={showLevelUp} onOpenChange={setShowLevelUp} levelInfo={levelInfo} newLevel={level} />
     </div>
