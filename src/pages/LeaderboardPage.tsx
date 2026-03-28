@@ -73,6 +73,16 @@ const LeaderboardPage = () => {
             🌍 Național
           </button>
           <button
+            onClick={() => setTab("city")}
+            className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all ${
+              tab === "city"
+                ? "bg-primary text-primary-foreground"
+                : "bg-secondary text-muted-foreground"
+            }`}
+          >
+            🏙️ Oraș
+          </button>
+          <button
             onClick={() => setTab("school")}
             className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all ${
               tab === "school"
