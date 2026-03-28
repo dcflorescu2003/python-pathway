@@ -1,40 +1,49 @@
 
 
-# 1. Ștergere logică Fixare + 2. Clasament pe oraș
+# XP dinamic bazat pe conținutul din DB
 
-## Partea 1: Eliminare lecții de Fixare generate programatic
+## Problema actuală
+Nivelurile sunt calculate fix: `level = floor(xp / 100) + 1`. Master of Python necesită nivel 25 = 2400 XP, indiferent de câte lecții/probleme există. Dacă adaugi conținut nou, pragul rămâne același.
 
-### Ce se schimbă
+## Soluția
+Calculăm XP-ul total disponibil din DB (toate lecțiile + 20% din probleme), apoi distribuim uniform pe 25 de nivele. Astfel, Master of Python = tot conținutul parcurs.
 
-Din `src/hooks/useChapters.ts`:
-- Ștergem funcțiile `transformExercise` și `addFixareLessons` (~100 linii)
-- Eliminăm apelul `addFixareLessons(rawChapters)` din `fetchChapters()` — returnăm direct `rawChapters`
-- De acum, toate lecțiile (inclusiv cele de fixare) vor fi gestionate exclusiv din panoul admin și stocate în DB
+## Cum funcționează
 
-### Fișier afectat
-- `src/hooks/useChapters.ts` — eliminare ~100 linii de cod (funcțiile de generare + apelul lor)
+```text
+totalMaxXP = suma(xpReward lecții) + 0.2 × suma(xpReward probleme)
+xpPerLevel = totalMaxXP / 25
+level = floor(xp / xpPerLevel) + 1   (cap la 25)
+xpToNext = xpPerLevel - (xp % xpPerLevel)
+```
 
----
+Exemplu: dacă avem 2000 XP din lecții + 500 XP din probleme (20% din 2500 total), totalMaxXP = 2500, xpPerLevel = 100. Dacă adaugi lecții noi, pragul crește automat.
 
-## Partea 2: Clasament pe oraș (tab nou)
+## Modificări
 
-### Cum funcționează
-- Lista de școli (`src/data/schools.ts`) conține deja proprietatea `city` pentru fiecare liceu
-- Când utilizatorul are un liceu selectat, putem determina orașul din lista locală
-- Filtrăm clasamentul pentru toți utilizatorii care au `school_id` setat pe un liceu din același oraș
+### 1. `src/hooks/useChapters.ts`
+- Exportăm o funcție `computeXPThresholds(chapters, problems)` care returnează `{ totalMaxXP, xpPerLevel }`
+- `getLevelFromXP(xp, xpPerLevel)` și `getXPForNextLevel(xp, xpPerLevel)` primesc `xpPerLevel` ca parametru (default 100 ca fallback)
 
-### Modificări în `src/pages/LeaderboardPage.tsx`
-- Adăugăm tab-ul `"city"` lângă „Național" și „Liceu"
-- Type `Tab = "national" | "school" | "city"`
-- Import `schools` din `@/data/schools` pentru a mapa `school_id → city`
-- La filtrare pe tab `"city"`:
-  1. Găsim orașul utilizatorului: `schools.find(s => s.id === userSchool)?.city`
-  2. Găsim toate `school_id`-urile din același oraș: `schools.filter(s => s.city === userCity).map(s => s.id)`
-  3. Filtrăm entries unde `school_id` e în lista de mai sus
-- Header cu 3 butoane: 🌍 Național | 🏫 Liceu | 🏙️ Oraș
-- Mesaj informativ dacă nu are liceu selectat (similar cu cel existent)
+### 2. `src/hooks/useProblems.ts`
+- Ne asigurăm că `xpReward` este expus pe interfața `Problem` (deja e acolo)
 
-### Fișiere modificate
-1. `src/hooks/useChapters.ts` — eliminare Fixare
-2. `src/pages/LeaderboardPage.tsx` — tab nou „Oraș"
+### 3. `src/pages/Index.tsx`
+- Calculăm `xpPerLevel` din datele chapters + problems (ambele deja disponibile via hooks)
+- Pasăm la `getLevelFromXP` și `getXPForNextLevel`
+
+### 4. `src/pages/LeaderboardPage.tsx`
+- Același calcul pentru afișarea nivelului corect al utilizatorilor din clasament
+
+### 5. `src/components/LevelRoadmap.tsx`
+- Afișăm XP-ul necesar per tier (ex: „Nivel 10–12 · 1000–1200 XP") calculat dinamic
+
+### 6. `src/data/levels.ts`
+- `getLevelInfo` rămâne la fel (depinde doar de nivel, nu de XP)
+
+## Detalii tehnice
+- Folosim un hook `useXPThresholds()` care combină datele din `useChapters` + `useProblems` și returnează `xpPerLevel`
+- Fallback la 100 XP/nivel dacă datele nu sunt încă încărcate
+- Ștergem duplicatul `getLevelFromXP` din `src/data/courses.ts`
+- Fișiere modificate: `useChapters.ts`, `Index.tsx`, `LeaderboardPage.tsx`, `LevelRoadmap.tsx`
 
