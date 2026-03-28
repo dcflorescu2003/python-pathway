@@ -174,5 +174,4 @@ export function useChapters() {
   });
 }
 
-// XP functions moved to src/hooks/useXPThresholds.ts
-export { getLevelFromXP, getXPForNextLevel } from "@/hooks/useXPThresholds";
+// XP functions moved to src/hooks/useXPThresholds.ts — import from there directly
