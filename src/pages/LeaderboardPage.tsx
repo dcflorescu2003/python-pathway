@@ -96,10 +96,10 @@ const LeaderboardPage = () => {
       </header>
 
       <main className="px-4 py-4">
-        {tab === "school" && !userSchool && (
+        {(tab === "school" || tab === "city") && !userSchool && (
           <div className="rounded-xl border border-border bg-card p-4 text-center mb-4">
             <p className="text-sm text-foreground/70">
-              Alege liceul tău de pe pagina principală pentru a vedea clasamentul pe liceu.
+              Alege liceul tău de pe pagina principală pentru a vedea clasamentul pe {tab === "city" ? "oraș" : "liceu"}.
             </p>
           </div>
         )}
