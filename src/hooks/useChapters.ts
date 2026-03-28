@@ -174,5 +174,5 @@ export function useChapters() {
   });
 }
 
-export const getLevelFromXP = (xp: number): number => Math.floor(xp / 100) + 1;
-export const getXPForNextLevel = (xp: number): number => 100 - (xp % 100);
+// XP functions moved to src/hooks/useXPThresholds.ts
+export { getLevelFromXP, getXPForNextLevel } from "@/hooks/useXPThresholds";

@@ -327,7 +327,7 @@ const Index = (): JSX.Element => {
 
       <PremiumDialog open={showPremium} onOpenChange={setShowPremium} />
       <InstallDialog open={showInstall} onOpenChange={setShowInstall} />
-      <LevelRoadmap open={showRoadmap} onOpenChange={setShowRoadmap} currentLevel={level} />
+      <LevelRoadmap open={showRoadmap} onOpenChange={setShowRoadmap} currentLevel={level} xpPerLevel={xpPerLevel} />
       <CouponExpiredDialog open={couponExpired} onOpenChange={(open) => { if (!open) dismissCouponExpired(); }} onSubscribe={startCheckout} onStayFree={dismissCouponExpired} />
       <LevelUpDialog open={showLevelUp} onOpenChange={setShowLevelUp} levelInfo={levelInfo} newLevel={level} />
     </div>
