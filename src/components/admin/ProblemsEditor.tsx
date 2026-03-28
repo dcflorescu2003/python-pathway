@@ -402,6 +402,24 @@ const ProblemsEditor = () => {
           })}
         </SortableContext>
       </DndContext>
+
+      {creatingChapter ? (
+        <div className="rounded-xl border border-primary/30 bg-primary/5 p-4 space-y-3">
+          <h3 className="font-bold text-foreground text-sm">Capitol nou</h3>
+          <div className="flex gap-2">
+            <Input value={chapterForm.icon} onChange={e => setChapterForm(f => ({ ...f, icon: e.target.value }))} className="w-16 text-center" placeholder="📘" />
+            <Input value={chapterForm.title} onChange={e => setChapterForm(f => ({ ...f, title: e.target.value }))} className="flex-1" placeholder="Titlu capitol" />
+          </div>
+          <div className="flex gap-2">
+            <Button size="sm" onClick={saveChapter} className="flex-1"><Save className="h-4 w-4 mr-1" />Salvează</Button>
+            <Button size="sm" variant="outline" onClick={() => setCreatingChapter(false)} className="flex-1">Anulează</Button>
+          </div>
+        </div>
+      ) : (
+        <Button variant="outline" className="w-full" onClick={() => { setCreatingChapter(true); setEditingChapter(null); setChapterForm({ title: "", icon: "📘" }); }}>
+          <Plus className="h-4 w-4 mr-1" /> Adaugă capitol
+        </Button>
+      )}
     </div>
   );
 };
