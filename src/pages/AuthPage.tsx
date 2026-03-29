@@ -44,6 +44,13 @@ const AccountView = () => {
     toast.success("Mod profesor activat! 🎓");
   };
 
+  const deactivateTeacher = async () => {
+    if (!user) return;
+    await supabase.from("profiles").update({ is_teacher: false }).eq("user_id", user.id);
+    setIsTeacher(false);
+    toast.success("Mod profesor dezactivat.");
+  };
+
   const handleJoinClass = async () => {
     if (!user || !joinCode.trim()) return;
     setJoinLoading(true);
