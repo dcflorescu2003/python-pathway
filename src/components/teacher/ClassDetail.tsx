@@ -22,6 +22,7 @@ const ClassDetail = ({ classId, className: clsName, joinCode, onBack }: ClassDet
   const { data: chapters = [] } = useChapters();
   const { data: problemsData } = useProblems();
   const problemChapters = problemsData?.problemChapters ?? [];
+  const allProblems = problemsData?.problems ?? [];
   const [showAssigner, setShowAssigner] = useState(false);
 
   const copyCode = () => {

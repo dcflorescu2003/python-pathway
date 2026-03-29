@@ -18,6 +18,7 @@ const ChallengeAssigner = ({ classId, existingChallengeIds, onClose }: Challenge
   const { data: chapters = [] } = useChapters();
   const { data: problemsData } = useProblems();
   const problemChapters = problemsData?.problemChapters ?? [];
+  const allProblems = problemsData?.problems ?? [];
   const createChallenge = useCreateChallenge();
   const [selected, setSelected] = useState<{ type: string; id: string }[]>([]);
 
