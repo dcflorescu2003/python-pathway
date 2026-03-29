@@ -13,6 +13,7 @@ import { AuthProvider } from "@/hooks/useAuth";
 import MobileLayout from "@/components/layout/MobileLayout";
 import LoadingScreen from "@/components/states/LoadingScreen";
 import SplashScreen from "@/components/states/SplashScreen";
+import { PushNotificationsProvider } from "@/hooks/usePushNotifications";
 
 const Index = lazy(() => import("./pages/Index"));
 const ChapterPage = lazy(() => import("./pages/ChapterPage"));
@@ -137,6 +138,7 @@ const AppComponent = () => {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
+        <PushNotificationsProvider>
         <TooltipProvider>
           <Toaster />
           <Sonner />
@@ -144,6 +146,7 @@ const AppComponent = () => {
             <AppRoutes />
           </BrowserRouter>
         </TooltipProvider>
+        </PushNotificationsProvider>
       </AuthProvider>
     </QueryClientProvider>
   );
