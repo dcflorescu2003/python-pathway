@@ -22,23 +22,21 @@ const ExercisePreview = ({ exercise }: { exercise: Exercise }) => (
     {exercise.type === "quiz" && exercise.options && (
       <div className="mt-1 space-y-0.5">
         {exercise.options.map((opt) => (
-          <div key={opt.id} className={`pl-2 ${opt.id === exercise.correctOptionId ? "text-primary font-medium" : ""}`}>
-            {opt.id === exercise.correctOptionId ? "✓ " : "○ "}{opt.text}
-          </div>
+          <div key={opt.id} className="pl-2">○ {opt.text}</div>
         ))}
       </div>
     )}
     {exercise.type === "truefalse" && (
-      <div className="mt-1">Răspuns: {exercise.isTrue ? "Adevărat" : "Fals"}</div>
+      <div className="mt-1">Tip: Adevărat / Fals</div>
     )}
-    {exercise.type === "fill" && exercise.blanks && (
-      <div className="mt-1">Răspunsuri: {exercise.blanks.map(b => b.answer).join(", ")}</div>
+    {exercise.type === "fill" && (
+      <div className="mt-1">Tip: Completează spațiile</div>
     )}
     {exercise.type === "order" && exercise.lines && (
-      <div className="mt-1">Ordine: {exercise.lines.sort((a, b) => a.order - b.order).map(l => l.text).join(" → ")}</div>
+      <div className="mt-1">Tip: Ordonează ({exercise.lines.length} linii)</div>
     )}
     {exercise.type === "match" && exercise.pairs && (
-      <div className="mt-1">{exercise.pairs.map(p => `${p.left} ↔ ${p.right}`).join(", ")}</div>
+      <div className="mt-1">Tip: Potrivire ({exercise.pairs.length} perechi)</div>
     )}
   </div>
 );
