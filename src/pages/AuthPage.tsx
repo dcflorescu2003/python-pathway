@@ -44,6 +44,13 @@ const AccountView = () => {
     toast.success("Mod profesor activat! 🎓");
   };
 
+  const deactivateTeacher = async () => {
+    if (!user) return;
+    await supabase.from("profiles").update({ is_teacher: false }).eq("user_id", user.id);
+    setIsTeacher(false);
+    toast.success("Mod profesor dezactivat.");
+  };
+
   const handleJoinClass = async () => {
     if (!user || !joinCode.trim()) return;
     setJoinLoading(true);
@@ -144,14 +151,24 @@ const AccountView = () => {
 
         {/* Teacher section */}
         {isTeacher ? (
-          <Button
-            variant="outline"
-            className="w-full max-w-sm mt-4 gap-2"
-            onClick={() => navigate("/teacher")}
-          >
-            <GraduationCap className="h-4 w-4" />
-            Panou Profesor
-          </Button>
+          <div className="w-full max-w-sm mt-4 space-y-2">
+            <Button
+              variant="outline"
+              className="w-full gap-2"
+              onClick={() => navigate("/teacher")}
+            >
+              <GraduationCap className="h-4 w-4" />
+              Panou Profesor
+            </Button>
+            <Button
+              variant="ghost"
+              className="w-full gap-2 text-destructive hover:text-destructive hover:bg-destructive/10"
+              onClick={deactivateTeacher}
+            >
+              <XCircle className="h-4 w-4" />
+              Dezactivează modul profesor
+            </Button>
+          </div>
         ) : (
           <Button
             variant="outline"
