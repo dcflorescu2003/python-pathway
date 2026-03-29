@@ -41,7 +41,7 @@ const ChallengeAssigner = ({ classId, existingChallengeIds, onClose }: Challenge
         selected.map((s) => ({ class_id: classId, item_type: s.type, item_id: s.id }))
       );
 
-      // Send push notifications to class students
+      // Send notifications to class students
       try {
         const { data: members } = await supabase
           .from("class_members")
@@ -50,17 +50,25 @@ const ChallengeAssigner = ({ classId, existingChallengeIds, onClose }: Challenge
 
         if (members && members.length > 0) {
           const studentIds = members.map((m) => m.student_id);
-          await supabase.functions.invoke("send-push", {
-            body: {
-              student_ids: studentIds,
-              title: "📚 Provocare nouă!",
-              body: `Ai primit ${selected.length} provocar${selected.length === 1 ? "e" : "i"} noi de la profesor!`,
-            },
-          });
+
+          // In-app notifications (always works)
+          const notifTitle = "📚 Provocare nouă!";
+          const notifBody = `Ai primit ${selected.length} provocar${selected.length === 1 ? "e" : "i"} noi de la profesor!`;
+          await supabase.from("notifications").insert(
+            studentIds.map((sid) => ({ user_id: sid, title: notifTitle, body: notifBody }))
+          );
+
+          // Push notifications (best-effort)
+          try {
+            await supabase.functions.invoke("send-push", {
+              body: { student_ids: studentIds, title: notifTitle, body: notifBody },
+            });
+          } catch (pushErr) {
+            console.error("Push notification error:", pushErr);
+          }
         }
-      } catch (pushErr) {
-        console.error("Push notification error:", pushErr);
-        // Don't fail the assignment if push fails
+      } catch (notifErr) {
+        console.error("Notification error:", notifErr);
       }
 
       toast.success(`${selected.length} provocări atribuite!`);
