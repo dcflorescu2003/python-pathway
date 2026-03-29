@@ -104,7 +104,32 @@ export function useProgress() {
   }, [user]);
 
   const completeLesson = useCallback(
-    (lessonId: string, xpEarned: number, score: number) => {
+    async (lessonId: string, xpEarned: number, score: number) => {
+      // Check if this is a challenge for bonus XP
+      let bonusMultiplier = 1;
+      if (user) {
+        try {
+          const { data: memberships } = await supabase
+            .from("class_members")
+            .select("class_id")
+            .eq("student_id", user.id);
+          if (memberships && memberships.length > 0) {
+            const classIds = memberships.map((m) => m.class_id);
+            const { data: matchingChallenges } = await supabase
+              .from("challenges")
+              .select("id")
+              .in("class_id", classIds)
+              .eq("item_id", lessonId)
+              .limit(1);
+            if (matchingChallenges && matchingChallenges.length > 0) {
+              bonusMultiplier = 1.1;
+            }
+          }
+        } catch {}
+      }
+
+      const finalXP = Math.round(xpEarned * bonusMultiplier);
+
       setProgress((prev) => {
         const today = new Date().toISOString().split("T")[0];
         const wasYesterday = (() => {
@@ -115,7 +140,7 @@ export function useProgress() {
 
         const newProgress: UserProgress = {
           ...prev,
-          xp: prev.xp + xpEarned,
+          xp: prev.xp + finalXP,
           streak:
             prev.lastActivityDate === today
               ? prev.streak
