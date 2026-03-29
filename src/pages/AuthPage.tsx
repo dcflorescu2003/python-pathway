@@ -20,6 +20,55 @@ const AccountView = () => {
   const { progress } = useProgress();
   const { data: chapters } = useChapters();
   const { isAdmin } = useAdminAccess();
+  const [isTeacher, setIsTeacher] = useState<boolean | null>(null);
+  const [joinCode, setJoinCode] = useState("");
+  const [joinLoading, setJoinLoading] = useState(false);
+
+  // Load teacher status on mount
+  useState(() => {
+    if (!user) return;
+    supabase
+      .from("profiles")
+      .select("is_teacher")
+      .eq("user_id", user.id)
+      .single()
+      .then(({ data }) => setIsTeacher(data?.is_teacher ?? false));
+  });
+
+  const activateTeacher = async () => {
+    if (!user) return;
+    await supabase.from("profiles").update({ is_teacher: true }).eq("user_id", user.id);
+    setIsTeacher(true);
+    toast.success("Mod profesor activat! 🎓");
+  };
+
+  const handleJoinClass = async () => {
+    if (!user || !joinCode.trim()) return;
+    setJoinLoading(true);
+    try {
+      const { data: cls } = await supabase
+        .from("teacher_classes")
+        .select("id")
+        .eq("join_code", joinCode.trim().toUpperCase())
+        .single();
+      if (!cls) {
+        toast.error("Cod invalid.");
+        return;
+      }
+      const { error } = await supabase
+        .from("class_members")
+        .insert({ class_id: cls.id, student_id: user.id });
+      if (error) {
+        if (error.code === "23505") toast.error("Ești deja înscris în această clasă.");
+        else toast.error("Eroare la înscriere.");
+      } else {
+        toast.success("Te-ai alăturat clasei! 🎉");
+        setJoinCode("");
+      }
+    } finally {
+      setJoinLoading(false);
+    }
+  };
 
   const totalLessons = (chapters || []).reduce((sum, ch) => sum + ch.lessons.length, 0);
   const completedCount = Object.values(progress.completedLessons).filter(l => l.completed).length;
