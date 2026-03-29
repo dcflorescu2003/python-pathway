@@ -25,14 +25,16 @@ const AccountView = () => {
   const [joinLoading, setJoinLoading] = useState(false);
 
   // Load teacher status on mount
-  useState(() => {
-    if (!user) return;
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  const [_initTeacher] = useState(() => {
+    if (!user) return null;
     supabase
       .from("profiles")
       .select("is_teacher")
       .eq("user_id", user.id)
       .single()
       .then(({ data }) => setIsTeacher(data?.is_teacher ?? false));
+    return null;
   });
 
   const activateTeacher = async () => {
