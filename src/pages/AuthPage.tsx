@@ -151,14 +151,24 @@ const AccountView = () => {
 
         {/* Teacher section */}
         {isTeacher ? (
-          <Button
-            variant="outline"
-            className="w-full max-w-sm mt-4 gap-2"
-            onClick={() => navigate("/teacher")}
-          >
-            <GraduationCap className="h-4 w-4" />
-            Panou Profesor
-          </Button>
+          <div className="w-full max-w-sm mt-4 space-y-2">
+            <Button
+              variant="outline"
+              className="w-full gap-2"
+              onClick={() => navigate("/teacher")}
+            >
+              <GraduationCap className="h-4 w-4" />
+              Panou Profesor
+            </Button>
+            <Button
+              variant="ghost"
+              className="w-full gap-2 text-destructive hover:text-destructive hover:bg-destructive/10"
+              onClick={deactivateTeacher}
+            >
+              <XCircle className="h-4 w-4" />
+              Dezactivează modul profesor
+            </Button>
+          </div>
         ) : (
           <Button
             variant="outline"

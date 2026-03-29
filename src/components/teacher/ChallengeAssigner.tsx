@@ -5,15 +5,43 @@ import { useChapters } from "@/hooks/useChapters";
 import { useProblems } from "@/hooks/useProblems";
 import { useCreateChallenge } from "@/hooks/useTeacher";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { BookOpen, Code, Check } from "lucide-react";
+import { BookOpen, Code, Check, ChevronDown, ChevronRight, Eye } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import type { Exercise } from "@/hooks/useChapters";
 
 interface ChallengeAssignerProps {
   classId: string;
   existingChallengeIds: string[];
   onClose: () => void;
 }
+
+const ExercisePreview = ({ exercise }: { exercise: Exercise }) => (
+  <div className="ml-6 px-3 py-2 bg-muted/50 rounded-md text-xs text-muted-foreground space-y-0.5">
+    <span className="font-medium text-foreground">{exercise.question}</span>
+    {exercise.type === "quiz" && exercise.options && (
+      <div className="mt-1 space-y-0.5">
+        {exercise.options.map((opt) => (
+          <div key={opt.id} className={`pl-2 ${opt.id === exercise.correctOptionId ? "text-primary font-medium" : ""}`}>
+            {opt.id === exercise.correctOptionId ? "✓ " : "○ "}{opt.text}
+          </div>
+        ))}
+      </div>
+    )}
+    {exercise.type === "truefalse" && (
+      <div className="mt-1">Răspuns: {exercise.isTrue ? "Adevărat" : "Fals"}</div>
+    )}
+    {exercise.type === "fill" && exercise.blanks && (
+      <div className="mt-1">Răspunsuri: {exercise.blanks.map(b => b.answer).join(", ")}</div>
+    )}
+    {exercise.type === "order" && exercise.lines && (
+      <div className="mt-1">Ordine: {exercise.lines.sort((a, b) => a.order - b.order).map(l => l.text).join(" → ")}</div>
+    )}
+    {exercise.type === "match" && exercise.pairs && (
+      <div className="mt-1">{exercise.pairs.map(p => `${p.left} ↔ ${p.right}`).join(", ")}</div>
+    )}
+  </div>
+);
 
 const ChallengeAssigner = ({ classId, existingChallengeIds, onClose }: ChallengeAssignerProps) => {
   const { data: chapters = [] } = useChapters();
@@ -22,6 +50,10 @@ const ChallengeAssigner = ({ classId, existingChallengeIds, onClose }: Challenge
   const allProblems = problemsData?.problems ?? [];
   const createChallenge = useCreateChallenge();
   const [selected, setSelected] = useState<{ type: string; id: string }[]>([]);
+  const [expandedChapter, setExpandedChapter] = useState<string | null>(null);
+  const [expandedLesson, setExpandedLesson] = useState<string | null>(null);
+  const [previewLesson, setPreviewLesson] = useState<string | null>(null);
+  const [expandedProblemChapter, setExpandedProblemChapter] = useState<string | null>(null);
 
   const toggle = (type: string, id: string) => {
     setSelected((prev) => {
@@ -41,7 +73,6 @@ const ChallengeAssigner = ({ classId, existingChallengeIds, onClose }: Challenge
         selected.map((s) => ({ class_id: classId, item_type: s.type, item_id: s.id }))
       );
 
-      // Send notifications to class students
       try {
         const { data: members } = await supabase
           .from("class_members")
@@ -51,14 +82,12 @@ const ChallengeAssigner = ({ classId, existingChallengeIds, onClose }: Challenge
         if (members && members.length > 0) {
           const studentIds = members.map((m) => m.student_id);
 
-          // In-app notifications (always works)
           const notifTitle = "📚 Provocare nouă!";
           const notifBody = `Ai primit ${selected.length} provocar${selected.length === 1 ? "e" : "i"} noi de la profesor!`;
           await supabase.from("notifications").insert(
             studentIds.map((sid) => ({ user_id: sid, title: notifTitle, body: notifBody }))
           );
 
-          // Push notifications (best-effort)
           try {
             await supabase.functions.invoke("send-push", {
               body: { student_ids: studentIds, title: notifTitle, body: notifBody },
@@ -95,66 +124,107 @@ const ChallengeAssigner = ({ classId, existingChallengeIds, onClose }: Challenge
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="lessons" className="max-h-64 overflow-y-auto space-y-2 mt-2">
-          {chapters.map((ch) => (
-            <div key={ch.id}>
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">
-                {ch.icon} {ch.title}
-              </p>
-              {ch.lessons.map((lesson) => {
-                const already = isExisting(lesson.id);
-                const sel = isSelected("lesson", lesson.id);
-                return (
-                  <button
-                    key={lesson.id}
-                    onClick={() => !already && toggle("lesson", lesson.id)}
-                    disabled={already}
-                    className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors flex items-center justify-between ${
-                      already
-                        ? "opacity-40 cursor-not-allowed bg-muted"
-                        : sel
-                        ? "bg-primary/10 text-primary border border-primary/30"
-                        : "hover:bg-secondary"
-                    }`}
-                  >
-                    <span>{lesson.title}</span>
-                    {(sel || already) && <Check className="h-4 w-4" />}
-                  </button>
-                );
-              })}
-            </div>
-          ))}
+        <TabsContent value="lessons" className="max-h-80 overflow-y-auto space-y-1 mt-2">
+          {chapters.map((ch) => {
+            const isChExpanded = expandedChapter === ch.id;
+            return (
+              <div key={ch.id}>
+                <button
+                  onClick={() => setExpandedChapter(isChExpanded ? null : ch.id)}
+                  className="w-full text-left px-3 py-2 rounded-lg text-sm font-semibold text-foreground hover:bg-secondary flex items-center gap-2"
+                >
+                  {isChExpanded ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
+                  {ch.icon} {ch.title}
+                </button>
+                {isChExpanded && (
+                  <div className="ml-2 space-y-1 mt-1">
+                    {ch.lessons.map((lesson) => {
+                      const already = isExisting(lesson.id);
+                      const sel = isSelected("lesson", lesson.id);
+                      const isPreviewing = previewLesson === lesson.id;
+                      return (
+                        <div key={lesson.id}>
+                          <div className="flex items-center gap-1">
+                            <button
+                              onClick={() => !already && toggle("lesson", lesson.id)}
+                              disabled={already}
+                              className={`flex-1 text-left px-3 py-2 rounded-lg text-sm transition-colors flex items-center justify-between ${
+                                already
+                                  ? "opacity-40 cursor-not-allowed bg-muted"
+                                  : sel
+                                  ? "bg-primary/10 text-primary border border-primary/30"
+                                  : "hover:bg-secondary"
+                              }`}
+                            >
+                              <span>{lesson.title}</span>
+                              {(sel || already) && <Check className="h-4 w-4" />}
+                            </button>
+                            <button
+                              onClick={() => setPreviewLesson(isPreviewing ? null : lesson.id)}
+                              className="p-1.5 rounded-md hover:bg-secondary text-muted-foreground hover:text-primary shrink-0"
+                              title="Previzualizare"
+                            >
+                              <Eye className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                          {isPreviewing && lesson.exercises.length > 0 && (
+                            <div className="space-y-1 mt-1 mb-2">
+                              {lesson.exercises.map((ex) => (
+                                <ExercisePreview key={ex.id} exercise={ex} />
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </TabsContent>
 
-        <TabsContent value="problems" className="max-h-64 overflow-y-auto space-y-2 mt-2">
-          {problemChapters.map((ch) => (
-            <div key={ch.id}>
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">
-                {ch.icon} {ch.title}
-              </p>
-              {allProblems.filter((p) => p.chapter === ch.id).map((problem) => {
-                const already = isExisting(problem.id);
-                const sel = isSelected("problem", problem.id);
-                return (
-                  <button
-                    key={problem.id}
-                    onClick={() => !already && toggle("problem", problem.id)}
-                    disabled={already}
-                    className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors flex items-center justify-between ${
-                      already
-                        ? "opacity-40 cursor-not-allowed bg-muted"
-                        : sel
-                        ? "bg-primary/10 text-primary border border-primary/30"
-                        : "hover:bg-secondary"
-                    }`}
-                  >
-                    <span>{problem.title}</span>
-                    {(sel || already) && <Check className="h-4 w-4" />}
-                  </button>
-                );
-              })}
-            </div>
-          ))}
+        <TabsContent value="problems" className="max-h-80 overflow-y-auto space-y-1 mt-2">
+          {problemChapters.map((ch) => {
+            const isChExpanded = expandedProblemChapter === ch.id;
+            const chapterProblems = allProblems.filter((p) => p.chapter === ch.id);
+            return (
+              <div key={ch.id}>
+                <button
+                  onClick={() => setExpandedProblemChapter(isChExpanded ? null : ch.id)}
+                  className="w-full text-left px-3 py-2 rounded-lg text-sm font-semibold text-foreground hover:bg-secondary flex items-center gap-2"
+                >
+                  {isChExpanded ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
+                  {ch.icon} {ch.title}
+                </button>
+                {isChExpanded && (
+                  <div className="ml-2 space-y-1 mt-1">
+                    {chapterProblems.map((problem) => {
+                      const already = isExisting(problem.id);
+                      const sel = isSelected("problem", problem.id);
+                      return (
+                        <button
+                          key={problem.id}
+                          onClick={() => !already && toggle("problem", problem.id)}
+                          disabled={already}
+                          className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors flex items-center justify-between ${
+                            already
+                              ? "opacity-40 cursor-not-allowed bg-muted"
+                              : sel
+                              ? "bg-primary/10 text-primary border border-primary/30"
+                              : "hover:bg-secondary"
+                          }`}
+                        >
+                          <span>{problem.title}</span>
+                          {(sel || already) && <Check className="h-4 w-4" />}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </TabsContent>
       </Tabs>
 
