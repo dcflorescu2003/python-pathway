@@ -138,6 +138,7 @@ const AppComponent = () => {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
+        <PushNotificationsProvider>
         <TooltipProvider>
           <Toaster />
           <Sonner />
