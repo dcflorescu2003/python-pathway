@@ -7,6 +7,7 @@ import { useCreateChallenge } from "@/hooks/useTeacher";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BookOpen, Code, Check } from "lucide-react";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 interface ChallengeAssignerProps {
   classId: string;
