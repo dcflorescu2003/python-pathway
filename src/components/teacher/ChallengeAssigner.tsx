@@ -16,7 +16,8 @@ interface ChallengeAssignerProps {
 
 const ChallengeAssigner = ({ classId, existingChallengeIds, onClose }: ChallengeAssignerProps) => {
   const { data: chapters = [] } = useChapters();
-  const { problemChapters = [] } = useProblems();
+  const { data: problemsData } = useProblems();
+  const problemChapters = problemsData?.problemChapters ?? [];
   const createChallenge = useCreateChallenge();
   const [selected, setSelected] = useState<{ type: string; id: string }[]>([]);
 
