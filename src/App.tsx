@@ -26,6 +26,7 @@ const AdminPage = lazy(() => import("./pages/AdminPage"));
 const ResetPasswordPage = lazy(() => import("./pages/ResetPasswordPage"));
 const PrivacyPolicyPage = lazy(() => import("./pages/PrivacyPolicyPage"));
 const DeleteAccountPage = lazy(() => import("./pages/DeleteAccountPage"));
+const TeacherPage = lazy(() => import("./pages/TeacherPage"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 const queryClient = new QueryClient();
