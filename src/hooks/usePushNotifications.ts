@@ -4,7 +4,7 @@ import { PushNotifications } from "@capacitor/push-notifications";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 
-export function usePushNotifications() {
+function usePushRegistration() {
   const { user } = useAuth();
 
   useEffect(() => {
@@ -17,7 +17,6 @@ export function usePushNotifications() {
       await PushNotifications.register();
 
       PushNotifications.addListener("registration", async (token) => {
-        // Upsert device token
         await supabase.from("device_tokens" as any).upsert(
           {
             user_id: user.id,
@@ -39,4 +38,9 @@ export function usePushNotifications() {
       PushNotifications.removeAllListeners();
     };
   }, [user]);
+}
+
+export function PushNotificationsProvider({ children }: { children: React.ReactNode }) {
+  usePushRegistration();
+  return <>{children}</>;
 }
