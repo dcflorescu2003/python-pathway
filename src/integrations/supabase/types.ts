@@ -32,6 +32,38 @@ export type Database = {
         }
         Relationships: []
       }
+      challenges: {
+        Row: {
+          class_id: string
+          created_at: string
+          id: string
+          item_id: string
+          item_type: string
+        }
+        Insert: {
+          class_id: string
+          created_at?: string
+          id?: string
+          item_id: string
+          item_type: string
+        }
+        Update: {
+          class_id?: string
+          created_at?: string
+          id?: string
+          item_id?: string
+          item_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "challenges_class_id_fkey"
+            columns: ["class_id"]
+            isOneToOne: false
+            referencedRelation: "teacher_classes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       chapters: {
         Row: {
           color: string
@@ -61,6 +93,35 @@ export type Database = {
           title?: string
         }
         Relationships: []
+      }
+      class_members: {
+        Row: {
+          class_id: string
+          id: string
+          joined_at: string
+          student_id: string
+        }
+        Insert: {
+          class_id: string
+          id?: string
+          joined_at?: string
+          student_id: string
+        }
+        Update: {
+          class_id?: string
+          id?: string
+          joined_at?: string
+          student_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "class_members_class_id_fkey"
+            columns: ["class_id"]
+            isOneToOne: false
+            referencedRelation: "teacher_classes"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       completed_lessons: {
         Row: {
@@ -326,6 +387,7 @@ export type Database = {
           display_name: string | null
           id: string
           is_premium: boolean
+          is_teacher: boolean
           last_activity_date: string
           lives: number
           school_id: string | null
@@ -340,6 +402,7 @@ export type Database = {
           display_name?: string | null
           id?: string
           is_premium?: boolean
+          is_teacher?: boolean
           last_activity_date?: string
           lives?: number
           school_id?: string | null
@@ -354,6 +417,7 @@ export type Database = {
           display_name?: string | null
           id?: string
           is_premium?: boolean
+          is_teacher?: boolean
           last_activity_date?: string
           lives?: number
           school_id?: string | null
@@ -361,6 +425,30 @@ export type Database = {
           updated_at?: string
           user_id?: string
           xp?: number
+        }
+        Relationships: []
+      }
+      teacher_classes: {
+        Row: {
+          created_at: string
+          id: string
+          join_code: string
+          name: string
+          teacher_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          join_code: string
+          name: string
+          teacher_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          join_code?: string
+          name?: string
+          teacher_id?: string
         }
         Relationships: []
       }
