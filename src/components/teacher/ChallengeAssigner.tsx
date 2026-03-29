@@ -40,6 +40,29 @@ const ChallengeAssigner = ({ classId, existingChallengeIds, onClose }: Challenge
       await createChallenge.mutateAsync(
         selected.map((s) => ({ class_id: classId, item_type: s.type, item_id: s.id }))
       );
+
+      // Send push notifications to class students
+      try {
+        const { data: members } = await supabase
+          .from("class_members")
+          .select("student_id")
+          .eq("class_id", classId);
+
+        if (members && members.length > 0) {
+          const studentIds = members.map((m) => m.student_id);
+          await supabase.functions.invoke("send-push", {
+            body: {
+              student_ids: studentIds,
+              title: "📚 Provocare nouă!",
+              body: `Ai primit ${selected.length} provocar${selected.length === 1 ? "e" : "i"} noi de la profesor!`,
+            },
+          });
+        }
+      } catch (pushErr) {
+        console.error("Push notification error:", pushErr);
+        // Don't fail the assignment if push fails
+      }
+
       toast.success(`${selected.length} provocări atribuite!`);
       onClose();
     } catch {
