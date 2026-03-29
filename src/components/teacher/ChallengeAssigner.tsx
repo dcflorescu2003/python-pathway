@@ -100,7 +100,7 @@ const ChallengeAssigner = ({ classId, existingChallengeIds, onClose }: Challenge
               <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">
                 {ch.icon} {ch.title}
               </p>
-              {ch.problems.map((problem) => {
+              {allProblems.filter((p) => p.chapter === ch.id).map((problem) => {
                 const already = isExisting(problem.id);
                 const sel = isSelected("problem", problem.id);
                 return (

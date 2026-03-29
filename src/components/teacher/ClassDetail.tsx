@@ -37,10 +37,8 @@ const ClassDetail = ({ classId, className: clsName, joinCode, onBack }: ClassDet
         if (lesson) return lesson.title;
       }
     } else {
-      for (const ch of problemChapters) {
-        const problem = ch.problems.find((p) => p.id === itemId);
-        if (problem) return problem.title;
-      }
+      const problem = allProblems.find((p) => p.id === itemId);
+      if (problem) return problem.title;
     }
     return itemId;
   };
