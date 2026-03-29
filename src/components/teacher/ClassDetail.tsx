@@ -1,11 +1,13 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useClassMembers, useClassChallenges, useDeleteChallenge } from "@/hooks/useTeacher";
 import { useChapters } from "@/hooks/useChapters";
 import { useProblems } from "@/hooks/useProblems";
+import { supabase } from "@/integrations/supabase/client";
 import ChallengeAssigner from "./ChallengeAssigner";
-import { ArrowLeft, Copy, Trash2, Target, BookOpen, Code, Zap, Flame } from "lucide-react";
+import { ArrowLeft, Copy, Trash2, Target, BookOpen, Code, Zap, Flame, CheckCircle, XCircle, ChevronDown, ChevronUp } from "lucide-react";
 import { toast } from "sonner";
 
 interface ClassDetailProps {
@@ -21,9 +23,24 @@ const ClassDetail = ({ classId, className: clsName, joinCode, onBack }: ClassDet
   const deleteChallenge = useDeleteChallenge();
   const { data: chapters = [] } = useChapters();
   const { data: problemsData } = useProblems();
-  const problemChapters = problemsData?.problemChapters ?? [];
   const allProblems = problemsData?.problems ?? [];
   const [showAssigner, setShowAssigner] = useState(false);
+  const [expandedChallenge, setExpandedChallenge] = useState<string | null>(null);
+
+  // Fetch completed_lessons for all students in the class
+  const studentIds = useMemo(() => members.map((m) => m.student_id), [members]);
+  const { data: allCompletedLessons = [] } = useQuery({
+    queryKey: ["class-completed-lessons", classId, studentIds],
+    queryFn: async () => {
+      if (studentIds.length === 0) return [];
+      const { data } = await supabase
+        .from("completed_lessons")
+        .select("user_id, lesson_id, score")
+        .in("user_id", studentIds);
+      return data || [];
+    },
+    enabled: studentIds.length > 0,
+  });
 
   const copyCode = () => {
     navigator.clipboard.writeText(joinCode);
@@ -52,7 +69,21 @@ const ClassDetail = ({ classId, className: clsName, joinCode, onBack }: ClassDet
     }
   };
 
+  // Build a map: lessonId -> { userId -> { score, completed } }
+  const completionMap = useMemo(() => {
+    const map: Record<string, Record<string, { score: number }>> = {};
+    for (const cl of allCompletedLessons) {
+      if (!map[cl.lesson_id]) map[cl.lesson_id] = {};
+      map[cl.lesson_id][cl.user_id] = { score: cl.score };
+    }
+    return map;
+  }, [allCompletedLessons]);
+
   const existingChallengeIds = challenges.map((c) => c.item_id);
+
+  const getStudentStatus = (itemId: string, studentId: string) => {
+    return completionMap[itemId]?.[studentId] || null;
+  };
 
   return (
     <div className="space-y-4">
@@ -98,7 +129,7 @@ const ClassDetail = ({ classId, className: clsName, joinCode, onBack }: ClassDet
         )}
       </div>
 
-      {/* Challenges */}
+      {/* Challenges with per-student status */}
       <div>
         <div className="flex items-center justify-between mb-2">
           <h3 className="text-sm font-semibold text-muted-foreground">
@@ -125,31 +156,102 @@ const ClassDetail = ({ classId, className: clsName, joinCode, onBack }: ClassDet
           <p className="text-sm text-muted-foreground">Nicio provocare atribuită.</p>
         ) : (
           <div className="space-y-2">
-            {challenges.map((ch) => (
-              <Card key={ch.id}>
-                <CardContent className="p-3 flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    {ch.item_type === "lesson" ? (
-                      <BookOpen className="h-4 w-4 text-primary" />
-                    ) : (
-                      <Code className="h-4 w-4 text-accent-foreground" />
+            {challenges.map((ch) => {
+              const isExpanded = expandedChallenge === ch.id;
+              const completedCount = members.filter(
+                (m) => getStudentStatus(ch.item_id, m.student_id) !== null
+              ).length;
+
+              return (
+                <Card key={ch.id}>
+                  <CardContent className="p-0">
+                    {/* Challenge header */}
+                    <button
+                      onClick={() => setExpandedChallenge(isExpanded ? null : ch.id)}
+                      className="w-full p-3 flex items-center justify-between text-left"
+                    >
+                      <div className="flex items-center gap-2 flex-1 min-w-0">
+                        {ch.item_type === "lesson" ? (
+                          <BookOpen className="h-4 w-4 text-primary shrink-0" />
+                        ) : (
+                          <Code className="h-4 w-4 text-accent-foreground shrink-0" />
+                        )}
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium text-foreground truncate">
+                            {getItemName(ch.item_type, ch.item_id)}
+                          </p>
+                          <p className="text-[10px] text-muted-foreground">
+                            {new Date(ch.created_at).toLocaleDateString("ro-RO")} · {completedCount}/{members.length} completat
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1 shrink-0">
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handleDeleteChallenge(ch.id); }}
+                          className="p-1.5 rounded-md hover:bg-destructive/10 text-muted-foreground hover:text-destructive"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                        {isExpanded ? (
+                          <ChevronUp className="h-4 w-4 text-muted-foreground" />
+                        ) : (
+                          <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                        )}
+                      </div>
+                    </button>
+
+                    {/* Expanded: per-student status */}
+                    {isExpanded && members.length > 0 && (
+                      <div className="border-t border-border px-3 pb-3 pt-2 space-y-1.5">
+                        {members.map((m) => {
+                          const status = getStudentStatus(ch.item_id, m.student_id);
+                          const completed = status !== null;
+                          const hasMistakes = completed && status.score < 100;
+                          const mistakePoints = completed ? Math.max(0, 100 - status.score) : 0;
+
+                          return (
+                            <div
+                              key={m.id}
+                              className={`flex items-center justify-between rounded-lg px-2.5 py-1.5 text-sm ${
+                                completed
+                                  ? hasMistakes
+                                    ? "bg-warning/10"
+                                    : "bg-primary/5"
+                                  : "bg-muted/50"
+                              }`}
+                            >
+                              <div className="flex items-center gap-2">
+                                {completed ? (
+                                  hasMistakes ? (
+                                    <XCircle className="h-3.5 w-3.5 text-warning shrink-0" />
+                                  ) : (
+                                    <CheckCircle className="h-3.5 w-3.5 text-primary shrink-0" />
+                                  )
+                                ) : (
+                                  <div className="h-3.5 w-3.5 rounded-full border-2 border-muted-foreground/30 shrink-0" />
+                                )}
+                                <span className="text-foreground text-xs font-medium">
+                                  {m.profile?.display_name || "Elev"}
+                                </span>
+                              </div>
+                              <div className="text-xs">
+                                {completed ? (
+                                  <span className={hasMistakes ? "text-warning font-medium" : "text-primary font-medium"}>
+                                    {status.score}% {hasMistakes && `· ${mistakePoints} pct. pierdute`}
+                                  </span>
+                                ) : (
+                                  <span className="text-muted-foreground">Necompletat</span>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
                     )}
-                    <div>
-                      <p className="text-sm font-medium text-foreground">{getItemName(ch.item_type, ch.item_id)}</p>
-                      <p className="text-[10px] text-muted-foreground">
-                        {new Date(ch.created_at).toLocaleDateString("ro-RO")}
-                      </p>
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => handleDeleteChallenge(ch.id)}
-                    className="p-1.5 rounded-md hover:bg-destructive/10 text-muted-foreground hover:text-destructive"
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </button>
-                </CardContent>
-              </Card>
-            ))}
+                  </CardContent>
+                </Card>
+              );
+            })}
           </div>
         )}
       </div>
