@@ -54,6 +54,7 @@ const AppRoutes = () => {
           <Route path="/reset-password" element={<ResetPasswordPage />} />
           <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
           <Route path="/delete-account" element={<DeleteAccountPage />} />
+          <Route path="/teacher" element={<TeacherPage />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </AnimatePresence>
