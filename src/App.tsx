@@ -146,6 +146,7 @@ const AppComponent = () => {
             <AppRoutes />
           </BrowserRouter>
         </TooltipProvider>
+        </PushNotificationsProvider>
       </AuthProvider>
     </QueryClientProvider>
   );
