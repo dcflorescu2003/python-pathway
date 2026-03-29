@@ -10,7 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
-import { ArrowLeft, Mail, Lock, User, Eye, EyeOff, LogOut, BookOpen, XCircle, Code, Zap, Flame, Trophy, Shield, Trash2, Settings } from "lucide-react";
+import { ArrowLeft, Mail, Lock, User, Eye, EyeOff, LogOut, BookOpen, XCircle, Code, Zap, Flame, Trophy, Shield, Trash2, Settings, GraduationCap, UserPlus } from "lucide-react";
 import { useAdminAccess } from "@/hooks/useAdminAccess";
 import { toast } from "sonner";
 
@@ -20,6 +20,57 @@ const AccountView = () => {
   const { progress } = useProgress();
   const { data: chapters } = useChapters();
   const { isAdmin } = useAdminAccess();
+  const [isTeacher, setIsTeacher] = useState<boolean | null>(null);
+  const [joinCode, setJoinCode] = useState("");
+  const [joinLoading, setJoinLoading] = useState(false);
+
+  // Load teacher status on mount
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  const [_initTeacher] = useState(() => {
+    if (!user) return null;
+    supabase
+      .from("profiles")
+      .select("is_teacher")
+      .eq("user_id", user.id)
+      .single()
+      .then(({ data }) => setIsTeacher(data?.is_teacher ?? false));
+    return null;
+  });
+
+  const activateTeacher = async () => {
+    if (!user) return;
+    await supabase.from("profiles").update({ is_teacher: true }).eq("user_id", user.id);
+    setIsTeacher(true);
+    toast.success("Mod profesor activat! 🎓");
+  };
+
+  const handleJoinClass = async () => {
+    if (!user || !joinCode.trim()) return;
+    setJoinLoading(true);
+    try {
+      const { data: cls } = await supabase
+        .from("teacher_classes")
+        .select("id")
+        .eq("join_code", joinCode.trim().toUpperCase())
+        .single();
+      if (!cls) {
+        toast.error("Cod invalid.");
+        return;
+      }
+      const { error } = await supabase
+        .from("class_members")
+        .insert({ class_id: cls.id, student_id: user.id });
+      if (error) {
+        if (error.code === "23505") toast.error("Ești deja înscris în această clasă.");
+        else toast.error("Eroare la înscriere.");
+      } else {
+        toast.success("Te-ai alăturat clasei! 🎉");
+        setJoinCode("");
+      }
+    } finally {
+      setJoinLoading(false);
+    }
+  };
 
   const totalLessons = (chapters || []).reduce((sum, ch) => sum + ch.lessons.length, 0);
   const completedCount = Object.values(progress.completedLessons).filter(l => l.completed).length;
@@ -90,6 +141,47 @@ const AccountView = () => {
         </Card>
 
         <CouponRedemption />
+
+        {/* Teacher section */}
+        {isTeacher ? (
+          <Button
+            variant="outline"
+            className="w-full max-w-sm mt-4 gap-2"
+            onClick={() => navigate("/teacher")}
+          >
+            <GraduationCap className="h-4 w-4" />
+            Panou Profesor
+          </Button>
+        ) : (
+          <Button
+            variant="outline"
+            className="w-full max-w-sm mt-4 gap-2"
+            onClick={activateTeacher}
+          >
+            <GraduationCap className="h-4 w-4" />
+            Devino Profesor
+          </Button>
+        )}
+
+        {/* Join class */}
+        <Card className="w-full max-w-sm mt-4 border-border">
+          <CardContent className="p-4">
+            <p className="text-sm font-medium text-foreground mb-2 flex items-center gap-2">
+              <UserPlus className="h-4 w-4 text-primary" /> Alătură-te unei clase
+            </p>
+            <div className="flex gap-2">
+              <Input
+                placeholder="Cod clasă (ex: ABC123)"
+                value={joinCode}
+                onChange={(e) => setJoinCode(e.target.value)}
+                className="flex-1"
+              />
+              <Button onClick={handleJoinClass} disabled={!joinCode.trim() || joinLoading} size="sm">
+                {joinLoading ? "..." : "Intră"}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
 
         {isAdmin && (
           <Button

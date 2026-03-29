@@ -6,12 +6,14 @@ import { useChapters } from "@/hooks/useChapters";
 import { useXPThresholds, getLevelFromXP, getXPForNextLevel } from "@/hooks/useXPThresholds";
 import { getLevelInfo } from "@/data/levels";
 import { useProgress } from "@/hooks/useProgress";
+import { useChallenges } from "@/hooks/useChallenges";
 import { schools, getSelectedSchool, setSelectedSchool, clearSelectedSchool } from "@/data/schools";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Card, CardContent } from "@/components/ui/card";
 import { motion } from "framer-motion";
-import { Flame, Heart, Zap, Trophy, Crown, School, ChevronDown, Plus } from "lucide-react";
+import { Flame, Heart, Zap, Trophy, Crown, School, ChevronDown, Plus, Target, BookOpen, Code } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import PremiumDialog from "@/components/PremiumDialog";
 import LevelRoadmap from "@/components/LevelRoadmap";
@@ -30,6 +32,7 @@ const Index = (): JSX.Element => {
   const { user, loading: authLoading } = useAuth();
   const { progress } = useProgress();
   const { data: chapters, isLoading: chaptersLoading } = useChapters();
+  const { challenges, isChallenge } = useChallenges();
   const [needsOnboarding, setNeedsOnboarding] = useState<boolean | null>(null);
   const [selectedSchool, setSchool] = useState(getSelectedSchool());
   const [showSchoolPicker, setShowSchoolPicker] = useState(false);
@@ -284,6 +287,48 @@ const Index = (): JSX.Element => {
             <p className="mt-1 text-xs text-muted-foreground">{xpInLevel}/{Math.round(xpPerLevel)} XP pentru nivelul {level + 1} · <span className="text-primary">Drumul spre Master of Python →</span></p>
           </button>
         </motion.div>
+
+        {/* Active challenges */}
+        {challenges.length > 0 && (
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.08 }} className="mb-4">
+            <Card className="border-primary/30 bg-primary/5">
+              <CardContent className="p-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <Target className="h-5 w-5 text-primary" />
+                  <h3 className="text-sm font-bold text-foreground">Provocări de la profesor</h3>
+                  <span className="ml-auto text-[10px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-full">+10% XP</span>
+                </div>
+                <div className="space-y-2">
+                  {challenges
+                    .filter((c) => !progress.completedLessons[c.item_id]?.completed)
+                    .slice(0, 5)
+                    .map((c) => (
+                      <button
+                        key={c.id}
+                        onClick={() =>
+                          c.item_type === "lesson"
+                            ? navigate(`/lesson/${c.item_id}`)
+                            : navigate(`/problem/${c.item_id}`)
+                        }
+                        className="w-full flex items-center gap-2 rounded-lg bg-card border border-border p-2.5 text-left hover:border-primary/50 transition-colors"
+                      >
+                        {c.item_type === "lesson" ? (
+                          <BookOpen className="h-4 w-4 text-primary shrink-0" />
+                        ) : (
+                          <Code className="h-4 w-4 text-accent-foreground shrink-0" />
+                        )}
+                        <span className="text-sm text-foreground truncate flex-1">{c.item_id}</span>
+                        <span className="text-[10px] text-muted-foreground">{c.class_name}</span>
+                      </button>
+                    ))}
+                  {challenges.filter((c) => !progress.completedLessons[c.item_id]?.completed).length === 0 && (
+                    <p className="text-xs text-muted-foreground text-center py-1">✅ Toate provocările completate!</p>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+        )}
 
         <div className="space-y-3">
           {chapters.map((chapter, idx) => {
