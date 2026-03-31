@@ -133,6 +133,7 @@ const LessonPage = () => {
               {exercise.type === "order" && <OrderExercise exercise={exercise} onAnswer={handleAnswer} feedback={feedback} />}
               {exercise.type === "truefalse" && <TrueFalseExercise exercise={exercise} onAnswer={handleAnswer} feedback={feedback} />}
               {exercise.type === "match" && <MatchExercise exercise={exercise} onAnswer={handleAnswer} feedback={feedback} />}
+              {exercise.type === "card" && <CardExercise exercise={exercise} onContinue={() => handleAnswer(true)} />}
             </motion.div>
           </AnimatePresence>
         </div>
