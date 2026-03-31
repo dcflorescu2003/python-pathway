@@ -93,6 +93,12 @@ const ExerciseEditor = ({ exercise, onSave, onCancel, lessonId, nextIndex }: Pro
           ],
         });
         break;
+      case "card":
+        setData({
+          ...base,
+          codeTemplate: "",
+        });
+        break;
     }
   };
 
