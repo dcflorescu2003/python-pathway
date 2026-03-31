@@ -1,4 +1,4 @@
-export type ExerciseType = "quiz" | "fill" | "order" | "truefalse" | "match";
+export type ExerciseType = "quiz" | "fill" | "order" | "truefalse" | "match" | "card";
 
 export interface ExerciseOption {
   id: string;
