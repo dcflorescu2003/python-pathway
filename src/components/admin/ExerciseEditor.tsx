@@ -324,6 +324,7 @@ const ExerciseEditor = ({ exercise, onSave, onCancel, lessonId, nextIndex }: Pro
               <SelectItem value="order">Ordonare linii</SelectItem>
               <SelectItem value="truefalse">Adevărat / Fals</SelectItem>
               <SelectItem value="match">Asociere</SelectItem>
+              <SelectItem value="card">📖 Cartonaș teoretic</SelectItem>
             </SelectContent>
           </Select>
         </div>
