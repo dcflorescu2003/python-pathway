@@ -1,0 +1,2 @@
+ALTER TABLE public.exercises DROP CONSTRAINT IF EXISTS exercises_type_check;
+ALTER TABLE public.exercises ADD CONSTRAINT exercises_type_check CHECK (type IN ('quiz', 'fill', 'order', 'truefalse', 'match', 'card'));
