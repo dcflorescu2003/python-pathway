@@ -22,7 +22,7 @@ const CardExercise = ({ exercise, onContinue }: Props) => {
       )}
 
       {exercise.codeTemplate && (
-        <pre className="bg-slate-950 text-slate-50 p-4 rounded-lg font-mono text-sm overflow-x-auto">
+        <pre className="bg-card text-foreground border border-border p-4 rounded-lg font-mono text-sm overflow-x-auto">
           <code>{exercise.codeTemplate}</code>
         </pre>
       )}
