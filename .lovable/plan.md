@@ -1,64 +1,55 @@
 
 
-# Notificări in-app ca fallback pentru push notifications
+# Cartonașe teoretice intercalate cu exercițiile
 
-## Ce facem
-Creăm un sistem de notificări in-app: când profesorul atribuie provocări, pe lângă push-ul nativ se creează și înregistrări în DB. Elevii văd un badge pe pagina principală și o listă de notificări necitite.
+## Concept
+Adăugăm un nou tip de item în lecții: **„card"** (cartonaș teoretic). Acestea apar în fluxul lecției exact ca un exercițiu, dar nu au răspuns — elevul doar citește și apasă „Continuă". Sunt stocate în același tabel `exercises` cu `type = 'card'`, ceea ce permite reordonarea drag-and-drop alături de exerciții.
 
 ## Modificări
 
-### 1. Migrare DB — tabel `notifications`
-```sql
-CREATE TABLE public.notifications (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-  title text NOT NULL,
-  body text NOT NULL,
-  read boolean NOT NULL DEFAULT false,
-  created_at timestamptz NOT NULL DEFAULT now()
-);
-ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
--- Elevul vede doar notificările proprii
-CREATE POLICY "Users read own notifications" ON public.notifications
-  FOR SELECT TO authenticated USING (user_id = auth.uid());
-CREATE POLICY "Users update own notifications" ON public.notifications
-  FOR UPDATE TO authenticated USING (user_id = auth.uid());
--- Insert doar din service role (edge function) sau direct din client cu policy
-CREATE POLICY "Authenticated insert notifications" ON public.notifications
-  FOR INSERT TO authenticated WITH CHECK (true);
-```
+### 1. Migrare DB — fără modificări de schemă
+Tabelul `exercises` are deja coloanele necesare:
+- `type` → adăugăm valoarea `'card'`
+- `question` → folosit ca **titlu** al cartonașului
+- `explanation` → folosit ca **textul explicativ**
+- `code_template` → folosit pentru **codul Python opțional**
+- Celelalte coloane (options, blanks, etc.) rămân `null`
 
-### 2. `src/components/teacher/ChallengeAssigner.tsx`
-După ce creează provocările, inserăm notificări in-app pentru fiecare elev:
-```typescript
-// După crearea challenges, inserăm notificări in-app
-const notifs = studentIds.map(sid => ({
-  user_id: sid,
-  title: "📚 Provocare nouă!",
-  body: `Ai primit ${selected.length} provocări noi de la profesor!`,
-}));
-await supabase.from("notifications").insert(notifs);
-```
-Asta rulează indiferent dacă push-ul reușește sau nu.
+Nu e nevoie de migrare — doar cod.
 
-### 3. `src/hooks/useNotifications.ts` (fișier nou)
-- Query notificări necitite: `SELECT * FROM notifications WHERE user_id = auth.uid() AND read = false ORDER BY created_at DESC`
-- Funcție `markAsRead(id)` și `markAllAsRead()`
-- `unreadCount` computed
+### 2. `src/hooks/useChapters.ts`
+- Adăugăm `'card'` la tipul `ExerciseType`: `"quiz" | "fill" | "order" | "truefalse" | "match" | "card"`
 
-### 4. `src/components/NotificationBell.tsx` (fișier nou)
-- Iconița Bell cu badge numeric (unread count)
-- Click deschide un Popover cu lista notificărilor
-- Buton „Marchează toate ca citite"
-- Fiecare notificare: titlu, body, timp relativ (acum 5 min)
+### 3. `src/components/exercises/CardExercise.tsx` (nou)
+- Componentă nouă care afișează cartonașul
+- Design diferențiat: border colorat/gradient subtil, icon 📖, font mai mare pentru titlu
+- Afișează: titlu (`question`), explicație (`explanation`), cod opțional (`codeTemplate`) într-un bloc `<pre>`
+- Buton „Am înțeles — Continuă" care apelează `onAnswer(true)` (întotdeauna corect)
 
-### 5. `src/pages/Index.tsx`
-- Adăugăm `NotificationBell` în header-ul paginii principale (lângă logo/avatar)
+### 4. `src/pages/LessonPage.tsx`
+- Adăugăm `CardExercise` în switch-ul de renderizare
+- La cartonașe, nu se pierde viață și nu se contorizează ca „răspuns corect/greșit" — se trece automat
+- Ajustăm progress bar-ul: cartonașele contează în progres dar nu în scor
 
-### Fișiere
-1. **Migrare SQL** — tabel `notifications` + RLS
-2. **`src/hooks/useNotifications.ts`** — hook CRUD notificări
-3. **`src/components/NotificationBell.tsx`** — UI bell + popover
-4. **`src/components/teacher/ChallengeAssigner.tsx`** — insert notificări in-app
-5. **`src/pages/Index.tsx`** — render NotificationBell în header
+### 5. `src/components/admin/ExerciseEditor.tsx`
+- Adăugăm `'card'` în dropdown-ul de tip exercițiu
+- Când tipul e `card`: afișăm doar 3 câmpuri: **Titlu** (question), **Explicație** (explanation), **Cod Python** (code_template, opțional)
+- Ascundem câmpurile specifice celorlalte tipuri (options, blanks, etc.)
+
+### 6. `src/components/admin/ContentEditor.tsx`
+- La listarea exercițiilor, cartonașele apar cu icon 📖 și label „Cartonaș" în loc de tipul standard
+
+## Design cartonaș (în lecție)
+- Background: `bg-primary/5` cu border `border-primary/20`
+- Icon 📖 + titlu bold mare
+- Text explicativ cu `whitespace-pre-line`
+- Bloc de cod cu fundal întunecat, monospace (dacă există)
+- Buton full-width „Am înțeles" stil primary
+
+## Fișiere
+1. `src/hooks/useChapters.ts` — tip nou
+2. `src/components/exercises/CardExercise.tsx` — componentă nouă
+3. `src/pages/LessonPage.tsx` — renderizare + logică skip
+4. `src/components/admin/ExerciseEditor.tsx` — formular admin
+5. `src/components/admin/ContentEditor.tsx` — label în listă
 
