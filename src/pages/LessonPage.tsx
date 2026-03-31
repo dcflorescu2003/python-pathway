@@ -33,6 +33,18 @@ const LessonPage = () => {
   const handleAnswer = useCallback(
     (isCorrect: boolean) => {
       const exercise = lesson?.exercises[currentIndex];
+      if (exercise?.type === "card") {
+        setFeedback(null);
+        setLastExplanation(null);
+        if (!lesson) return;
+        if (currentIndex + 1 >= lesson.exercises.length) {
+          setIsFinished(true);
+          completeLesson(lesson.id, lesson.xpReward, correctCount);
+        } else {
+          setCurrentIndex((i) => i + 1);
+        }
+        return;
+      }
       if (isCorrect) {
         setCorrectCount((c) => c + 1);
         setFeedback("correct");
@@ -44,7 +56,7 @@ const LessonPage = () => {
         setLastExplanation(exercise?.explanation || null);
       }
     },
-    [currentIndex, lesson, loseLife]
+    [currentIndex, lesson, loseLife, correctCount, completeLesson]
   );
 
   const handleContinue = useCallback(() => {
