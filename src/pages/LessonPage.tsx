@@ -11,6 +11,7 @@ import FillExercise from "@/components/exercises/FillExercise";
 import OrderExercise from "@/components/exercises/OrderExercise";
 import TrueFalseExercise from "@/components/exercises/TrueFalseExercise";
 import MatchExercise from "@/components/exercises/MatchExercise";
+import CardExercise from "@/components/exercises/CardExercise";
 import LoadingScreen from "@/components/states/LoadingScreen";
 
 const LessonPage = () => {
@@ -32,6 +33,18 @@ const LessonPage = () => {
   const handleAnswer = useCallback(
     (isCorrect: boolean) => {
       const exercise = lesson?.exercises[currentIndex];
+      if (exercise?.type === "card") {
+        setFeedback(null);
+        setLastExplanation(null);
+        if (!lesson) return;
+        if (currentIndex + 1 >= lesson.exercises.length) {
+          setIsFinished(true);
+          completeLesson(lesson.id, lesson.xpReward, correctCount);
+        } else {
+          setCurrentIndex((i) => i + 1);
+        }
+        return;
+      }
       if (isCorrect) {
         setCorrectCount((c) => c + 1);
         setFeedback("correct");
@@ -43,7 +56,7 @@ const LessonPage = () => {
         setLastExplanation(exercise?.explanation || null);
       }
     },
-    [currentIndex, lesson, loseLife]
+    [currentIndex, lesson, loseLife, correctCount, completeLesson]
   );
 
   const handleContinue = useCallback(() => {
@@ -120,6 +133,7 @@ const LessonPage = () => {
               {exercise.type === "order" && <OrderExercise exercise={exercise} onAnswer={handleAnswer} feedback={feedback} />}
               {exercise.type === "truefalse" && <TrueFalseExercise exercise={exercise} onAnswer={handleAnswer} feedback={feedback} />}
               {exercise.type === "match" && <MatchExercise exercise={exercise} onAnswer={handleAnswer} feedback={feedback} />}
+              {exercise.type === "card" && <CardExercise exercise={exercise} onContinue={() => handleAnswer(true)} />}
             </motion.div>
           </AnimatePresence>
         </div>

@@ -93,6 +93,12 @@ const ExerciseEditor = ({ exercise, onSave, onCancel, lessonId, nextIndex }: Pro
           ],
         });
         break;
+      case "card":
+        setData({
+          ...base,
+          codeTemplate: "",
+        });
+        break;
     }
   };
 
@@ -324,6 +330,7 @@ const ExerciseEditor = ({ exercise, onSave, onCancel, lessonId, nextIndex }: Pro
               <SelectItem value="order">Ordonare linii</SelectItem>
               <SelectItem value="truefalse">Adevărat / Fals</SelectItem>
               <SelectItem value="match">Asociere</SelectItem>
+              <SelectItem value="card">📖 Cartonaș teoretic</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -338,28 +345,41 @@ const ExerciseEditor = ({ exercise, onSave, onCancel, lessonId, nextIndex }: Pro
       </div>
 
       <div>
-        <Label className="text-foreground">Întrebare</Label>
+        <Label className="text-foreground">{data.type === "card" ? "Titlu cartonaș" : "Întrebare"}</Label>
         <Textarea
           value={data.question}
           onChange={(e) => updateField("question", e.target.value)}
-          placeholder="Scrie întrebarea aici..."
+          placeholder={data.type === "card" ? "Titlul cartonașului..." : "Scrie întrebarea aici..."}
           rows={2}
         />
       </div>
 
-      {data.type === "quiz" && renderQuizFields()}
-      {data.type === "fill" && renderFillFields()}
-      {data.type === "order" && renderOrderFields()}
-      {data.type === "truefalse" && renderTrueFalseFields()}
-      {data.type === "match" && renderMatchFields()}
+      {data.type !== "card" && data.type === "quiz" && renderQuizFields()}
+      {data.type !== "card" && data.type === "fill" && renderFillFields()}
+      {data.type !== "card" && data.type === "order" && renderOrderFields()}
+      {data.type !== "card" && data.type === "truefalse" && renderTrueFalseFields()}
+      {data.type !== "card" && data.type === "match" && renderMatchFields()}
+
+      {data.type === "card" && (
+        <div>
+          <Label className="text-foreground">Cod Python (opțional)</Label>
+          <Textarea
+            value={data.codeTemplate || ""}
+            onChange={(e) => updateField("codeTemplate", e.target.value)}
+            placeholder="print('Hello!')"
+            className="font-mono text-sm"
+            rows={4}
+          />
+        </div>
+      )}
 
       <div>
-        <Label className="text-foreground">Explicație (apare după răspuns)</Label>
+        <Label className="text-foreground">{data.type === "card" ? "Explicație / Conținut" : "Explicație (apare după răspuns)"}</Label>
         <Textarea
           value={data.explanation || ""}
           onChange={(e) => updateField("explanation", e.target.value)}
-          placeholder="Explică de ce răspunsul corect este..."
-          rows={2}
+          placeholder={data.type === "card" ? "Textul explicativ al cartonașului..." : "Explică de ce răspunsul corect este..."}
+          rows={data.type === "card" ? 6 : 2}
         />
       </div>
 

@@ -87,7 +87,7 @@ const ContentEditor = () => {
 
   const invalidate = () => queryClient.invalidateQueries({ queryKey: ["chapters"] });
 
-  const typeLabels: Record<string, string> = { quiz: "Quiz", fill: "Completare", order: "Ordonare", truefalse: "A/F" };
+  const typeLabels: Record<string, string> = { quiz: "Quiz", fill: "Completare", order: "Ordonare", truefalse: "A/F", match: "Asociere", card: "📖 Cartonaș" };
 
   // --- Chapter reorder ---
   const handleChapterReorder = async (event: DragEndEvent) => {
