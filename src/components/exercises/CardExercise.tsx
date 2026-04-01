@@ -1,6 +1,7 @@
 import { Exercise } from "@/hooks/useChapters";
 import { Button } from "@/components/ui/button";
 import { BookOpen } from "lucide-react";
+import ReactMarkdown from "react-markdown";
 
 interface Props {
   exercise: Exercise;
@@ -16,9 +17,9 @@ const CardExercise = ({ exercise, onContinue }: Props) => {
       </div>
 
       {exercise.explanation && (
-        <p className="text-foreground/80 whitespace-pre-line leading-relaxed text-[15px]">
-          {exercise.explanation}
-        </p>
+        <div className="text-foreground/80 leading-relaxed text-[15px] prose prose-sm max-w-none dark:prose-invert prose-p:my-1 prose-ul:my-1 prose-ol:my-1 prose-li:my-0.5 prose-a:text-primary">
+          <ReactMarkdown>{exercise.explanation}</ReactMarkdown>
+        </div>
       )}
 
       {exercise.codeTemplate && (
