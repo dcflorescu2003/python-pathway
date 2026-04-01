@@ -24,8 +24,12 @@ export function useSubscription() {
     if (!session?.access_token) return;
     setState((s) => ({ ...s, loading: true }));
     try {
+      // Refresh session to avoid expired JWT errors
+      const { data: refreshed } = await supabase.auth.refreshSession();
+      const token = refreshed?.session?.access_token ?? session.access_token;
+
       const { data, error } = await supabase.functions.invoke("check-subscription", {
-        headers: { Authorization: `Bearer ${session.access_token}` },
+        headers: { Authorization: `Bearer ${token}` },
       });
       if (error) throw error;
       setState({
