@@ -277,7 +277,9 @@ const AuthPage = () => {
           toast.error(error.message === "Invalid login credentials" ? "Email sau parolă greșită." : error.message);
         } else {
           toast.success("Bine ai revenit! 👋");
-          navigate("/");
+          // Small delay to let onAuthStateChange propagate before navigating
+          await new Promise(r => setTimeout(r, 300));
+          navigate("/", { replace: true });
         }
       } else {
         const { error } = await signUp(email, password, displayName);
