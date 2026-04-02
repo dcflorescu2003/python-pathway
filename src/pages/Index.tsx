@@ -51,12 +51,11 @@ const Index = (): JSX.Element => {
   useEffect(() => {
     if (authLoading) return;
     if (!user) {
-      // Double-check session before redirecting to avoid race conditions
-      supabase.auth.getSession().then(({ data: { session } }) => {
-        if (!session) {
-          navigate("/auth", { replace: true });
-        }
-      });
+      // Wait a beat for auth state to settle after OAuth redirects
+      const timeout = setTimeout(() => {
+        navigate("/auth", { replace: true });
+      }, 1500);
+      return () => clearTimeout(timeout);
     }
   }, [authLoading, user, navigate]);
 
