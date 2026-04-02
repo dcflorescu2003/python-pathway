@@ -24,9 +24,7 @@ let lastCheckToken: string | null = null;
 let cachedState: SubscriptionState | null = null;
 
 async function fetchSubscriptionState(token: string): Promise<SubscriptionState> {
-  const { data, error } = await supabase.functions.invoke("check-subscription", {
-    headers: { Authorization: `Bearer ${token}` },
-  });
+  const { data, error } = await supabase.functions.invoke("check-subscription");
 
   if (error) throw error;
 
@@ -39,20 +37,19 @@ async function fetchSubscriptionState(token: string): Promise<SubscriptionState>
   };
 }
 
-async function getSharedSubscriptionState(token: string, force = false): Promise<SubscriptionState> {
+async function getSharedSubscriptionState(force = false): Promise<SubscriptionState> {
   const now = Date.now();
-  const isFresh = cachedState && lastCheckToken === token && now - lastCheckAt < 15_000;
+  const isFresh = cachedState && now - lastCheckAt < 15_000;
 
   if (!force && isFresh) {
     return cachedState;
   }
 
-  if (!force && inFlightCheck && lastCheckToken === token) {
+  if (!force && inFlightCheck) {
     return inFlightCheck;
   }
 
-  lastCheckToken = token;
-  inFlightCheck = fetchSubscriptionState(token)
+  inFlightCheck = fetchSubscriptionState("")
     .then((result) => {
       cachedState = result;
       lastCheckAt = Date.now();
@@ -70,16 +67,16 @@ export function useSubscription() {
   const [state, setState] = useState<SubscriptionState>(DEFAULT_STATE);
 
   const checkSubscription = useCallback(async (force = false) => {
-    if (!session?.access_token) return;
+    if (!user) return;
     setState((s) => ({ ...s, loading: true }));
     try {
-      const nextState = await getSharedSubscriptionState(session.access_token, force);
+      const nextState = await getSharedSubscriptionState(force);
       setState(nextState);
     } catch (err) {
       console.error("check-subscription error:", err);
       setState((s) => ({ ...s, loading: false }));
     }
-  }, [session?.access_token]);
+  }, [user]);
 
   // Check on mount and every 60s
   useEffect(() => {
@@ -111,25 +108,22 @@ export function useSubscription() {
 
   const startCheckout = useCallback(
     async (priceId: string) => {
-      if (!session?.access_token) return;
+      if (!session) return;
       const { data, error } = await supabase.functions.invoke("create-checkout", {
         body: { priceId },
-        headers: { Authorization: `Bearer ${session.access_token}` },
       });
       if (error) throw error;
       if (data?.url) window.open(data.url, "_blank");
     },
-    [session?.access_token]
+    [session]
   );
 
   const openPortal = useCallback(async () => {
-    if (!session?.access_token) return;
-    const { data, error } = await supabase.functions.invoke("customer-portal", {
-      headers: { Authorization: `Bearer ${session.access_token}` },
-    });
+    if (!session) return;
+    const { data, error } = await supabase.functions.invoke("customer-portal");
     if (error) throw error;
     if (data?.url) window.open(data.url, "_blank");
-  }, [session?.access_token]);
+  }, [session]);
 
   return { ...state, checkSubscription, startCheckout, openPortal, dismissCouponExpired };
 }
