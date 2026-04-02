@@ -32,7 +32,7 @@ const ProblemsPage = () => {
 
   return (
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="min-h-screen bg-background pb-24">
-      <header className="sticky top-0 z-40 border-b border-border bg-background/80 backdrop-blur-md pt-[env(safe-area-inset-top)]">
+      <header className="sticky top-0 z-40 border-b border-border bg-background/80 backdrop-blur-md pt-[calc(env(safe-area-inset-top)+8px)]">
         <div className="flex items-center gap-3 px-4 py-3">
           {selectedChapter ? (
             <button onClick={() => setSelectedChapter(null)} className="active:scale-90 transition-transform">
