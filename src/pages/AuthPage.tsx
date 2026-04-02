@@ -309,11 +309,14 @@ const AuthPage = () => {
       exit={{ opacity: 0, y: -20 }}
       className="min-h-screen bg-background flex flex-col"
     >
-      <div className="px-4 pt-4">
-        <button onClick={() => navigate("/")} className="active:scale-90 transition-transform">
-          <ArrowLeft className="h-6 w-6 text-foreground" />
-        </button>
-      </div>
+      <header className="sticky top-0 z-40 border-b border-border bg-background/80 backdrop-blur-md pt-[env(safe-area-inset-top)]">
+        <div className="flex items-center gap-3 px-4 py-3">
+          <button onClick={() => navigate("/")} className="active:scale-90 transition-transform">
+            <ArrowLeft className="h-6 w-6 text-foreground" />
+          </button>
+          <h1 className="text-lg font-bold text-foreground">{isLogin ? "Autentificare" : "Înregistrare"}</h1>
+        </div>
+      </header>
 
       <div className="flex-1 flex flex-col items-center justify-center px-6 pb-12">
         <div className="text-center mb-8">
