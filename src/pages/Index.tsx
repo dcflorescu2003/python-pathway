@@ -49,8 +49,14 @@ const Index = (): JSX.Element => {
   const prevLevelRef = useRef<number | null>(null);
 
   useEffect(() => {
-    if (!authLoading && !user) {
-      navigate("/auth", { replace: true });
+    if (authLoading) return;
+    if (!user) {
+      // Double-check session before redirecting to avoid race conditions
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        if (!session) {
+          navigate("/auth", { replace: true });
+        }
+      });
     }
   }, [authLoading, user, navigate]);
 
