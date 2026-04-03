@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import logo from "@/assets/logo.png";
 import CouponRedemption from "@/components/CouponRedemption";
 import { useNavigate } from "react-router-dom";
