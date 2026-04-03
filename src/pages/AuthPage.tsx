@@ -257,9 +257,27 @@ const AuthPage = () => {
   const [displayName, setDisplayName] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [intentionalVisit, setIntentionalVisit] = useState(false);
 
-  // If logged in, show account view
-  if (user) return <AccountView />;
+  // If user just authenticated via OAuth (landed on /auth with session),
+  // redirect to home unless they navigated here intentionally from bottom nav
+  useEffect(() => {
+    if (user && !intentionalVisit) {
+      // Check if user came from within the app (bottom nav) vs OAuth redirect
+      const navEntries = performance.getEntriesByType("navigation") as PerformanceNavigationTiming[];
+      const isPageLoad = navEntries.length > 0 && navEntries[0].type !== "back_forward";
+      const isFromBottomNav = document.referrer.includes(window.location.origin) && !isPageLoad;
+      
+      if (!isFromBottomNav) {
+        navigate("/", { replace: true });
+      } else {
+        setIntentionalVisit(true);
+      }
+    }
+  }, [user, navigate, intentionalVisit]);
+
+  // If logged in and intentionally visiting, show account view
+  if (user && intentionalVisit) return <AccountView />;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
