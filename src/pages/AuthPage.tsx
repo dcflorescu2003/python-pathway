@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import logo from "@/assets/logo.png";
 import CouponRedemption from "@/components/CouponRedemption";
 import { useNavigate } from "react-router-dom";
@@ -247,7 +247,7 @@ const AccountView = () => {
 
 const AuthPage = () => {
   const navigate = useNavigate();
-  const { user, signUp, signIn, signInWithGoogle, signInWithApple } = useAuth();
+  const { user, signUp, signIn, signInWithGoogle, signInWithApple, loading: authLoading } = useAuth();
   const [isLogin, setIsLogin] = useState(true);
   const [showForgot, setShowForgot] = useState(false);
   const [forgotEmail, setForgotEmail] = useState("");
@@ -258,8 +258,18 @@ const AuthPage = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  // If logged in, show account view
-  if (user) return <AccountView />;
+  // Track if user was already logged in when page first rendered
+  const wasLoggedInOnMount = useState(() => !!user)[0];
+
+  // If user just authenticated (wasn't logged in on mount but now is), redirect to home
+  useEffect(() => {
+    if (user && !wasLoggedInOnMount) {
+      navigate("/", { replace: true });
+    }
+  }, [user, wasLoggedInOnMount, navigate]);
+
+  // If logged in and was already logged in (intentional visit from bottom nav), show account
+  if (user && wasLoggedInOnMount) return <AccountView />;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
