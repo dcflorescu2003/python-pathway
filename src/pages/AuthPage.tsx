@@ -247,7 +247,7 @@ const AccountView = () => {
 
 const AuthPage = () => {
   const navigate = useNavigate();
-  const { user, signUp, signIn, signInWithGoogle, signInWithApple } = useAuth();
+  const { user, signUp, signIn, signInWithGoogle, signInWithApple, loading: authLoading } = useAuth();
   const [isLogin, setIsLogin] = useState(true);
   const [showForgot, setShowForgot] = useState(false);
   const [forgotEmail, setForgotEmail] = useState("");
@@ -257,27 +257,19 @@ const AuthPage = () => {
   const [displayName, setDisplayName] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [intentionalVisit, setIntentionalVisit] = useState(false);
 
-  // If user just authenticated via OAuth (landed on /auth with session),
-  // redirect to home unless they navigated here intentionally from bottom nav
+  // Track if user was already logged in when page first rendered
+  const wasLoggedInOnMount = useState(() => !!user)[0];
+
+  // If user just authenticated (wasn't logged in on mount but now is), redirect to home
   useEffect(() => {
-    if (user && !intentionalVisit) {
-      // Check if user came from within the app (bottom nav) vs OAuth redirect
-      const navEntries = performance.getEntriesByType("navigation") as PerformanceNavigationTiming[];
-      const isPageLoad = navEntries.length > 0 && navEntries[0].type !== "back_forward";
-      const isFromBottomNav = document.referrer.includes(window.location.origin) && !isPageLoad;
-      
-      if (!isFromBottomNav) {
-        navigate("/", { replace: true });
-      } else {
-        setIntentionalVisit(true);
-      }
+    if (user && !wasLoggedInOnMount) {
+      navigate("/", { replace: true });
     }
-  }, [user, navigate, intentionalVisit]);
+  }, [user, wasLoggedInOnMount, navigate]);
 
-  // If logged in and intentionally visiting, show account view
-  if (user && intentionalVisit) return <AccountView />;
+  // If logged in and was already logged in (intentional visit from bottom nav), show account
+  if (user && wasLoggedInOnMount) return <AccountView />;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
