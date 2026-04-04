@@ -1,59 +1,51 @@
 
 
-# Adaptare edge-to-edge pentru Android 15
+# Eliminarea API-urilor depreciate pentru edge-to-edge (Android 15)
 
-## Context
-Android 15 forțează modul edge-to-edge: status bar-ul și navigation bar-ul devin transparente, iar conținutul se desenează în spatele lor. Aplicația ta (Capacitor WebView) trebuie să gestioneze corect „safe area insets" — altfel elemente UI vor fi acoperite de barele de sistem.
+## Problema
+Android 15 marchează `setStatusBarColor`, `setNavigationBarColor` și `getStatusBarColor` ca depreciate. Avertismentul vine din XML-ul temei (`android:statusBarColor`, `android:navigationBarColor`) și din biblioteca `androidbrowserhelper` (care e o dependență tranzitivă a Capacitor).
 
-## Ce avem deja bine
-- `viewport-fit=cover` în `index.html` — activează expunerea insets-urilor CSS
-- `env(safe-area-inset-top)` și `env(safe-area-inset-bottom)` folosite în header-uri sticky și BottomNav
-- Splash screen cu `core-splashscreen:1.2.0` (versiunea corectă pentru Android 15)
+## Soluția
 
-## Ce trebuie îmbunătățit
+### 1. Eliminare `statusBarColor` și `navigationBarColor` din XML-uri
+**Fișiere:** `values/styles.xml` și `values-v28/styles.xml`
 
-### 1. Stiluri Android native — status bar și navigation bar transparente
-**Fișier:** `android/app/src/main/res/values/styles.xml`
+Eliminăm liniile:
+```xml
+<item name="android:statusBarColor">@android:color/transparent</item>
+<item name="android:navigationBarColor">@android:color/transparent</item>
+```
+Pe Android 15+, barele sunt deja transparente implicit. Pe versiuni mai vechi, le setăm programatic prin `WindowInsetsControllerCompat` (care nu folosește API-urile depreciate).
 
-Adăugăm atribute la tema `AppTheme.NoActionBar` pentru a activa corect edge-to-edge:
-- `android:windowDrawsSystemBarBackgrounds = true`
-- `android:statusBarColor = @android:color/transparent`
-- `android:navigationBarColor = @android:color/transparent`
-- `android:windowLayoutInDisplayCutoutMode = always` (necesită values-v28)
+### 2. Creare `values-v35/styles.xml` (Android 15+)
+Fișier nou cu tema curată, fără referințe la culorile barelor:
+```xml
+<style name="AppTheme.NoActionBar" parent="Theme.AppCompat.DayNight.NoActionBar">
+    <item name="windowActionBar">false</item>
+    <item name="windowNoTitle">true</item>
+    <item name="android:background">@null</item>
+    <item name="android:windowDrawsSystemBarBackgrounds">true</item>
+    <item name="android:windowLayoutInDisplayCutoutMode">always</item>
+</style>
+```
 
-Creăm `res/values-v28/styles.xml` pentru `layoutInDisplayCutoutMode`.
+### 3. Actualizare `MainActivity.java`
+Folosim `EdgeToEdge.enable(this)` din `androidx.activity` (metoda modernă recomandată de Google) în loc de `WindowCompat.setDecorFitsSystemWindows`. Dacă `EdgeToEdge` nu e disponibil (Capacitor BridgeActivity nu extinde `ComponentActivity`), rămânem pe `WindowCompat` dar adăugăm `WindowInsetsControllerCompat` pentru a seta barele transparente programatic fără API-uri depreciate:
 
-### 2. MainActivity — activare edge-to-edge programatic
-**Fișier:** `android/app/src/main/java/ro/pythonpathway/app/MainActivity.java`
+```java
+WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
+WindowInsetsControllerCompat controller = 
+    WindowCompat.getInsetsController(getWindow(), getWindow().getDecorView());
+controller.setAppearanceLightStatusBars(false);
+controller.setAppearanceLightNavigationBars(false);
+```
 
-În `onCreate()`, apelăm `WindowCompat.setDecorFitsSystemWindows(getWindow(), false)` și setăm barele de sistem transparente prin `WindowInsetsControllerCompat`. Aceasta asigură compatibilitate completă cu Android 15.
-
-### 3. CSS — protejare conținut în spatele navigation bar
-**Fișier:** `src/index.css`
-
-- Adăugăm `padding-top: env(safe-area-inset-top)` pe `body` sau pe wrapper-ul principal
-- BottomNav folosește deja `pb-[env(safe-area-inset-bottom)]` — este corect
-
-### 4. LessonPage — safe area pe header-ul cu progress bar
-**Fișier:** `src/pages/LessonPage.tsx`
-
-Header-ul din LessonPage (cu buton X, inimi, progress bar) nu are safe-area-inset-top. Adăugăm `pt-[env(safe-area-inset-top)]` ca pe celelalte pagini.
-
-### 5. LeaderboardPage — safe area pe header
-**Fișier:** `src/pages/LeaderboardPage.tsx`
-
-Similar, verificăm și adăugăm safe-area-inset pe header dacă lipsește.
-
-### 6. Index.tsx — safe area pe header
-**Fișier:** `src/pages/Index.tsx`
-
-Header-ul paginii principale trebuie să aibă aceeași protecție safe-area.
+### 4. Nota despre `androidbrowserhelper`
+Avertismentele din `com.google.androidbrowserhelper.trusted.Utils` vin dintr-o dependență tranzitivă a Capacitor. Nu le putem controla direct — se vor rezolva când Capacitor actualizează acea dependență. Eliminarea din propriul cod este tot ce putem face.
 
 ## Fișiere modificate
-1. `android/app/src/main/res/values/styles.xml` — atribute transparență bare
-2. `android/app/src/main/res/values-v28/styles.xml` — nou, cutout mode
-3. `android/app/src/main/java/ro/pythonpathway/app/MainActivity.java` — edge-to-edge programatic
-4. `src/pages/LessonPage.tsx` — safe-area pe header
-5. `src/pages/LeaderboardPage.tsx` — safe-area pe header
-6. `src/pages/Index.tsx` — safe-area pe header (dacă lipsește)
+1. `android/app/src/main/res/values/styles.xml` — eliminare statusBarColor/navigationBarColor
+2. `android/app/src/main/res/values-v28/styles.xml` — eliminare statusBarColor/navigationBarColor
+3. `android/app/src/main/res/values-v35/styles.xml` — nou, temă curată pentru Android 15+
+4. `android/app/src/main/java/ro/pythonpathway/app/MainActivity.java` — WindowInsetsControllerCompat
 
