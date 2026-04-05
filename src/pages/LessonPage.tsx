@@ -14,6 +14,28 @@ import MatchExercise from "@/components/exercises/MatchExercise";
 import CardExercise from "@/components/exercises/CardExercise";
 import LoadingScreen from "@/components/states/LoadingScreen";
 
+import React from "react";
+
+class ExerciseErrorBoundary extends React.Component<
+  { children: React.ReactNode; fallback?: React.ReactNode },
+  { hasError: boolean }
+> {
+  state = { hasError: false };
+  static getDerivedStateFromError() { return { hasError: true }; }
+  componentDidCatch(error: any) { console.error("Exercise render error:", error); }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="rounded-xl border border-destructive/30 bg-destructive/10 p-6 text-center">
+          <p className="text-destructive font-bold mb-2">Eroare la afișare</p>
+          <p className="text-sm text-muted-foreground">Exercițiul nu a putut fi încărcat.</p>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 const LessonPage = () => {
   const { lessonId } = useParams();
   const navigate = useNavigate();
@@ -128,12 +150,14 @@ const LessonPage = () => {
         <div className="max-w-lg mx-auto">
           <AnimatePresence mode="wait">
             <motion.div key={exercise.id} initial={{ opacity: 0, x: 50 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -50 }}>
-              {exercise.type === "quiz" && <QuizExercise exercise={exercise} onAnswer={handleAnswer} feedback={feedback} />}
-              {exercise.type === "fill" && <FillExercise exercise={exercise} onAnswer={handleAnswer} feedback={feedback} />}
-              {exercise.type === "order" && <OrderExercise exercise={exercise} onAnswer={handleAnswer} feedback={feedback} />}
-              {exercise.type === "truefalse" && <TrueFalseExercise exercise={exercise} onAnswer={handleAnswer} feedback={feedback} />}
-              {exercise.type === "match" && <MatchExercise exercise={exercise} onAnswer={handleAnswer} feedback={feedback} />}
-              {exercise.type === "card" && <CardExercise exercise={exercise} onContinue={() => handleAnswer(true)} />}
+              <ExerciseErrorBoundary key={exercise.id}>
+                {exercise.type === "quiz" && <QuizExercise exercise={exercise} onAnswer={handleAnswer} feedback={feedback} />}
+                {exercise.type === "fill" && <FillExercise exercise={exercise} onAnswer={handleAnswer} feedback={feedback} />}
+                {exercise.type === "order" && <OrderExercise exercise={exercise} onAnswer={handleAnswer} feedback={feedback} />}
+                {exercise.type === "truefalse" && <TrueFalseExercise exercise={exercise} onAnswer={handleAnswer} feedback={feedback} />}
+                {exercise.type === "match" && <MatchExercise exercise={exercise} onAnswer={handleAnswer} feedback={feedback} />}
+                {exercise.type === "card" && <CardExercise exercise={exercise} onContinue={() => handleAnswer(true)} />}
+              </ExerciseErrorBoundary>
             </motion.div>
           </AnimatePresence>
         </div>
