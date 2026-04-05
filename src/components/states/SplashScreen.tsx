@@ -10,7 +10,7 @@ const SplashScreen = () => {
         transition={{ type: "spring", stiffness: 260, damping: 20 }}
         className="flex flex-col items-center gap-4"
       >
-        <img src={logo} alt="PyRo" className="h-24 w-24 rounded-2xl" />
+        <img src={splashLogo} alt="PyRo" className="h-32 w-32 rounded-2xl" />
         <h1 className="text-3xl font-bold font-mono">
           <span className="text-gradient-primary">Py</span><span className="text-tricolor">Ro</span>
         </h1>
