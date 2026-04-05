@@ -86,11 +86,11 @@ async function fetchChapters(): Promise<Chapter[]> {
     .order("number");
 
   if (chaptersError) {
-    return handleNativeFallback(
-      isNativePlatform,
-      chaptersError,
-      "Failed to load chapters from Supabase, using local fallback:"
-    );
+    if (isNativePlatform) {
+      console.error("Failed to load chapters from Supabase, using local fallback:", chaptersError);
+      return getNativeFallbackChapters();
+    }
+    throw chaptersError;
   }
 
   const { data: lessonsData, error: lessonsError } = await supabase
@@ -99,11 +99,11 @@ async function fetchChapters(): Promise<Chapter[]> {
     .order("sort_order");
 
   if (lessonsError) {
-    return handleNativeFallback(
-      isNativePlatform,
-      lessonsError,
-      "Failed to load lessons from Supabase, using local fallback:"
-    );
+    if (isNativePlatform) {
+      console.error("Failed to load lessons from Supabase, using local fallback:", lessonsError);
+      return getNativeFallbackChapters();
+    }
+    throw lessonsError;
   }
 
   const { data: exercisesData, error: exercisesError } = await supabase
@@ -112,19 +112,20 @@ async function fetchChapters(): Promise<Chapter[]> {
     .order("sort_order");
 
   if (exercisesError) {
-    return handleNativeFallback(
-      isNativePlatform,
-      exercisesError,
-      "Failed to load exercises from Supabase, using local fallback:"
-    );
+    if (isNativePlatform) {
+      console.error("Failed to load exercises from Supabase, using local fallback:", exercisesError);
+      return getNativeFallbackChapters();
+    }
+    throw exercisesError;
   }
 
   if (!chaptersData?.length || !lessonsData?.length) {
-    if (!isNativePlatform) {
-      throw new Error("Supabase returned empty chapter data on web.");
+    if (isNativePlatform) {
+      console.warn("Supabase returned empty chapter data, using local fallback.");
+      return getNativeFallbackChapters();
     }
-    console.warn("Supabase returned empty chapter data, using local fallback.");
-    return getNativeFallbackChapters();
+    // On web, return empty array — triggers empty state instead of stale local data
+    return [];
   }
 
   // Group exercises by lesson
@@ -148,7 +149,7 @@ async function fetchChapters(): Promise<Chapter[]> {
     });
   }
 
-  const rawChapters: Chapter[] = chaptersData.map(ch => ({
+  return chaptersData.map(ch => ({
     id: ch.id,
     number: ch.number,
     title: ch.title,
@@ -157,20 +158,15 @@ async function fetchChapters(): Promise<Chapter[]> {
     color: ch.color,
     lessons: lessonsByChapter[ch.id] || [],
   }));
-
-  if (rawChapters.length > 0) return rawChapters;
-  if (!isNativePlatform) {
-    throw new Error("Hydrated chapters are empty on web.");
-  }
-  return getNativeFallbackChapters();
 }
 
 export function useChapters() {
   return useQuery({
     queryKey: ["chapters"],
     queryFn: fetchChapters,
-    staleTime: 60 * 60 * 1000, // 1 hour
-    gcTime: 2 * 60 * 60 * 1000,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    gcTime: 30 * 60 * 1000,
+    refetchOnWindowFocus: true,
   });
 }
 
