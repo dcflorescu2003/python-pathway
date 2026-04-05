@@ -75,6 +75,7 @@
 
   code, pre, .font-mono {
     font-family: 'Fira Code', monospace;
+    font-variant-ligatures: none;
   }
 
   /* Safe area utilities */
