@@ -164,8 +164,9 @@ export function useChapters() {
   return useQuery({
     queryKey: ["chapters"],
     queryFn: fetchChapters,
-    staleTime: 60 * 60 * 1000, // 1 hour
-    gcTime: 2 * 60 * 60 * 1000,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    gcTime: 30 * 60 * 1000,
+    refetchOnWindowFocus: true,
   });
 }
 
