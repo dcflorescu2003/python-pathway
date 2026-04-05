@@ -1,26 +1,28 @@
 
 
-# Conținut 100% din baza de date (fără actualizare de aplicație)
+# Mini-editor Markdown pentru cartonașe
 
-## Ce se schimbă
+## Context
+Câmpul „Explicație / Conținut" al cartonașelor este un simplu `<Textarea>`. Conținutul se renderează deja cu `ReactMarkdown`, deci orice Markdown introdus funcționează — dar utilizatorul trebuie să știe sintaxa. Vrem o bară de instrumente simplă deasupra textarea-ului care inserează Markdown automat.
 
-Politicile RLS rămân **neschimbate** — conținutul este accesibil doar utilizatorilor autentificați, exact ca acum. Nu se face nicio migrare SQL.
+## Soluția
+Creăm o componentă `MarkdownToolbar` + `MarkdownEditor` care înfășoară textarea-ul existent și adaugă butoane pentru:
+- **Bold** — inserează `**text**`
+- **Rând liber** — inserează `\n\n`
+- **Text colorat** — inserează `<span style="color:red">text</span>` (Markdown acceptă HTML inline, ReactMarkdown îl renderează)
 
-### 1. Reducere cache în `useChapters.ts`
-- `staleTime`: de la 60 min → **5 minute**
-- Adăugare `refetchOnWindowFocus: true` — conținut proaspăt la revenirea în app
-
-### 2. Simplificare fallback în `useChapters.ts`
-- Pe web: dacă DB-ul returnează date goale, se afișează array gol (trigger empty state), nu se mai încarcă date locale vechi
-- Pe nativ (Android): fallback-ul local rămâne pentru offline
-
-### 3. Invalidare cache din Admin (`ContentEditor.tsx`)
-- După orice CRUD pe capitole/lecții/exerciții, se apelează `queryClient.invalidateQueries(["chapters"])` pentru refresh imediat
+Bara apare **doar** când tipul exercițiului este `card`.
 
 ## Fișiere modificate
-1. `src/hooks/useChapters.ts` — cache 5min, refetchOnWindowFocus, simplificare fallback web
-2. `src/components/admin/ContentEditor.tsx` — invalidare cache după save
 
-## Fără migrare SQL
-Politicile RLS existente (`authenticated` SELECT) sunt păstrate intact.
+### 1. `src/components/admin/MarkdownEditor.tsx` (nou)
+- Componentă cu o bară de butoane (Bold, Rând liber, Culoare) și un `<Textarea>` dedesubt
+- Fiecare buton inserează textul Markdown la poziția cursorului din textarea (folosind `selectionStart` / `selectionEnd`)
+- Pentru culoare: un mic dropdown cu 4-5 culori predefinite (roșu, verde, albastru, portocaliu, mov)
+- Preview live opțional sub textarea cu `ReactMarkdown`
+
+### 2. `src/components/admin/ExerciseEditor.tsx`
+- Import `MarkdownEditor`
+- Înlocuire `<Textarea>` de la linia 378 cu `<MarkdownEditor>` doar când `data.type === "card"`
+- Pentru celelalte tipuri, textarea rămâne neschimbat
 
