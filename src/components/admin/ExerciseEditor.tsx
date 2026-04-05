@@ -6,6 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Trash2, Plus } from "lucide-react";
+import MarkdownEditor from "./MarkdownEditor";
 
 interface Props {
   exercise?: Exercise;
@@ -375,12 +376,21 @@ const ExerciseEditor = ({ exercise, onSave, onCancel, lessonId, nextIndex }: Pro
 
       <div>
         <Label className="text-foreground">{data.type === "card" ? "Explicație / Conținut" : "Explicație (apare după răspuns)"}</Label>
-        <Textarea
-          value={data.explanation || ""}
-          onChange={(e) => updateField("explanation", e.target.value)}
-          placeholder={data.type === "card" ? "Textul explicativ al cartonașului..." : "Explică de ce răspunsul corect este..."}
-          rows={data.type === "card" ? 6 : 2}
-        />
+        {data.type === "card" ? (
+          <MarkdownEditor
+            value={data.explanation || ""}
+            onChange={(v) => updateField("explanation", v)}
+            placeholder="Textul explicativ al cartonașului..."
+            rows={6}
+          />
+        ) : (
+          <Textarea
+            value={data.explanation || ""}
+            onChange={(e) => updateField("explanation", e.target.value)}
+            placeholder="Explică de ce răspunsul corect este..."
+            rows={2}
+          />
+        )}
       </div>
 
       <div className="flex gap-3 pt-2">
