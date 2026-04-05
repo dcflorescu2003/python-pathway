@@ -293,6 +293,11 @@ const rawChapters: Chapter[] = [
         xpReward: 20,
         exercises: [
           {
+            id: "c1-l5-e6", type: "card", xp: 0,
+            question: "Bine de știut!",
+            explanation: "Cele 4 piloane ale gândirii computaționale:\n\n1. Descompunerea — împărțirea problemei în subprobleme mai mici\n2. Recunoașterea pattern-urilor — identificarea tiparelor comune\n3. Abstractizarea — ignorarea detaliilor neesențiale\n4. Algoritmizarea — crearea unei secvențe de pași pentru rezolvare\n\nEtapele rezolvării: Analiză → Proiectare → Implementare → Testare",
+          },
+          {
             id: eid(1,5,1), type: "quiz", xp: 5,
             question: "Care este prima etapă în rezolvarea unei probleme computaționale?",
             options: [
