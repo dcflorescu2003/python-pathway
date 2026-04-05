@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import logo from "@/assets/logo.png";
+import splashLogo from "@/assets/splash-logo.png";
 
 const SplashScreen = () => {
   return (
