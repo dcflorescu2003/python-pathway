@@ -129,6 +129,7 @@ const LessonPage = () => {
 
   const exercise = lesson.exercises[currentIndex];
   const progressPercent = (currentIndex / lesson.exercises.length) * 100;
+  const isSupportedExercise = ["quiz", "fill", "order", "truefalse", "match", "card"].includes(exercise.type);
 
   return (
     <div className="fixed inset-0 bg-background flex flex-col">
@@ -157,6 +158,14 @@ const LessonPage = () => {
                 {exercise.type === "truefalse" && <TrueFalseExercise exercise={exercise} onAnswer={handleAnswer} feedback={feedback} />}
                 {exercise.type === "match" && <MatchExercise exercise={exercise} onAnswer={handleAnswer} feedback={feedback} />}
                 {exercise.type === "card" && <CardExercise exercise={exercise} onContinue={() => handleAnswer(true)} />}
+                {!isSupportedExercise && (
+                  <div className="rounded-xl border border-destructive/30 bg-destructive/10 p-6 text-center">
+                    <p className="mb-2 font-bold text-destructive">Tip de exercițiu nerecunoscut</p>
+                    <p className="text-sm text-muted-foreground">
+                      Exercițiul "{exercise.question || exercise.id}" are tipul "{String(exercise.type)}".
+                    </p>
+                  </div>
+                )}
               </ExerciseErrorBoundary>
             </motion.div>
           </AnimatePresence>

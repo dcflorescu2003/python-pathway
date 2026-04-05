@@ -45,6 +45,15 @@ export interface Chapter {
   lessons: Lesson[];
 }
 
+const SUPPORTED_EXERCISE_TYPES: ExerciseType[] = [
+  "quiz",
+  "fill",
+  "order",
+  "truefalse",
+  "match",
+  "card",
+];
+
 function getNativeFallbackChapters() {
   return localChapters as Chapter[];
 }
@@ -60,9 +69,21 @@ function handleNativeFallback<T>(isNativePlatform: boolean, error: T, message: s
 
 // Transform exercise from DB row to typed Exercise
 function mapExercise(row: any): Exercise {
+  const normalizedType = String(row.type ?? "")
+    .trim()
+    .toLowerCase();
+
+  const type: ExerciseType = SUPPORTED_EXERCISE_TYPES.includes(normalizedType as ExerciseType)
+    ? (normalizedType as ExerciseType)
+    : "quiz";
+
+  if (type !== normalizedType) {
+    console.warn("Unsupported exercise type received from DB, falling back to quiz:", row.type, row.id);
+  }
+
   return {
     id: row.id,
-    type: row.type as ExerciseType,
+    type,
     question: row.question,
     options: row.options ?? undefined,
     correctOptionId: row.correct_option_id ?? undefined,
