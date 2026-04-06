@@ -8,6 +8,7 @@ export interface ActiveChallenge {
   class_name: string;
   item_type: string;
   item_id: string;
+  item_title: string;
   created_at: string;
 }
 
@@ -19,7 +20,6 @@ export function useChallenges() {
     queryFn: async () => {
       if (!user) return [];
 
-      // Get classes the student is a member of
       const { data: memberships } = await supabase
         .from("class_members")
         .select("class_id")
@@ -29,7 +29,6 @@ export function useChallenges() {
 
       const classIds = memberships.map((m) => m.class_id);
 
-      // Get challenges for those classes
       const { data: challengeData } = await supabase
         .from("challenges")
         .select("*")
@@ -46,15 +45,37 @@ export function useChallenges() {
 
       const classMap = new Map((classes || []).map((c) => [c.id, c.name]));
 
+      // Collect item IDs by type for title lookup
+      const lessonIds = challengeData.filter(c => c.item_type === "lesson").map(c => c.item_id);
+      const problemIds = challengeData.filter(c => c.item_type === "problem").map(c => c.item_id);
+
+      const titleMap = new Map<string, string>();
+
+      if (lessonIds.length > 0) {
+        const { data: lessons } = await supabase
+          .from("lessons")
+          .select("id, title")
+          .in("id", lessonIds);
+        (lessons || []).forEach(l => titleMap.set(l.id, l.title));
+      }
+
+      if (problemIds.length > 0) {
+        const { data: problems } = await supabase
+          .from("problems")
+          .select("id, title")
+          .in("id", problemIds);
+        (problems || []).forEach(p => titleMap.set(p.id, p.title));
+      }
+
       return challengeData.map((ch) => ({
         ...ch,
         class_name: classMap.get(ch.class_id) || "Clasă",
+        item_title: titleMap.get(ch.item_id) || ch.item_id,
       })) as ActiveChallenge[];
     },
     enabled: !!user,
   });
 
-  // Helper to check if an item is a challenge
   const isChallenge = (itemId: string): boolean => {
     return challenges.some((c) => c.item_id === itemId);
   };

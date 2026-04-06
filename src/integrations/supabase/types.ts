@@ -391,6 +391,7 @@ export type Database = {
           difficulty: string
           hint: string | null
           id: string
+          is_premium: boolean
           solution: string
           sort_order: number
           test_cases: Json
@@ -403,6 +404,7 @@ export type Database = {
           difficulty?: string
           hint?: string | null
           id: string
+          is_premium?: boolean
           solution?: string
           sort_order?: number
           test_cases?: Json
@@ -415,6 +417,7 @@ export type Database = {
           difficulty?: string
           hint?: string | null
           id?: string
+          is_premium?: boolean
           solution?: string
           sort_order?: number
           test_cases?: Json

@@ -40,6 +40,7 @@ const Index = (): JSX.Element => {
   const [showAddSchool, setShowAddSchool] = useState(false);
   const [newSchoolName, setNewSchoolName] = useState("");
   const [showPremium, setShowPremium] = useState(false);
+  const [showChallenges, setShowChallenges] = useState(false);
   const [showInstall, setShowInstall] = useState(false);
   const [showRoadmap, setShowRoadmap] = useState(false);
   const { isInstalled, canPrompt, promptInstall } = useInstallPrompt();
@@ -300,38 +301,44 @@ const Index = (): JSX.Element => {
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.08 }} className="mb-4">
             <Card className="border-primary/30 bg-primary/5">
               <CardContent className="p-4">
-                <div className="flex items-center gap-2 mb-3">
+                <button
+                  onClick={() => setShowChallenges(!showChallenges)}
+                  className="w-full flex items-center gap-2"
+                >
                   <Target className="h-5 w-5 text-primary" />
-                  <h3 className="text-sm font-bold text-foreground">Provocări de la profesor</h3>
+                  <h3 className="text-sm font-bold text-foreground">Vezi provocări ({challenges.filter(c => !progress.completedLessons[c.item_id]?.completed).length})</h3>
                   <span className="ml-auto text-[10px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-full">+10% XP</span>
-                </div>
-                <div className="space-y-2">
-                  {challenges
-                    .filter((c) => !progress.completedLessons[c.item_id]?.completed)
-                    .slice(0, 5)
-                    .map((c) => (
-                      <button
-                        key={c.id}
-                        onClick={() =>
-                          c.item_type === "lesson"
-                            ? navigate(`/lesson/${c.item_id}`)
-                            : navigate(`/problem/${c.item_id}`)
-                        }
-                        className="w-full flex items-center gap-2 rounded-lg bg-card border border-border p-2.5 text-left hover:border-primary/50 transition-colors"
-                      >
-                        {c.item_type === "lesson" ? (
-                          <BookOpen className="h-4 w-4 text-primary shrink-0" />
-                        ) : (
-                          <Code className="h-4 w-4 text-accent-foreground shrink-0" />
-                        )}
-                        <span className="text-sm text-foreground truncate flex-1">{c.item_id}</span>
-                        <span className="text-[10px] text-muted-foreground">{c.class_name}</span>
-                      </button>
-                    ))}
-                  {challenges.filter((c) => !progress.completedLessons[c.item_id]?.completed).length === 0 && (
-                    <p className="text-xs text-muted-foreground text-center py-1">✅ Toate provocările completate!</p>
-                  )}
-                </div>
+                  <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${showChallenges ? "rotate-180" : ""}`} />
+                </button>
+                {showChallenges && (
+                  <div className="space-y-2 mt-3">
+                    {challenges
+                      .filter((c) => !progress.completedLessons[c.item_id]?.completed)
+                      .slice(0, 5)
+                      .map((c) => (
+                        <button
+                          key={c.id}
+                          onClick={() =>
+                            c.item_type === "lesson"
+                              ? navigate(`/lesson/${c.item_id}`)
+                              : navigate(`/problem/${c.item_id}`)
+                          }
+                          className="w-full flex items-center gap-2 rounded-lg bg-card border border-border p-2.5 text-left hover:border-primary/50 transition-colors"
+                        >
+                          {c.item_type === "lesson" ? (
+                            <BookOpen className="h-4 w-4 text-primary shrink-0" />
+                          ) : (
+                            <Code className="h-4 w-4 text-accent-foreground shrink-0" />
+                          )}
+                          <span className="text-sm text-foreground truncate flex-1">{c.item_title}</span>
+                          <span className="text-[10px] text-muted-foreground">{c.class_name}</span>
+                        </button>
+                      ))}
+                    {challenges.filter((c) => !progress.completedLessons[c.item_id]?.completed).length === 0 && (
+                      <p className="text-xs text-muted-foreground text-center py-1">✅ Toate provocările completate!</p>
+                    )}
+                  </div>
+                )}
               </CardContent>
             </Card>
           </motion.div>

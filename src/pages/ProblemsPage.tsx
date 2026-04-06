@@ -1,11 +1,13 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Code, ChevronRight, ArrowLeft } from "lucide-react";
+import { Code, ChevronRight, ArrowLeft, Lock } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useProblems } from "@/hooks/useProblems";
 import { useProgress } from "@/hooks/useProgress";
+import { useSubscription } from "@/hooks/useSubscription";
+import PremiumDialog from "@/components/PremiumDialog";
 import LoadingScreen from "@/components/states/LoadingScreen";
 
 const difficultyConfig = {
@@ -18,7 +20,9 @@ const ProblemsPage = () => {
   const navigate = useNavigate();
   const { progress } = useProgress();
   const { data, isLoading } = useProblems();
+  const { subscribed } = useSubscription();
   const [selectedChapter, setSelectedChapter] = useState<string | null>(null);
+  const [showPremium, setShowPremium] = useState(false);
 
   if (isLoading || !data) return <LoadingScreen />;
 
@@ -29,6 +33,14 @@ const ProblemsPage = () => {
     : [];
 
   const selectedChapterData = problemChapters.find((c) => c.id === selectedChapter);
+
+  const handleProblemClick = (problem: typeof problems[0]) => {
+    if (problem.isPremium && !subscribed) {
+      setShowPremium(true);
+      return;
+    }
+    navigate(`/problem/${problem.id}`);
+  };
 
   return (
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="min-h-screen bg-background pb-24">
@@ -76,19 +88,22 @@ const ProblemsPage = () => {
           chapterProblems.map((problem, index) => {
             const config = difficultyConfig[problem.difficulty];
             const solved = progress.completedLessons[`problem-${problem.id}`]?.completed;
+            const locked = problem.isPremium && !subscribed;
             return (
               <motion.div key={problem.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.05 }}>
-                <Card className="cursor-pointer active:scale-[0.98] transition-transform border-border hover:border-primary/30" onClick={() => navigate(`/problem/${problem.id}`)}>
+                <Card className={`cursor-pointer active:scale-[0.98] transition-transform border-border hover:border-primary/30 ${locked ? "opacity-70" : ""}`} onClick={() => handleProblemClick(problem)}>
                   <CardContent className="p-4">
                     <div className="flex items-center justify-between">
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
                           <span className="font-semibold text-foreground truncate">{problem.title}</span>
                           {solved && <span className="text-xs text-primary font-bold">✓</span>}
+                          {locked && <Lock className="h-3.5 w-3.5 text-warning" />}
                         </div>
                         <div className="flex items-center gap-3">
                           <Badge variant="outline" className={`text-[10px] ${config.color}`}>{problem.difficulty}</Badge>
                           <span className="text-xs text-muted-foreground">{problem.xpReward} XP</span>
+                          {problem.isPremium && <Badge variant="outline" className="text-[10px] bg-warning/10 text-warning border-warning/30">Premium</Badge>}
                         </div>
                       </div>
                       <ChevronRight className="h-5 w-5 text-muted-foreground flex-shrink-0" />
@@ -100,6 +115,8 @@ const ProblemsPage = () => {
           })
         )}
       </div>
+
+      <PremiumDialog open={showPremium} onOpenChange={setShowPremium} />
     </motion.div>
   );
 };
