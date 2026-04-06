@@ -1,53 +1,103 @@
 
+# Secțiune „Manual" în Admin — lecții publice fără autentificare
 
-# Trei modificări: probleme premium selectabile, ordine lecții fixă, provocări cu nume
+## Context
+Vrei un editor de lecții în Admin (tab „Manual") identic ca funcționalitate cu editorul existent, dar lecțiile salvate acolo au pagini publice accesibile fără cont. Pagina publică arată logo-ul PyRo sus, titlul lecției cu buton „Start", exerciții (fără XP — doar scor), și un banner jos de înregistrare.
 
-## 1. Probleme premium selectabile din Admin
+## Structură bază de date
 
-**Problema**: Tabela `problems` nu are coloană `is_premium` — toate problemele sunt accesibile tuturor.
+Două tabele noi: `manual_lessons` și `manual_exercises`, cu RLS public (SELECT fără autentificare, CRUD doar admin).
 
 ### Migrare SQL
 ```sql
-ALTER TABLE public.problems ADD COLUMN is_premium boolean NOT NULL DEFAULT false;
+CREATE TABLE public.manual_lessons (
+  id text PRIMARY KEY,
+  title text NOT NULL,
+  description text NOT NULL DEFAULT '',
+  sort_order integer NOT NULL DEFAULT 0,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+
+ALTER TABLE public.manual_lessons ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Anyone can read manual_lessons" ON public.manual_lessons
+  FOR SELECT TO anon, authenticated USING (true);
+CREATE POLICY "Admins can insert manual_lessons" ON public.manual_lessons
+  FOR INSERT TO authenticated WITH CHECK (has_role(auth.uid(), 'admin'));
+CREATE POLICY "Admins can update manual_lessons" ON public.manual_lessons
+  FOR UPDATE TO authenticated USING (has_role(auth.uid(), 'admin'));
+CREATE POLICY "Admins can delete manual_lessons" ON public.manual_lessons
+  FOR DELETE TO authenticated USING (has_role(auth.uid(), 'admin'));
+
+CREATE TABLE public.manual_exercises (
+  id text PRIMARY KEY,
+  lesson_id text NOT NULL REFERENCES public.manual_lessons(id) ON DELETE CASCADE,
+  type text NOT NULL,
+  question text NOT NULL,
+  options jsonb,
+  correct_option_id text,
+  code_template text,
+  blanks jsonb,
+  lines jsonb,
+  statement text,
+  is_true boolean,
+  explanation text,
+  pairs jsonb,
+  xp integer NOT NULL DEFAULT 5,
+  sort_order integer NOT NULL DEFAULT 0
+);
+
+ALTER TABLE public.manual_exercises ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Anyone can read manual_exercises" ON public.manual_exercises
+  FOR SELECT TO anon, authenticated USING (true);
+CREATE POLICY "Admins can insert manual_exercises" ON public.manual_exercises
+  FOR INSERT TO authenticated WITH CHECK (has_role(auth.uid(), 'admin'));
+CREATE POLICY "Admins can update manual_exercises" ON public.manual_exercises
+  FOR UPDATE TO authenticated USING (has_role(auth.uid(), 'admin'));
+CREATE POLICY "Admins can delete manual_exercises" ON public.manual_exercises
+  FOR DELETE TO authenticated USING (has_role(auth.uid(), 'admin'));
 ```
 
-### Fișiere modificate
-- **`src/hooks/useProblems.ts`** — adaugă `isPremium: boolean` în interfața `Problem`, mapat din `p.is_premium`
-- **`src/components/admin/ProblemsEditor.tsx`** — checkbox „Premium" în formularul de editare/creare problemă
-- **`src/pages/ProblemsPage.tsx`** — import `useSubscription`; problemele cu `isPremium && !subscribed` afișează lacăt (🔒) și deschid `PremiumDialog` la click în loc de navigare
-- **`src/pages/ProblemSolvePage.tsx`** — verificare la montare: dacă `problem.isPremium && !subscribed`, redirect la `/problems` cu toast de avertizare
+## Fișiere noi
 
-## 2. Ordine lecții consistentă
+### 1. `src/components/admin/ManualEditor.tsx`
+Editor identic structural cu `ContentEditor.tsx`, dar simplificat:
+- Fără capitole — doar o listă de lecții cu exerciții
+- CRUD pe tabelele `manual_lessons` / `manual_exercises`
+- Drag-and-drop pentru reordonare lecții și exerciții
+- Reutilizează `ExerciseEditor` existent pentru editarea exercițiilor
+- Fiecare lecție afișează un link copiabil către pagina publică (`/manual/{lessonId}`)
 
-**Problema**: Lecțiile noi primesc `sort_order = 0`, ceea ce face ordinea imprevizibilă.
+### 2. `src/pages/ManualLessonPage.tsx`
+Pagina publică pentru o lecție din manual:
+- **Header**: logo PyRo (`/Logo_Patrat-2.png`) centrat
+- **Ecran inițial**: titlul lecției + buton „Începe"
+- **Exerciții**: identice ca în `LessonPage.tsx` (quiz, fill, order, truefalse, match, card) dar fără vieți și fără XP
+- **Ecran final**: „Ai răspuns corect la X/Y întrebări" (fără XP)
+- **Banner jos**: „Vrei să înveți mai mult? Creează-ți un cont gratuit pe PyRo!" cu buton către `/auth`
+- Fetch date direct din Supabase cu clientul anonim (RLS permite SELECT pentru `anon`)
 
-### Fișiere modificate
-- **`src/components/admin/ContentEditor.tsx`** — la crearea unei lecții noi, calculez `sort_order = max(sort_order din lecțiile capitolului) + 1` înainte de insert
+### 3. `src/hooks/useManualLessons.ts`
+Hook cu `useQuery` care fetchează lecțiile și exercițiile din `manual_lessons` + `manual_exercises`, returnat ca o listă de lecții cu exerciții nested.
 
-## 3. Provocări cu nume și secțiune pliabilă
+## Fișiere modificate
 
-**Problema**: Linia 327 din `Index.tsx` afișează `c.item_id` (ID tehnic) în loc de titlul lecției/problemei. Secțiunea e mereu deschisă.
+### 4. `src/pages/AdminPage.tsx`
+- Adăugare tab „Manual" cu icon `FileText` în `TabsList`
+- Import și render `ManualEditor` în `TabsContent`
 
-### Fișiere modificate
-- **`src/hooks/useChallenges.ts`** — după fetch challenges, colectez item_id-urile separate pe tip (`lesson` / `problem`), fac query pe tabelele `lessons` și `problems` pentru titluri, și adaug `item_title` în `ActiveChallenge`
-- **`src/pages/Index.tsx`** — secțiunea provocări devine pliabilă cu state `showChallenges` (default false); buton „Vezi provocări (N)" care la click desfășoară lista; afișare `c.item_title` în loc de `c.item_id`
+### 5. `src/App.tsx`
+- Adăugare rută `/manual/:lessonId` → `ManualLessonPage`
+- Ruta este **în afara** `AuthProvider` guard-ului (accesibilă fără login)
 
-## Verificare non-premium
+## Flux utilizator
 
-Am confirmat că **în codul actual** nu există nicio verificare premium pe probleme:
-- `ProblemsPage.tsx` — afișează toate problemele fără filtrare
-- `ProblemSolvePage.tsx` — permite rezolvarea oricărei probleme
-- Tabela `problems` nu are coloană `is_premium`
+1. Admin deschide tab-ul „Manual", creează o lecție cu exerciții
+2. Copiază link-ul public (ex: `pyro-learn.lovable.app/manual/ml-123456`)
+3. Oricine deschide link-ul vede logo + titlu + „Începe"
+4. Rezolvă exercițiile, la final vede scorul (fără XP)
+5. Banner-ul de jos îl invită să-și facă cont
 
-Planul adaugă această verificare atât în UI (lacăt + dialog premium pe `ProblemsPage`) cât și ca gardă pe `ProblemSolvePage` (redirect dacă nu e premium).
-
-## Rezumat fișiere
-1. Migrare SQL — coloană `is_premium` pe `problems`
-2. `src/hooks/useProblems.ts`
-3. `src/components/admin/ProblemsEditor.tsx`
-4. `src/pages/ProblemsPage.tsx`
-5. `src/pages/ProblemSolvePage.tsx`
-6. `src/components/admin/ContentEditor.tsx`
-7. `src/hooks/useChallenges.ts`
-8. `src/pages/Index.tsx`
-
+## Notă
+Ruta `/manual/:lessonId` nu necesită autentificare. Clientul Supabase folosește cheia `anon` care are acces SELECT pe tabelele `manual_*` conform RLS-ului configurat.
