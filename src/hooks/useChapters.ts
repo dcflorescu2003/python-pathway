@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { chapters as localChapters } from "@/data/courses";
 import { Capacitor } from "@capacitor/core";
 
-export type ExerciseType = "quiz" | "fill" | "order" | "truefalse" | "match" | "card";
+export type ExerciseType = "quiz" | "fill" | "order" | "truefalse" | "match" | "card" | "problem";
 
 export interface ExerciseOption {
   id: string;
@@ -23,6 +23,9 @@ export interface Exercise {
   isTrue?: boolean;
   explanation?: string;
   pairs?: { id: string; left: string; right: string }[];
+  testCases?: { input: string; expectedOutput: string; hidden?: boolean }[];
+  hint?: string;
+  solution?: string;
   xp: number;
 }
 
