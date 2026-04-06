@@ -342,6 +342,7 @@ export type Database = {
           code_template: string | null
           correct_option_id: string | null
           explanation: string | null
+          hint: string | null
           id: string
           is_true: boolean | null
           lesson_id: string
@@ -349,8 +350,10 @@ export type Database = {
           options: Json | null
           pairs: Json | null
           question: string
+          solution: string
           sort_order: number
           statement: string | null
+          test_cases: Json
           type: string
           xp: number
         }
@@ -359,6 +362,7 @@ export type Database = {
           code_template?: string | null
           correct_option_id?: string | null
           explanation?: string | null
+          hint?: string | null
           id: string
           is_true?: boolean | null
           lesson_id: string
@@ -366,8 +370,10 @@ export type Database = {
           options?: Json | null
           pairs?: Json | null
           question: string
+          solution?: string
           sort_order?: number
           statement?: string | null
+          test_cases?: Json
           type: string
           xp?: number
         }
@@ -376,6 +382,7 @@ export type Database = {
           code_template?: string | null
           correct_option_id?: string | null
           explanation?: string | null
+          hint?: string | null
           id?: string
           is_true?: boolean | null
           lesson_id?: string
@@ -383,8 +390,10 @@ export type Database = {
           options?: Json | null
           pairs?: Json | null
           question?: string
+          solution?: string
           sort_order?: number
           statement?: string | null
+          test_cases?: Json
           type?: string
           xp?: number
         }
