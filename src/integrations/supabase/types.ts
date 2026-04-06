@@ -336,6 +336,92 @@ export type Database = {
           },
         ]
       }
+      manual_exercises: {
+        Row: {
+          blanks: Json | null
+          code_template: string | null
+          correct_option_id: string | null
+          explanation: string | null
+          id: string
+          is_true: boolean | null
+          lesson_id: string
+          lines: Json | null
+          options: Json | null
+          pairs: Json | null
+          question: string
+          sort_order: number
+          statement: string | null
+          type: string
+          xp: number
+        }
+        Insert: {
+          blanks?: Json | null
+          code_template?: string | null
+          correct_option_id?: string | null
+          explanation?: string | null
+          id: string
+          is_true?: boolean | null
+          lesson_id: string
+          lines?: Json | null
+          options?: Json | null
+          pairs?: Json | null
+          question: string
+          sort_order?: number
+          statement?: string | null
+          type: string
+          xp?: number
+        }
+        Update: {
+          blanks?: Json | null
+          code_template?: string | null
+          correct_option_id?: string | null
+          explanation?: string | null
+          id?: string
+          is_true?: boolean | null
+          lesson_id?: string
+          lines?: Json | null
+          options?: Json | null
+          pairs?: Json | null
+          question?: string
+          sort_order?: number
+          statement?: string | null
+          type?: string
+          xp?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "manual_exercises_lesson_id_fkey"
+            columns: ["lesson_id"]
+            isOneToOne: false
+            referencedRelation: "manual_lessons"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      manual_lessons: {
+        Row: {
+          created_at: string
+          description: string
+          id: string
+          sort_order: number
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string
+          id: string
+          sort_order?: number
+          title: string
+        }
+        Update: {
+          created_at?: string
+          description?: string
+          id?: string
+          sort_order?: number
+          title?: string
+        }
+        Relationships: []
+      }
       notifications: {
         Row: {
           body: string
