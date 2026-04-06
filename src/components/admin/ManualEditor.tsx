@@ -150,6 +150,9 @@ const ManualEditor = () => {
       statement: exercise.statement || null, is_true: exercise.isTrue ?? null,
       explanation: exercise.explanation || null, xp: exercise.xp, sort_order: isNew ? sortOrder : undefined,
       pairs: exercise.pairs ? JSON.parse(JSON.stringify(exercise.pairs)) : null,
+      test_cases: exercise.testCases ? JSON.parse(JSON.stringify(exercise.testCases)) : [],
+      hint: (exercise as any).hint || null,
+      solution: (exercise as any).solution || '',
     };
     if (isNew) {
       const { error } = await supabase.from("manual_exercises").insert(row as any);

@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Trash2, Plus } from "lucide-react";
 import MarkdownEditor from "./MarkdownEditor";
@@ -100,8 +101,119 @@ const ExerciseEditor = ({ exercise, onSave, onCancel, lessonId, nextIndex }: Pro
           codeTemplate: "",
         });
         break;
+      case "problem":
+        setData({
+          ...base,
+          codeTemplate: "",
+          testCases: [{ input: "", expectedOutput: "", hidden: false }],
+          hint: "",
+          solution: "",
+        });
+        break;
     }
   };
+
+  const renderProblemFields = () => (
+    <div className="space-y-4">
+      <div>
+        <Label className="text-foreground">Cod inițial (opțional)</Label>
+        <Textarea
+          value={data.codeTemplate || ""}
+          onChange={(e) => updateField("codeTemplate", e.target.value)}
+          placeholder="# Scrie funcția ta aici..."
+          className="font-mono text-sm"
+          rows={4}
+        />
+      </div>
+      <div>
+        <Label className="text-foreground">Indiciu (opțional)</Label>
+        <Input
+          value={(data as any).hint || ""}
+          onChange={(e) => setData(prev => ({ ...prev, hint: e.target.value }))}
+          placeholder="Un mic indiciu pentru elev..."
+        />
+      </div>
+      <div>
+        <Label className="text-foreground">Rezolvare (afișată dacă testele pică)</Label>
+        <Textarea
+          value={(data as any).solution || ""}
+          onChange={(e) => setData(prev => ({ ...prev, solution: e.target.value }))}
+          placeholder="print('Hello')"
+          className="font-mono text-sm"
+          rows={4}
+        />
+      </div>
+      <div>
+        <Label className="text-foreground">Cazuri de test</Label>
+        {(data.testCases || []).map((tc, i) => (
+          <div key={i} className="flex items-start gap-2 mt-2 p-3 rounded-lg border border-border bg-muted/30">
+            <span className="text-xs text-muted-foreground mt-2 w-6">#{i + 1}</span>
+            <div className="flex-1 space-y-2">
+              <div>
+                <Label className="text-xs text-muted-foreground">Intrare (stdin)</Label>
+                <Textarea
+                  value={tc.input}
+                  onChange={(e) => {
+                    const newTc = [...(data.testCases || [])];
+                    newTc[i] = { ...newTc[i], input: e.target.value };
+                    updateField("testCases", newTc);
+                  }}
+                  placeholder="5"
+                  className="font-mono text-sm"
+                  rows={2}
+                />
+              </div>
+              <div>
+                <Label className="text-xs text-muted-foreground">Ieșire așteptată (stdout)</Label>
+                <Input
+                  value={tc.expectedOutput}
+                  onChange={(e) => {
+                    const newTc = [...(data.testCases || [])];
+                    newTc[i] = { ...newTc[i], expectedOutput: e.target.value };
+                    updateField("testCases", newTc);
+                  }}
+                  placeholder="10"
+                  className="font-mono text-sm"
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <Switch
+                  checked={tc.hidden || false}
+                  onCheckedChange={(v) => {
+                    const newTc = [...(data.testCases || [])];
+                    newTc[i] = { ...newTc[i], hidden: v };
+                    updateField("testCases", newTc);
+                  }}
+                />
+                <Label className="text-xs text-muted-foreground">Test ascuns</Label>
+              </div>
+            </div>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => {
+                const newTc = (data.testCases || []).filter((_, j) => j !== i);
+                updateField("testCases", newTc);
+              }}
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </div>
+        ))}
+        <Button
+          variant="outline"
+          size="sm"
+          className="mt-2"
+          onClick={() => {
+            const newTc = [...(data.testCases || []), { input: "", expectedOutput: "", hidden: false }];
+            updateField("testCases", newTc);
+          }}
+        >
+          <Plus className="h-4 w-4 mr-1" /> Adaugă caz de test
+        </Button>
+      </div>
+    </div>
+  );
 
   const renderQuizFields = () => (
     <div className="space-y-3">
@@ -332,6 +444,7 @@ const ExerciseEditor = ({ exercise, onSave, onCancel, lessonId, nextIndex }: Pro
               <SelectItem value="truefalse">Adevărat / Fals</SelectItem>
               <SelectItem value="match">Asociere</SelectItem>
               <SelectItem value="card">📖 Cartonaș teoretic</SelectItem>
+              <SelectItem value="problem">💻 Problemă (cod + teste)</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -355,11 +468,12 @@ const ExerciseEditor = ({ exercise, onSave, onCancel, lessonId, nextIndex }: Pro
         />
       </div>
 
-      {data.type !== "card" && data.type === "quiz" && renderQuizFields()}
-      {data.type !== "card" && data.type === "fill" && renderFillFields()}
-      {data.type !== "card" && data.type === "order" && renderOrderFields()}
-      {data.type !== "card" && data.type === "truefalse" && renderTrueFalseFields()}
-      {data.type !== "card" && data.type === "match" && renderMatchFields()}
+      {data.type === "quiz" && renderQuizFields()}
+      {data.type === "fill" && renderFillFields()}
+      {data.type === "order" && renderOrderFields()}
+      {data.type === "truefalse" && renderTrueFalseFields()}
+      {data.type === "match" && renderMatchFields()}
+      {data.type === "problem" && renderProblemFields()}
 
       {data.type === "card" && (
         <div>

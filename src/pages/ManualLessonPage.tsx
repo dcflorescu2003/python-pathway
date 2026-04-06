@@ -12,6 +12,7 @@ import OrderExercise from "@/components/exercises/OrderExercise";
 import TrueFalseExercise from "@/components/exercises/TrueFalseExercise";
 import MatchExercise from "@/components/exercises/MatchExercise";
 import CardExercise from "@/components/exercises/CardExercise";
+import ProblemExercise from "@/components/exercises/ProblemExercise";
 import LoadingScreen from "@/components/states/LoadingScreen";
 import logo from "@/assets/logo.png";
 import React from "react";
@@ -55,6 +56,9 @@ function mapExercise(row: any): Exercise {
     isTrue: row.is_true ?? undefined,
     explanation: row.explanation ?? undefined,
     pairs: row.pairs ?? undefined,
+    testCases: row.test_cases ?? undefined,
+    hint: row.hint ?? undefined,
+    solution: row.solution ?? undefined,
     xp: row.xp,
   };
 }
@@ -249,7 +253,7 @@ const ManualLessonPage = () => {
   // Exercise screen
   const exercise = lesson.exercises[currentIndex];
   const progressPercent = (currentIndex / lesson.exercises.length) * 100;
-  const isSupportedExercise = ["quiz", "fill", "order", "truefalse", "match", "card"].includes(exercise.type);
+  const isSupportedExercise = ["quiz", "fill", "order", "truefalse", "match", "card", "problem"].includes(exercise.type);
 
   return (
     <div className="fixed inset-0 bg-background flex flex-col">
@@ -276,6 +280,7 @@ const ManualLessonPage = () => {
                 {exercise.type === "truefalse" && <TrueFalseExercise exercise={exercise} onAnswer={handleAnswer} feedback={feedback} />}
                 {exercise.type === "match" && <MatchExercise exercise={exercise} onAnswer={handleAnswer} feedback={feedback} />}
                 {exercise.type === "card" && <CardExercise exercise={exercise} onContinue={() => handleAnswer(true)} />}
+                {exercise.type === "problem" && <ProblemExercise exercise={exercise} onAnswer={handleAnswer} feedback={feedback} />}
                 {!isSupportedExercise && (
                   <div className="rounded-xl border border-destructive/30 bg-destructive/10 p-6 text-center">
                     <p className="mb-2 font-bold text-destructive">Tip de exercițiu nerecunoscut</p>
