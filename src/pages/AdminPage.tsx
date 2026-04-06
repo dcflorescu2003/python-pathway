@@ -6,9 +6,10 @@ import ContentEditor from "@/components/admin/ContentEditor";
 import ProblemsEditor from "@/components/admin/ProblemsEditor";
 import CouponManager from "@/components/admin/CouponManager";
 import AdminSettings from "@/components/admin/AdminSettings";
+import ManualEditor from "@/components/admin/ManualEditor";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { BookOpen, Ticket, Code2, Settings } from "lucide-react";
+import { BookOpen, Ticket, Code2, Settings, FileText } from "lucide-react";
 
 const AdminPage = () => {
   const navigate = useNavigate();
@@ -52,6 +53,10 @@ const AdminPage = () => {
               <Ticket className="h-4 w-4" />
               Cupoane
             </TabsTrigger>
+            <TabsTrigger value="manual" className="flex-1 gap-2">
+              <FileText className="h-4 w-4" />
+              Manual
+            </TabsTrigger>
             <TabsTrigger value="settings" className="flex-1 gap-2">
               <Settings className="h-4 w-4" />
               Setări
@@ -68,6 +73,10 @@ const AdminPage = () => {
 
           <TabsContent value="coupons">
             <CouponManager />
+          </TabsContent>
+
+          <TabsContent value="manual">
+            <ManualEditor />
           </TabsContent>
 
           <TabsContent value="settings">
