@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
@@ -13,6 +13,7 @@ import TrueFalseExercise from "@/components/exercises/TrueFalseExercise";
 import MatchExercise from "@/components/exercises/MatchExercise";
 import CardExercise from "@/components/exercises/CardExercise";
 import LoadingScreen from "@/components/states/LoadingScreen";
+import logo from "@/assets/logo.png";
 import React from "react";
 
 class ExerciseErrorBoundary extends React.Component<
@@ -58,6 +59,41 @@ function mapExercise(row: any): Exercise {
   };
 }
 
+const PyRoLogo = () => (
+  <span className="text-xl font-black tracking-tight font-mono">
+    <span className="text-gradient-primary">Py</span>
+    <span className="text-tricolor">Ro</span>
+  </span>
+);
+
+const Header = () => (
+  <header className="border-b border-border bg-card/80 backdrop-blur-md">
+    <div className="flex items-center justify-center gap-3 py-4 px-6">
+      <img src={logo} alt="PyRo" className="h-10 w-10 rounded-xl" />
+      <PyRoLogo />
+    </div>
+  </header>
+);
+
+const Footer = ({ onNavigate }: { onNavigate: () => void }) => (
+  <footer className="border-t border-border bg-card/60 backdrop-blur-md">
+    <div className="max-w-lg mx-auto px-6 py-5 flex flex-col items-center gap-3">
+      <div className="flex items-center gap-2">
+        <span className="text-lg">🐍</span>
+        <p className="text-sm text-muted-foreground text-center">
+          Învață Python pas cu pas cu <span className="font-bold text-foreground">PyRo</span> — cursuri interactive, probleme și mult mai mult!
+        </p>
+      </div>
+      <Button
+        onClick={onNavigate}
+        className="h-11 px-6 font-bold bg-gradient-to-r from-primary to-accent text-primary-foreground"
+      >
+        🚀 Creează cont gratuit
+      </Button>
+    </div>
+  </footer>
+);
+
 const ManualLessonPage = () => {
   const { lessonId } = useParams();
   const navigate = useNavigate();
@@ -95,6 +131,8 @@ const ManualLessonPage = () => {
   const [feedback, setFeedback] = useState<"correct" | "wrong" | null>(null);
   const [lastExplanation, setLastExplanation] = useState<string | null>(null);
 
+  const goToAuth = () => navigate("/auth");
+
   const handleAnswer = useCallback(
     (isCorrect: boolean) => {
       if (!lesson) return;
@@ -112,11 +150,10 @@ const ManualLessonPage = () => {
       if (isCorrect) {
         setCorrectCount(c => c + 1);
         setFeedback("correct");
-        setLastExplanation(exercise?.explanation || null);
       } else {
         setFeedback("wrong");
-        setLastExplanation(exercise?.explanation || null);
       }
+      setLastExplanation(exercise?.explanation || null);
     },
     [currentIndex, lesson]
   );
@@ -139,25 +176,31 @@ const ManualLessonPage = () => {
   if (!started) {
     return (
       <div className="min-h-screen bg-background flex flex-col">
-        <header className="flex items-center justify-center py-6 border-b border-border">
-          <img src="/Logo_Patrat-2.png" alt="PyRo" className="h-12 w-12 rounded-xl" />
-        </header>
-
+        <Header />
         <main className="flex-1 flex items-center justify-center px-6">
-          <div className="text-center max-w-sm w-full">
-            <h1 className="text-2xl font-bold text-foreground mb-2">{lesson.title}</h1>
-            {lesson.description && <p className="text-muted-foreground mb-6">{lesson.description}</p>}
-            <p className="text-sm text-muted-foreground mb-4">{lesson.exercises.length} exerciții</p>
-            <Button onClick={() => setStarted(true)} className="w-full h-14 text-lg font-bold">
-              🚀 Începe
-            </Button>
-          </div>
+          <motion.div
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            className="text-center max-w-sm w-full"
+          >
+            <div className="rounded-2xl border border-border bg-card p-8 glow-primary">
+              <h1 className="text-2xl font-bold text-foreground mb-2">{lesson.title}</h1>
+              {lesson.description && (
+                <p className="text-muted-foreground mb-4">{lesson.description}</p>
+              )}
+              <p className="text-sm text-muted-foreground mb-6 font-mono">
+                📝 {lesson.exercises.length} exerciții
+              </p>
+              <Button
+                onClick={() => setStarted(true)}
+                className="w-full h-14 text-lg font-bold bg-gradient-to-r from-primary to-accent text-primary-foreground"
+              >
+                🚀 Începe
+              </Button>
+            </div>
+          </motion.div>
         </main>
-
-        <footer className="border-t border-border p-4 text-center bg-primary/5">
-          <p className="text-sm text-muted-foreground mb-2">Vrei să înveți mai mult? Creează-ți un cont gratuit pe PyRo!</p>
-          <Button variant="outline" onClick={() => navigate("/auth")}>Creează cont</Button>
-        </footer>
+        <Footer onNavigate={goToAuth} />
       </div>
     );
   }
@@ -167,27 +210,38 @@ const ManualLessonPage = () => {
     const total = lesson.exercises.filter(e => e.type !== "card").length;
     return (
       <div className="min-h-screen bg-background flex flex-col">
-        <header className="flex items-center justify-center py-6 border-b border-border">
-          <img src="/Logo_Patrat-2.png" alt="PyRo" className="h-12 w-12 rounded-xl" />
-        </header>
-
+        <Header />
         <main className="flex-1 flex items-center justify-center px-6">
-          <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="w-full max-w-sm rounded-xl border border-border bg-card p-6 text-center">
-            <div className="text-5xl mb-4">🎉</div>
-            <h2 className="text-xl font-bold text-foreground mb-2">Lecție completă!</h2>
-            <p className="text-sm text-muted-foreground mb-6">
-              Ai răspuns corect la {correctCount}/{total} întrebări
-            </p>
-            <Button variant="outline" className="w-full" onClick={() => { setStarted(false); setCurrentIndex(0); setCorrectCount(0); setIsFinished(false); }}>
-              Încearcă din nou
-            </Button>
+          <motion.div
+            initial={{ scale: 0.8, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            className="w-full max-w-sm"
+          >
+            <div className="rounded-2xl border border-border bg-card p-8 text-center glow-primary">
+              <div className="text-5xl mb-4">🎉</div>
+              <h2 className="text-xl font-bold text-foreground mb-2">Lecție completă!</h2>
+              <p className="text-3xl font-bold text-gradient-primary mb-2">
+                {correctCount}/{total}
+              </p>
+              <p className="text-sm text-muted-foreground mb-6">
+                răspunsuri corecte
+              </p>
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={() => {
+                  setStarted(false);
+                  setCurrentIndex(0);
+                  setCorrectCount(0);
+                  setIsFinished(false);
+                }}
+              >
+                🔄 Încearcă din nou
+              </Button>
+            </div>
           </motion.div>
         </main>
-
-        <footer className="border-t border-border p-4 text-center bg-primary/5">
-          <p className="text-sm text-muted-foreground mb-2">Vrei să înveți mai mult? Creează-ți un cont gratuit pe PyRo!</p>
-          <Button variant="outline" onClick={() => navigate("/auth")}>Creează cont</Button>
-        </footer>
+        <Footer onNavigate={goToAuth} />
       </div>
     );
   }
@@ -199,13 +253,15 @@ const ManualLessonPage = () => {
 
   return (
     <div className="fixed inset-0 bg-background flex flex-col">
-      <header className="border-b border-border bg-background/80 backdrop-blur-md px-4 py-3 pt-[max(env(safe-area-inset-top),12px)]">
+      <header className="border-b border-border bg-card/80 backdrop-blur-md px-4 py-3 pt-[max(env(safe-area-inset-top),12px)]">
         <div className="flex items-center gap-3">
           <button onClick={() => setStarted(false)} className="touch-target flex items-center justify-center">
-            <img src="/Logo_Patrat-2.png" alt="PyRo" className="h-8 w-8 rounded-lg" />
+            <img src={logo} alt="PyRo" className="h-8 w-8 rounded-lg" />
           </button>
           <Progress value={progressPercent} className="h-2.5 flex-1" />
-          <span className="text-xs text-muted-foreground font-mono">{currentIndex + 1}/{lesson.exercises.length}</span>
+          <span className="text-xs text-muted-foreground font-mono">
+            {currentIndex + 1}/{lesson.exercises.length}
+          </span>
         </div>
       </header>
 
@@ -233,16 +289,24 @@ const ManualLessonPage = () => {
 
       <AnimatePresence>
         {feedback && (
-          <motion.div initial={{ y: 100 }} animate={{ y: 0 }} exit={{ y: 100 }}
+          <motion.div
+            initial={{ y: 100 }} animate={{ y: 0 }} exit={{ y: 100 }}
             className={`border-t px-4 py-4 pb-[max(env(safe-area-inset-bottom),16px)] ${
               feedback === "correct" ? "bg-primary/10 border-primary/30" : "bg-destructive/10 border-destructive/30"
-            }`}>
+            }`}
+          >
             <div className="max-w-lg mx-auto">
               <p className={`font-bold text-center mb-1 ${feedback === "correct" ? "text-primary" : "text-destructive"}`}>
                 {feedback === "correct" ? "✅ Corect!" : "❌ Greșit!"}
               </p>
-              {lastExplanation && <p className="text-sm text-foreground/70 text-center mb-3">💡 {lastExplanation}</p>}
-              <Button onClick={handleContinue} className="w-full h-14 text-lg font-bold" variant={feedback === "correct" ? "default" : "destructive"}>
+              {lastExplanation && (
+                <p className="text-sm text-foreground/70 text-center mb-3">💡 {lastExplanation}</p>
+              )}
+              <Button
+                onClick={handleContinue}
+                className="w-full h-14 text-lg font-bold"
+                variant={feedback === "correct" ? "default" : "destructive"}
+              >
                 Continuă
               </Button>
             </div>
