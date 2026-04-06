@@ -55,6 +55,7 @@ const SUPPORTED_EXERCISE_TYPES: ExerciseType[] = [
   "truefalse",
   "match",
   "card",
+  "problem",
 ];
 
 function getNativeFallbackChapters() {
