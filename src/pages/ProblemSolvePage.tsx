@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { ArrowLeft, Play, Loader2, CheckCircle2, XCircle, Lightbulb, Eye, EyeOff, BookOpen } from "lucide-react";
@@ -9,6 +9,7 @@ import CodeEditor from "@/components/CodeEditor";
 import { useProblems } from "@/hooks/useProblems";
 import { usePyodide, type TestResult } from "@/hooks/usePyodide";
 import { useProgress } from "@/hooks/useProgress";
+import { useSubscription } from "@/hooks/useSubscription";
 import { toast } from "sonner";
 import LoadingScreen from "@/components/states/LoadingScreen";
 
@@ -19,6 +20,7 @@ const ProblemSolvePage = () => {
   const problem = data?.problems.find((p) => p.id === problemId);
   const { loading, running, runCode } = usePyodide();
   const { progress, completeLesson } = useProgress();
+  const { subscribed } = useSubscription();
 
   const [code, setCode] = useState("");
   const [results, setResults] = useState<TestResult[] | null>(null);
@@ -35,6 +37,14 @@ const ProblemSolvePage = () => {
       </div>
     );
   }
+
+  // Guard: redirect non-premium users from premium problems
+  useEffect(() => {
+    if (problem && problem.isPremium && !subscribed) {
+      toast.error("Această problemă este disponibilă doar cu un cont Premium.");
+      navigate("/problems");
+    }
+  }, [problem, subscribed, navigate]);
 
   const solved = progress.completedLessons[`problem-${problem.id}`]?.completed;
 
