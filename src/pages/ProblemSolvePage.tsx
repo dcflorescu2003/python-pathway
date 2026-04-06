@@ -28,6 +28,14 @@ const ProblemSolvePage = () => {
   const [showHiddenTests, setShowHiddenTests] = useState(false);
   const [showSolution, setShowSolution] = useState(false);
 
+  // Guard: redirect non-premium users from premium problems
+  useEffect(() => {
+    if (problem && problem.isPremium && !subscribed) {
+      toast.error("Această problemă este disponibilă doar cu un cont Premium.");
+      navigate("/problems");
+    }
+  }, [problem, subscribed, navigate]);
+
   if (problemsLoading) return <LoadingScreen />;
 
   if (!problem) {
@@ -37,14 +45,6 @@ const ProblemSolvePage = () => {
       </div>
     );
   }
-
-  // Guard: redirect non-premium users from premium problems
-  useEffect(() => {
-    if (problem && problem.isPremium && !subscribed) {
-      toast.error("Această problemă este disponibilă doar cu un cont Premium.");
-      navigate("/problems");
-    }
-  }, [problem, subscribed, navigate]);
 
   const solved = progress.completedLessons[`problem-${problem.id}`]?.completed;
 
