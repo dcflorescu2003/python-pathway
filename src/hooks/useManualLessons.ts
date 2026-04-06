@@ -24,6 +24,9 @@ function mapExercise(row: any): Exercise {
     isTrue: row.is_true ?? undefined,
     explanation: row.explanation ?? undefined,
     pairs: row.pairs ?? undefined,
+    testCases: row.test_cases ?? undefined,
+    hint: row.hint ?? undefined,
+    solution: row.solution ?? undefined,
     xp: row.xp,
   };
 }
