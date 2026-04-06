@@ -18,6 +18,7 @@ export interface Problem {
   chapter: string;
   solution: string;
   sortOrder: number;
+  isPremium: boolean;
 }
 
 export interface ProblemChapter {
@@ -60,6 +61,7 @@ async function fetchProblems(): Promise<{ problems: Problem[]; problemChapters: 
     chapter: p.chapter_id,
     solution: p.solution,
     sortOrder: p.sort_order,
+    isPremium: (p as any).is_premium ?? false,
   }));
 
   return { problems, problemChapters };

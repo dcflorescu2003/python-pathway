@@ -67,6 +67,7 @@ const emptyProblem = (chapterId: string): Omit<Problem, "id"> => ({
   chapter: chapterId,
   solution: "",
   sortOrder: 0,
+  isPremium: false,
 });
 
 const ProblemsEditor = () => {
@@ -149,6 +150,7 @@ const ProblemsEditor = () => {
       hint: form.hint || null,
       chapter_id: form.chapter,
       solution: form.solution,
+      is_premium: form.isPremium,
     };
 
     if (editingProblem) {
@@ -253,6 +255,11 @@ const ProblemsEditor = () => {
           <Label className="text-foreground text-xs">Hint</Label>
           <Input value={form.hint || ""} onChange={e => setForm(f => ({ ...f, hint: e.target.value }))} />
         </div>
+      </div>
+
+      <div className="flex items-center gap-2">
+        <input type="checkbox" id="problem-premium" checked={form.isPremium} onChange={e => setForm(f => ({ ...f, isPremium: e.target.checked }))} />
+        <Label htmlFor="problem-premium" className="text-foreground text-xs cursor-pointer">Premium (doar conturi premium)</Label>
       </div>
 
       <div>
@@ -360,6 +367,7 @@ const ProblemsEditor = () => {
                                       "bg-red-500/10 text-red-500"
                                     }`}>{p.difficulty}</span>
                                     <p className="flex-1 text-sm text-foreground truncate">{p.title}</p>
+                                    {p.isPremium && <span className="text-[10px] font-bold text-warning bg-warning/10 px-1.5 py-0.5 rounded">Premium</span>}
                                     <span className="text-[10px] text-muted-foreground">{p.xpReward}XP · {p.testCases.length} teste</span>
                                     <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => startEdit(p)}>
                                       <Edit2 className="h-3.5 w-3.5" />
