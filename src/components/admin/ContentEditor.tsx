@@ -206,7 +206,7 @@ const ContentEditor = () => {
     if (!lessonForm.title.trim()) return;
     const chapter = chapters?.find(c => c.id === chapterId);
     const realLessons = chapter ? chapter.lessons.filter(l => !l.id.endsWith("f")) : [];
-    const maxSort = realLessons.length > 0 ? Math.max(...realLessons.map(l => l.sortOrder ?? 0)) : -1;
+    const maxSort = realLessons.length > 0 ? Math.max(...realLessons.map(l => (l as any).sortOrder ?? 0)) : -1;
     const sortOrder = maxSort + 1;
     const newId = `${chapterId}-l${Date.now()}`;
     const { error } = await supabase.from("lessons").insert({
