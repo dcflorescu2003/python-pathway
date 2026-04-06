@@ -1,28 +1,53 @@
 
 
-# Mini-editor Markdown pentru cartonașe
+# Trei modificări: probleme premium selectabile, ordine lecții fixă, provocări cu nume
 
-## Context
-Câmpul „Explicație / Conținut" al cartonașelor este un simplu `<Textarea>`. Conținutul se renderează deja cu `ReactMarkdown`, deci orice Markdown introdus funcționează — dar utilizatorul trebuie să știe sintaxa. Vrem o bară de instrumente simplă deasupra textarea-ului care inserează Markdown automat.
+## 1. Probleme premium selectabile din Admin
 
-## Soluția
-Creăm o componentă `MarkdownToolbar` + `MarkdownEditor` care înfășoară textarea-ul existent și adaugă butoane pentru:
-- **Bold** — inserează `**text**`
-- **Rând liber** — inserează `\n\n`
-- **Text colorat** — inserează `<span style="color:red">text</span>` (Markdown acceptă HTML inline, ReactMarkdown îl renderează)
+**Problema**: Tabela `problems` nu are coloană `is_premium` — toate problemele sunt accesibile tuturor.
 
-Bara apare **doar** când tipul exercițiului este `card`.
+### Migrare SQL
+```sql
+ALTER TABLE public.problems ADD COLUMN is_premium boolean NOT NULL DEFAULT false;
+```
 
-## Fișiere modificate
+### Fișiere modificate
+- **`src/hooks/useProblems.ts`** — adaugă `isPremium: boolean` în interfața `Problem`, mapat din `p.is_premium`
+- **`src/components/admin/ProblemsEditor.tsx`** — checkbox „Premium" în formularul de editare/creare problemă
+- **`src/pages/ProblemsPage.tsx`** — import `useSubscription`; problemele cu `isPremium && !subscribed` afișează lacăt (🔒) și deschid `PremiumDialog` la click în loc de navigare
+- **`src/pages/ProblemSolvePage.tsx`** — verificare la montare: dacă `problem.isPremium && !subscribed`, redirect la `/problems` cu toast de avertizare
 
-### 1. `src/components/admin/MarkdownEditor.tsx` (nou)
-- Componentă cu o bară de butoane (Bold, Rând liber, Culoare) și un `<Textarea>` dedesubt
-- Fiecare buton inserează textul Markdown la poziția cursorului din textarea (folosind `selectionStart` / `selectionEnd`)
-- Pentru culoare: un mic dropdown cu 4-5 culori predefinite (roșu, verde, albastru, portocaliu, mov)
-- Preview live opțional sub textarea cu `ReactMarkdown`
+## 2. Ordine lecții consistentă
 
-### 2. `src/components/admin/ExerciseEditor.tsx`
-- Import `MarkdownEditor`
-- Înlocuire `<Textarea>` de la linia 378 cu `<MarkdownEditor>` doar când `data.type === "card"`
-- Pentru celelalte tipuri, textarea rămâne neschimbat
+**Problema**: Lecțiile noi primesc `sort_order = 0`, ceea ce face ordinea imprevizibilă.
+
+### Fișiere modificate
+- **`src/components/admin/ContentEditor.tsx`** — la crearea unei lecții noi, calculez `sort_order = max(sort_order din lecțiile capitolului) + 1` înainte de insert
+
+## 3. Provocări cu nume și secțiune pliabilă
+
+**Problema**: Linia 327 din `Index.tsx` afișează `c.item_id` (ID tehnic) în loc de titlul lecției/problemei. Secțiunea e mereu deschisă.
+
+### Fișiere modificate
+- **`src/hooks/useChallenges.ts`** — după fetch challenges, colectez item_id-urile separate pe tip (`lesson` / `problem`), fac query pe tabelele `lessons` și `problems` pentru titluri, și adaug `item_title` în `ActiveChallenge`
+- **`src/pages/Index.tsx`** — secțiunea provocări devine pliabilă cu state `showChallenges` (default false); buton „Vezi provocări (N)" care la click desfășoară lista; afișare `c.item_title` în loc de `c.item_id`
+
+## Verificare non-premium
+
+Am confirmat că **în codul actual** nu există nicio verificare premium pe probleme:
+- `ProblemsPage.tsx` — afișează toate problemele fără filtrare
+- `ProblemSolvePage.tsx` — permite rezolvarea oricărei probleme
+- Tabela `problems` nu are coloană `is_premium`
+
+Planul adaugă această verificare atât în UI (lacăt + dialog premium pe `ProblemsPage`) cât și ca gardă pe `ProblemSolvePage` (redirect dacă nu e premium).
+
+## Rezumat fișiere
+1. Migrare SQL — coloană `is_premium` pe `problems`
+2. `src/hooks/useProblems.ts`
+3. `src/components/admin/ProblemsEditor.tsx`
+4. `src/pages/ProblemsPage.tsx`
+5. `src/pages/ProblemSolvePage.tsx`
+6. `src/components/admin/ContentEditor.tsx`
+7. `src/hooks/useChallenges.ts`
+8. `src/pages/Index.tsx`
 
