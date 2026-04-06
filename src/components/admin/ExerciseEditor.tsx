@@ -357,11 +357,12 @@ const ExerciseEditor = ({ exercise, onSave, onCancel, lessonId, nextIndex }: Pro
         />
       </div>
 
-      {data.type !== "card" && data.type === "quiz" && renderQuizFields()}
-      {data.type !== "card" && data.type === "fill" && renderFillFields()}
-      {data.type !== "card" && data.type === "order" && renderOrderFields()}
-      {data.type !== "card" && data.type === "truefalse" && renderTrueFalseFields()}
-      {data.type !== "card" && data.type === "match" && renderMatchFields()}
+      {data.type === "quiz" && renderQuizFields()}
+      {data.type === "fill" && renderFillFields()}
+      {data.type === "order" && renderOrderFields()}
+      {data.type === "truefalse" && renderTrueFalseFields()}
+      {data.type === "match" && renderMatchFields()}
+      {data.type === "problem" && renderProblemFields()}
 
       {data.type === "card" && (
         <div>
