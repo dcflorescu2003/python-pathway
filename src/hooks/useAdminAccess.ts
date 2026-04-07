@@ -6,17 +6,17 @@ export function useAdminAccess() {
   const { user } = useAuth();
 
   const { data: isAdmin = false, isLoading } = useQuery({
-    queryKey: ["admin-access", user?.email],
+    queryKey: ["admin-access", user?.id],
     queryFn: async () => {
-      if (!user?.email) return false;
-      const { data } = await supabase
-        .from("admin_emails")
-        .select("id")
-        .eq("email", user.email)
-        .maybeSingle();
+      if (!user?.id) return false;
+      const { data, error } = await supabase.rpc("has_role", {
+        _user_id: user.id,
+        _role: "admin",
+      });
+      if (error) return false;
       return !!data;
     },
-    enabled: !!user?.email,
+    enabled: !!user?.id,
     staleTime: 1000 * 60 * 30,
   });
 
