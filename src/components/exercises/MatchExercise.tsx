@@ -103,9 +103,7 @@ const MatchExercise = ({ exercise, onAnswer, feedback }: Props) => {
     }
     const entry = [...matched.entries()].find(([, v]) => v === id);
     if (entry) {
-      const idx = getMatchIndex(entry[0]);
-      const c = PAIR_COLORS[idx % PAIR_COLORS.length];
-      return `${c.bg} ${c.border} ${c.text} shadow-md ${c.glow}`;
+      return MATCHED_STYLE;
     }
     if (selectedRight === id) return "ring-2 ring-primary ring-offset-2 ring-offset-background border-primary bg-primary/10 scale-[1.02]";
     return "border-border bg-card hover:bg-muted/50 hover:border-muted-foreground/30";
