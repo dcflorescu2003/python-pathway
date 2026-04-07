@@ -4,13 +4,7 @@ import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
 import { Check, X, Link2, RotateCcw } from "lucide-react";
 
-const PAIR_COLORS = [
-  { bg: "bg-primary/15", border: "border-primary", text: "text-primary", glow: "shadow-primary/20" },
-  { bg: "bg-chart-2/15", border: "border-chart-2", text: "text-chart-2", glow: "shadow-chart-2/20" },
-  { bg: "bg-chart-4/15", border: "border-chart-4", text: "text-chart-4", glow: "shadow-chart-4/20" },
-  { bg: "bg-accent/20", border: "border-accent", text: "text-accent-foreground", glow: "shadow-accent/20" },
-  { bg: "bg-chart-5/15", border: "border-chart-5", text: "text-chart-5", glow: "shadow-chart-5/20" },
-];
+const MATCHED_STYLE = "border-primary bg-primary/10 text-primary shadow-md shadow-primary/10";
 
 interface Props {
   exercise: Exercise;
@@ -84,8 +78,6 @@ const MatchExercise = ({ exercise, onAnswer, feedback }: Props) => {
     }
   }, [submitted, matched, selectedLeft, addMatch]);
 
-  const getMatchIndex = (leftId: string): number => [...matched.keys()].indexOf(leftId);
-
   const getLeftStyle = (id: string) => {
     if (submitted && results.size > 0) {
       const isCorrect = results.get(id);
@@ -93,9 +85,7 @@ const MatchExercise = ({ exercise, onAnswer, feedback }: Props) => {
       return "border-destructive bg-destructive/10 text-destructive shadow-md shadow-destructive/10";
     }
     if (matched.has(id)) {
-      const idx = getMatchIndex(id);
-      const c = PAIR_COLORS[idx % PAIR_COLORS.length];
-      return `${c.bg} ${c.border} ${c.text} shadow-md ${c.glow}`;
+      return MATCHED_STYLE;
     }
     if (selectedLeft === id) return "ring-2 ring-primary ring-offset-2 ring-offset-background border-primary bg-primary/10 scale-[1.02]";
     return "border-border bg-card hover:bg-muted/50 hover:border-muted-foreground/30";
@@ -113,9 +103,7 @@ const MatchExercise = ({ exercise, onAnswer, feedback }: Props) => {
     }
     const entry = [...matched.entries()].find(([, v]) => v === id);
     if (entry) {
-      const idx = getMatchIndex(entry[0]);
-      const c = PAIR_COLORS[idx % PAIR_COLORS.length];
-      return `${c.bg} ${c.border} ${c.text} shadow-md ${c.glow}`;
+      return MATCHED_STYLE;
     }
     if (selectedRight === id) return "ring-2 ring-primary ring-offset-2 ring-offset-background border-primary bg-primary/10 scale-[1.02]";
     return "border-border bg-card hover:bg-muted/50 hover:border-muted-foreground/30";
