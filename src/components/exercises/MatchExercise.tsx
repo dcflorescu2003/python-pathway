@@ -78,8 +78,6 @@ const MatchExercise = ({ exercise, onAnswer, feedback }: Props) => {
     }
   }, [submitted, matched, selectedLeft, addMatch]);
 
-  const getMatchIndex = (leftId: string): number => [...matched.keys()].indexOf(leftId);
-
   const getLeftStyle = (id: string) => {
     if (submitted && results.size > 0) {
       const isCorrect = results.get(id);
@@ -87,9 +85,7 @@ const MatchExercise = ({ exercise, onAnswer, feedback }: Props) => {
       return "border-destructive bg-destructive/10 text-destructive shadow-md shadow-destructive/10";
     }
     if (matched.has(id)) {
-      const idx = getMatchIndex(id);
-      const c = PAIR_COLORS[idx % PAIR_COLORS.length];
-      return `${c.bg} ${c.border} ${c.text} shadow-md ${c.glow}`;
+      return MATCHED_STYLE;
     }
     if (selectedLeft === id) return "ring-2 ring-primary ring-offset-2 ring-offset-background border-primary bg-primary/10 scale-[1.02]";
     return "border-border bg-card hover:bg-muted/50 hover:border-muted-foreground/30";
