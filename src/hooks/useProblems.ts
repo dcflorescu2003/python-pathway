@@ -38,7 +38,7 @@ async function fetchProblems(): Promise<{ problems: Problem[]; problemChapters: 
 
   const { data: problemsData, error: problemsError } = await supabase
     .from("problems")
-    .select("*")
+    .select("id, title, description, difficulty, xp_reward, test_cases, hint, chapter_id, sort_order, is_premium")
     .order("sort_order", { ascending: true });
 
   if (problemsError) throw problemsError;
@@ -59,9 +59,9 @@ async function fetchProblems(): Promise<{ problems: Problem[]; problemChapters: 
     testCases: (p.test_cases as any[] || []) as TestCase[],
     hint: p.hint ?? undefined,
     chapter: p.chapter_id,
-    solution: p.solution,
+    solution: "", // fetched on-demand via get_problem_solution RPC
     sortOrder: p.sort_order,
-    isPremium: (p as any).is_premium ?? false,
+    isPremium: p.is_premium ?? false,
   }));
 
   return { problems, problemChapters };
