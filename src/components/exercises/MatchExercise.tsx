@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
 import { Check, X, Link2, RotateCcw } from "lucide-react";
 
-const MATCHED_STYLE = "border-primary bg-primary/10 text-primary shadow-md shadow-primary/10";
+const MATCHED_STYLE = "border-muted-foreground/30 bg-muted/50 text-muted-foreground shadow-sm opacity-70";
 
 interface Props {
   exercise: Exercise;
