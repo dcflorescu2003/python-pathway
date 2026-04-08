@@ -1,15 +1,27 @@
 
 
-# Culoare uniformă verde pentru toate perechile asociate
+# Scroll pe mobil — margini laterale pentru zona de scroll
 
 ## Problema
-Array-ul `PAIR_COLORS` atribuie culori diferite fiecărei perechi (verde doar prima, apoi alte culori). Vrei ca toate perechile selectate să fie verzi.
+Pe mobil, elementele draggable au `touch-none` care blochează scroll-ul nativ. Drag-and-drop trebuie păstrat, dar utilizatorul nu poate da scroll pe pagină deoarece elementele ocupă toată lățimea ecranului.
 
 ## Soluția
-Modificare în `src/components/exercises/MatchExercise.tsx`:
-- Înlocuire `PAIR_COLORS` cu o singură paletă verde (primary) folosită pentru toate perechile asociate
-- `getLeftStyle` și `getRightStyle` vor aplica aceeași clasă verde (`border-primary bg-primary/10 text-primary`) pentru orice pereche din `matched`, indiferent de index
+Adăugăm o zonă liberă laterală (margini) pe care utilizatorul poate atinge pentru a face scroll, fără să activeze drag-and-drop. Practic, elementele de exercițiu vor fi mai înguste, lăsând o bandă de ~16-20px pe fiecare parte a ecranului care rămâne „scrollabilă".
 
-## Fișier modificat
-`src/components/exercises/MatchExercise.tsx` — simplificare styling perechi
+### Modificări
+
+**1. `src/components/exercises/OrderExercise.tsx`**
+- Adăugare `mx-4` sau `px-4` pe containerul exercițiului, astfel încât elementele draggable nu ating marginile ecranului
+- Zona laterală liberă permite scroll-ul nativ pe mobil
+
+**2. `src/pages/LessonPage.tsx`**
+- Adăugare `pb-24` pe zona `<main>` pentru a nu ascunde conținut sub feedback bar
+
+**3. `src/pages/ManualLessonPage.tsx`**
+- Aceeași ajustare de padding bottom
+
+## Rezultat
+- Drag-and-drop rămâne funcțional pe elementele în sine
+- Utilizatorul poate face scroll atingând marginile laterale ale ecranului
+- Butoanele ▲/▼ rămân ca alternativă
 
