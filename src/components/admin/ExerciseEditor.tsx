@@ -17,7 +17,7 @@ interface Props {
   nextIndex: number;
 }
 
-const generateId = (lessonId: string, index: number) => `${lessonId}-e${index}`;
+const generateId = (lessonId: string, _index: number) => `${lessonId}-e${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
 
 const emptyExercise = (lessonId: string, index: number): Exercise => ({
   id: generateId(lessonId, index),
