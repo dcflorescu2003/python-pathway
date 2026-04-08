@@ -148,7 +148,7 @@ const LessonPage = () => {
         </div>
       </header>
 
-      <main className="flex-1 overflow-y-auto px-4 py-6">
+      <main className="flex-1 overflow-y-auto px-4 py-6 pb-24">
         <div className="max-w-lg mx-auto">
           <AnimatePresence mode="wait">
             <motion.div key={exercise.id} initial={{ opacity: 0, x: 50 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -50 }}>

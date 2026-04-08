@@ -96,7 +96,7 @@ const OrderExercise = ({ exercise, onAnswer, feedback }: Props) => {
   return (
     <div>
       <p className="text-foreground font-bold mb-6 text-base">{exercise.question}</p>
-      <div className="space-y-2 mb-6" ref={containerRef}>
+      <div className="space-y-2 mb-6 mx-4" ref={containerRef}>
         {items.map((item, idx) => {
           const isCorrectPos = item.order === idx + 1;
           return (
