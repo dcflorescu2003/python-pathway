@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { ArrowLeft, Play, Loader2, CheckCircle2, XCircle, Lightbulb, Eye, EyeOff, BookOpen } from "lucide-react";
@@ -10,6 +10,7 @@ import { useProblems } from "@/hooks/useProblems";
 import { usePyodide, type TestResult } from "@/hooks/usePyodide";
 import { useProgress } from "@/hooks/useProgress";
 import { useSubscription } from "@/hooks/useSubscription";
+import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import LoadingScreen from "@/components/states/LoadingScreen";
 
@@ -27,6 +28,16 @@ const ProblemSolvePage = () => {
   const [showHint, setShowHint] = useState(false);
   const [showHiddenTests, setShowHiddenTests] = useState(false);
   const [showSolution, setShowSolution] = useState(false);
+  const [solutionText, setSolutionText] = useState<string | null>(null);
+  const [loadingSolution, setLoadingSolution] = useState(false);
+
+  const fetchSolution = useCallback(async () => {
+    if (!problem || solutionText !== null) return;
+    setLoadingSolution(true);
+    const { data, error } = await supabase.rpc("get_problem_solution", { p_id: problem.id });
+    if (!error && data) setSolutionText(data as string);
+    setLoadingSolution(false);
+  }, [problem, solutionText]);
 
   // Guard: redirect non-premium users from premium problems
   useEffect(() => {
@@ -165,14 +176,18 @@ const ProblemSolvePage = () => {
 
             {passedCount < totalCount && (
               <div className="space-y-3 pt-2">
-                <Button onClick={() => setShowSolution(!showSolution)} variant="outline" className="w-full gap-2 border-accent/30 text-accent hover:bg-accent/10">
+                <Button onClick={() => { setShowSolution(!showSolution); if (!showSolution) fetchSolution(); }} variant="outline" className="w-full gap-2 border-accent/30 text-accent hover:bg-accent/10">
                   <BookOpen className="h-4 w-4" /> {showSolution ? "Ascunde rezolvarea" : "Vezi rezolvarea"}
                 </Button>
                 {showSolution && (
                   <Card className="border-accent/30 bg-accent/5">
                     <CardContent className="p-4">
                       <p className="text-xs text-muted-foreground mb-2 font-medium">O posibilă rezolvare:</p>
-                      <pre className="bg-muted/50 p-3 rounded-lg font-mono text-sm overflow-x-auto text-foreground whitespace-pre-wrap"><code>{problem.solution}</code></pre>
+                      {loadingSolution ? (
+                        <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                      ) : (
+                        <pre className="bg-muted/50 p-3 rounded-lg font-mono text-sm overflow-x-auto text-foreground whitespace-pre-wrap"><code>{solutionText || ""}</code></pre>
+                      )}
                     </CardContent>
                   </Card>
                 )}
