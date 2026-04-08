@@ -37,7 +37,7 @@ async function fetchProblems(): Promise<{ problems: Problem[]; problemChapters: 
   if (chaptersError) throw chaptersError;
 
   const { data: problemsData, error: problemsError } = await supabase
-    .from("problems")
+    .from("problems_public" as any)
     .select("id, title, description, difficulty, xp_reward, test_cases, hint, chapter_id, sort_order, is_premium")
     .order("sort_order", { ascending: true });
 
