@@ -621,7 +621,53 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      problems_public: {
+        Row: {
+          chapter_id: string | null
+          description: string | null
+          difficulty: string | null
+          hint: string | null
+          id: string | null
+          is_premium: boolean | null
+          sort_order: number | null
+          test_cases: Json | null
+          title: string | null
+          xp_reward: number | null
+        }
+        Insert: {
+          chapter_id?: string | null
+          description?: string | null
+          difficulty?: string | null
+          hint?: string | null
+          id?: string | null
+          is_premium?: boolean | null
+          sort_order?: number | null
+          test_cases?: Json | null
+          title?: string | null
+          xp_reward?: number | null
+        }
+        Update: {
+          chapter_id?: string | null
+          description?: string | null
+          difficulty?: string | null
+          hint?: string | null
+          id?: string | null
+          is_premium?: boolean | null
+          sort_order?: number | null
+          test_cases?: Json | null
+          title?: string | null
+          xp_reward?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "problems_chapter_id_fkey"
+            columns: ["chapter_id"]
+            isOneToOne: false
+            referencedRelation: "problem_chapters"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       get_problem_solution: { Args: { p_id: string }; Returns: string }
