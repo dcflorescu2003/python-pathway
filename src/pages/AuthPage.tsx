@@ -139,38 +139,42 @@ const AccountView = () => {
           {user?.user_metadata?.full_name || user?.email?.split("@")[0] || "Pythonist"}
         </h1>
         <p className="text-sm text-muted-foreground mb-1">{user?.email}</p>
-        {progress.isPremium && (
-          <span className="text-xs font-medium text-yellow-500 flex items-center gap-1">
-            <Trophy className="h-3.5 w-3.5" /> Premium activ
-            {subscriptionEnd && (
-              <span className="text-muted-foreground ml-1">
-                — până la {new Date(subscriptionEnd).toLocaleDateString("ro-RO")}
-              </span>
+        {(progress.isPremium || subscribed) && (
+          <div className="flex flex-col items-center gap-2">
+            <span className="text-xs font-medium text-yellow-500 flex items-center gap-1">
+              <Trophy className="h-3.5 w-3.5" /> Premium activ
+              {subscriptionEnd && (
+                <span className="text-muted-foreground ml-1">
+                  — până la {new Date(subscriptionEnd).toLocaleDateString("ro-RO")}
+                </span>
+              )}
+            </span>
+            {source === "coupon" && (
+              <span className="text-[10px] text-muted-foreground">Activat prin cupon</span>
             )}
-          </span>
-        )}
-
-        {/* Subscription management */}
-        {subscribed && source === "stripe" && (
-          <Button
-            variant="outline"
-            className="mt-3 gap-2"
-            disabled={portalLoading}
-            onClick={async () => {
-              setPortalLoading(true);
-              try {
-                await openPortal();
-              } catch (err) {
-                console.error("Portal error:", err);
-                toast.error("Nu am putut deschide portalul de gestionare.");
-              } finally {
-                setPortalLoading(false);
-              }
-            }}
-          >
-            <CreditCard className="h-4 w-4" />
-            {portalLoading ? "Se deschide..." : "Gestionează abonamentul"}
-          </Button>
+            {source === "stripe" && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="mt-1 gap-2"
+                disabled={portalLoading}
+                onClick={async () => {
+                  setPortalLoading(true);
+                  try {
+                    await openPortal();
+                  } catch (err) {
+                    console.error("Portal error:", err);
+                    toast.error("Nu am putut deschide portalul de gestionare.");
+                  } finally {
+                    setPortalLoading(false);
+                  }
+                }}
+              >
+                <CreditCard className="h-4 w-4" />
+                {portalLoading ? "Se deschide..." : "Gestionează abonamentul"}
+              </Button>
+            )}
+          </div>
         )}
 
         <Card className="w-full max-w-sm mt-6 border-border">
