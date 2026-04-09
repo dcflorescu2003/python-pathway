@@ -83,6 +83,7 @@ const AccountView = () => {
       } else {
         toast.success("Te-ai alăturat clasei! 🎉");
         setJoinCode("");
+        setIsClassMember(true);
       }
     } finally {
       setJoinLoading(false);
