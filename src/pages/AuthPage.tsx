@@ -23,13 +23,14 @@ const AccountView = () => {
   const { isAdmin } = useAdminAccess();
   const { subscribed, subscriptionEnd, source, openPortal, checkSubscription } = useSubscription();
   const [isTeacher, setIsTeacher] = useState<boolean | null>(null);
+  const [isClassMember, setIsClassMember] = useState(false);
   const [joinCode, setJoinCode] = useState("");
   const [joinLoading, setJoinLoading] = useState(false);
   const [portalLoading, setPortalLoading] = useState(false);
 
-  // Load teacher status on mount
+  // Load teacher status and class membership on mount
   // eslint-disable-next-line react-hooks/rules-of-hooks
-  const [_initTeacher] = useState(() => {
+  const [_init] = useState(() => {
     if (!user) return null;
     supabase
       .from("profiles")
@@ -37,6 +38,12 @@ const AccountView = () => {
       .eq("user_id", user.id)
       .single()
       .then(({ data }) => setIsTeacher(data?.is_teacher ?? false));
+    supabase
+      .from("class_members")
+      .select("id")
+      .eq("student_id", user.id)
+      .limit(1)
+      .then(({ data }) => setIsClassMember((data?.length ?? 0) > 0));
     return null;
   });
 
