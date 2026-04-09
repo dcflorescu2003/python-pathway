@@ -96,6 +96,7 @@ export function useSubscription() {
   useEffect(() => {
     if (!user) {
       setState(DEFAULT_STATE);
+      invalidateCache();
       return;
     }
     checkSubscription();
