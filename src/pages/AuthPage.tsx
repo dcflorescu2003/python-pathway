@@ -10,8 +10,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
-import { ArrowLeft, Mail, Lock, User, Eye, EyeOff, LogOut, BookOpen, XCircle, Code, Zap, Flame, Trophy, Shield, Trash2, Settings, GraduationCap, UserPlus } from "lucide-react";
+import { ArrowLeft, Mail, Lock, User, Eye, EyeOff, LogOut, BookOpen, XCircle, Code, Zap, Flame, Trophy, Shield, Trash2, Settings, GraduationCap, UserPlus, Crown, CreditCard } from "lucide-react";
 import { useAdminAccess } from "@/hooks/useAdminAccess";
+import { useSubscription } from "@/hooks/useSubscription";
 import { toast } from "sonner";
 
 const AccountView = () => {
@@ -20,9 +21,11 @@ const AccountView = () => {
   const { progress } = useProgress();
   const { data: chapters } = useChapters();
   const { isAdmin } = useAdminAccess();
+  const { subscribed, subscriptionEnd, source, openPortal, checkSubscription } = useSubscription();
   const [isTeacher, setIsTeacher] = useState<boolean | null>(null);
   const [joinCode, setJoinCode] = useState("");
   const [joinLoading, setJoinLoading] = useState(false);
+  const [portalLoading, setPortalLoading] = useState(false);
 
   // Load teacher status on mount
   // eslint-disable-next-line react-hooks/rules-of-hooks
@@ -131,7 +134,35 @@ const AccountView = () => {
         {progress.isPremium && (
           <span className="text-xs font-medium text-yellow-500 flex items-center gap-1">
             <Trophy className="h-3.5 w-3.5" /> Premium activ
+            {subscriptionEnd && (
+              <span className="text-muted-foreground ml-1">
+                — până la {new Date(subscriptionEnd).toLocaleDateString("ro-RO")}
+              </span>
+            )}
           </span>
+        )}
+
+        {/* Subscription management */}
+        {subscribed && source === "stripe" && (
+          <Button
+            variant="outline"
+            className="mt-3 gap-2"
+            disabled={portalLoading}
+            onClick={async () => {
+              setPortalLoading(true);
+              try {
+                await openPortal();
+              } catch (err) {
+                console.error("Portal error:", err);
+                toast.error("Nu am putut deschide portalul de gestionare.");
+              } finally {
+                setPortalLoading(false);
+              }
+            }}
+          >
+            <CreditCard className="h-4 w-4" />
+            {portalLoading ? "Se deschide..." : "Gestionează abonamentul"}
+          </Button>
         )}
 
         <Card className="w-full max-w-sm mt-6 border-border">
