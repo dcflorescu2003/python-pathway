@@ -8,8 +8,8 @@ const corsHeaders = {
 };
 
 const PRICE_IDS = [
-  "price_1TAd4JRsFs1XlxrbCSROnd55", // lunar 5 RON
-  "price_1TAd4cRsFs1XlxrbtFW1sT6U", // anual 50 RON
+  "price_1TKFTORontECmDbLgZNvmacw", // lunar 5 RON
+  "price_1TKFUfRontECmDbLmYHZUk9D", // anual 50 RON
 ];
 
 serve(async (req) => {
