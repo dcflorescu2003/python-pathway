@@ -28,24 +28,43 @@ const AccountView = () => {
   const [joinLoading, setJoinLoading] = useState(false);
   const [portalLoading, setPortalLoading] = useState(false);
 
-  // Load teacher status and class membership on mount
-  // eslint-disable-next-line react-hooks/rules-of-hooks
-  const [_init] = useState(() => {
-    if (!user) return null;
-    supabase
-      .from("profiles")
-      .select("is_teacher")
-      .eq("user_id", user.id)
-      .single()
-      .then(({ data }) => setIsTeacher(data?.is_teacher ?? false));
-    supabase
-      .from("class_members")
-      .select("id")
-      .eq("student_id", user.id)
-      .limit(1)
-      .then(({ data }) => setIsClassMember((data?.length ?? 0) > 0));
-    return null;
-  });
+  useEffect(() => {
+    if (!user) return;
+
+    const loadAccountFlags = async () => {
+      const [{ data: profile }, { data: memberships }] = await Promise.all([
+        supabase
+          .from("profiles")
+          .select("is_teacher")
+          .eq("user_id", user.id)
+          .single(),
+        supabase
+          .from("class_members")
+          .select("id")
+          .eq("student_id", user.id)
+          .limit(1),
+      ]);
+
+      setIsTeacher(profile?.is_teacher ?? false);
+      setIsClassMember((memberships?.length ?? 0) > 0);
+    };
+
+    void loadAccountFlags();
+    void checkSubscription(true);
+
+    const handleWindowFocus = () => {
+      void loadAccountFlags();
+      void checkSubscription(true);
+    };
+
+    window.addEventListener("focus", handleWindowFocus);
+    document.addEventListener("visibilitychange", handleWindowFocus);
+
+    return () => {
+      window.removeEventListener("focus", handleWindowFocus);
+      document.removeEventListener("visibilitychange", handleWindowFocus);
+    };
+  }, [user, checkSubscription]);
 
   const activateTeacher = async () => {
     if (!user) return;
