@@ -57,12 +57,19 @@ const AccountView = () => {
       void checkSubscription(true);
     };
 
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        void loadAccountFlags();
+        void checkSubscription(true);
+      }
+    };
+
     window.addEventListener("focus", handleWindowFocus);
-    document.addEventListener("visibilitychange", handleWindowFocus);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
 
     return () => {
       window.removeEventListener("focus", handleWindowFocus);
-      document.removeEventListener("visibilitychange", handleWindowFocus);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
   }, [user, checkSubscription]);
 
