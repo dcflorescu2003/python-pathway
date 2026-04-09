@@ -37,7 +37,21 @@ async function fetchSubscriptionState(token: string): Promise<SubscriptionState>
   };
 }
 
-async function getSharedSubscriptionState(force = false): Promise<SubscriptionState> {
+function invalidateCache() {
+  cachedState = null;
+  lastCheckAt = 0;
+  lastCheckToken = null;
+  inFlightCheck = null;
+}
+
+async function getSharedSubscriptionState(force = false, userId?: string): Promise<SubscriptionState> {
+  // Invalidate cache when user changes
+  if (userId && lastCheckToken && lastCheckToken !== userId) {
+    invalidateCache();
+    force = true;
+  }
+  if (userId) lastCheckToken = userId;
+
   const now = Date.now();
   const isFresh = cachedState && now - lastCheckAt < 15_000;
 
@@ -70,7 +84,7 @@ export function useSubscription() {
     if (!user) return;
     setState((s) => ({ ...s, loading: true }));
     try {
-      const nextState = await getSharedSubscriptionState(force);
+      const nextState = await getSharedSubscriptionState(force, user.id);
       setState(nextState);
     } catch (err) {
       console.error("check-subscription error:", err);
@@ -82,6 +96,7 @@ export function useSubscription() {
   useEffect(() => {
     if (!user) {
       setState(DEFAULT_STATE);
+      invalidateCache();
       return;
     }
     checkSubscription();
