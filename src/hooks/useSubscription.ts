@@ -84,7 +84,7 @@ export function useSubscription() {
     if (!user) return;
     setState((s) => ({ ...s, loading: true }));
     try {
-      const nextState = await getSharedSubscriptionState(force);
+      const nextState = await getSharedSubscriptionState(force, user.id);
       setState(nextState);
     } catch (err) {
       console.error("check-subscription error:", err);
