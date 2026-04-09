@@ -94,8 +94,19 @@ serve(async (req) => {
       if (subscriptions.data.length > 0) {
         stripeActive = true;
         const sub = subscriptions.data[0];
-        subscriptionEnd = new Date(sub.current_period_end * 1000).toISOString();
-        logStep("Active Stripe subscription", { end: subscriptionEnd });
+        const periodEnd = typeof sub.current_period_end === "number"
+          ? sub.current_period_end
+          : null;
+
+        subscriptionEnd = periodEnd
+          ? new Date(periodEnd * 1000).toISOString()
+          : null;
+
+        logStep("Active Stripe subscription", {
+          subscription_id: sub.id,
+          end: subscriptionEnd,
+          status: sub.status,
+        });
       }
     }
 
