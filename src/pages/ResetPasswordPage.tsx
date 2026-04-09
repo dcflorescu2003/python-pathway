@@ -23,8 +23,15 @@ const ResetPasswordPage = () => {
       setIsRecovery(true);
     }
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === "PASSWORD_RECOVERY") {
+        setIsRecovery(true);
+      }
+    });
+
+    // Check if session already exists (hash was already processed by Supabase)
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) {
         setIsRecovery(true);
       }
     });
