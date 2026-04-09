@@ -21,9 +21,11 @@ const AccountView = () => {
   const { progress } = useProgress();
   const { data: chapters } = useChapters();
   const { isAdmin } = useAdminAccess();
+  const { subscribed, subscriptionEnd, source, openPortal, checkSubscription } = useSubscription();
   const [isTeacher, setIsTeacher] = useState<boolean | null>(null);
   const [joinCode, setJoinCode] = useState("");
   const [joinLoading, setJoinLoading] = useState(false);
+  const [portalLoading, setPortalLoading] = useState(false);
 
   // Load teacher status on mount
   // eslint-disable-next-line react-hooks/rules-of-hooks
