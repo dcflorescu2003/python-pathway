@@ -191,56 +191,60 @@ const AccountView = () => {
 
         <CouponRedemption />
 
-        {/* Teacher section */}
-        {isTeacher ? (
-          <div className="w-full max-w-sm mt-4 space-y-2">
-            <Button
-              variant="outline"
-              className="w-full gap-2"
-              onClick={() => navigate("/teacher")}
-            >
-              <GraduationCap className="h-4 w-4" />
-              Panou Profesor
-            </Button>
-            <Button
-              variant="ghost"
-              className="w-full gap-2 text-destructive hover:text-destructive hover:bg-destructive/10"
-              onClick={deactivateTeacher}
-            >
-              <XCircle className="h-4 w-4" />
-              Dezactivează modul profesor
-            </Button>
-          </div>
-        ) : (
-          <Button
-            variant="outline"
-            className="w-full max-w-sm mt-4 gap-2"
-            onClick={activateTeacher}
-          >
-            <GraduationCap className="h-4 w-4" />
-            Devino Profesor
-          </Button>
-        )}
-
-        {/* Join class */}
-        <Card className="w-full max-w-sm mt-4 border-border">
-          <CardContent className="p-4">
-            <p className="text-sm font-medium text-foreground mb-2 flex items-center gap-2">
-              <UserPlus className="h-4 w-4 text-primary" /> Alătură-te unei clase
-            </p>
-            <div className="flex gap-2">
-              <Input
-                placeholder="Cod clasă (ex: ABC123)"
-                value={joinCode}
-                onChange={(e) => setJoinCode(e.target.value)}
-                className="flex-1"
-              />
-              <Button onClick={handleJoinClass} disabled={!joinCode.trim() || joinLoading} size="sm">
-                {joinLoading ? "..." : "Intră"}
+        {/* Teacher section - hidden if user is a class member */}
+        {!isClassMember && (
+          isTeacher ? (
+            <div className="w-full max-w-sm mt-4 space-y-2">
+              <Button
+                variant="outline"
+                className="w-full gap-2"
+                onClick={() => navigate("/teacher")}
+              >
+                <GraduationCap className="h-4 w-4" />
+                Panou Profesor
+              </Button>
+              <Button
+                variant="ghost"
+                className="w-full gap-2 text-destructive hover:text-destructive hover:bg-destructive/10"
+                onClick={deactivateTeacher}
+              >
+                <XCircle className="h-4 w-4" />
+                Dezactivează modul profesor
               </Button>
             </div>
-          </CardContent>
-        </Card>
+          ) : (
+            <Button
+              variant="outline"
+              className="w-full max-w-sm mt-4 gap-2"
+              onClick={activateTeacher}
+            >
+              <GraduationCap className="h-4 w-4" />
+              Devino Profesor
+            </Button>
+          )
+        )}
+
+        {/* Join class - hidden if user is a teacher */}
+        {!isTeacher && (
+          <Card className="w-full max-w-sm mt-4 border-border">
+            <CardContent className="p-4">
+              <p className="text-sm font-medium text-foreground mb-2 flex items-center gap-2">
+                <UserPlus className="h-4 w-4 text-primary" /> Alătură-te unei clase
+              </p>
+              <div className="flex gap-2">
+                <Input
+                  placeholder="Cod clasă (ex: ABC123)"
+                  value={joinCode}
+                  onChange={(e) => setJoinCode(e.target.value)}
+                  className="flex-1"
+                />
+                <Button onClick={handleJoinClass} disabled={!joinCode.trim() || joinLoading} size="sm">
+                  {joinLoading ? "..." : "Intră"}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {isAdmin && (
           <Button
