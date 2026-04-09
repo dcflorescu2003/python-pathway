@@ -94,9 +94,14 @@ serve(async (req) => {
       if (subscriptions.data.length > 0) {
         stripeActive = true;
         const sub = subscriptions.data[0];
-        const periodEnd = typeof sub.current_period_end === "number"
-          ? sub.current_period_end
-          : null;
+
+        // current_period_end may be on the subscription or on items
+        let periodEnd: number | null = null;
+        if (typeof sub.current_period_end === "number") {
+          periodEnd = sub.current_period_end;
+        } else if (sub.items?.data?.[0] && typeof sub.items.data[0].current_period_end === "number") {
+          periodEnd = sub.items.data[0].current_period_end;
+        }
 
         subscriptionEnd = periodEnd
           ? new Date(periodEnd * 1000).toISOString()
@@ -105,7 +110,8 @@ serve(async (req) => {
         logStep("Active Stripe subscription", {
           subscription_id: sub.id,
           end: subscriptionEnd,
-          status: sub.status,
+          raw_period_end: sub.current_period_end,
+          item_period_end: sub.items?.data?.[0]?.current_period_end,
         });
       }
     }
