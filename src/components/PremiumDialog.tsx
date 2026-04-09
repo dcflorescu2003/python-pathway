@@ -7,8 +7,8 @@ import { useSubscription } from "@/hooks/useSubscription";
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 
-const MONTHLY_PRICE_ID = "price_1TAd4JRsFs1XlxrbCSROnd55";
-const YEARLY_PRICE_ID = "price_1TAd4cRsFs1XlxrbtFW1sT6U";
+const MONTHLY_PRICE_ID = "price_1TKFTORontECmDbLgZNvmacw";
+const YEARLY_PRICE_ID = "price_1TKFUfRontECmDbLmYHZUk9D";
 
 interface PremiumDialogProps {
   open: boolean;
