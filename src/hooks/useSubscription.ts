@@ -78,7 +78,7 @@ async function getSharedSubscriptionState(force = false, userId?: string): Promi
 
 export function useSubscription() {
   const { user, session } = useAuth();
-  const [state, setState] = useState<SubscriptionState>(DEFAULT_STATE);
+  const [state, setState] = useState<SubscriptionState>(cachedState ?? { ...DEFAULT_STATE, loading: !!user });
 
   const checkSubscription = useCallback(async (force = false) => {
     if (!user) return;
