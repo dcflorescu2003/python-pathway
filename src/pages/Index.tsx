@@ -123,6 +123,7 @@ const Index = (): JSX.Element => {
   const xpInLevel = Math.round(xpPerLevel) - xpToNext;
   const levelInfo = getLevelInfo(level);
   const showInstallCta = !Capacitor.isNativePlatform() && !isInstalled && !progress.isPremium;
+  const showPremiumCta = !progress.isPremium;
 
   useEffect(() => {
     if (prevLevelRef.current !== null && level > prevLevelRef.current) {
