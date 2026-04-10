@@ -12,7 +12,7 @@ import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { Flame, Heart, Zap, Trophy, Crown, School, ChevronDown, Plus, Target, BookOpen, Code } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import PremiumDialog from "@/components/PremiumDialog";
@@ -139,9 +139,9 @@ const Index = (): JSX.Element => {
     }} />;
   }
 
-  if (chaptersLoading || !chapters) return <LoadingScreen />;
+  const isReady = !chaptersLoading && !!chapters;
 
-  const filteredSchools = schoolSearch.trim()
+  const filteredSchools = isReady && schoolSearch.trim()
     ? schools.filter((s) =>
         `${s.name} ${s.city}`.toLowerCase().includes(schoolSearch.toLowerCase())
       ).slice(0, 50)
