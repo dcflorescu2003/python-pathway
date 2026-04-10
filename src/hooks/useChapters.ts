@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { chapters as localChapters } from "@/data/courses";
 import { Capacitor } from "@capacitor/core";
+import { useAuth } from "@/hooks/useAuth";
 
 export type ExerciseType = "quiz" | "fill" | "order" | "truefalse" | "match" | "card" | "problem";
 
@@ -186,9 +187,11 @@ async function fetchChapters(): Promise<Chapter[]> {
 }
 
 export function useChapters() {
+  const { user, loading } = useAuth();
   return useQuery({
-    queryKey: ["chapters"],
+    queryKey: ["chapters", user?.id ?? "anon"],
     queryFn: fetchChapters,
+    enabled: !loading,
     staleTime: 5 * 60 * 1000, // 5 minutes
     gcTime: 30 * 60 * 1000,
     refetchOnWindowFocus: true,
