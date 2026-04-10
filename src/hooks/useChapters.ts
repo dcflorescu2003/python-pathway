@@ -186,9 +186,11 @@ async function fetchChapters(): Promise<Chapter[]> {
 }
 
 export function useChapters() {
+  const { user, loading } = useAuth();
   return useQuery({
-    queryKey: ["chapters"],
+    queryKey: ["chapters", user?.id ?? "anon"],
     queryFn: fetchChapters,
+    enabled: !loading,
     staleTime: 5 * 60 * 1000, // 5 minutes
     gcTime: 30 * 60 * 1000,
     refetchOnWindowFocus: true,
