@@ -123,6 +123,7 @@ const Index = (): JSX.Element => {
   const xpInLevel = Math.round(xpPerLevel) - xpToNext;
   const levelInfo = getLevelInfo(level);
   const showInstallCta = !Capacitor.isNativePlatform() && !isInstalled && !progress.isPremium;
+  const showPremiumCta = !progress.isPremium;
 
   useEffect(() => {
     if (prevLevelRef.current !== null && level > prevLevelRef.current) {
@@ -218,6 +219,18 @@ const Index = (): JSX.Element => {
               size="lg"
             >
               📲 Instalează și ai Premium gratuit!
+            </Button>
+          </motion.div>
+        )}
+
+        {showPremiumCta && (
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mb-4">
+            <Button
+              onClick={() => setShowPremium(true)}
+              className="w-full py-6 text-lg font-bold rounded-xl gap-2 bg-gradient-to-r from-yellow-500 to-amber-500 hover:from-yellow-600 hover:to-amber-600 text-white"
+              size="lg"
+            >
+              <Crown className="h-5 w-5" /> Încearcă Premium și ai vieți nelimitate!
             </Button>
           </motion.div>
         )}
