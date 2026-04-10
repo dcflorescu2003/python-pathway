@@ -141,7 +141,7 @@ const Index = (): JSX.Element => {
 
   const isReady = !chaptersLoading && !!chapters;
 
-  const filteredSchools = isReady && schoolSearch.trim()
+  const filteredSchools = schoolSearch.trim()
     ? schools.filter((s) =>
         `${s.name} ${s.city}`.toLowerCase().includes(schoolSearch.toLowerCase())
       ).slice(0, 50)
@@ -172,7 +172,24 @@ const Index = (): JSX.Element => {
   const currentSchool = schools.find((s) => s.id === selectedSchool);
 
   return (
-    <div className="min-h-screen bg-background">
+    <AnimatePresence mode="wait">
+      {!isReady ? (
+        <motion.div
+          key="skeleton"
+          initial={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.3 }}
+        >
+          <LoadingScreen />
+        </motion.div>
+      ) : (
+        <motion.div
+          key="content"
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, ease: "easeOut" }}
+          className="min-h-screen bg-background"
+        >
       <header className={`sticky top-0 z-40 border-b backdrop-blur-md pt-[env(safe-area-inset-top)] ${
         progress.isPremium 
           ? "border-yellow-500/30 bg-gradient-to-r from-yellow-500/10 via-background/90 to-yellow-500/10" 
@@ -402,7 +419,9 @@ const Index = (): JSX.Element => {
       <LevelRoadmap open={showRoadmap} onOpenChange={setShowRoadmap} currentLevel={level} xpPerLevel={xpPerLevel} />
       <CouponExpiredDialog open={couponExpired} onOpenChange={(open) => { if (!open) dismissCouponExpired(); }} onSubscribe={startCheckout} onStayFree={dismissCouponExpired} />
       <LevelUpDialog open={showLevelUp} onOpenChange={setShowLevelUp} levelInfo={levelInfo} newLevel={level} />
-    </div>
+    </motion.div>
+      )}
+    </AnimatePresence>
   );
 };
 
