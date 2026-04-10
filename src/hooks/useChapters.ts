@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { chapters as localChapters } from "@/data/courses";
 import { Capacitor } from "@capacitor/core";
+import { useAuth } from "@/hooks/useAuth";
 
 export type ExerciseType = "quiz" | "fill" | "order" | "truefalse" | "match" | "card" | "problem";
 
