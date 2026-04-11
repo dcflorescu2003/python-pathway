@@ -23,12 +23,24 @@ const DEFAULT_PROGRESS: UserProgress = {
 const STORAGE_KEY = "pyro-progress";
 const LEGACY_KEY = "pylearn-progress";
 
+function checkStreakExpiry(p: UserProgress): UserProgress {
+  const today = new Date().toISOString().split("T")[0];
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  const yesterdayStr = yesterday.toISOString().split("T")[0];
+
+  if (p.lastActivityDate !== today && p.lastActivityDate !== yesterdayStr) {
+    return { ...p, streak: 0 };
+  }
+  return p;
+}
+
 function loadLocalProgress(): UserProgress {
   try {
     const stored = localStorage.getItem(STORAGE_KEY) || localStorage.getItem(LEGACY_KEY);
     if (stored) {
       const parsed = JSON.parse(stored);
-      return { ...DEFAULT_PROGRESS, ...parsed };
+      return checkStreakExpiry({ ...DEFAULT_PROGRESS, ...parsed });
     }
   } catch {}
   return { ...DEFAULT_PROGRESS };
