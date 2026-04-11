@@ -63,6 +63,19 @@ const Index = (): JSX.Element => {
     }
   }, [authLoading, user, navigate]);
 
+  // Fetch best_streak from profile
+  useEffect(() => {
+    if (!user) return;
+    supabase
+      .from("profiles")
+      .select("best_streak")
+      .eq("user_id", user.id)
+      .single()
+      .then(({ data }) => {
+        if (data?.best_streak != null) setBestStreak(data.best_streak);
+      });
+  }, [user]);
+
   useEffect(() => {
     if (!isInstalled || !user) return;
     const alreadyGranted = localStorage.getItem("pyro-install-premium-granted");
@@ -441,6 +454,7 @@ const Index = (): JSX.Element => {
       <LevelRoadmap open={showRoadmap} onOpenChange={setShowRoadmap} currentLevel={level} xpPerLevel={xpPerLevel} />
       <CouponExpiredDialog open={couponExpired} onOpenChange={(open) => { if (!open) dismissCouponExpired(); }} onSubscribe={startCheckout} onStayFree={dismissCouponExpired} />
       <LevelUpDialog open={showLevelUp} onOpenChange={setShowLevelUp} levelInfo={levelInfo} newLevel={level} />
+      <StreakDialog open={showStreak} onOpenChange={setShowStreak} streak={progress.streak} bestStreak={Math.max(bestStreak, progress.streak)} lastActivityDate={progress.lastActivityDate} />
     </motion.div>
       )}
     </AnimatePresence>
