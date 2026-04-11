@@ -90,6 +90,55 @@ export function useCreateTest() {
   });
 }
 
+export function useUpdateTest() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (params: {
+      id: string;
+      title: string;
+      time_limit_minutes: number | null;
+      variant_mode: string;
+      items: TestItem[];
+    }) => {
+      // Update test metadata
+      const { error: testError } = await supabase
+        .from("tests")
+        .update({
+          title: params.title,
+          time_limit_minutes: params.time_limit_minutes,
+          variant_mode: params.variant_mode,
+        })
+        .eq("id", params.id);
+      if (testError) throw testError;
+
+      // Delete old items and re-insert
+      const { error: delError } = await supabase
+        .from("test_items")
+        .delete()
+        .eq("test_id", params.id);
+      if (delError) throw delError;
+
+      if (params.items.length > 0) {
+        const itemsToInsert = params.items.map((item, idx) => ({
+          test_id: params.id,
+          variant: item.variant,
+          sort_order: idx,
+          source_type: item.source_type,
+          source_id: item.source_id,
+          custom_data: item.custom_data,
+          points: item.points,
+        }));
+        const { error: insError } = await supabase.from("test_items").insert(itemsToInsert);
+        if (insError) throw insError;
+      }
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["teacher-tests"] });
+      qc.invalidateQueries({ queryKey: ["test-items"] });
+    },
+  });
+}
+
 export function useDeleteTest() {
   const qc = useQueryClient();
   return useMutation({
