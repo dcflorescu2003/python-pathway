@@ -255,6 +255,16 @@ function mergeProgress(a: UserProgress, b: UserProgress): UserProgress {
 
 // Sync full progress state to cloud
 async function syncToCloud(userId: string, p: UserProgress) {
+  // Fetch current best_streak to potentially update it
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("best_streak")
+    .eq("user_id", userId)
+    .single();
+
+  const currentBest = profile?.best_streak ?? 0;
+  const newBest = Math.max(currentBest, p.streak);
+
   // Update profile
   await supabase
     .from("profiles")
@@ -264,6 +274,7 @@ async function syncToCloud(userId: string, p: UserProgress) {
       lives: p.lives,
       is_premium: p.isPremium,
       last_activity_date: p.lastActivityDate,
+      best_streak: newBest,
     })
     .eq("user_id", userId);
 
