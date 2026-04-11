@@ -14,8 +14,19 @@ const TeacherPage = () => {
   const { data: classes = [] } = useTeacherClasses();
   const [selectedClassId, setSelectedClassId] = useState<string | null>(null);
   const [showTestBuilder, setShowTestBuilder] = useState(false);
+  const [editingTestId, setEditingTestId] = useState<string | null>(null);
 
   const selectedClass = classes.find((c) => c.id === selectedClassId);
+
+  const handleEditTest = (testId: string) => {
+    setEditingTestId(testId);
+    setShowTestBuilder(true);
+  };
+
+  const handleCloseBuilder = () => {
+    setShowTestBuilder(false);
+    setEditingTestId(null);
+  };
 
   return (
     <motion.div
@@ -36,7 +47,7 @@ const TeacherPage = () => {
 
       <main className="px-4 py-6 max-w-lg mx-auto">
         {showTestBuilder ? (
-          <TestBuilder onBack={() => setShowTestBuilder(false)} />
+          <TestBuilder onBack={handleCloseBuilder} editTestId={editingTestId} />
         ) : selectedClass ? (
           <ClassDetail
             classId={selectedClass.id}
@@ -54,7 +65,10 @@ const TeacherPage = () => {
               <ClassManager onSelectClass={setSelectedClassId} />
             </TabsContent>
             <TabsContent value="tests" className="mt-4">
-              <TestManager onCreateTest={() => setShowTestBuilder(true)} />
+              <TestManager
+                onCreateTest={() => { setEditingTestId(null); setShowTestBuilder(true); }}
+                onEditTest={handleEditTest}
+              />
             </TabsContent>
           </Tabs>
         )}

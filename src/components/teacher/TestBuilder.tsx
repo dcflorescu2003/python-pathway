@@ -701,8 +701,12 @@ const TestBuilder = ({ onBack, editTestId }: TestBuilderProps) => {
         </Card>
       )}
 
-      <Button onClick={handleCreate} disabled={createTest.isPending} className="w-full">
-        {createTest.isPending ? "Se creează..." : `Creează test (${items.length} itemi)`}
+      <Button onClick={handleSave} disabled={createTest.isPending || updateTest.isPending} className="w-full">
+        {createTest.isPending || updateTest.isPending
+          ? "Se salvează..."
+          : isEditing
+            ? `Salvează modificările (${items.length} itemi)`
+            : `Creează test (${items.length} itemi)`}
       </Button>
     </div>
   );
