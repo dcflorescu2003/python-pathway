@@ -125,8 +125,17 @@ const TakeTestPage = () => {
               .single();
             enriched.problem_data = prob;
           } else if (item.source_type === "custom") {
-            // Use RPC to get safe custom data
-            enriched.exercise_data = item.custom_data;
+            // RPC already returns custom data fields inline
+            enriched.exercise_data = {
+              type: item.item_type,
+              question: item.question,
+              options: item.options,
+              blanks: item.blanks,
+              lines: item.lines,
+              pairs: item.pairs,
+              statement: item.statement,
+              code_template: item.code_template,
+            };
           }
 
           enrichedItems.push(enriched);
