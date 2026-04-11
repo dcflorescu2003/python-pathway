@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { supabase } from "@/integrations/supabase/client";
 import { useTestAssignments, useTestSubmissions, useTestAnswers, useTestItems, useUpdateAnswerScore } from "@/hooks/useTests";
 import { ArrowLeft, ChevronDown, ChevronUp, CheckCircle, XCircle, Save } from "lucide-react";
 import { toast } from "sonner";
@@ -22,7 +23,31 @@ const TestResults = ({ testId, onBack }: TestResultsProps) => {
   const { data: answers = [] } = useTestAnswers(expandedSubmissionId);
   const updateScore = useUpdateAnswerScore();
 
-  // Local score overrides
+  // Enriched data: exercise/problem details keyed by source_id
+  const [enrichedData, setEnrichedData] = useState<Record<string, any>>({});
+
+  // Fetch exercise/problem details when testItems load
+  useEffect(() => {
+    if (testItems.length === 0) return;
+    const fetchDetails = async () => {
+      const exerciseIds = testItems.filter((ti: any) => ti.source_type === "exercise" && ti.source_id).map((ti: any) => ti.source_id);
+      const problemIds = testItems.filter((ti: any) => ti.source_type === "problem" && ti.source_id).map((ti: any) => ti.source_id);
+
+      const result: Record<string, any> = {};
+
+      if (exerciseIds.length > 0) {
+        const { data } = await supabase.from("exercises").select("*").in("id", exerciseIds);
+        data?.forEach((ex) => { result[ex.id] = { ...ex, _sourceType: "exercise" }; });
+      }
+      if (problemIds.length > 0) {
+        const { data } = await supabase.from("problems").select("id, title, description, test_cases, hint, difficulty").in("id", problemIds);
+        data?.forEach((p) => { result[p.id] = { ...p, _sourceType: "problem" }; });
+      }
+      setEnrichedData(result);
+    };
+    fetchDetails();
+  }, [testItems]);
+
   const [scoreEdits, setScoreEdits] = useState<Record<string, string>>({});
   const [feedbackEdits, setFeedbackEdits] = useState<Record<string, string>>({});
 
@@ -43,11 +68,8 @@ const TestResults = ({ testId, onBack }: TestResultsProps) => {
     }
 
     try {
-      // If only feedback changed, we still need a score value — use existing
-      const scoreToSend = newScore !== undefined ? newScore : undefined;
-      // We need to get current score if not editing it
       const currentAnswer = answers.find((a: any) => a.id === answerId);
-      const finalScore = scoreToSend !== undefined ? scoreToSend : currentAnswer?.score ?? 0;
+      const finalScore = newScore !== undefined ? newScore : currentAnswer?.score ?? 0;
 
       await updateScore.mutateAsync({
         answerId,
@@ -63,9 +85,44 @@ const TestResults = ({ testId, onBack }: TestResultsProps) => {
     }
   };
 
-  // Build a map from test_item_id to test_item for question info
+  // Build a map from test_item_id to test_item
   const itemMap = new Map<string, any>();
   testItems.forEach((ti: any) => itemMap.set(ti.id, ti));
+
+  // Get the real question text for an item
+  const getQuestionInfo = (testItem: any) => {
+    if (!testItem) return { question: "", type: "" };
+
+    if (testItem.source_type === "custom" && testItem.custom_data) {
+      return {
+        question: testItem.custom_data.question || "",
+        type: testItem.custom_data.type || "custom",
+        data: testItem.custom_data,
+      };
+    }
+
+    if ((testItem.source_type === "exercise" || testItem.source_type === "problem") && testItem.source_id) {
+      const detail = enrichedData[testItem.source_id];
+      if (detail) {
+        if (detail._sourceType === "exercise") {
+          return {
+            question: detail.question || detail.statement || "",
+            type: detail.type || "exercise",
+            data: detail,
+          };
+        }
+        if (detail._sourceType === "problem") {
+          return {
+            question: detail.description || detail.title || "",
+            type: "problem",
+            data: detail,
+          };
+        }
+      }
+    }
+
+    return { question: "", type: testItem.source_type || "" };
+  };
 
   return (
     <div className="space-y-4">
@@ -113,6 +170,7 @@ const TestResults = ({ testId, onBack }: TestResultsProps) => {
                       onClick={() => {
                         setExpandedSubmissionId(isExpanded ? null : sub.id);
                         setScoreEdits({});
+                        setFeedbackEdits({});
                       }}
                       className="w-full p-3 flex items-center justify-between text-left"
                     >
@@ -138,11 +196,13 @@ const TestResults = ({ testId, onBack }: TestResultsProps) => {
                       <div className="border-t border-border px-3 pb-3 pt-2 space-y-3">
                         {answers.map((ans: any, idx: number) => {
                           const testItem = itemMap.get(ans.test_item_id);
+                          const qInfo = getQuestionInfo(testItem);
                           return (
                             <AnswerDetail
                               key={ans.id}
                               answer={ans}
                               index={idx}
+                              questionInfo={qInfo}
                               testItem={testItem}
                               scoreEdit={scoreEdits[ans.id]}
                               onScoreEdit={(val) => setScoreEdits((p) => ({ ...p, [ans.id]: val }))}
@@ -166,10 +226,20 @@ const TestResults = ({ testId, onBack }: TestResultsProps) => {
   );
 };
 
-// Detailed answer view per item
+const typeLabel = (t: string) => {
+  const map: Record<string, string> = {
+    quiz: "Quiz", truefalse: "A/F", fill: "Completare",
+    order: "Ordonare", match: "Potrivire", problem: "Problemă",
+    exercise: "Exercițiu", custom: "Custom",
+  };
+  return map[t] || t;
+};
+
+// Always-expanded answer detail per item
 const AnswerDetail = ({
   answer,
   index,
+  questionInfo,
   testItem,
   scoreEdit,
   onScoreEdit,
@@ -180,6 +250,7 @@ const AnswerDetail = ({
 }: {
   answer: any;
   index: number;
+  questionInfo: { question: string; type: string; data?: any };
   testItem: any;
   scoreEdit: string | undefined;
   onScoreEdit: (val: string) => void;
@@ -188,22 +259,24 @@ const AnswerDetail = ({
   onSave: () => void;
   saving: boolean;
 }) => {
-  const [expanded, setExpanded] = useState(false);
   const isCorrect = answer.score >= answer.max_points;
-
-  // Extract question info from test_item
+  const itemType = questionInfo.type;
+  const exerciseData = questionInfo.data;
+  // For custom items, use custom_data; for exercise/problem, use enriched data
   const customData = testItem?.custom_data;
-  const sourceType = testItem?.source_type;
-  const questionText = customData?.question || `Item ${index + 1}`;
-  const itemType = customData?.type || sourceType;
+
+  // Determine options source: enriched exercise data or custom_data
+  const options = exerciseData?.options || customData?.options;
+  const correctOptionId = exerciseData?.correct_option_id || customData?.correct_option_id;
+  const statement = exerciseData?.statement || customData?.statement;
+  const blanks = exerciseData?.blanks || customData?.blanks;
+  const lines = exerciseData?.lines || customData?.lines;
+  const pairs = exerciseData?.pairs || customData?.pairs;
 
   return (
     <div className="rounded-lg border border-border overflow-hidden">
       {/* Header */}
-      <button
-        onClick={() => setExpanded(!expanded)}
-        className="w-full flex items-center justify-between p-2.5 text-left hover:bg-muted/30 transition-colors"
-      >
+      <div className="flex items-center justify-between p-2.5 bg-muted/30">
         <div className="flex items-center gap-2">
           {isCorrect ? (
             <CheckCircle className="h-4 w-4 text-primary shrink-0" />
@@ -213,7 +286,7 @@ const AnswerDetail = ({
           <span className="text-xs font-medium text-foreground">Item {index + 1}</span>
           {itemType && (
             <span className="text-[10px] bg-muted text-muted-foreground px-1.5 py-0.5 rounded">
-              {itemType === "quiz" ? "Quiz" : itemType === "truefalse" ? "A/F" : itemType === "fill" ? "Completare" : itemType === "order" ? "Ordonare" : itemType === "match" ? "Potrivire" : itemType === "problem" ? "Problemă" : itemType}
+              {typeLabel(itemType)}
             </span>
           )}
         </div>
@@ -222,158 +295,165 @@ const AnswerDetail = ({
           {answer.ai_reviewed && (
             <span className="text-[10px] bg-primary/10 text-primary px-1 rounded">AI</span>
           )}
-          {expanded ? <ChevronUp className="h-3.5 w-3.5 text-muted-foreground" /> : <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />}
         </div>
-      </button>
+      </div>
 
-      {/* Expanded details */}
-      {expanded && (
-        <div className="border-t border-border p-3 space-y-3 bg-muted/20">
-          {/* Question */}
+      {/* Always visible details */}
+      <div className="p-3 space-y-3">
+        {/* Question / Cerință */}
+        {questionInfo.question && (
           <div>
             <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">Cerință</p>
-            <p className="text-xs text-foreground">{questionText}</p>
+            <p className="text-xs text-foreground whitespace-pre-wrap">{questionInfo.question}</p>
+          </div>
+        )}
+
+        {/* Problem title if applicable */}
+        {itemType === "problem" && exerciseData?.title && (
+          <p className="text-xs font-bold text-foreground">{exerciseData.title}</p>
+        )}
+
+        {/* Quiz options with student selection */}
+        {itemType === "quiz" && options && (
+          <div>
+            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">Variante</p>
+            <div className="space-y-1">
+              {(options as any[]).map((opt: any) => {
+                const isSelected = answer.answer_data?.selected === opt.id;
+                const isCorrectOpt = opt.id === correctOptionId;
+                return (
+                  <div
+                    key={opt.id}
+                    className={`text-xs px-2 py-1.5 rounded border ${
+                      isSelected && isCorrectOpt
+                        ? "border-primary bg-primary/10 text-foreground"
+                        : isSelected
+                          ? "border-destructive bg-destructive/10 text-foreground"
+                          : isCorrectOpt
+                            ? "border-primary/40 bg-primary/5 text-muted-foreground"
+                            : "border-transparent text-muted-foreground"
+                    }`}
+                  >
+                    {isSelected && "➤ "}{opt.text}
+                    {isCorrectOpt && " ✓"}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* True/False */}
+        {itemType === "truefalse" && (
+          <div>
+            {statement && (
+              <p className="text-xs text-foreground mb-1 italic">„{statement}"</p>
+            )}
+            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">Răspuns elev</p>
+            <p className="text-xs text-foreground">
+              {answer.answer_data?.selected === true ? "Adevărat" : answer.answer_data?.selected === false ? "Fals" : "Necompletat"}
+            </p>
+          </div>
+        )}
+
+        {/* Fill */}
+        {itemType === "fill" && answer.answer_data?.blanks && (
+          <div>
+            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">Răspunsuri completate</p>
+            {Object.entries(answer.answer_data.blanks).map(([key, val]) => (
+              <p key={key} className="text-xs text-foreground font-mono bg-muted px-2 py-1 rounded mt-1">
+                {val as string || "(gol)"}
+              </p>
+            ))}
+          </div>
+        )}
+
+        {/* Order */}
+        {itemType === "order" && answer.answer_data?.order && (
+          <div>
+            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">Ordinea elevului</p>
+            {(answer.answer_data.order as string[]).map((lineId: string, i: number) => {
+              const line = lines?.find((l: any) => l.id === lineId);
+              return (
+                <p key={lineId} className="text-xs font-mono bg-muted px-2 py-1 rounded mt-1">
+                  {i + 1}. {line?.text || lineId}
+                </p>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Match */}
+        {itemType === "match" && answer.answer_data?.matches && (
+          <div>
+            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">Potriviri elev</p>
+            {Object.entries(answer.answer_data.matches).map(([pairId, val]) => {
+              const pair = pairs?.find((p: any) => p.id === pairId);
+              return (
+                <p key={pairId} className="text-xs bg-muted px-2 py-1 rounded mt-1">
+                  {pair?.left || pairId} → <span className="font-medium">{val as string || "(gol)"}</span>
+                </p>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Problem (code) */}
+        {(itemType === "problem" || testItem?.source_type === "problem") && answer.answer_data?.code && (
+          <div>
+            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">Cod trimis</p>
+            <pre className="text-xs font-mono bg-muted p-2 rounded overflow-x-auto whitespace-pre-wrap">
+              {answer.answer_data.code}
+            </pre>
+          </div>
+        )}
+
+        {/* Generic text answer */}
+        {answer.answer_data?.text && (
+          <div>
+            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">Răspuns text</p>
+            <p className="text-xs text-foreground bg-muted p-2 rounded">{answer.answer_data.text}</p>
+          </div>
+        )}
+
+        {/* Feedback profesor */}
+        <div className="pt-2 border-t border-border space-y-2">
+          <div>
+            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">Feedback profesor</p>
+            <Textarea
+              placeholder="Scrie un comentariu pentru elev..."
+              value={feedbackEdit !== undefined ? feedbackEdit : (answer.feedback || "")}
+              onChange={(e) => onFeedbackEdit(e.target.value)}
+              className="text-xs min-h-[50px]"
+              maxLength={1000}
+            />
           </div>
 
-          {/* Show options for quiz items */}
-          {itemType === "quiz" && customData?.options && (
-            <div>
-              <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">Variante</p>
-              <div className="space-y-1">
-                {(customData.options as any[]).map((opt: any) => {
-                  const isSelected = answer.answer_data?.selected === opt.id;
-                  const isCorrectOption = opt.id === customData.correct_option_id;
-                  return (
-                    <div
-                      key={opt.id}
-                      className={`text-xs px-2 py-1.5 rounded border ${
-                        isSelected && isCorrectOption
-                          ? "border-primary bg-primary/10 text-foreground"
-                          : isSelected
-                            ? "border-destructive bg-destructive/10 text-foreground"
-                            : isCorrectOption
-                              ? "border-primary/40 bg-primary/5 text-muted-foreground"
-                              : "border-transparent text-muted-foreground"
-                      }`}
-                    >
-                      {isSelected && "➤ "}{opt.text}
-                      {isCorrectOption && " ✓"}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-          {/* True/False */}
-          {itemType === "truefalse" && (
-            <div>
-              <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">Răspuns elev</p>
-              <p className="text-xs text-foreground">
-                {answer.answer_data?.selected === true ? "Adevărat" : answer.answer_data?.selected === false ? "Fals" : "Necompletat"}
-              </p>
-            </div>
-          )}
-
-          {/* Fill */}
-          {itemType === "fill" && answer.answer_data?.blanks && (
-            <div>
-              <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">Răspunsuri completate</p>
-              {Object.entries(answer.answer_data.blanks).map(([key, val]) => (
-                <p key={key} className="text-xs text-foreground font-mono bg-muted px-2 py-1 rounded mt-1">
-                  {val as string || "(gol)"}
-                </p>
-              ))}
-            </div>
-          )}
-
-          {/* Order */}
-          {itemType === "order" && answer.answer_data?.order && (
-            <div>
-              <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">Ordinea elevului</p>
-              {(answer.answer_data.order as string[]).map((lineId: string, i: number) => {
-                const line = customData?.lines?.find((l: any) => l.id === lineId);
-                return (
-                  <p key={lineId} className="text-xs font-mono bg-muted px-2 py-1 rounded mt-1">
-                    {i + 1}. {line?.text || lineId}
-                  </p>
-                );
-              })}
-            </div>
-          )}
-
-          {/* Match */}
-          {itemType === "match" && answer.answer_data?.matches && (
-            <div>
-              <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">Potriviri elev</p>
-              {Object.entries(answer.answer_data.matches).map(([pairId, val]) => {
-                const pair = customData?.pairs?.find((p: any) => p.id === pairId);
-                return (
-                  <p key={pairId} className="text-xs bg-muted px-2 py-1 rounded mt-1">
-                    {pair?.left || pairId} → <span className="font-medium">{val as string || "(gol)"}</span>
-                  </p>
-                );
-              })}
-            </div>
-          )}
-
-          {/* Problem (code) */}
-          {(itemType === "problem" || sourceType === "problem") && answer.answer_data?.code && (
-            <div>
-              <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">Cod trimis</p>
-              <pre className="text-xs font-mono bg-muted p-2 rounded overflow-x-auto whitespace-pre-wrap">
-                {answer.answer_data.code}
-              </pre>
-            </div>
-          )}
-
-          {/* Generic text answer */}
-          {answer.answer_data?.text && (
-            <div>
-              <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">Răspuns text</p>
-              <p className="text-xs text-foreground bg-muted p-2 rounded">{answer.answer_data.text}</p>
-            </div>
-          )}
-
-          {/* Feedback profesor */}
-          <div className="pt-1 border-t border-border space-y-2">
-            <div>
-              <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">Feedback profesor</p>
-              <Textarea
-                placeholder="Scrie un comentariu pentru elev..."
-                value={feedbackEdit !== undefined ? feedbackEdit : (answer.feedback || "")}
-                onChange={(e) => onFeedbackEdit(e.target.value)}
-                className="text-xs min-h-[60px]"
-                maxLength={1000}
-              />
-            </div>
-
-            {/* Manual score adjustment */}
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] font-semibold text-muted-foreground">Punctaj:</span>
-              <Input
-                type="number"
-                min={0}
-                max={answer.max_points}
-                step={0.5}
-                value={scoreEdit !== undefined ? scoreEdit : answer.score}
-                onChange={(e) => onScoreEdit(e.target.value)}
-                className="w-20 h-7 text-xs"
-              />
-              <span className="text-[10px] text-muted-foreground">/ {answer.max_points}</span>
-              <Button
-                size="sm"
-                variant="outline"
-                className="h-7 px-2 text-xs gap-1"
-                onClick={onSave}
-                disabled={saving || (scoreEdit === undefined && feedbackEdit === undefined)}
-              >
-                <Save className="h-3 w-3" /> Salvează
-              </Button>
-            </div>
+          {/* Manual score adjustment */}
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] font-semibold text-muted-foreground">Punctaj:</span>
+            <Input
+              type="number"
+              min={0}
+              max={answer.max_points}
+              step={0.5}
+              value={scoreEdit !== undefined ? scoreEdit : answer.score}
+              onChange={(e) => onScoreEdit(e.target.value)}
+              className="w-20 h-7 text-xs"
+            />
+            <span className="text-[10px] text-muted-foreground">/ {answer.max_points}</span>
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-7 px-2 text-xs gap-1"
+              onClick={onSave}
+              disabled={saving || (scoreEdit === undefined && feedbackEdit === undefined)}
+            >
+              <Save className="h-3 w-3" /> Salvează
+            </Button>
           </div>
         </div>
-      )}
+      </div>
     </div>
   );
 };
