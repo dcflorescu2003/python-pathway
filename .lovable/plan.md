@@ -1,40 +1,43 @@
 
 
-## Problem
-
-When logging in, the chapters/exercises sometimes don't appear until a manual page refresh. This happens because `useChapters` fires its query immediately on mount, before the Supabase auth session is fully restored. Since chapters, lessons, and exercises tables have RLS policies requiring `authenticated` role, the query returns empty or fails silently when the session isn't ready yet. React Query then caches this empty result.
-
-## Solution
-
-Gate the `useChapters` query on auth readiness, and refetch when the user changes.
+## Plan: Replay XP reduction, score updates, and fill exercise multi-answer
 
 ### Changes
 
-**1. `src/hooks/useChapters.ts`**
-- Import `useAuth` hook
-- Add `user` to the query key so it refetches when user changes
-- Add `enabled: !loading` so the query waits until auth state is settled
-- This ensures chapters are only fetched after the Supabase client has a valid session
+**1. Reduced XP on lesson replay (`src/hooks/useProgress.ts`)**
+- In `completeLesson`, check if `completedLessons[lessonId]` already exists
+- If already completed, override `xpEarned` to 3 XP (instead of the full lesson reward)
+- If first time, use the full `xpEarned` as before
 
-**2. `src/hooks/useProgress.ts`** (minor)
-- Verify cloud data reload triggers correctly on user change (already handled via `prevUserId` ref — no change needed)
+**2. Always update correct count in completed_lessons (`src/hooks/useProgress.ts`)**
+- Change the merge logic: when a lesson is re-completed, always store the latest `score` (not `Math.max`)
+- This ensures the database reflects how many exercises the user got correct on their most recent attempt
+- Update `syncToCloud` to use upsert instead of delete+re-insert for efficiency
 
-### Technical detail
+**3. Update the completion screen to show replay XP (`src/pages/LessonPage.tsx`)**
+- Pass whether the lesson was already completed to determine displayed XP
+- Show "+3 XP" on replay instead of the full amount
+
+**4. Fill exercise: support multiple accepted answers (`src/components/exercises/FillExercise.tsx`)**
+- Change the validation in `handleSubmit` to split each blank's `answer` by comma
+- A blank is correct if the user's normalized input matches any of the comma-separated alternatives
+- Example: if `b.answer` is `"print,Print"`, both `print` and `Print` are accepted
+- When showing the correct answer on wrong feedback, display only the first alternative
+
+### Database
+No schema changes needed — the existing `completed_lessons.score` column already stores the correct count.
+
+### Technical details
 
 ```typescript
-// In useChapters:
-export function useChapters() {
-  const { user, loading } = useAuth();
-  return useQuery({
-    queryKey: ["chapters", user?.id ?? "anon"],
-    queryFn: fetchChapters,
-    enabled: !loading,
-    staleTime: 5 * 60 * 1000,
-    gcTime: 30 * 60 * 1000,
-    refetchOnWindowFocus: true,
-  });
-}
-```
+// FillExercise - multi-answer validation
+const isBlankCorrect = (userAnswer: string, acceptedAnswers: string) => {
+  const alternatives = acceptedAnswers.split(",").map(a => normalize(a));
+  return alternatives.includes(normalize(userAnswer));
+};
 
-Adding `user?.id` to the query key forces a refetch when the user logs in or out. The `enabled: !loading` prevents the query from running before auth is resolved.
+// useProgress - replay XP
+const alreadyCompleted = !!prev.completedLessons[lessonId]?.completed;
+const finalXP = Math.round((alreadyCompleted ? 3 : xpEarned) * bonusMultiplier);
+```
 
