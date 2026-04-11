@@ -24,23 +24,40 @@ const TestResults = ({ testId, onBack }: TestResultsProps) => {
 
   // Local score overrides
   const [scoreEdits, setScoreEdits] = useState<Record<string, string>>({});
+  const [feedbackEdits, setFeedbackEdits] = useState<Record<string, string>>({});
 
-  const handleSaveScore = async (answerId: string, maxPoints: number) => {
-    const raw = scoreEdits[answerId];
-    if (raw === undefined) return;
-    const newScore = parseFloat(raw);
-    if (isNaN(newScore) || newScore < 0 || newScore > maxPoints) {
-      toast.error(`Scorul trebuie să fie între 0 și ${maxPoints}`);
-      return;
+  const handleSave = async (answerId: string, maxPoints: number) => {
+    const rawScore = scoreEdits[answerId];
+    const rawFeedback = feedbackEdits[answerId];
+    const hasScoreEdit = rawScore !== undefined;
+    const hasFeedbackEdit = rawFeedback !== undefined;
+    if (!hasScoreEdit && !hasFeedbackEdit) return;
+
+    let newScore: number | undefined;
+    if (hasScoreEdit) {
+      newScore = parseFloat(rawScore);
+      if (isNaN(newScore) || newScore < 0 || newScore > maxPoints) {
+        toast.error(`Scorul trebuie să fie între 0 și ${maxPoints}`);
+        return;
+      }
     }
+
     try {
-      await updateScore.mutateAsync({ answerId, score: newScore, submissionId: expandedSubmissionId! });
-      toast.success("Scor actualizat");
-      setScoreEdits((prev) => {
-        const copy = { ...prev };
-        delete copy[answerId];
-        return copy;
+      // If only feedback changed, we still need a score value — use existing
+      const scoreToSend = newScore !== undefined ? newScore : undefined;
+      // We need to get current score if not editing it
+      const currentAnswer = answers.find((a: any) => a.id === answerId);
+      const finalScore = scoreToSend !== undefined ? scoreToSend : currentAnswer?.score ?? 0;
+
+      await updateScore.mutateAsync({
+        answerId,
+        score: finalScore,
+        submissionId: expandedSubmissionId!,
+        feedback: hasFeedbackEdit ? rawFeedback.trim() : undefined,
       });
+      toast.success("Salvat cu succes");
+      setScoreEdits((prev) => { const c = { ...prev }; delete c[answerId]; return c; });
+      setFeedbackEdits((prev) => { const c = { ...prev }; delete c[answerId]; return c; });
     } catch {
       toast.error("Eroare la salvare");
     }
