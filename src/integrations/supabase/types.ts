@@ -905,6 +905,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      student_can_view_test: { Args: { p_test_id: string }; Returns: boolean }
     }
     Enums: {
       app_role: "admin" | "user"
