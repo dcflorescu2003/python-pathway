@@ -83,15 +83,15 @@ const TakeTestPage = () => {
 
         const usedVariant = existingSub?.variant || variant;
 
-        // Get test items (filtered by variant)
-        const { data: testItems } = await supabase
-          .from("test_items")
-          .select("*")
-          .eq("test_id", assignment.tests.id)
-          .or(`variant.eq.${usedVariant},variant.eq.both`)
-          .order("sort_order");
+        // Get test items via RPC (bypasses RLS)
+        const { data: testItems, error: rpcError } = await supabase
+          .rpc("get_test_items_for_student", {
+            p_assignment_id: assignmentId,
+            p_variant: usedVariant,
+          });
 
-        if (!testItems) { setLoading(false); return; }
+        if (rpcError) throw rpcError;
+        if (!testItems || testItems.length === 0) { setLoading(false); return; }
 
         // Shuffle items if shuffle mode
         let orderedItems = testItems;
