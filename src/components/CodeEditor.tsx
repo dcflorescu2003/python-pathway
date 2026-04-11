@@ -24,6 +24,7 @@ const CodeEditor = ({ value, onChange, disabled, placeholder }: CodeEditorProps)
         disabled={disabled}
         placeholder={placeholder || "# Scrie codul tău Python aici..."}
         spellCheck={false}
+        autoCapitalize="none"
         className={cn(
           "w-full min-h-[200px] p-4 font-mono text-sm bg-background text-foreground",
           "resize-y outline-none placeholder:text-muted-foreground/50",
@@ -34,12 +35,13 @@ const CodeEditor = ({ value, onChange, disabled, placeholder }: CodeEditorProps)
         onKeyDown={(e) => {
           if (e.key === "Tab") {
             e.preventDefault();
-            const start = e.currentTarget.selectionStart;
-            const end = e.currentTarget.selectionEnd;
+            const target = e.currentTarget;
+            const start = target.selectionStart;
+            const end = target.selectionEnd;
             const newValue = value.substring(0, start) + "    " + value.substring(end);
             onChange(newValue);
             requestAnimationFrame(() => {
-              e.currentTarget.selectionStart = e.currentTarget.selectionEnd = start + 4;
+              target.selectionStart = target.selectionEnd = start + 4;
             });
           }
         }}
