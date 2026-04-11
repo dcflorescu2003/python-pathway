@@ -26,6 +26,7 @@ import { supabase } from "@/integrations/supabase/client";
 import NotificationBell from "@/components/NotificationBell";
 import LoadingScreen from "@/components/states/LoadingScreen";
 import LevelUpDialog from "@/components/LevelUpDialog";
+import StreakDialog from "@/components/StreakDialog";
 import { Capacitor } from "@capacitor/core";
 
 const Index = (): JSX.Element => {
@@ -47,6 +48,8 @@ const Index = (): JSX.Element => {
   const { couponExpired, dismissCouponExpired, startCheckout } = useSubscription();
   const [schoolSearch, setSchoolSearch] = useState("");
   const [showLevelUp, setShowLevelUp] = useState(false);
+  const [showStreak, setShowStreak] = useState(false);
+  const [bestStreak, setBestStreak] = useState(0);
   const prevLevelRef = useRef<number | null>(null);
 
   useEffect(() => {
@@ -59,6 +62,19 @@ const Index = (): JSX.Element => {
       return () => clearTimeout(timeout);
     }
   }, [authLoading, user, navigate]);
+
+  // Fetch best_streak from profile
+  useEffect(() => {
+    if (!user) return;
+    supabase
+      .from("profiles")
+      .select("best_streak")
+      .eq("user_id", user.id)
+      .single()
+      .then(({ data }) => {
+        if (data?.best_streak != null) setBestStreak(data.best_streak);
+      });
+  }, [user]);
 
   useEffect(() => {
     if (!isInstalled || !user) return;
@@ -209,7 +225,7 @@ const Index = (): JSX.Element => {
                 <Crown className="h-5 w-5" />
               </button>
             )}
-            <div className="flex items-center gap-1 text-warning relative">
+            <button onClick={() => setShowStreak(true)} className="flex items-center gap-1 text-warning relative">
               <motion.div
                 animate={progress.streak > 0 ? {
                   scale: [1, 1.2, 1],
@@ -231,7 +247,7 @@ const Index = (): JSX.Element => {
                 />
               )}
               <span className={`text-sm font-bold ${progress.streak > 0 ? "text-orange-500" : "text-muted-foreground"}`}>{progress.streak}</span>
-            </div>
+            </button>
             <div className="flex items-center gap-1 text-destructive">
               <Heart className="h-5 w-5" />
               <span className="text-sm font-bold">{progress.isPremium ? "∞" : progress.lives}</span>
@@ -438,6 +454,7 @@ const Index = (): JSX.Element => {
       <LevelRoadmap open={showRoadmap} onOpenChange={setShowRoadmap} currentLevel={level} xpPerLevel={xpPerLevel} />
       <CouponExpiredDialog open={couponExpired} onOpenChange={(open) => { if (!open) dismissCouponExpired(); }} onSubscribe={startCheckout} onStayFree={dismissCouponExpired} />
       <LevelUpDialog open={showLevelUp} onOpenChange={setShowLevelUp} levelInfo={levelInfo} newLevel={level} />
+      <StreakDialog open={showStreak} onOpenChange={setShowStreak} streak={progress.streak} bestStreak={Math.max(bestStreak, progress.streak)} lastActivityDate={progress.lastActivityDate} />
     </motion.div>
       )}
     </AnimatePresence>
