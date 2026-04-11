@@ -338,3 +338,35 @@ export function useSubmitTest() {
     },
   });
 }
+
+export function useUpdateAnswerScore() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (params: { answerId: string; score: number; submissionId: string }) => {
+      const { error } = await supabase
+        .from("test_answers")
+        .update({ score: params.score })
+        .eq("id", params.answerId);
+      if (error) throw error;
+
+      // Recalculate submission totals
+      const { data: allAnswers } = await supabase
+        .from("test_answers")
+        .select("score, max_points")
+        .eq("submission_id", params.submissionId);
+
+      if (allAnswers) {
+        const totalScore = allAnswers.reduce((sum, a) => sum + (Number(a.score) || 0), 0);
+        const maxScore = allAnswers.reduce((sum, a) => sum + (Number(a.max_points) || 0), 0);
+        await supabase
+          .from("test_submissions")
+          .update({ total_score: totalScore, max_score: maxScore })
+          .eq("id", params.submissionId);
+      }
+    },
+    onSuccess: (_, vars) => {
+      qc.invalidateQueries({ queryKey: ["test-answers"] });
+      qc.invalidateQueries({ queryKey: ["test-submissions"] });
+    },
+  });
+}
