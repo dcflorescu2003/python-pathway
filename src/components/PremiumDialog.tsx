@@ -1,6 +1,6 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Heart, Zap, Crown, Infinity, Loader2, Settings } from "lucide-react";
+import { Heart, Zap, Crown, Infinity, Loader2, Settings, ShieldCheck, Code } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/useAuth";
 import { useSubscription } from "@/hooks/useSubscription";
@@ -97,11 +97,21 @@ const PremiumDialog = ({ open, onOpenChange }: PremiumDialogProps) => {
 
                 <div className="flex items-center gap-3 rounded-lg border border-border bg-card p-3">
                   <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
-                    <Zap className="h-5 w-5 text-primary" />
+                    <ShieldCheck className="h-5 w-5 text-primary" />
                   </div>
                   <div>
-                    <p className="text-sm font-bold text-foreground">Încercări nelimitate</p>
-                    <p className="text-xs text-foreground/60">Repetă orice lecție oricând</p>
+                    <p className="text-sm font-bold text-foreground">Fără reclame</p>
+                    <p className="text-xs text-foreground/60">Experiență curată, fără întreruperi</p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3 rounded-lg border border-border bg-card p-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-accent/50">
+                    <Code className="h-5 w-5 text-accent-foreground" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold text-foreground">Probleme premium</p>
+                    <p className="text-xs text-foreground/60">Acces la toate provocările de cod</p>
                   </div>
                 </div>
               </div>

@@ -17,7 +17,6 @@ import { Flame, Heart, Zap, Trophy, Crown, School, ChevronDown, Plus, Target, Bo
 import { toast } from "@/hooks/use-toast";
 import PremiumDialog from "@/components/PremiumDialog";
 import LevelRoadmap from "@/components/LevelRoadmap";
-import InstallDialog from "@/components/InstallDialog";
 import SchoolOnboarding from "@/components/onboarding/SchoolOnboarding";
 import { useInstallPrompt } from "@/hooks/useInstallPrompt";
 import { useSubscription } from "@/hooks/useSubscription";
@@ -42,9 +41,8 @@ const Index = (): JSX.Element => {
   const [newSchoolName, setNewSchoolName] = useState("");
   const [showPremium, setShowPremium] = useState(false);
   const [showChallenges, setShowChallenges] = useState(false);
-  const [showInstall, setShowInstall] = useState(false);
   const [showRoadmap, setShowRoadmap] = useState(false);
-  const { isInstalled, canPrompt, promptInstall } = useInstallPrompt();
+  const { isInstalled } = useInstallPrompt();
   const { couponExpired, dismissCouponExpired, startCheckout } = useSubscription();
   const [schoolSearch, setSchoolSearch] = useState("");
   const [showLevelUp, setShowLevelUp] = useState(false);
@@ -138,8 +136,19 @@ const Index = (): JSX.Element => {
   const xpToNext = getXPForNextLevel(progress.xp, xpPerLevel);
   const xpInLevel = Math.round(xpPerLevel) - xpToNext;
   const levelInfo = getLevelInfo(level);
-  const showInstallCta = !Capacitor.isNativePlatform() && !isInstalled && !progress.isPremium;
-  const showPremiumCta = !progress.isPremium;
+  // Show premium popup after login for non-premium users (once per session)
+  const [showPremiumPopup, setShowPremiumPopup] = useState(false);
+  useEffect(() => {
+    if (!user || progress.isPremium || authLoading) return;
+    const shown = sessionStorage.getItem("pyro-premium-popup-shown");
+    if (!shown) {
+      const timer = setTimeout(() => {
+        setShowPremiumPopup(true);
+        sessionStorage.setItem("pyro-premium-popup-shown", "true");
+      }, 1500);
+      return () => clearTimeout(timer);
+    }
+  }, [user, progress.isPremium, authLoading]);
 
   useEffect(() => {
     if (prevLevelRef.current !== null && level > prevLevelRef.current) {
@@ -261,31 +270,7 @@ const Index = (): JSX.Element => {
       </header>
 
       <main className="px-4 py-6">
-        {showInstallCta && (
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mb-4">
-            <Button
-              onClick={async () => {
-                if (canPrompt) { await promptInstall(); } else { setShowInstall(true); }
-              }}
-              className="w-full py-6 text-lg font-bold rounded-xl gap-2"
-              size="lg"
-            >
-              📲 Instalează și ai Premium gratuit!
-            </Button>
-          </motion.div>
-        )}
-
-        {showPremiumCta && (
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mb-4">
-            <Button
-              onClick={() => setShowPremium(true)}
-              className="w-full py-6 text-lg font-bold rounded-xl gap-2 bg-gradient-to-r from-yellow-500 to-amber-500 hover:from-yellow-600 hover:to-amber-600 text-white"
-              size="lg"
-            >
-              <Crown className="h-5 w-5" /> Încearcă Premium și ai vieți nelimitate!
-            </Button>
-          </motion.div>
-        )}
+        
 
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mb-4">
           <button
@@ -449,8 +434,7 @@ const Index = (): JSX.Element => {
         </div>
       </main>
 
-      <PremiumDialog open={showPremium} onOpenChange={setShowPremium} />
-      <InstallDialog open={showInstall} onOpenChange={setShowInstall} />
+      <PremiumDialog open={showPremium || showPremiumPopup} onOpenChange={(open) => { setShowPremium(open); setShowPremiumPopup(open); }} />
       <LevelRoadmap open={showRoadmap} onOpenChange={setShowRoadmap} currentLevel={level} xpPerLevel={xpPerLevel} />
       <CouponExpiredDialog open={couponExpired} onOpenChange={(open) => { if (!open) dismissCouponExpired(); }} onSubscribe={startCheckout} onStayFree={dismissCouponExpired} />
       <LevelUpDialog open={showLevelUp} onOpenChange={setShowLevelUp} levelInfo={levelInfo} newLevel={level} />
