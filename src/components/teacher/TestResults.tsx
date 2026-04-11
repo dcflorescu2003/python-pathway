@@ -335,36 +335,42 @@ const AnswerDetail = ({
             </div>
           )}
 
-          {/* Feedback */}
-          {answer.feedback && (
+          {/* Feedback profesor */}
+          <div className="pt-1 border-t border-border space-y-2">
             <div>
-              <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">Feedback</p>
-              <p className="text-xs text-muted-foreground italic">{answer.feedback}</p>
+              <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">Feedback profesor</p>
+              <Textarea
+                placeholder="Scrie un comentariu pentru elev..."
+                value={feedbackEdit !== undefined ? feedbackEdit : (answer.feedback || "")}
+                onChange={(e) => onFeedbackEdit(e.target.value)}
+                className="text-xs min-h-[60px]"
+                maxLength={1000}
+              />
             </div>
-          )}
 
-          {/* Manual score adjustment */}
-          <div className="flex items-center gap-2 pt-1 border-t border-border">
-            <span className="text-[10px] font-semibold text-muted-foreground">Punctaj:</span>
-            <Input
-              type="number"
-              min={0}
-              max={answer.max_points}
-              step={0.5}
-              value={scoreEdit !== undefined ? scoreEdit : answer.score}
-              onChange={(e) => onScoreEdit(e.target.value)}
-              className="w-20 h-7 text-xs"
-            />
-            <span className="text-[10px] text-muted-foreground">/ {answer.max_points}</span>
-            <Button
-              size="sm"
-              variant="outline"
-              className="h-7 px-2 text-xs gap-1"
-              onClick={onSave}
-              disabled={saving || scoreEdit === undefined}
-            >
-              <Save className="h-3 w-3" /> Salvează
-            </Button>
+            {/* Manual score adjustment */}
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-semibold text-muted-foreground">Punctaj:</span>
+              <Input
+                type="number"
+                min={0}
+                max={answer.max_points}
+                step={0.5}
+                value={scoreEdit !== undefined ? scoreEdit : answer.score}
+                onChange={(e) => onScoreEdit(e.target.value)}
+                className="w-20 h-7 text-xs"
+              />
+              <span className="text-[10px] text-muted-foreground">/ {answer.max_points}</span>
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-7 px-2 text-xs gap-1"
+                onClick={onSave}
+                disabled={saving || (scoreEdit === undefined && feedbackEdit === undefined)}
+              >
+                <Save className="h-3 w-3" /> Salvează
+              </Button>
+            </div>
           </div>
         </div>
       )}
