@@ -83,15 +83,15 @@ const TakeTestPage = () => {
 
         const usedVariant = existingSub?.variant || variant;
 
-        // Get test items (filtered by variant)
-        const { data: testItems } = await supabase
-          .from("test_items")
-          .select("*")
-          .eq("test_id", assignment.tests.id)
-          .or(`variant.eq.${usedVariant},variant.eq.both`)
-          .order("sort_order");
+        // Get test items via RPC (bypasses RLS)
+        const { data: testItems, error: rpcError } = await supabase
+          .rpc("get_test_items_for_student", {
+            p_assignment_id: assignmentId,
+            p_variant: usedVariant,
+          });
 
-        if (!testItems) { setLoading(false); return; }
+        if (rpcError) throw rpcError;
+        if (!testItems || testItems.length === 0) { setLoading(false); return; }
 
         // Shuffle items if shuffle mode
         let orderedItems = testItems;
@@ -125,8 +125,17 @@ const TakeTestPage = () => {
               .single();
             enriched.problem_data = prob;
           } else if (item.source_type === "custom") {
-            // Use RPC to get safe custom data
-            enriched.exercise_data = item.custom_data;
+            // RPC already returns custom data fields inline
+            enriched.exercise_data = {
+              type: item.item_type,
+              question: item.question,
+              options: item.options,
+              blanks: item.blanks,
+              lines: item.lines,
+              pairs: item.pairs,
+              statement: item.statement,
+              code_template: item.code_template,
+            };
           }
 
           enrichedItems.push(enriched);
