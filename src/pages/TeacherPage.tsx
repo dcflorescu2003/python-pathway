@@ -2,14 +2,18 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { ArrowLeft, GraduationCap } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useTeacherClasses } from "@/hooks/useTeacher";
 import ClassManager from "@/components/teacher/ClassManager";
 import ClassDetail from "@/components/teacher/ClassDetail";
+import TestManager from "@/components/teacher/TestManager";
+import TestBuilder from "@/components/teacher/TestBuilder";
 
 const TeacherPage = () => {
   const navigate = useNavigate();
   const { data: classes = [] } = useTeacherClasses();
   const [selectedClassId, setSelectedClassId] = useState<string | null>(null);
+  const [showTestBuilder, setShowTestBuilder] = useState(false);
 
   const selectedClass = classes.find((c) => c.id === selectedClassId);
 
@@ -31,7 +35,9 @@ const TeacherPage = () => {
       </header>
 
       <main className="px-4 py-6 max-w-lg mx-auto">
-        {selectedClass ? (
+        {showTestBuilder ? (
+          <TestBuilder onBack={() => setShowTestBuilder(false)} />
+        ) : selectedClass ? (
           <ClassDetail
             classId={selectedClass.id}
             className={selectedClass.name}
@@ -39,7 +45,18 @@ const TeacherPage = () => {
             onBack={() => setSelectedClassId(null)}
           />
         ) : (
-          <ClassManager onSelectClass={setSelectedClassId} />
+          <Tabs defaultValue="classes" className="w-full">
+            <TabsList className="w-full">
+              <TabsTrigger value="classes" className="flex-1">Clase</TabsTrigger>
+              <TabsTrigger value="tests" className="flex-1">Teste</TabsTrigger>
+            </TabsList>
+            <TabsContent value="classes" className="mt-4">
+              <ClassManager onSelectClass={setSelectedClassId} />
+            </TabsContent>
+            <TabsContent value="tests" className="mt-4">
+              <TestManager onCreateTest={() => setShowTestBuilder(true)} />
+            </TabsContent>
+          </Tabs>
         )}
       </main>
     </motion.div>

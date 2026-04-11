@@ -29,6 +29,7 @@ const PrivacyPolicyPage = lazy(() => import("./pages/PrivacyPolicyPage"));
 const DeleteAccountPage = lazy(() => import("./pages/DeleteAccountPage"));
 const TeacherPage = lazy(() => import("./pages/TeacherPage"));
 const ManualLessonPage = lazy(() => import("./pages/ManualLessonPage"));
+const TakeTestPage = lazy(() => import("./pages/TakeTestPage"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 const queryClient = new QueryClient();
