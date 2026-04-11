@@ -7,10 +7,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useChapters } from "@/hooks/useChapters";
 import { useProblems } from "@/hooks/useProblems";
 import { useCreateTest, useUpdateTest, useTestItems, TestItem } from "@/hooks/useTests";
-import { ArrowLeft, Plus, Trash2, BookOpen, Code, GripVertical, PenLine, FileCheck, Copy } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, BookOpen, Code, GripVertical, PenLine, FileCheck, Copy, ChevronDown, ChevronRight, Eye } from "lucide-react";
 import { toast } from "sonner";
 
 interface TestBuilderProps {
@@ -86,6 +87,8 @@ const TestBuilder = ({ onBack, editTestId }: TestBuilderProps) => {
   // Browser state
   const [selectedChapterId, setSelectedChapterId] = useState<string>("");
   const [selectedProblemChapterId, setSelectedProblemChapterId] = useState<string>("");
+  const [expandedLessons, setExpandedLessons] = useState<Set<string>>(new Set());
+  const [previewItemId, setPreviewItemId] = useState<string | null>(null);
 
   // Custom question editor state
   const [showCustomEditor, setShowCustomEditor] = useState(false);
@@ -104,6 +107,15 @@ const TestBuilder = ({ onBack, editTestId }: TestBuilderProps) => {
     { id: "3", text: "", order: 2 },
   ]);
   const [customFillQuestion, setCustomFillQuestion] = useState("");
+
+  const toggleLesson = (lessonId: string) => {
+    setExpandedLessons(prev => {
+      const next = new Set(prev);
+      if (next.has(lessonId)) next.delete(lessonId);
+      else next.add(lessonId);
+      return next;
+    });
+  };
 
   const addItem = (sourceType: string, sourceId: string | null, variant: string = "both", customData: any = null) => {
     if (sourceId && items.some((i) => i.source_id === sourceId && i.source_type === sourceType)) {
@@ -162,10 +174,80 @@ const TestBuilder = ({ onBack, editTestId }: TestBuilderProps) => {
     return <Code className="h-3 w-3 text-accent-foreground shrink-0" />;
   };
 
+  // Get exercise details for preview
+  const getExerciseDetails = (exerciseId: string) => {
+    for (const ch of chapters) {
+      for (const lesson of ch.lessons) {
+        const ex = lesson.exercises?.find((e) => e.id === exerciseId);
+        if (ex) return ex;
+      }
+    }
+    return null;
+  };
+
+  // Get problem details for preview
+  const getProblemDetails = (problemId: string) => {
+    return allProblems.find((p) => p.id === problemId) || null;
+  };
+
+  // Render exercise preview
+  const renderExercisePreview = (ex: any) => {
+    if (!ex) return null;
+    return (
+      <div className="mt-2 p-3 bg-muted/30 rounded-lg border border-border/50 space-y-2">
+        <p className="text-xs font-medium text-foreground">{ex.question || ex.statement}</p>
+        {ex.type === "quiz" && ex.options && (
+          <div className="space-y-1">
+            {(ex.options as any[]).map((opt: any) => (
+              <div key={opt.id} className={`text-[11px] px-2 py-1 rounded ${opt.id === ex.correctOptionId ? "bg-primary/10 text-primary font-medium" : "text-muted-foreground"}`}>
+                {opt.id?.toUpperCase?.() || "•"}) {opt.text}
+              </div>
+            ))}
+          </div>
+        )}
+        {ex.type === "truefalse" && (
+          <p className="text-[11px] text-primary">Răspuns: {ex.isTrue ? "Adevărat" : "Fals"}</p>
+        )}
+        {ex.type === "fill" && ex.blanks && (
+          <div className="space-y-0.5">
+            {(ex.blanks as any[]).map((b: any, i: number) => (
+              <p key={b.id || i} className="text-[11px] text-muted-foreground">Spațiu {i + 1}: <span className="text-primary">{b.answer}</span></p>
+            ))}
+          </div>
+        )}
+        {ex.type === "order" && ex.lines && (
+          <div className="space-y-0.5">
+            {(ex.lines as any[]).map((l: any, i: number) => (
+              <p key={l.id || i} className="text-[11px] font-mono text-muted-foreground">{i + 1}. {l.text}</p>
+            ))}
+          </div>
+        )}
+        {ex.type === "match" && ex.pairs && (
+          <div className="space-y-0.5">
+            {(ex.pairs as any[]).map((p: any) => (
+              <p key={p.id} className="text-[11px] text-muted-foreground">{p.left} → <span className="text-primary">{p.right}</span></p>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  // Render problem preview
+  const renderProblemPreview = (prob: any) => {
+    if (!prob) return null;
+    return (
+      <div className="mt-2 p-3 bg-muted/30 rounded-lg border border-border/50 space-y-2">
+        <p className="text-xs font-bold text-foreground">{prob.title}</p>
+        <p className="text-[11px] text-muted-foreground whitespace-pre-wrap line-clamp-4">{prob.description}</p>
+        {prob.difficulty && <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary">{prob.difficulty}</span>}
+      </div>
+    );
+  };
+
   // Load existing test data when editing
   useEffect(() => {
     if (!isEditing || editLoaded) return;
-    // Load test metadata
     const loadTest = async () => {
       const { data: test } = await (await import("@/integrations/supabase/client")).supabase
         .from("tests")
@@ -333,6 +415,11 @@ const TestBuilder = ({ onBack, editTestId }: TestBuilderProps) => {
   const selectedChapter = chapters.find((c) => c.id === selectedChapterId);
   const filteredProblems = allProblems.filter((p) => p.chapter === selectedProblemChapterId);
 
+  // Variant preview helpers
+  const variantItems = (v: string) => items.filter(i => i.variant === v || i.variant === "both");
+  const variant1Items = variantItems("A");
+  const variant2Items = variantItems("B");
+
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-3">
@@ -419,7 +506,7 @@ const TestBuilder = ({ onBack, editTestId }: TestBuilderProps) => {
           ))}
         </TabsContent>
 
-        {/* Exercises tab */}
+        {/* Exercises tab - collapsible by lesson */}
         <TabsContent value="exercises" className="space-y-2 mt-2">
           <Select value={selectedChapterId} onValueChange={setSelectedChapterId}>
             <SelectTrigger className="h-8 text-xs">
@@ -432,20 +519,39 @@ const TestBuilder = ({ onBack, editTestId }: TestBuilderProps) => {
             </SelectContent>
           </Select>
           {selectedChapter?.lessons.map((lesson) => (
-            <div key={lesson.id} className="space-y-1">
-              <p className="text-xs font-medium text-muted-foreground px-1">{lesson.title}</p>
-              {lesson.exercises?.map((ex) => (
-                <button
-                  key={ex.id}
-                  onClick={() => addItem("exercise", ex.id)}
-                  className="w-full text-left px-2 py-1.5 rounded-md text-xs text-foreground hover:bg-muted/80 transition-colors flex items-center gap-2"
-                >
-                  <Plus className="h-3 w-3 text-primary shrink-0" />
-                  <span className="truncate">{ex.question?.substring(0, 80)}</span>
-                  <span className="text-[10px] text-muted-foreground shrink-0 ml-auto">{ex.type}</span>
-                </button>
-              ))}
-            </div>
+            <Collapsible key={lesson.id} open={expandedLessons.has(lesson.id)} onOpenChange={() => toggleLesson(lesson.id)}>
+              <CollapsibleTrigger className="w-full flex items-center gap-2 px-2 py-2 rounded-lg hover:bg-muted/50 transition-colors">
+                {expandedLessons.has(lesson.id)
+                  ? <ChevronDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                  : <ChevronRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                }
+                <span className="text-xs font-medium text-foreground text-left flex-1">{lesson.title}</span>
+                <span className="text-[10px] text-muted-foreground">{lesson.exercises?.length || 0} ex.</span>
+              </CollapsibleTrigger>
+              <CollapsibleContent className="pl-4 space-y-1 mt-1">
+                {lesson.exercises?.map((ex) => (
+                  <div key={ex.id}>
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => addItem("exercise", ex.id)}
+                        className="flex-1 text-left px-2 py-1.5 rounded-md text-xs text-foreground hover:bg-muted/80 transition-colors flex items-center gap-2 min-w-0"
+                      >
+                        <Plus className="h-3 w-3 text-primary shrink-0" />
+                        <span className="truncate">{ex.question?.substring(0, 80)}</span>
+                        <span className="text-[10px] text-muted-foreground shrink-0 ml-auto">{ex.type}</span>
+                      </button>
+                      <button
+                        onClick={() => setPreviewItemId(previewItemId === ex.id ? null : ex.id)}
+                        className="p-1 text-muted-foreground hover:text-primary shrink-0"
+                      >
+                        <Eye className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                    {previewItemId === ex.id && renderExercisePreview(ex)}
+                  </div>
+                ))}
+              </CollapsibleContent>
+            </Collapsible>
           ))}
         </TabsContent>
 
@@ -462,15 +568,25 @@ const TestBuilder = ({ onBack, editTestId }: TestBuilderProps) => {
             </SelectContent>
           </Select>
           {filteredProblems.map((prob) => (
-            <button
-              key={prob.id}
-              onClick={() => addItem("problem", prob.id)}
-              className="w-full text-left px-2 py-1.5 rounded-md text-xs text-foreground hover:bg-muted/80 transition-colors flex items-center gap-2"
-            >
-              <Plus className="h-3 w-3 text-primary shrink-0" />
-              <span className="truncate">{prob.title}</span>
-              <span className="text-[10px] text-muted-foreground shrink-0 ml-auto">{prob.difficulty}</span>
-            </button>
+            <div key={prob.id}>
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => addItem("problem", prob.id)}
+                  className="flex-1 text-left px-2 py-1.5 rounded-md text-xs text-foreground hover:bg-muted/80 transition-colors flex items-center gap-2 min-w-0"
+                >
+                  <Plus className="h-3 w-3 text-primary shrink-0" />
+                  <span className="truncate">{prob.title}</span>
+                  <span className="text-[10px] text-muted-foreground shrink-0 ml-auto">{prob.difficulty}</span>
+                </button>
+                <button
+                  onClick={() => setPreviewItemId(previewItemId === prob.id ? null : prob.id)}
+                  className="p-1 text-muted-foreground hover:text-primary shrink-0"
+                >
+                  <Eye className="h-3.5 w-3.5" />
+                </button>
+              </div>
+              {previewItemId === prob.id && renderProblemPreview(prob)}
+            </div>
           ))}
         </TabsContent>
 
@@ -687,8 +803,8 @@ const TestBuilder = ({ onBack, editTestId }: TestBuilderProps) => {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="both">Ambele</SelectItem>
-                      <SelectItem value="A">Var. A</SelectItem>
-                      <SelectItem value="B">Var. B</SelectItem>
+                      <SelectItem value="A">Nr. 1</SelectItem>
+                      <SelectItem value="B">Nr. 2</SelectItem>
                     </SelectContent>
                   </Select>
                 )}
@@ -699,6 +815,52 @@ const TestBuilder = ({ onBack, editTestId }: TestBuilderProps) => {
             ))}
           </CardContent>
         </Card>
+      )}
+
+      {/* Side-by-side variant preview */}
+      {items.length > 0 && (
+        <div className="grid grid-cols-2 gap-3">
+          <Card>
+            <CardContent className="p-3 space-y-1.5">
+              <p className="text-xs font-semibold text-foreground">Nr. 1 <span className="text-muted-foreground font-normal">({variant1Items.length} itemi)</span></p>
+              {variant1Items.length === 0 ? (
+                <p className="text-[10px] text-muted-foreground italic">Niciun item</p>
+              ) : (
+                variant1Items.map((item, idx) => (
+                  <div key={idx} className="flex items-center gap-1.5 text-[11px] text-foreground py-0.5">
+                    <span className="text-muted-foreground w-4 shrink-0 text-right">{idx + 1}.</span>
+                    {getItemIcon(item)}
+                    <span className="truncate">{getItemLabel(item)}</span>
+                    <span className="text-[10px] text-muted-foreground ml-auto shrink-0">{item.points}p</span>
+                  </div>
+                ))
+              )}
+              <div className="border-t border-border pt-1 mt-1">
+                <p className="text-[10px] text-muted-foreground">Total: <span className="font-medium text-foreground">{variant1Items.reduce((s, i) => s + i.points, 0)} puncte</span></p>
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-3 space-y-1.5">
+              <p className="text-xs font-semibold text-foreground">Nr. 2 <span className="text-muted-foreground font-normal">({variant2Items.length} itemi)</span></p>
+              {variant2Items.length === 0 ? (
+                <p className="text-[10px] text-muted-foreground italic">Niciun item</p>
+              ) : (
+                variant2Items.map((item, idx) => (
+                  <div key={idx} className="flex items-center gap-1.5 text-[11px] text-foreground py-0.5">
+                    <span className="text-muted-foreground w-4 shrink-0 text-right">{idx + 1}.</span>
+                    {getItemIcon(item)}
+                    <span className="truncate">{getItemLabel(item)}</span>
+                    <span className="text-[10px] text-muted-foreground ml-auto shrink-0">{item.points}p</span>
+                  </div>
+                ))
+              )}
+              <div className="border-t border-border pt-1 mt-1">
+                <p className="text-[10px] text-muted-foreground">Total: <span className="font-medium text-foreground">{variant2Items.reduce((s, i) => s + i.points, 0)} puncte</span></p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       )}
 
       <Button onClick={handleSave} disabled={createTest.isPending || updateTest.isPending} className="w-full">
