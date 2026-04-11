@@ -98,7 +98,7 @@ export function useProgress() {
 
         // Merge: take the maximum of local and cloud
         const local = loadLocalProgress();
-        const merged = mergeProgress(local, cloudProgress);
+        const merged = checkStreakExpiry(mergeProgress(local, cloudProgress));
 
         setProgress(merged);
         saveLocalProgress(merged);
