@@ -85,7 +85,40 @@ const OrderExercise = ({ exercise, onAnswer, feedback }: Props) => {
   }, []);
 
   const handleSubmit = () => {
-    const isCorrect = items.every((item, idx) => item.order === idx + 1);
+    // Check if ordering is correct, allowing lines with the same group to be interchangeable
+    const isCorrect = (() => {
+      // Build expected order sequence, respecting groups
+      const expectedOrders = items.map(item => item.order);
+      
+      // If no groups defined, use strict check
+      const hasGroups = items.some(item => item.group !== undefined);
+      if (!hasGroups) {
+        return items.every((item, idx) => item.order === idx + 1);
+      }
+      
+      // With groups: items in the same group are interchangeable
+      // Check that the sequence of group-effective-orders is non-decreasing
+      // Assign each item its group's minimum order (or its own order if no group)
+      const groupMinOrder = new Map<number, number>();
+      for (const item of exercise.lines || []) {
+        if (item.group !== undefined) {
+          const current = groupMinOrder.get(item.group);
+          if (current === undefined || item.order < current) {
+            groupMinOrder.set(item.group, item.order);
+          }
+        }
+      }
+      
+      const effectiveOrder = (item: { order: number; group?: number }) => 
+        item.group !== undefined ? (groupMinOrder.get(item.group) ?? item.order) : item.order;
+      
+      for (let i = 1; i < items.length; i++) {
+        if (effectiveOrder(items[i]) < effectiveOrder(items[i - 1])) {
+          return false;
+        }
+      }
+      return true;
+    })();
     onAnswer(isCorrect);
   };
 
@@ -98,7 +131,20 @@ const OrderExercise = ({ exercise, onAnswer, feedback }: Props) => {
       <p className="text-foreground font-bold mb-6 text-base">{exercise.question}</p>
       <div className="space-y-2 mb-6 mx-4" ref={containerRef}>
         {items.map((item, idx) => {
-          const isCorrectPos = item.order === idx + 1;
+          const hasGroups = items.some(it => it.group !== undefined);
+          const isCorrectPos = hasGroups
+            ? (() => {
+                // For grouped items, check relative ordering is valid
+                if (idx === 0) return true;
+                const prev = items[idx - 1];
+                const getEffective = (it: typeof item) => {
+                  if (it.group === undefined) return it.order;
+                  const groupOrders = (exercise.lines || []).filter(l => l.group === it.group).map(l => l.order);
+                  return Math.min(...groupOrders);
+                };
+                return getEffective(item) >= getEffective(prev);
+              })()
+            : item.order === idx + 1;
           return (
             <div
               key={item.id}
@@ -120,7 +166,7 @@ const OrderExercise = ({ exercise, onAnswer, feedback }: Props) => {
               } ${feedback !== null ? "cursor-default" : "cursor-grab active:cursor-grabbing touch-none"}`}
             >
               <GripVertical className="h-5 w-5 text-muted-foreground shrink-0" />
-              <code className="text-foreground whitespace-pre flex-1">{item.text}</code>
+              <code className="text-foreground whitespace-pre-wrap break-words flex-1">{item.text}</code>
               <div className="ml-auto flex gap-1">
                 <button
                   onClick={() => idx > 0 && moveItem(idx, idx - 1)}
@@ -146,7 +192,7 @@ const OrderExercise = ({ exercise, onAnswer, feedback }: Props) => {
         <div className="mb-4 rounded-lg border border-primary/30 bg-primary/5 p-3">
           <p className="text-sm text-primary font-bold mb-2">Ordinea corectă:</p>
           {correctOrder.map((line, i) => (
-            <p key={line.id} className="text-sm font-mono text-muted-foreground whitespace-pre">
+            <p key={line.id} className="text-sm font-mono text-muted-foreground whitespace-pre-wrap break-words">
               {i + 1}. {line.text}
             </p>
           ))}
