@@ -1,0 +1,291 @@
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+
+export interface TestItem {
+  id?: string;
+  test_id?: string;
+  variant: string;
+  sort_order: number;
+  source_type: string;
+  source_id: string | null;
+  custom_data: any | null;
+  points: number;
+}
+
+export function useTeacherTests() {
+  const { user } = useAuth();
+  return useQuery({
+    queryKey: ["teacher-tests", user?.id],
+    queryFn: async () => {
+      if (!user) return [];
+      const { data, error } = await supabase
+        .from("tests")
+        .select("*")
+        .eq("teacher_id", user.id)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!user,
+  });
+}
+
+export function useTestItems(testId: string | null) {
+  return useQuery({
+    queryKey: ["test-items", testId],
+    queryFn: async () => {
+      if (!testId) return [];
+      const { data, error } = await supabase
+        .from("test_items")
+        .select("*")
+        .eq("test_id", testId)
+        .order("sort_order");
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!testId,
+  });
+}
+
+export function useCreateTest() {
+  const { user } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (params: {
+      title: string;
+      time_limit_minutes: number | null;
+      variant_mode: string;
+      items: TestItem[];
+    }) => {
+      if (!user) throw new Error("Not authenticated");
+      const { data: test, error } = await supabase
+        .from("tests")
+        .insert({
+          teacher_id: user.id,
+          title: params.title,
+          time_limit_minutes: params.time_limit_minutes,
+          variant_mode: params.variant_mode,
+        })
+        .select()
+        .single();
+      if (error) throw error;
+
+      if (params.items.length > 0) {
+        const itemsToInsert = params.items.map((item, idx) => ({
+          test_id: test.id,
+          variant: item.variant,
+          sort_order: idx,
+          source_type: item.source_type,
+          source_id: item.source_id,
+          custom_data: item.custom_data,
+          points: item.points,
+        }));
+        const { error: itemsError } = await supabase.from("test_items").insert(itemsToInsert);
+        if (itemsError) throw itemsError;
+      }
+      return test;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["teacher-tests"] }),
+  });
+}
+
+export function useDeleteTest() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (testId: string) => {
+      const { error } = await supabase.from("tests").delete().eq("id", testId);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["teacher-tests"] }),
+  });
+}
+
+export function useAssignTest() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (params: { test_id: string; class_id: string; due_date?: string }) => {
+      const { data, error } = await supabase
+        .from("test_assignments")
+        .insert({
+          test_id: params.test_id,
+          class_id: params.class_id,
+          due_date: params.due_date || null,
+        })
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["test-assignments"] }),
+  });
+}
+
+export function useTestAssignments(testId: string | null) {
+  return useQuery({
+    queryKey: ["test-assignments", testId],
+    queryFn: async () => {
+      if (!testId) return [];
+      const { data, error } = await supabase
+        .from("test_assignments")
+        .select("*, teacher_classes(name)")
+        .eq("test_id", testId)
+        .order("assigned_at", { ascending: false });
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!testId,
+  });
+}
+
+export function useTestSubmissions(assignmentId: string | null) {
+  return useQuery({
+    queryKey: ["test-submissions", assignmentId],
+    queryFn: async () => {
+      if (!assignmentId) return [];
+      const { data, error } = await supabase
+        .from("test_submissions")
+        .select("*")
+        .eq("assignment_id", assignmentId)
+        .order("submitted_at", { ascending: false });
+      if (error) throw error;
+
+      // Fetch profiles
+      const studentIds = data.map((s) => s.student_id);
+      if (studentIds.length === 0) return [];
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("user_id, display_name")
+        .in("user_id", studentIds);
+
+      return data.map((s) => ({
+        ...s,
+        profile: profiles?.find((p) => p.user_id === s.student_id) || null,
+      }));
+    },
+    enabled: !!assignmentId,
+  });
+}
+
+export function useTestAnswers(submissionId: string | null) {
+  return useQuery({
+    queryKey: ["test-answers", submissionId],
+    queryFn: async () => {
+      if (!submissionId) return [];
+      const { data, error } = await supabase
+        .from("test_answers")
+        .select("*")
+        .eq("submission_id", submissionId);
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!submissionId,
+  });
+}
+
+// Student hooks
+export function useStudentAssignments() {
+  const { user } = useAuth();
+  return useQuery({
+    queryKey: ["student-test-assignments", user?.id],
+    queryFn: async () => {
+      if (!user) return [];
+      // Get class memberships
+      const { data: memberships } = await supabase
+        .from("class_members")
+        .select("class_id")
+        .eq("student_id", user.id);
+      if (!memberships || memberships.length === 0) return [];
+
+      const classIds = memberships.map((m) => m.class_id);
+      const { data, error } = await supabase
+        .from("test_assignments")
+        .select("*, tests(title, time_limit_minutes, variant_mode), teacher_classes(name)")
+        .in("class_id", classIds)
+        .eq("is_active", true)
+        .order("assigned_at", { ascending: false });
+      if (error) throw error;
+
+      // Check existing submissions
+      const assignmentIds = (data || []).map((a) => a.id);
+      if (assignmentIds.length === 0) return data || [];
+
+      const { data: submissions } = await supabase
+        .from("test_submissions")
+        .select("id, assignment_id, submitted_at, total_score, max_score")
+        .eq("student_id", user.id)
+        .in("assignment_id", assignmentIds);
+
+      return (data || []).map((a) => ({
+        ...a,
+        submission: submissions?.find((s) => s.assignment_id === a.id) || null,
+      }));
+    },
+    enabled: !!user,
+  });
+}
+
+export function useStartSubmission() {
+  const { user } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (params: { assignment_id: string; variant: string }) => {
+      if (!user) throw new Error("Not authenticated");
+      const { data, error } = await supabase
+        .from("test_submissions")
+        .insert({
+          assignment_id: params.assignment_id,
+          student_id: user.id,
+          variant: params.variant,
+        })
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["student-test-assignments"] }),
+  });
+}
+
+export function useSubmitTest() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (params: {
+      submission_id: string;
+      answers: { test_item_id: string; answer_data: any; max_points: number }[];
+    }) => {
+      // Insert answers
+      const answersToInsert = params.answers.map((a) => ({
+        submission_id: params.submission_id,
+        test_item_id: a.test_item_id,
+        answer_data: a.answer_data,
+        max_points: a.max_points,
+        score: 0,
+      }));
+      const { error: ansError } = await supabase.from("test_answers").insert(answersToInsert);
+      if (ansError) throw ansError;
+
+      // Mark as submitted
+      const { error: subError } = await supabase
+        .from("test_submissions")
+        .update({ submitted_at: new Date().toISOString() })
+        .eq("id", params.submission_id);
+      if (subError) throw subError;
+
+      // Invoke grading
+      const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+      await fetch(
+        `https://${projectId}.supabase.co/functions/v1/grade-submission`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ submission_id: params.submission_id }),
+        }
+      );
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["student-test-assignments"] });
+      qc.invalidateQueries({ queryKey: ["test-submissions"] });
+    },
+  });
+}
