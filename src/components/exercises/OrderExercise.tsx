@@ -131,7 +131,20 @@ const OrderExercise = ({ exercise, onAnswer, feedback }: Props) => {
       <p className="text-foreground font-bold mb-6 text-base">{exercise.question}</p>
       <div className="space-y-2 mb-6 mx-4" ref={containerRef}>
         {items.map((item, idx) => {
-          const isCorrectPos = item.order === idx + 1;
+          const hasGroups = items.some(it => it.group !== undefined);
+          const isCorrectPos = hasGroups
+            ? (() => {
+                // For grouped items, check relative ordering is valid
+                if (idx === 0) return true;
+                const prev = items[idx - 1];
+                const getEffective = (it: typeof item) => {
+                  if (it.group === undefined) return it.order;
+                  const groupOrders = (exercise.lines || []).filter(l => l.group === it.group).map(l => l.order);
+                  return Math.min(...groupOrders);
+                };
+                return getEffective(item) >= getEffective(prev);
+              })()
+            : item.order === idx + 1;
           return (
             <div
               key={item.id}
