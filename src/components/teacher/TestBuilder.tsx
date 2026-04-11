@@ -20,7 +20,7 @@ const TestBuilder = ({ onBack }: TestBuilderProps) => {
   const { data: chapters = [] } = useChapters();
   const { data: problemsData } = useProblems();
   const allProblems = problemsData?.problems ?? [];
-  const problemChapters = problemsData?.chapters ?? [];
+  const problemChapters = problemsData?.problemChapters ?? [];
   const createTest = useCreateTest();
 
   const [title, setTitle] = useState("");
@@ -101,7 +101,7 @@ const TestBuilder = ({ onBack }: TestBuilderProps) => {
 
   const selectedChapter = chapters.find((c) => c.id === selectedChapterId);
   const selectedProblemChapter = problemChapters.find((c) => c.id === selectedProblemChapterId);
-  const filteredProblems = allProblems.filter((p) => p.chapter_id === selectedProblemChapterId);
+  const filteredProblems = allProblems.filter((p) => p.chapter === selectedProblemChapterId);
 
   return (
     <div className="space-y-4">
