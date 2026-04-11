@@ -396,6 +396,60 @@ const Index = (): JSX.Element => {
           </motion.div>
         )}
 
+        {/* Student tests */}
+        {studentTests && studentTests.length > 0 && (
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.09 }} className="mb-4 space-y-2">
+            <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
+              <FileText className="h-4 w-4 text-primary" /> Teste de rezolvat
+            </h3>
+            {studentTests.map((a: any) => {
+              const done = !!a.submission?.submitted_at;
+              const testTitle = a.tests?.title || "Test";
+              const clsName = a.teacher_classes?.name || "";
+              const dueDate = a.due_date ? new Date(a.due_date) : null;
+              const isOverdue = dueDate && dueDate < new Date() && !done;
+              return (
+                <button
+                  key={a.id}
+                  onClick={() => !done && navigate(`/test/${a.id}`)}
+                  disabled={done}
+                  className={`w-full flex items-center gap-3 rounded-xl border p-3 text-left transition-all ${
+                    done
+                      ? "border-border/50 bg-card/50 opacity-60 cursor-default"
+                      : isOverdue
+                        ? "border-destructive/50 bg-destructive/5 active:scale-[0.98]"
+                        : "border-primary/30 bg-primary/5 active:scale-[0.98]"
+                  }`}
+                >
+                  {done ? (
+                    <CheckCircle className="h-5 w-5 text-primary shrink-0" />
+                  ) : (
+                    <FileText className={`h-5 w-5 shrink-0 ${isOverdue ? "text-destructive" : "text-primary"}`} />
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-foreground truncate">{testTitle}</p>
+                    <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
+                      <span>{clsName}</span>
+                      {dueDate && (
+                        <span className={`flex items-center gap-0.5 ${isOverdue ? "text-destructive" : ""}`}>
+                          <Clock className="h-3 w-3" />
+                          {dueDate.toLocaleDateString("ro-RO", { day: "numeric", month: "short" })}
+                        </span>
+                      )}
+                    </div>
+                    {done && a.submission?.total_score != null && (
+                      <p className="text-[10px] text-primary font-medium">
+                        Scor: {a.submission.total_score}/{a.submission.max_score}
+                      </p>
+                    )}
+                  </div>
+                  {!done && <ChevronDown className="h-4 w-4 text-muted-foreground -rotate-90" />}
+                </button>
+              );
+            })}
+          </motion.div>
+        )}
+
         <div className="space-y-3">
           {chapters.map((chapter, idx) => {
             const completedCount = chapter.lessons.filter((l) => progress.completedLessons[l.id]?.completed).length;
