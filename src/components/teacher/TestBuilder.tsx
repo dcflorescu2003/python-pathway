@@ -339,7 +339,7 @@ const TestBuilder = ({ onBack, editTestId }: TestBuilderProps) => {
         <button onClick={onBack} className="active:scale-90 transition-transform">
           <ArrowLeft className="h-5 w-5 text-foreground" />
         </button>
-        <h2 className="text-lg font-bold text-foreground">Creează test</h2>
+        <h2 className="text-lg font-bold text-foreground">{isEditing ? "Editează test" : "Creează test"}</h2>
       </div>
 
       {/* Config */}
