@@ -146,7 +146,9 @@ const TestResults = ({ testId, onBack }: TestResultsProps) => {
                               testItem={testItem}
                               scoreEdit={scoreEdits[ans.id]}
                               onScoreEdit={(val) => setScoreEdits((p) => ({ ...p, [ans.id]: val }))}
-                              onSave={() => handleSaveScore(ans.id, ans.max_points)}
+                              feedbackEdit={feedbackEdits[ans.id]}
+                              onFeedbackEdit={(val) => setFeedbackEdits((p) => ({ ...p, [ans.id]: val }))}
+                              onSave={() => handleSave(ans.id, ans.max_points)}
                               saving={updateScore.isPending}
                             />
                           );
