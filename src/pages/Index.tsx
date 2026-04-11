@@ -19,7 +19,6 @@ import PremiumDialog from "@/components/PremiumDialog";
 import LevelRoadmap from "@/components/LevelRoadmap";
 import SchoolOnboarding from "@/components/onboarding/SchoolOnboarding";
 import { useSubscription } from "@/hooks/useSubscription";
-import { useSubscription } from "@/hooks/useSubscription";
 import CouponExpiredDialog from "@/components/CouponExpiredDialog";
 import { supabase } from "@/integrations/supabase/client";
 import NotificationBell from "@/components/NotificationBell";
@@ -43,7 +42,6 @@ const Index = (): JSX.Element => {
   const [showChallenges, setShowChallenges] = useState(false);
   const [showInstall, setShowInstall] = useState(false);
   const [showRoadmap, setShowRoadmap] = useState(false);
-  const { isInstalled, canPrompt, promptInstall } = useInstallPrompt();
   const { couponExpired, dismissCouponExpired, startCheckout } = useSubscription();
   const [schoolSearch, setSchoolSearch] = useState("");
   const [showLevelUp, setShowLevelUp] = useState(false);
