@@ -342,10 +342,14 @@ export function useSubmitTest() {
 export function useUpdateAnswerScore() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (params: { answerId: string; score: number; submissionId: string }) => {
+    mutationFn: async (params: { answerId: string; score: number; submissionId: string; feedback?: string }) => {
+      const updateData: Record<string, any> = { score: params.score };
+      if (params.feedback !== undefined) {
+        updateData.feedback = params.feedback;
+      }
       const { error } = await supabase
         .from("test_answers")
-        .update({ score: params.score })
+        .update(updateData)
         .eq("id", params.answerId);
       if (error) throw error;
 

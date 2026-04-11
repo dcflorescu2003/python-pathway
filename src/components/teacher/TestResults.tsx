@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { useTestAssignments, useTestSubmissions, useTestAnswers, useTestItems, useUpdateAnswerScore } from "@/hooks/useTests";
 import { ArrowLeft, ChevronDown, ChevronUp, CheckCircle, XCircle, Save } from "lucide-react";
 import { toast } from "sonner";
@@ -23,23 +24,40 @@ const TestResults = ({ testId, onBack }: TestResultsProps) => {
 
   // Local score overrides
   const [scoreEdits, setScoreEdits] = useState<Record<string, string>>({});
+  const [feedbackEdits, setFeedbackEdits] = useState<Record<string, string>>({});
 
-  const handleSaveScore = async (answerId: string, maxPoints: number) => {
-    const raw = scoreEdits[answerId];
-    if (raw === undefined) return;
-    const newScore = parseFloat(raw);
-    if (isNaN(newScore) || newScore < 0 || newScore > maxPoints) {
-      toast.error(`Scorul trebuie să fie între 0 și ${maxPoints}`);
-      return;
+  const handleSave = async (answerId: string, maxPoints: number) => {
+    const rawScore = scoreEdits[answerId];
+    const rawFeedback = feedbackEdits[answerId];
+    const hasScoreEdit = rawScore !== undefined;
+    const hasFeedbackEdit = rawFeedback !== undefined;
+    if (!hasScoreEdit && !hasFeedbackEdit) return;
+
+    let newScore: number | undefined;
+    if (hasScoreEdit) {
+      newScore = parseFloat(rawScore);
+      if (isNaN(newScore) || newScore < 0 || newScore > maxPoints) {
+        toast.error(`Scorul trebuie să fie între 0 și ${maxPoints}`);
+        return;
+      }
     }
+
     try {
-      await updateScore.mutateAsync({ answerId, score: newScore, submissionId: expandedSubmissionId! });
-      toast.success("Scor actualizat");
-      setScoreEdits((prev) => {
-        const copy = { ...prev };
-        delete copy[answerId];
-        return copy;
+      // If only feedback changed, we still need a score value — use existing
+      const scoreToSend = newScore !== undefined ? newScore : undefined;
+      // We need to get current score if not editing it
+      const currentAnswer = answers.find((a: any) => a.id === answerId);
+      const finalScore = scoreToSend !== undefined ? scoreToSend : currentAnswer?.score ?? 0;
+
+      await updateScore.mutateAsync({
+        answerId,
+        score: finalScore,
+        submissionId: expandedSubmissionId!,
+        feedback: hasFeedbackEdit ? rawFeedback.trim() : undefined,
       });
+      toast.success("Salvat cu succes");
+      setScoreEdits((prev) => { const c = { ...prev }; delete c[answerId]; return c; });
+      setFeedbackEdits((prev) => { const c = { ...prev }; delete c[answerId]; return c; });
     } catch {
       toast.error("Eroare la salvare");
     }
@@ -128,7 +146,9 @@ const TestResults = ({ testId, onBack }: TestResultsProps) => {
                               testItem={testItem}
                               scoreEdit={scoreEdits[ans.id]}
                               onScoreEdit={(val) => setScoreEdits((p) => ({ ...p, [ans.id]: val }))}
-                              onSave={() => handleSaveScore(ans.id, ans.max_points)}
+                              feedbackEdit={feedbackEdits[ans.id]}
+                              onFeedbackEdit={(val) => setFeedbackEdits((p) => ({ ...p, [ans.id]: val }))}
+                              onSave={() => handleSave(ans.id, ans.max_points)}
                               saving={updateScore.isPending}
                             />
                           );
@@ -153,6 +173,8 @@ const AnswerDetail = ({
   testItem,
   scoreEdit,
   onScoreEdit,
+  feedbackEdit,
+  onFeedbackEdit,
   onSave,
   saving,
 }: {
@@ -161,6 +183,8 @@ const AnswerDetail = ({
   testItem: any;
   scoreEdit: string | undefined;
   onScoreEdit: (val: string) => void;
+  feedbackEdit: string | undefined;
+  onFeedbackEdit: (val: string) => void;
   onSave: () => void;
   saving: boolean;
 }) => {
@@ -311,36 +335,42 @@ const AnswerDetail = ({
             </div>
           )}
 
-          {/* Feedback */}
-          {answer.feedback && (
+          {/* Feedback profesor */}
+          <div className="pt-1 border-t border-border space-y-2">
             <div>
-              <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">Feedback</p>
-              <p className="text-xs text-muted-foreground italic">{answer.feedback}</p>
+              <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">Feedback profesor</p>
+              <Textarea
+                placeholder="Scrie un comentariu pentru elev..."
+                value={feedbackEdit !== undefined ? feedbackEdit : (answer.feedback || "")}
+                onChange={(e) => onFeedbackEdit(e.target.value)}
+                className="text-xs min-h-[60px]"
+                maxLength={1000}
+              />
             </div>
-          )}
 
-          {/* Manual score adjustment */}
-          <div className="flex items-center gap-2 pt-1 border-t border-border">
-            <span className="text-[10px] font-semibold text-muted-foreground">Punctaj:</span>
-            <Input
-              type="number"
-              min={0}
-              max={answer.max_points}
-              step={0.5}
-              value={scoreEdit !== undefined ? scoreEdit : answer.score}
-              onChange={(e) => onScoreEdit(e.target.value)}
-              className="w-20 h-7 text-xs"
-            />
-            <span className="text-[10px] text-muted-foreground">/ {answer.max_points}</span>
-            <Button
-              size="sm"
-              variant="outline"
-              className="h-7 px-2 text-xs gap-1"
-              onClick={onSave}
-              disabled={saving || scoreEdit === undefined}
-            >
-              <Save className="h-3 w-3" /> Salvează
-            </Button>
+            {/* Manual score adjustment */}
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-semibold text-muted-foreground">Punctaj:</span>
+              <Input
+                type="number"
+                min={0}
+                max={answer.max_points}
+                step={0.5}
+                value={scoreEdit !== undefined ? scoreEdit : answer.score}
+                onChange={(e) => onScoreEdit(e.target.value)}
+                className="w-20 h-7 text-xs"
+              />
+              <span className="text-[10px] text-muted-foreground">/ {answer.max_points}</span>
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-7 px-2 text-xs gap-1"
+                onClick={onSave}
+                disabled={saving || (scoreEdit === undefined && feedbackEdit === undefined)}
+              >
+                <Save className="h-3 w-3" /> Salvează
+              </Button>
+            </div>
           </div>
         </div>
       )}
