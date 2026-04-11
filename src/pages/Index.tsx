@@ -22,6 +22,7 @@ import { useInstallPrompt } from "@/hooks/useInstallPrompt";
 import { useSubscription } from "@/hooks/useSubscription";
 import CouponExpiredDialog from "@/components/CouponExpiredDialog";
 import { supabase } from "@/integrations/supabase/client";
+import { useStudentAssignments } from "@/hooks/useTests";
 import NotificationBell from "@/components/NotificationBell";
 import LoadingScreen from "@/components/states/LoadingScreen";
 import LevelUpDialog from "@/components/LevelUpDialog";
