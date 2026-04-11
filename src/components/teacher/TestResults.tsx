@@ -173,6 +173,8 @@ const AnswerDetail = ({
   testItem,
   scoreEdit,
   onScoreEdit,
+  feedbackEdit,
+  onFeedbackEdit,
   onSave,
   saving,
 }: {
@@ -181,6 +183,8 @@ const AnswerDetail = ({
   testItem: any;
   scoreEdit: string | undefined;
   onScoreEdit: (val: string) => void;
+  feedbackEdit: string | undefined;
+  onFeedbackEdit: (val: string) => void;
   onSave: () => void;
   saving: boolean;
 }) => {
