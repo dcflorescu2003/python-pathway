@@ -17,9 +17,8 @@ import { Flame, Heart, Zap, Trophy, Crown, School, ChevronDown, Plus, Target, Bo
 import { toast } from "@/hooks/use-toast";
 import PremiumDialog from "@/components/PremiumDialog";
 import LevelRoadmap from "@/components/LevelRoadmap";
-import InstallDialog from "@/components/InstallDialog";
 import SchoolOnboarding from "@/components/onboarding/SchoolOnboarding";
-import { useInstallPrompt } from "@/hooks/useInstallPrompt";
+import { useSubscription } from "@/hooks/useSubscription";
 import { useSubscription } from "@/hooks/useSubscription";
 import CouponExpiredDialog from "@/components/CouponExpiredDialog";
 import { supabase } from "@/integrations/supabase/client";
