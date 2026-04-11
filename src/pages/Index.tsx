@@ -209,9 +209,28 @@ const Index = (): JSX.Element => {
                 <Crown className="h-5 w-5" />
               </button>
             )}
-            <div className="flex items-center gap-1 text-warning">
-              <Flame className="h-5 w-5" />
-              <span className="text-sm font-bold">{progress.streak}</span>
+            <div className="flex items-center gap-1 text-warning relative">
+              <motion.div
+                animate={progress.streak > 0 ? {
+                  scale: [1, 1.2, 1],
+                  rotate: [0, -5, 5, 0],
+                } : {}}
+                transition={{
+                  duration: 1.5,
+                  repeat: Infinity,
+                  ease: "easeInOut",
+                }}
+              >
+                <Flame className={`h-5 w-5 ${progress.streak > 0 ? "text-orange-500 drop-shadow-[0_0_6px_rgba(249,115,22,0.6)]" : "text-muted-foreground"}`} />
+              </motion.div>
+              {progress.streak > 0 && (
+                <motion.div
+                  className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-orange-400"
+                  animate={{ opacity: [0.4, 1, 0.4], scale: [0.8, 1.1, 0.8] }}
+                  transition={{ duration: 1, repeat: Infinity }}
+                />
+              )}
+              <span className={`text-sm font-bold ${progress.streak > 0 ? "text-orange-500" : "text-muted-foreground"}`}>{progress.streak}</span>
             </div>
             <div className="flex items-center gap-1 text-destructive">
               <Heart className="h-5 w-5" />
