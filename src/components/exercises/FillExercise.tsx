@@ -42,7 +42,8 @@ const FillExercise = ({ exercise, onAnswer, feedback }: Props) => {
             <span className="text-foreground">{part}</span>
             {i < parts.length - 1 && exercise.blanks?.[i] && (
               <>
-                <Input
+              <Input
+                  autoCapitalize="none"
                   className="inline-block w-28 h-7 mx-1 font-mono text-sm bg-secondary border-primary/50 text-primary"
                   value={answers[exercise.blanks[i].id] || ""}
                   onChange={(e) =>
