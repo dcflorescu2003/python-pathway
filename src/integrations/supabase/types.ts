@@ -604,6 +604,211 @@ export type Database = {
         }
         Relationships: []
       }
+      test_answers: {
+        Row: {
+          ai_reviewed: boolean
+          answer_data: Json | null
+          feedback: string | null
+          id: string
+          max_points: number | null
+          score: number | null
+          submission_id: string
+          test_item_id: string
+        }
+        Insert: {
+          ai_reviewed?: boolean
+          answer_data?: Json | null
+          feedback?: string | null
+          id?: string
+          max_points?: number | null
+          score?: number | null
+          submission_id: string
+          test_item_id: string
+        }
+        Update: {
+          ai_reviewed?: boolean
+          answer_data?: Json | null
+          feedback?: string | null
+          id?: string
+          max_points?: number | null
+          score?: number | null
+          submission_id?: string
+          test_item_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "test_answers_submission_id_fkey"
+            columns: ["submission_id"]
+            isOneToOne: false
+            referencedRelation: "test_submissions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "test_answers_test_item_id_fkey"
+            columns: ["test_item_id"]
+            isOneToOne: false
+            referencedRelation: "test_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      test_assignments: {
+        Row: {
+          assigned_at: string
+          class_id: string
+          due_date: string | null
+          id: string
+          is_active: boolean
+          test_id: string
+        }
+        Insert: {
+          assigned_at?: string
+          class_id: string
+          due_date?: string | null
+          id?: string
+          is_active?: boolean
+          test_id: string
+        }
+        Update: {
+          assigned_at?: string
+          class_id?: string
+          due_date?: string | null
+          id?: string
+          is_active?: boolean
+          test_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "test_assignments_class_id_fkey"
+            columns: ["class_id"]
+            isOneToOne: false
+            referencedRelation: "teacher_classes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "test_assignments_test_id_fkey"
+            columns: ["test_id"]
+            isOneToOne: false
+            referencedRelation: "tests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      test_items: {
+        Row: {
+          custom_data: Json | null
+          id: string
+          points: number
+          sort_order: number
+          source_id: string | null
+          source_type: string
+          test_id: string
+          variant: string
+        }
+        Insert: {
+          custom_data?: Json | null
+          id?: string
+          points?: number
+          sort_order?: number
+          source_id?: string | null
+          source_type: string
+          test_id: string
+          variant?: string
+        }
+        Update: {
+          custom_data?: Json | null
+          id?: string
+          points?: number
+          sort_order?: number
+          source_id?: string | null
+          source_type?: string
+          test_id?: string
+          variant?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "test_items_test_id_fkey"
+            columns: ["test_id"]
+            isOneToOne: false
+            referencedRelation: "tests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      test_submissions: {
+        Row: {
+          assignment_id: string
+          auto_graded: boolean
+          id: string
+          max_score: number | null
+          started_at: string
+          student_id: string
+          submitted_at: string | null
+          total_score: number | null
+          variant: string
+        }
+        Insert: {
+          assignment_id: string
+          auto_graded?: boolean
+          id?: string
+          max_score?: number | null
+          started_at?: string
+          student_id: string
+          submitted_at?: string | null
+          total_score?: number | null
+          variant?: string
+        }
+        Update: {
+          assignment_id?: string
+          auto_graded?: boolean
+          id?: string
+          max_score?: number | null
+          started_at?: string
+          student_id?: string
+          submitted_at?: string | null
+          total_score?: number | null
+          variant?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "test_submissions_assignment_id_fkey"
+            columns: ["assignment_id"]
+            isOneToOne: false
+            referencedRelation: "test_assignments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tests: {
+        Row: {
+          created_at: string
+          id: string
+          teacher_id: string
+          time_limit_minutes: number | null
+          title: string
+          updated_at: string
+          variant_mode: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          teacher_id: string
+          time_limit_minutes?: number | null
+          title: string
+          updated_at?: string
+          variant_mode?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          teacher_id?: string
+          time_limit_minutes?: number | null
+          title?: string
+          updated_at?: string
+          variant_mode?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           id: string
@@ -674,6 +879,25 @@ export type Database = {
     }
     Functions: {
       get_problem_solution: { Args: { p_id: string }; Returns: string }
+      get_test_items_for_student: {
+        Args: { p_assignment_id: string; p_variant: string }
+        Returns: {
+          blanks: Json
+          code_template: string
+          id: string
+          item_type: string
+          lines: Json
+          options: Json
+          pairs: Json
+          points: number
+          question: string
+          sort_order: number
+          source_id: string
+          source_type: string
+          statement: string
+          test_id: string
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
