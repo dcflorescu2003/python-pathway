@@ -19,10 +19,15 @@ const normalize = (s: string) =>
 const FillExercise = ({ exercise, onAnswer, feedback }: Props) => {
   const [answers, setAnswers] = useState<Record<string, string>>({});
 
+  const isBlankCorrect = (userAnswer: string, acceptedAnswers: string) => {
+    const alternatives = acceptedAnswers.split(",").map((a) => normalize(a));
+    return alternatives.includes(normalize(userAnswer));
+  };
+
   const handleSubmit = () => {
     if (!exercise.blanks) return;
-    const allCorrect = exercise.blanks.every(
-      (b) => normalize(answers[b.id] || "") === normalize(b.answer)
+    const allCorrect = exercise.blanks.every((b) =>
+      isBlankCorrect(answers[b.id] || "", b.answer)
     );
     onAnswer(allCorrect);
   };
@@ -48,7 +53,7 @@ const FillExercise = ({ exercise, onAnswer, feedback }: Props) => {
                 />
                 {feedback === "wrong" && (
                   <span className="text-xs text-primary ml-1">
-                    ({exercise.blanks![i].answer})
+                    ({exercise.blanks![i].answer.split(",")[0]})
                   </span>
                 )}
               </>
