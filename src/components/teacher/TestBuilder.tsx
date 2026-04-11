@@ -9,12 +9,13 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useChapters } from "@/hooks/useChapters";
 import { useProblems } from "@/hooks/useProblems";
-import { useCreateTest, TestItem } from "@/hooks/useTests";
+import { useCreateTest, useUpdateTest, useTestItems, TestItem } from "@/hooks/useTests";
 import { ArrowLeft, Plus, Trash2, BookOpen, Code, GripVertical, PenLine, FileCheck, Copy } from "lucide-react";
 import { toast } from "sonner";
 
 interface TestBuilderProps {
   onBack: () => void;
+  editTestId?: string | null;
 }
 
 // Predefined test templates
@@ -65,12 +66,15 @@ interface CustomOption {
   text: string;
 }
 
-const TestBuilder = ({ onBack }: TestBuilderProps) => {
+const TestBuilder = ({ onBack, editTestId }: TestBuilderProps) => {
   const { data: chapters = [] } = useChapters();
   const { data: problemsData } = useProblems();
   const allProblems = problemsData?.problems ?? [];
   const problemChapters = problemsData?.problemChapters ?? [];
   const createTest = useCreateTest();
+  const updateTest = useUpdateTest();
+  const { data: existingItems = [] } = useTestItems(editTestId || null);
+  const isEditing = !!editTestId;
 
   const [title, setTitle] = useState("");
   const [timeLimitEnabled, setTimeLimitEnabled] = useState(false);
