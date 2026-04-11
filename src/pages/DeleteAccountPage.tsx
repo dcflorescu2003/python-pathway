@@ -1,20 +1,29 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ArrowLeft, AlertTriangle, Loader2 } from "lucide-react";
+import { ArrowLeft, AlertTriangle, Loader2, Crown, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { useAuth } from "@/hooks/useAuth";
+import { useSubscription } from "@/hooks/useSubscription";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
 const DeleteAccountPage = () => {
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
+  const { subscribed, loading: subLoading, openPortal } = useSubscription();
   const [confirmText, setConfirmText] = useState("");
   const [loading, setLoading] = useState(false);
-  const [step, setStep] = useState<"warning" | "confirm">("warning");
+  const [step, setStep] = useState<"subscription-warning" | "warning" | "confirm">("warning");
+
+  // If user has active subscription, show subscription warning first
+  useEffect(() => {
+    if (!subLoading && subscribed) {
+      setStep("subscription-warning");
+    }
+  }, [subLoading, subscribed]);
 
   if (!user) {
     navigate("/auth");
@@ -68,7 +77,57 @@ const DeleteAccountPage = () => {
       </header>
 
       <main className="px-6 py-8 max-w-sm mx-auto">
-        {step === "warning" ? (
+        {step === "subscription-warning" ? (
+          <div className="space-y-6 text-center">
+            <div className="flex justify-center">
+              <div className="h-20 w-20 rounded-full bg-yellow-500/10 flex items-center justify-center">
+                <Crown className="h-10 w-10 text-yellow-500" />
+              </div>
+            </div>
+
+            <div>
+              <h2 className="text-xl font-bold text-foreground mb-2">Ai un abonament activ</h2>
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                Înainte de a-ți șterge contul, te rugăm să anulezi abonamentul Premium. 
+                Ștergerea contului <strong className="text-destructive">nu anulează automat</strong> plățile recurente.
+              </p>
+            </div>
+
+            <Card className="border-yellow-500/30">
+              <CardContent className="p-4 text-left space-y-2">
+                <p className="text-sm text-foreground flex items-center gap-2">⚠️ Abonamentul va continua să fie facturat</p>
+                <p className="text-sm text-foreground flex items-center gap-2">💳 Anulează din portalul de plăți</p>
+                <p className="text-sm text-foreground flex items-center gap-2">✅ După anulare, poți șterge contul</p>
+              </CardContent>
+            </Card>
+
+            <div className="space-y-3">
+              <Button
+                className="w-full gap-2"
+                onClick={async () => {
+                  try { await openPortal(); } catch { toast.error("Eroare la deschiderea portalului."); }
+                }}
+              >
+                <Settings className="h-4 w-4" />
+                Gestionează abonamentul
+              </Button>
+              <Button
+                variant="outline"
+                className="w-full text-muted-foreground"
+                onClick={() => setStep("warning")}
+              >
+                Continuă oricum cu ștergerea
+              </Button>
+              <Button
+                variant="ghost"
+                className="w-full"
+                onClick={() => navigate("/auth")}
+              >
+                Anulează
+              </Button>
+            </div>
+          </div>
+        ) : step === "warning" ? (
           <div className="space-y-6 text-center">
             <div className="flex justify-center">
               <div className="h-20 w-20 rounded-full bg-destructive/10 flex items-center justify-center">
