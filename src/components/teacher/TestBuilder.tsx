@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
@@ -9,12 +9,13 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useChapters } from "@/hooks/useChapters";
 import { useProblems } from "@/hooks/useProblems";
-import { useCreateTest, TestItem } from "@/hooks/useTests";
+import { useCreateTest, useUpdateTest, useTestItems, TestItem } from "@/hooks/useTests";
 import { ArrowLeft, Plus, Trash2, BookOpen, Code, GripVertical, PenLine, FileCheck, Copy } from "lucide-react";
 import { toast } from "sonner";
 
 interface TestBuilderProps {
   onBack: () => void;
+  editTestId?: string | null;
 }
 
 // Predefined test templates
@@ -65,18 +66,22 @@ interface CustomOption {
   text: string;
 }
 
-const TestBuilder = ({ onBack }: TestBuilderProps) => {
+const TestBuilder = ({ onBack, editTestId }: TestBuilderProps) => {
   const { data: chapters = [] } = useChapters();
   const { data: problemsData } = useProblems();
   const allProblems = problemsData?.problems ?? [];
   const problemChapters = problemsData?.problemChapters ?? [];
   const createTest = useCreateTest();
+  const updateTest = useUpdateTest();
+  const { data: existingItems = [] } = useTestItems(editTestId || null);
+  const isEditing = !!editTestId;
 
   const [title, setTitle] = useState("");
   const [timeLimitEnabled, setTimeLimitEnabled] = useState(false);
   const [timeLimit, setTimeLimit] = useState(45);
   const [variantMode, setVariantMode] = useState<string>("shuffle");
   const [items, setItems] = useState<TestItem[]>([]);
+  const [editLoaded, setEditLoaded] = useState(false);
 
   // Browser state
   const [selectedChapterId, setSelectedChapterId] = useState<string>("");
@@ -157,20 +162,69 @@ const TestBuilder = ({ onBack }: TestBuilderProps) => {
     return <Code className="h-3 w-3 text-accent-foreground shrink-0" />;
   };
 
-  const handleCreate = async () => {
+  // Load existing test data when editing
+  useEffect(() => {
+    if (!isEditing || editLoaded) return;
+    // Load test metadata
+    const loadTest = async () => {
+      const { data: test } = await (await import("@/integrations/supabase/client")).supabase
+        .from("tests")
+        .select("*")
+        .eq("id", editTestId)
+        .single();
+      if (test) {
+        setTitle(test.title);
+        setVariantMode(test.variant_mode);
+        if (test.time_limit_minutes) {
+          setTimeLimitEnabled(true);
+          setTimeLimit(test.time_limit_minutes);
+        }
+      }
+    };
+    loadTest();
+  }, [isEditing, editTestId, editLoaded]);
+
+  // Load existing items when they arrive
+  useEffect(() => {
+    if (!isEditing || editLoaded || existingItems.length === 0) return;
+    setItems(existingItems.map((ei: any) => ({
+      id: ei.id,
+      test_id: ei.test_id,
+      variant: ei.variant,
+      sort_order: ei.sort_order,
+      source_type: ei.source_type,
+      source_id: ei.source_id,
+      custom_data: ei.custom_data,
+      points: ei.points,
+    })));
+    setEditLoaded(true);
+  }, [isEditing, existingItems, editLoaded]);
+
+  const handleSave = async () => {
     if (!title.trim()) { toast.error("Adaugă un titlu."); return; }
     if (items.length === 0) { toast.error("Adaugă cel puțin un item."); return; }
     try {
-      await createTest.mutateAsync({
-        title: title.trim(),
-        time_limit_minutes: timeLimitEnabled ? timeLimit : null,
-        variant_mode: variantMode,
-        items,
-      });
-      toast.success("Test creat cu succes!");
+      if (isEditing) {
+        await updateTest.mutateAsync({
+          id: editTestId!,
+          title: title.trim(),
+          time_limit_minutes: timeLimitEnabled ? timeLimit : null,
+          variant_mode: variantMode,
+          items,
+        });
+        toast.success("Test actualizat!");
+      } else {
+        await createTest.mutateAsync({
+          title: title.trim(),
+          time_limit_minutes: timeLimitEnabled ? timeLimit : null,
+          variant_mode: variantMode,
+          items,
+        });
+        toast.success("Test creat cu succes!");
+      }
       onBack();
     } catch {
-      toast.error("Eroare la crearea testului.");
+      toast.error(isEditing ? "Eroare la actualizarea testului." : "Eroare la crearea testului.");
     }
   };
 
@@ -285,7 +339,7 @@ const TestBuilder = ({ onBack }: TestBuilderProps) => {
         <button onClick={onBack} className="active:scale-90 transition-transform">
           <ArrowLeft className="h-5 w-5 text-foreground" />
         </button>
-        <h2 className="text-lg font-bold text-foreground">Creează test</h2>
+        <h2 className="text-lg font-bold text-foreground">{isEditing ? "Editează test" : "Creează test"}</h2>
       </div>
 
       {/* Config */}
@@ -647,8 +701,12 @@ const TestBuilder = ({ onBack }: TestBuilderProps) => {
         </Card>
       )}
 
-      <Button onClick={handleCreate} disabled={createTest.isPending} className="w-full">
-        {createTest.isPending ? "Se creează..." : `Creează test (${items.length} itemi)`}
+      <Button onClick={handleSave} disabled={createTest.isPending || updateTest.isPending} className="w-full">
+        {createTest.isPending || updateTest.isPending
+          ? "Se salvează..."
+          : isEditing
+            ? `Salvează modificările (${items.length} itemi)`
+            : `Creează test (${items.length} itemi)`}
       </Button>
     </div>
   );

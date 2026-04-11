@@ -3,16 +3,17 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useTeacherTests, useDeleteTest, useAssignTest, useTestAssignments, useTestItems } from "@/hooks/useTests";
 import { useTeacherClasses } from "@/hooks/useTeacher";
-import { Plus, Trash2, FileText, Clock, Send, ChevronDown, ChevronUp, Users } from "lucide-react";
+import { Plus, Trash2, FileText, Clock, Send, ChevronDown, ChevronUp, Users, Pencil } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import TestResults from "./TestResults";
 
 interface TestManagerProps {
   onCreateTest: () => void;
+  onEditTest: (testId: string) => void;
 }
 
-const TestManager = ({ onCreateTest }: TestManagerProps) => {
+const TestManager = ({ onCreateTest, onEditTest }: TestManagerProps) => {
   const { data: tests = [], isLoading } = useTeacherTests();
   const deleteTest = useDeleteTest();
   const assignTest = useAssignTest();
@@ -102,7 +103,15 @@ const TestManager = ({ onCreateTest }: TestManagerProps) => {
                 <div className="border-t border-border px-3 pb-3 pt-2 space-y-3">
                   <p className="text-xs text-muted-foreground">{items.length} itemi</p>
 
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 flex-wrap">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="gap-1"
+                      onClick={() => onEditTest(test.id)}
+                    >
+                      <Pencil className="h-3.5 w-3.5" /> Editează
+                    </Button>
                     <Button
                       size="sm"
                       variant="outline"
