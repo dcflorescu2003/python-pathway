@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
+import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -9,11 +10,59 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useChapters } from "@/hooks/useChapters";
 import { useProblems } from "@/hooks/useProblems";
 import { useCreateTest, TestItem } from "@/hooks/useTests";
-import { ArrowLeft, Plus, Trash2, BookOpen, Code, GripVertical } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, BookOpen, Code, GripVertical, PenLine, FileCheck, Copy } from "lucide-react";
 import { toast } from "sonner";
 
 interface TestBuilderProps {
   onBack: () => void;
+}
+
+// Predefined test templates
+const TEMPLATES = [
+  {
+    id: "variables",
+    title: "Test: Variabile și tipuri de date",
+    description: "Quiz-uri și exerciții despre variabile, tipuri de date și operatori de bază.",
+    lessonKeywords: ["variabil", "tipuri", "date", "operatori"],
+  },
+  {
+    id: "conditionale",
+    title: "Test: Structuri condiționale",
+    description: "If/else, elif, operatori logici.",
+    lessonKeywords: ["if", "condiți", "elif", "else"],
+  },
+  {
+    id: "bucle",
+    title: "Test: Bucle",
+    description: "For, while, range, break, continue.",
+    lessonKeywords: ["for", "while", "bucl", "range"],
+  },
+  {
+    id: "functii",
+    title: "Test: Funcții",
+    description: "Definire funcții, parametri, return, recursivitate.",
+    lessonKeywords: ["funcți", "def", "return", "parametr"],
+  },
+  {
+    id: "liste",
+    title: "Test: Liste și structuri de date",
+    description: "Liste, dicționare, tuple, seturi.",
+    lessonKeywords: ["list", "dicționar", "tupl", "set"],
+  },
+  {
+    id: "stringuri",
+    title: "Test: Stringuri",
+    description: "Manipularea stringurilor, metode, formatare.",
+    lessonKeywords: ["string", "șir", "text", "caracter"],
+  },
+];
+
+// Custom question type definitions
+type CustomQuestionType = "quiz" | "truefalse" | "fill" | "order";
+
+interface CustomOption {
+  id: string;
+  text: string;
 }
 
 const TestBuilder = ({ onBack }: TestBuilderProps) => {
@@ -33,9 +82,26 @@ const TestBuilder = ({ onBack }: TestBuilderProps) => {
   const [selectedChapterId, setSelectedChapterId] = useState<string>("");
   const [selectedProblemChapterId, setSelectedProblemChapterId] = useState<string>("");
 
-  const addItem = (sourceType: string, sourceId: string, variant: string = "both") => {
-    // Avoid duplicates
-    if (items.some((i) => i.source_id === sourceId && i.source_type === sourceType)) {
+  // Custom question editor state
+  const [showCustomEditor, setShowCustomEditor] = useState(false);
+  const [customType, setCustomType] = useState<CustomQuestionType>("quiz");
+  const [customQuestion, setCustomQuestion] = useState("");
+  const [customOptions, setCustomOptions] = useState<CustomOption[]>([
+    { id: "a", text: "" }, { id: "b", text: "" }, { id: "c", text: "" }, { id: "d", text: "" },
+  ]);
+  const [customCorrectId, setCustomCorrectId] = useState("a");
+  const [customStatement, setCustomStatement] = useState("");
+  const [customIsTrue, setCustomIsTrue] = useState(true);
+  const [customBlanks, setCustomBlanks] = useState<{ id: string; answer: string }[]>([{ id: "1", answer: "" }]);
+  const [customLines, setCustomLines] = useState<{ id: string; text: string; order: number }[]>([
+    { id: "1", text: "", order: 0 },
+    { id: "2", text: "", order: 1 },
+    { id: "3", text: "", order: 2 },
+  ]);
+  const [customFillQuestion, setCustomFillQuestion] = useState("");
+
+  const addItem = (sourceType: string, sourceId: string | null, variant: string = "both", customData: any = null) => {
+    if (sourceId && items.some((i) => i.source_id === sourceId && i.source_type === sourceType)) {
       toast.info("Itemul este deja adăugat.");
       return;
     }
@@ -44,7 +110,7 @@ const TestBuilder = ({ onBack }: TestBuilderProps) => {
       sort_order: items.length,
       source_type: sourceType,
       source_id: sourceId,
-      custom_data: null,
+      custom_data: customData,
       points: 10,
     }]);
   };
@@ -66,6 +132,9 @@ const TestBuilder = ({ onBack }: TestBuilderProps) => {
   };
 
   const getItemLabel = (item: TestItem): string => {
+    if (item.source_type === "custom" && item.custom_data) {
+      return (item.custom_data.question || item.custom_data.statement || "Întrebare custom").substring(0, 60);
+    }
     if (item.source_type === "exercise" && item.source_id) {
       for (const ch of chapters) {
         const lesson = ch.lessons.find((l) => l.exercises?.some((e) => e.id === item.source_id));
@@ -80,6 +149,12 @@ const TestBuilder = ({ onBack }: TestBuilderProps) => {
       return p?.title || item.source_id;
     }
     return item.source_id || "Custom";
+  };
+
+  const getItemIcon = (item: TestItem) => {
+    if (item.source_type === "custom") return <PenLine className="h-3 w-3 text-warning shrink-0" />;
+    if (item.source_type === "exercise") return <BookOpen className="h-3 w-3 text-primary shrink-0" />;
+    return <Code className="h-3 w-3 text-accent-foreground shrink-0" />;
   };
 
   const handleCreate = async () => {
@@ -99,8 +174,109 @@ const TestBuilder = ({ onBack }: TestBuilderProps) => {
     }
   };
 
+  // Template: auto-pick matching exercises from DB
+  const applyTemplate = (template: typeof TEMPLATES[0]) => {
+    setTitle(template.title);
+    const matchedItems: TestItem[] = [];
+    for (const ch of chapters) {
+      for (const lesson of ch.lessons) {
+        const titleLower = lesson.title.toLowerCase();
+        const matches = template.lessonKeywords.some((kw) => titleLower.includes(kw));
+        if (matches && lesson.exercises) {
+          for (const ex of lesson.exercises) {
+            if (matchedItems.length >= 15) break;
+            matchedItems.push({
+              variant: "both",
+              sort_order: matchedItems.length,
+              source_type: "exercise",
+              source_id: ex.id,
+              custom_data: null,
+              points: 10,
+            });
+          }
+        }
+      }
+    }
+    if (matchedItems.length === 0) {
+      toast.info("Nu s-au găsit exerciții potrivite pentru acest template.");
+      return;
+    }
+    setItems(matchedItems);
+    toast.success(`${matchedItems.length} exerciții adăugate automat.`);
+  };
+
+  // Add custom question
+  const addCustomQuestion = () => {
+    let customData: any = null;
+
+    if (customType === "quiz") {
+      if (!customQuestion.trim() || customOptions.some((o) => !o.text.trim())) {
+        toast.error("Completează întrebarea și toate opțiunile.");
+        return;
+      }
+      customData = {
+        type: "quiz",
+        question: customQuestion,
+        options: customOptions.map((o) => ({ id: o.id, text: o.text })),
+        correct_option_id: customCorrectId,
+      };
+    } else if (customType === "truefalse") {
+      if (!customStatement.trim()) {
+        toast.error("Completează afirmația.");
+        return;
+      }
+      customData = {
+        type: "truefalse",
+        question: customStatement,
+        statement: customStatement,
+        is_true: customIsTrue,
+      };
+    } else if (customType === "fill") {
+      if (!customFillQuestion.trim() || customBlanks.some((b) => !b.answer.trim())) {
+        toast.error("Completează întrebarea și răspunsurile.");
+        return;
+      }
+      customData = {
+        type: "fill",
+        question: customFillQuestion,
+        blanks: customBlanks,
+      };
+    } else if (customType === "order") {
+      if (customLines.some((l) => !l.text.trim())) {
+        toast.error("Completează toate liniile.");
+        return;
+      }
+      customData = {
+        type: "order",
+        question: "Ordonează liniile de cod corect:",
+        lines: customLines.map((l, i) => ({ ...l, order: i })),
+      };
+    }
+
+    addItem("custom", null, "both", customData);
+    resetCustomEditor();
+    toast.success("Întrebare custom adăugată!");
+  };
+
+  const resetCustomEditor = () => {
+    setCustomQuestion("");
+    setCustomOptions([
+      { id: "a", text: "" }, { id: "b", text: "" }, { id: "c", text: "" }, { id: "d", text: "" },
+    ]);
+    setCustomCorrectId("a");
+    setCustomStatement("");
+    setCustomIsTrue(true);
+    setCustomBlanks([{ id: "1", answer: "" }]);
+    setCustomLines([
+      { id: "1", text: "", order: 0 },
+      { id: "2", text: "", order: 1 },
+      { id: "3", text: "", order: 2 },
+    ]);
+    setCustomFillQuestion("");
+    setShowCustomEditor(false);
+  };
+
   const selectedChapter = chapters.find((c) => c.id === selectedChapterId);
-  const selectedProblemChapter = problemChapters.find((c) => c.id === selectedProblemChapterId);
   const filteredProblems = allProblems.filter((p) => p.chapter === selectedProblemChapterId);
 
   return (
@@ -152,13 +328,44 @@ const TestBuilder = ({ onBack }: TestBuilderProps) => {
         </CardContent>
       </Card>
 
-      {/* Item browser */}
-      <Tabs defaultValue="exercises" className="w-full">
+      {/* Item source tabs */}
+      <Tabs defaultValue="templates" className="w-full">
         <TabsList className="w-full">
-          <TabsTrigger value="exercises" className="flex-1 text-xs">Exerciții</TabsTrigger>
-          <TabsTrigger value="problems" className="flex-1 text-xs">Probleme</TabsTrigger>
+          <TabsTrigger value="templates" className="flex-1 text-xs gap-1">
+            <FileCheck className="h-3 w-3" /> Predefinite
+          </TabsTrigger>
+          <TabsTrigger value="exercises" className="flex-1 text-xs gap-1">
+            <BookOpen className="h-3 w-3" /> Exerciții
+          </TabsTrigger>
+          <TabsTrigger value="problems" className="flex-1 text-xs gap-1">
+            <Code className="h-3 w-3" /> Probleme
+          </TabsTrigger>
+          <TabsTrigger value="custom" className="flex-1 text-xs gap-1">
+            <PenLine className="h-3 w-3" /> Custom
+          </TabsTrigger>
         </TabsList>
 
+        {/* Templates tab */}
+        <TabsContent value="templates" className="space-y-2 mt-2">
+          <p className="text-xs text-muted-foreground">Alege un test predefinit. Itemii sunt selectați automat din baza de date.</p>
+          {TEMPLATES.map((tmpl) => (
+            <button
+              key={tmpl.id}
+              onClick={() => applyTemplate(tmpl)}
+              className="w-full text-left p-3 rounded-lg border border-border hover:border-primary/50 transition-colors"
+            >
+              <div className="flex items-center gap-2">
+                <Copy className="h-4 w-4 text-primary shrink-0" />
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-foreground">{tmpl.title}</p>
+                  <p className="text-[10px] text-muted-foreground">{tmpl.description}</p>
+                </div>
+              </div>
+            </button>
+          ))}
+        </TabsContent>
+
+        {/* Exercises tab */}
         <TabsContent value="exercises" className="space-y-2 mt-2">
           <Select value={selectedChapterId} onValueChange={setSelectedChapterId}>
             <SelectTrigger className="h-8 text-xs">
@@ -188,6 +395,7 @@ const TestBuilder = ({ onBack }: TestBuilderProps) => {
           ))}
         </TabsContent>
 
+        {/* Problems tab */}
         <TabsContent value="problems" className="space-y-2 mt-2">
           <Select value={selectedProblemChapterId} onValueChange={setSelectedProblemChapterId}>
             <SelectTrigger className="h-8 text-xs">
@@ -211,6 +419,191 @@ const TestBuilder = ({ onBack }: TestBuilderProps) => {
             </button>
           ))}
         </TabsContent>
+
+        {/* Custom questions tab */}
+        <TabsContent value="custom" className="space-y-3 mt-2">
+          <p className="text-xs text-muted-foreground">Creează propriile întrebări.</p>
+
+          {!showCustomEditor ? (
+            <Button variant="outline" className="w-full gap-2" onClick={() => setShowCustomEditor(true)}>
+              <Plus className="h-4 w-4" /> Adaugă întrebare custom
+            </Button>
+          ) : (
+            <Card>
+              <CardContent className="p-4 space-y-3">
+                <div className="flex items-center gap-2">
+                  <Label className="text-xs">Tip:</Label>
+                  <Select value={customType} onValueChange={(v) => setCustomType(v as CustomQuestionType)}>
+                    <SelectTrigger className="h-7 text-xs flex-1">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="quiz">Quiz (variante)</SelectItem>
+                      <SelectItem value="truefalse">Adevărat / Fals</SelectItem>
+                      <SelectItem value="fill">Completare spații</SelectItem>
+                      <SelectItem value="order">Ordonare linii</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Quiz editor */}
+                {customType === "quiz" && (
+                  <>
+                    <Textarea
+                      placeholder="Întrebarea..."
+                      value={customQuestion}
+                      onChange={(e) => setCustomQuestion(e.target.value)}
+                      className="text-xs min-h-[60px]"
+                    />
+                    {customOptions.map((opt, idx) => (
+                      <div key={opt.id} className="flex items-center gap-2">
+                        <button
+                          onClick={() => setCustomCorrectId(opt.id)}
+                          className={`w-6 h-6 rounded-full border-2 flex items-center justify-center text-[10px] font-bold shrink-0 ${
+                            customCorrectId === opt.id
+                              ? "border-primary bg-primary text-primary-foreground"
+                              : "border-border text-muted-foreground"
+                          }`}
+                        >
+                          {opt.id.toUpperCase()}
+                        </button>
+                        <Input
+                          value={opt.text}
+                          onChange={(e) => {
+                            const updated = [...customOptions];
+                            updated[idx] = { ...updated[idx], text: e.target.value };
+                            setCustomOptions(updated);
+                          }}
+                          placeholder={`Opțiunea ${opt.id.toUpperCase()}`}
+                          className="h-7 text-xs"
+                        />
+                      </div>
+                    ))}
+                    <p className="text-[10px] text-muted-foreground">Apasă pe litera din stânga pentru a marca răspunsul corect.</p>
+                  </>
+                )}
+
+                {/* True/False editor */}
+                {customType === "truefalse" && (
+                  <>
+                    <Textarea
+                      placeholder="Afirmația..."
+                      value={customStatement}
+                      onChange={(e) => setCustomStatement(e.target.value)}
+                      className="text-xs min-h-[60px]"
+                    />
+                    <div className="flex items-center gap-3">
+                      <Label className="text-xs">Răspuns corect:</Label>
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          variant={customIsTrue ? "default" : "outline"}
+                          onClick={() => setCustomIsTrue(true)}
+                          className="h-7 text-xs"
+                        >
+                          Adevărat
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant={!customIsTrue ? "default" : "outline"}
+                          onClick={() => setCustomIsTrue(false)}
+                          className="h-7 text-xs"
+                        >
+                          Fals
+                        </Button>
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                {/* Fill editor */}
+                {customType === "fill" && (
+                  <>
+                    <Textarea
+                      placeholder="Întrebarea (ex: Funcția ___ returnează lungimea unei liste)"
+                      value={customFillQuestion}
+                      onChange={(e) => setCustomFillQuestion(e.target.value)}
+                      className="text-xs min-h-[60px]"
+                    />
+                    <p className="text-[10px] text-muted-foreground">Răspunsuri acceptate (separate prin virgulă pentru variante):</p>
+                    {customBlanks.map((blank, idx) => (
+                      <div key={blank.id} className="flex items-center gap-2">
+                        <span className="text-[10px] text-muted-foreground w-12 shrink-0">Spațiu {idx + 1}</span>
+                        <Input
+                          value={blank.answer}
+                          onChange={(e) => {
+                            const updated = [...customBlanks];
+                            updated[idx] = { ...updated[idx], answer: e.target.value };
+                            setCustomBlanks(updated);
+                          }}
+                          placeholder="len, len()"
+                          className="h-7 text-xs"
+                        />
+                        {customBlanks.length > 1 && (
+                          <button onClick={() => setCustomBlanks(customBlanks.filter((_, i) => i !== idx))} className="text-muted-foreground hover:text-destructive">
+                            <Trash2 className="h-3 w-3" />
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setCustomBlanks([...customBlanks, { id: String(customBlanks.length + 1), answer: "" }])}
+                      className="text-xs gap-1"
+                    >
+                      <Plus className="h-3 w-3" /> Adaugă spațiu
+                    </Button>
+                  </>
+                )}
+
+                {/* Order editor */}
+                {customType === "order" && (
+                  <>
+                    <p className="text-[10px] text-muted-foreground">Scrie liniile de cod în ordinea corectă. Elevul le va primi amestecate.</p>
+                    {customLines.map((line, idx) => (
+                      <div key={line.id} className="flex items-center gap-2">
+                        <span className="text-[10px] text-muted-foreground w-6 shrink-0 text-center">{idx + 1}.</span>
+                        <Input
+                          value={line.text}
+                          onChange={(e) => {
+                            const updated = [...customLines];
+                            updated[idx] = { ...updated[idx], text: e.target.value };
+                            setCustomLines(updated);
+                          }}
+                          placeholder={`Linia ${idx + 1}`}
+                          className="h-7 text-xs font-mono"
+                        />
+                        {customLines.length > 2 && (
+                          <button onClick={() => setCustomLines(customLines.filter((_, i) => i !== idx))} className="text-muted-foreground hover:text-destructive">
+                            <Trash2 className="h-3 w-3" />
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setCustomLines([...customLines, { id: String(customLines.length + 1), text: "", order: customLines.length }])}
+                      className="text-xs gap-1"
+                    >
+                      <Plus className="h-3 w-3" /> Adaugă linie
+                    </Button>
+                  </>
+                )}
+
+                <div className="flex gap-2 pt-1">
+                  <Button variant="outline" size="sm" onClick={resetCustomEditor} className="flex-1 text-xs">
+                    Anulează
+                  </Button>
+                  <Button size="sm" onClick={addCustomQuestion} className="flex-1 text-xs">
+                    Adaugă
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
       </Tabs>
 
       {/* Selected items */}
@@ -222,11 +615,7 @@ const TestBuilder = ({ onBack }: TestBuilderProps) => {
               <div key={idx} className="flex items-center gap-2 bg-muted/50 rounded-lg px-2 py-1.5">
                 <GripVertical className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
                 <div className="flex items-center gap-1.5 flex-1 min-w-0">
-                  {item.source_type === "exercise" ? (
-                    <BookOpen className="h-3 w-3 text-primary shrink-0" />
-                  ) : (
-                    <Code className="h-3 w-3 text-accent-foreground shrink-0" />
-                  )}
+                  {getItemIcon(item)}
                   <span className="text-xs text-foreground truncate">{getItemLabel(item)}</span>
                 </div>
                 <Input
