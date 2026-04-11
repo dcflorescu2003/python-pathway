@@ -128,9 +128,10 @@ export function useProgress() {
         } catch {}
       }
 
-      const finalXP = Math.round(xpEarned * bonusMultiplier);
-
       setProgress((prev) => {
+        const alreadyCompleted = !!prev.completedLessons[lessonId]?.completed;
+        const finalXP = Math.round((alreadyCompleted ? 3 : xpEarned) * bonusMultiplier);
+
         const today = new Date().toISOString().split("T")[0];
         const wasYesterday = (() => {
           const d = new Date(prev.lastActivityDate);
@@ -264,8 +265,10 @@ async function syncToCloud(userId: string, p: UserProgress) {
     }));
 
   if (lessonEntries.length > 0) {
-    // Delete existing and re-insert for simplicity
-    await supabase.from("completed_lessons").delete().eq("user_id", userId);
-    await supabase.from("completed_lessons").insert(lessonEntries);
+    for (const entry of lessonEntries) {
+      await supabase
+        .from("completed_lessons")
+        .upsert(entry, { onConflict: "user_id,lesson_id" });
+    }
   }
 }

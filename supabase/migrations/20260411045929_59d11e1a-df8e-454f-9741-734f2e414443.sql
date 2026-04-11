@@ -1,0 +1,1 @@
+ALTER TABLE public.completed_lessons ADD CONSTRAINT completed_lessons_user_lesson_unique UNIQUE (user_id, lesson_id);
