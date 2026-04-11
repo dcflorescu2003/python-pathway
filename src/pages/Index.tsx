@@ -35,6 +35,7 @@ const Index = (): JSX.Element => {
   const { progress } = useProgress();
   const { data: chapters, isLoading: chaptersLoading } = useChapters();
   const { challenges, isChallenge } = useChallenges();
+  const { data: studentTests } = useStudentAssignments();
   const [needsOnboarding, setNeedsOnboarding] = useState<boolean | null>(null);
   const [selectedSchool, setSchool] = useState(getSelectedSchool());
   const [showSchoolPicker, setShowSchoolPicker] = useState(false);
