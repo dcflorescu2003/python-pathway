@@ -1,18 +1,37 @@
 
 
-## Plan: Mobile keyboard lowercase + Tab indent fix
+## Plan: Fix text overflow + support equivalent orderings
 
-### Changes
+### Problem 1: Text overflow on mobile
+The `<code>` element uses `whitespace-pre` which prevents wrapping, causing long lines to overflow on small screens.
 
-**1. FillExercise.tsx — Add `autoCapitalize="none"` to Input fields**
-- Add `autoCapitalize="none"` to the `<Input>` elements in the fill-in-the-blank exercises so mobile keyboards default to lowercase.
+**Fix**: Change `whitespace-pre` to `whitespace-pre-wrap` and add `break-all` or `overflow-wrap: anywhere` so text wraps within the container while preserving leading indentation.
 
-**2. CodeEditor.tsx — Fix Tab key in textarea**
-- The Tab handler calls `e.preventDefault()` correctly and inserts spaces, but the cursor repositioning via `requestAnimationFrame` references `e.currentTarget` which may be null after the async frame. Fix by capturing the element reference before the RAF callback.
-- Also ensure the textarea has `autoCapitalize="none"` for mobile.
+Apply to both the draggable items and the "correct order" display.
+
+### Problem 2: Lines with interchangeable order
+Currently each line has a single `order` number, so only one exact sequence is accepted. Some lines (e.g., two independent statements) could be in either order.
+
+**Solution**: Add an optional `group` field to the line type. Lines sharing the same `group` value are considered interchangeable -- their relative order among each other doesn't matter, only their position within the correct group matters.
+
+**Changes**:
+- **`src/data/courses.ts`** (type definition): Add `group?: number` to the `lines` array item type
+- **`src/components/exercises/OrderExercise.tsx`** (validation logic): Update `handleSubmit` to check correctness by grouping lines with the same `group` value and only requiring correct ordering between different groups. Lines in the same group at consecutive positions are all accepted.
+- **Existing exercise data**: No changes needed now -- exercises without `group` work exactly as before. You can add `group` to specific exercises later when needed.
 
 ### Technical details
 
-- `FillExercise.tsx` line ~46: add `autoCapitalize="none"` prop to `<Input>`
-- `CodeEditor.tsx` line ~34-44: capture `const target = e.currentTarget` before `requestAnimationFrame`, use `target` inside the callback to reliably set cursor position
+**Wrap fix** in OrderExercise.tsx:
+- Line 123: `whitespace-pre` → `whitespace-pre-wrap break-words`  
+- Line 149: same change for correct order display
+
+**Validation logic**:
+```
+// Instead of: item.order === idx + 1
+// New: assign each position an "effective order", 
+// where items in the same group share the same order value,
+// then check the sequence is non-decreasing
+```
+
+If no lines have `group`, behavior is identical to current (exact match on `order`).
 
