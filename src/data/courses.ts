@@ -16,7 +16,7 @@ export interface Exercise {
   codeTemplate?: string;
   blanks?: { id: string; answer: string }[];
   // order
-  lines?: { id: string; text: string; order: number }[];
+  lines?: { id: string; text: string; order: number; group?: number }[];
   // truefalse
   statement?: string;
   isTrue?: boolean;
