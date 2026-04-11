@@ -199,19 +199,19 @@ const TestBuilder = ({ onBack, editTestId }: TestBuilderProps) => {
         {ex.type === "quiz" && ex.options && (
           <div className="space-y-1">
             {(ex.options as any[]).map((opt: any) => (
-              <div key={opt.id} className={`text-[11px] px-2 py-1 rounded ${opt.id === ex.correctOptionId ? "bg-primary/10 text-primary font-medium" : "text-muted-foreground"}`}>
+              <div key={opt.id} className="text-[11px] px-2 py-1 text-muted-foreground">
                 {opt.id?.toUpperCase?.() || "•"}) {opt.text}
               </div>
             ))}
           </div>
         )}
         {ex.type === "truefalse" && (
-          <p className="text-[11px] text-primary">Răspuns: {ex.isTrue ? "Adevărat" : "Fals"}</p>
+          <p className="text-[11px] text-muted-foreground">Adevărat / Fals</p>
         )}
         {ex.type === "fill" && ex.blanks && (
           <div className="space-y-0.5">
             {(ex.blanks as any[]).map((b: any, i: number) => (
-              <p key={b.id || i} className="text-[11px] text-muted-foreground">Spațiu {i + 1}: <span className="text-primary">{b.answer}</span></p>
+              <p key={b.id || i} className="text-[11px] text-muted-foreground">Spațiu {i + 1}: ___</p>
             ))}
           </div>
         )}
@@ -225,7 +225,7 @@ const TestBuilder = ({ onBack, editTestId }: TestBuilderProps) => {
         {ex.type === "match" && ex.pairs && (
           <div className="space-y-0.5">
             {(ex.pairs as any[]).map((p: any) => (
-              <p key={p.id} className="text-[11px] text-muted-foreground">{p.left} → <span className="text-primary">{p.right}</span></p>
+              <p key={p.id} className="text-[11px] text-muted-foreground">{p.left} → ___</p>
             ))}
           </div>
         )}
