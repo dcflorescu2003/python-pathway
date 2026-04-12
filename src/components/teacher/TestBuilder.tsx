@@ -10,9 +10,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useChapters } from "@/hooks/useChapters";
 import { useProblems } from "@/hooks/useProblems";
-import { useCreateTest, useUpdateTest, useTestItems, TestItem } from "@/hooks/useTests";
-import { ArrowLeft, Plus, Trash2, BookOpen, Code, GripVertical, PenLine, FileCheck, Copy, ChevronDown, ChevronRight, Eye } from "lucide-react";
+import { useCreateTest, useUpdateTest, useTestItems, useTeacherTests, TestItem } from "@/hooks/useTests";
+import { useSubscription } from "@/hooks/useSubscription";
+import { ArrowLeft, Plus, Trash2, BookOpen, Code, GripVertical, PenLine, FileCheck, Copy, ChevronDown, ChevronRight, Eye, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
+
+const MAX_AI_ITEMS_PER_TEST = 3;
+const MAX_TESTS_PER_MONTH = 10;
 
 interface TestBuilderProps {
   onBack: () => void;
