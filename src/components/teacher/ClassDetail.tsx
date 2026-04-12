@@ -26,6 +26,7 @@ const ClassDetail = ({ classId, className: clsName, joinCode, onBack }: ClassDet
   const deleteChallenge = useDeleteChallenge();
   const { data: chapters = [] } = useChapters();
   const { data: problemsData } = useProblems();
+  const { isTeacherPremium } = useSubscription();
   const allProblems = problemsData?.problems ?? [];
   const [showAssigner, setShowAssigner] = useState(false);
   const [expandedChallenge, setExpandedChallenge] = useState<string | null>(null);
