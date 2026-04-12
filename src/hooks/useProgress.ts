@@ -200,12 +200,14 @@ export function useProgress() {
   const loseLife = useCallback(() => {
     setProgress((prev) => {
       if (prev.isPremium) return prev;
-      const newProgress = { ...prev, lives: Math.max(0, prev.lives - 1) };
+      const now = new Date().toISOString();
+      const newLives = Math.max(0, prev.lives - 1);
+      const newProgress = { ...prev, lives: newLives, livesUpdatedAt: prev.lives === MAX_LIVES ? now : prev.livesUpdatedAt };
       saveLocalProgress(newProgress);
       if (user) {
         supabase
           .from("profiles")
-          .update({ lives: newProgress.lives })
+          .update({ lives: newLives, lives_updated_at: newProgress.livesUpdatedAt })
           .eq("user_id", user.id)
           .then();
       }
