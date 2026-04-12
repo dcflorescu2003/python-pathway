@@ -40,7 +40,6 @@ export function useClassMembers(classId: string | null) {
         .eq("class_id", classId);
       if (error) throw error;
 
-      // Fetch profiles for these students
       const studentIds = data.map((m) => m.student_id);
       if (studentIds.length === 0) return [];
 
@@ -128,5 +127,23 @@ export function useDeleteChallenge() {
       if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["class-challenges"] }),
+  });
+}
+
+export function useTeacherReferralCodes() {
+  const { user } = useAuth();
+  return useQuery({
+    queryKey: ["teacher-referral-codes", user?.id],
+    queryFn: async () => {
+      if (!user) return [];
+      const { data, error } = await supabase
+        .from("teacher_referral_codes")
+        .select("*")
+        .eq("teacher_id", user.id)
+        .order("created_at", { ascending: true });
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!user,
   });
 }
