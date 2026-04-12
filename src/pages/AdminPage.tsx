@@ -7,9 +7,10 @@ import ProblemsEditor from "@/components/admin/ProblemsEditor";
 import CouponManager from "@/components/admin/CouponManager";
 import AdminSettings from "@/components/admin/AdminSettings";
 import ManualEditor from "@/components/admin/ManualEditor";
+import TeacherApproval from "@/components/admin/TeacherApproval";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { BookOpen, Ticket, Code2, Settings, FileText } from "lucide-react";
+import { BookOpen, Ticket, Code2, Settings, FileText, GraduationCap } from "lucide-react";
 
 const AdminPage = () => {
   const navigate = useNavigate();
@@ -57,6 +58,10 @@ const AdminPage = () => {
               <FileText className="h-4 w-4" />
               Manual
             </TabsTrigger>
+            <TabsTrigger value="teachers" className="flex-1 gap-2">
+              <GraduationCap className="h-4 w-4" />
+              Profesori
+            </TabsTrigger>
             <TabsTrigger value="settings" className="flex-1 gap-2">
               <Settings className="h-4 w-4" />
               Setări
@@ -77,6 +82,10 @@ const AdminPage = () => {
 
           <TabsContent value="manual">
             <ManualEditor />
+          </TabsContent>
+
+          <TabsContent value="teachers">
+            <TeacherApproval />
           </TabsContent>
 
           <TabsContent value="settings">

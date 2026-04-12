@@ -10,7 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
-import { ArrowLeft, Mail, Lock, User, Eye, EyeOff, LogOut, BookOpen, XCircle, Code, Zap, Flame, Trophy, Shield, Trash2, Settings, GraduationCap, UserPlus, Crown, CreditCard } from "lucide-react";
+import { ArrowLeft, Mail, Lock, User, Eye, EyeOff, LogOut, BookOpen, XCircle, Code, Zap, Flame, Trophy, Shield, Trash2, Settings, GraduationCap, UserPlus, Crown, CreditCard, Clock } from "lucide-react";
 import { useAdminAccess } from "@/hooks/useAdminAccess";
 import { useSubscription } from "@/hooks/useSubscription";
 import { toast } from "sonner";
@@ -22,7 +22,7 @@ const AccountView = () => {
   const { data: chapters } = useChapters();
   const { isAdmin } = useAdminAccess();
   const { subscribed, subscriptionEnd, source, openPortal, checkSubscription } = useSubscription();
-  const [isTeacher, setIsTeacher] = useState<boolean | null>(null);
+  const [teacherStatus, setTeacherStatus] = useState<string | null>(null);
   const [isClassMember, setIsClassMember] = useState(false);
   const [joinCode, setJoinCode] = useState("");
   const [joinLoading, setJoinLoading] = useState(false);
@@ -35,7 +35,7 @@ const AccountView = () => {
       const [{ data: profile }, { data: memberships }] = await Promise.all([
         supabase
           .from("profiles")
-          .select("is_teacher")
+          .select("is_teacher, teacher_status")
           .eq("user_id", user.id)
           .single(),
         supabase
@@ -45,7 +45,7 @@ const AccountView = () => {
           .limit(1),
       ]);
 
-      setIsTeacher(profile?.is_teacher ?? false);
+      setTeacherStatus(profile?.teacher_status ?? null);
       setIsClassMember((memberships?.length ?? 0) > 0);
     };
 
@@ -73,18 +73,21 @@ const AccountView = () => {
     };
   }, [user, checkSubscription]);
 
-  const activateTeacher = async () => {
+  const requestTeacher = async () => {
     if (!user) return;
-    await supabase.from("profiles").update({ is_teacher: true }).eq("user_id", user.id);
-    setIsTeacher(true);
-    toast.success("Mod profesor activat! 🎓");
-  };
-
-  const deactivateTeacher = async () => {
-    if (!user) return;
-    await supabase.from("profiles").update({ is_teacher: false }).eq("user_id", user.id);
-    setIsTeacher(false);
-    toast.success("Mod profesor dezactivat.");
+    try {
+      const { error } = await supabase.rpc("request_teacher_status");
+      if (error) throw error;
+      setTeacherStatus("pending");
+      toast.success("Cererea a fost trimisă! Vei fi notificat când este aprobată. 🎓");
+    } catch (err: any) {
+      if (err.message?.includes("already set")) {
+        toast.error("Ai trimis deja o cerere.");
+      } else {
+        toast.error("Eroare la trimiterea cererii.");
+        console.error(err);
+      }
+    }
   };
 
   const handleJoinClass = async () => {
@@ -224,7 +227,7 @@ const AccountView = () => {
 
         {/* Teacher section - hidden if user is a class member */}
         {!isClassMember && (
-          isTeacher ? (
+          teacherStatus === "verified" ? (
             <div className="w-full max-w-sm mt-4 space-y-2">
               <Button
                 variant="outline"
@@ -234,20 +237,20 @@ const AccountView = () => {
                 <GraduationCap className="h-4 w-4" />
                 Panou Profesor
               </Button>
-              <Button
-                variant="ghost"
-                className="w-full gap-2 text-destructive hover:text-destructive hover:bg-destructive/10"
-                onClick={deactivateTeacher}
-              >
-                <XCircle className="h-4 w-4" />
-                Dezactivează modul profesor
-              </Button>
             </div>
+          ) : teacherStatus === "pending" ? (
+            <Card className="w-full max-w-sm mt-4 border-warning/30">
+              <CardContent className="p-4 text-center">
+                <Clock className="h-5 w-5 text-warning mx-auto mb-2" />
+                <p className="text-sm font-medium text-foreground">Cerere profesor în așteptare</p>
+                <p className="text-xs text-muted-foreground mt-1">Vei fi notificat când contul tău este aprobat.</p>
+              </CardContent>
+            </Card>
           ) : (
             <Button
               variant="outline"
               className="w-full max-w-sm mt-4 gap-2"
-              onClick={activateTeacher}
+              onClick={requestTeacher}
             >
               <GraduationCap className="h-4 w-4" />
               Devino Profesor
@@ -256,7 +259,7 @@ const AccountView = () => {
         )}
 
         {/* Join class - hidden if user is a teacher */}
-        {!isTeacher && (
+        {!teacherStatus && (
           <Card className="w-full max-w-sm mt-4 border-border">
             <CardContent className="p-4">
               <p className="text-sm font-medium text-foreground mb-2 flex items-center gap-2">

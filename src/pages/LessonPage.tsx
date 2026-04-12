@@ -48,7 +48,7 @@ const LessonPage = () => {
 
   const [currentIndex, setCurrentIndex] = useState(0);
   const [correctCount, setCorrectCount] = useState(0);
-  const [lives, setLives] = useState(3);
+  const [lives, setLives] = useState(5);
   const [isFinished, setIsFinished] = useState(false);
   const [feedback, setFeedback] = useState<"correct" | "wrong" | null>(null);
   const [lastExplanation, setLastExplanation] = useState<string | null>(null);
@@ -142,8 +142,8 @@ const LessonPage = () => {
           </button>
           <Progress value={progressPercent} className="h-2.5 flex-1" />
           <div className="flex items-center gap-1 text-destructive">
-            {Array.from({ length: 3 }).map((_, i) => (
-              <Heart key={i} className={`h-5 w-5 ${i < lives ? "fill-current" : "opacity-30"}`} />
+            {Array.from({ length: 5 }).map((_, i) => (
+              <Heart key={i} className={`h-4 w-4 ${i < lives ? "fill-current" : "opacity-30"}`} />
             ))}
           </div>
         </div>

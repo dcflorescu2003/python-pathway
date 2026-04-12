@@ -9,15 +9,20 @@ export interface UserProgress {
   completedLessons: Record<string, { score: number; completed: boolean }>;
   lastActivityDate: string;
   isPremium: boolean;
+  livesUpdatedAt: string;
 }
+
+const MAX_LIVES = 5;
+const REGEN_INTERVAL_MS = 20 * 60 * 1000; // 20 minutes
 
 const DEFAULT_PROGRESS: UserProgress = {
   xp: 0,
   streak: 0,
-  lives: 3,
+  lives: MAX_LIVES,
   completedLessons: {},
   lastActivityDate: new Date().toISOString().split("T")[0],
   isPremium: false,
+  livesUpdatedAt: new Date().toISOString(),
 };
 
 const STORAGE_KEY = "pyro-progress";
@@ -35,12 +40,24 @@ function checkStreakExpiry(p: UserProgress): UserProgress {
   return p;
 }
 
+function regenerateLives(p: UserProgress): UserProgress {
+  if (p.isPremium || p.lives >= MAX_LIVES) return p;
+  const now = Date.now();
+  const lastUpdate = new Date(p.livesUpdatedAt).getTime();
+  const elapsed = now - lastUpdate;
+  const regenCount = Math.floor(elapsed / REGEN_INTERVAL_MS);
+  if (regenCount <= 0) return p;
+  const newLives = Math.min(MAX_LIVES, p.lives + regenCount);
+  return { ...p, lives: newLives, livesUpdatedAt: new Date().toISOString() };
+}
+
 function loadLocalProgress(): UserProgress {
   try {
     const stored = localStorage.getItem(STORAGE_KEY) || localStorage.getItem(LEGACY_KEY);
     if (stored) {
       const parsed = JSON.parse(stored);
-      return checkStreakExpiry({ ...DEFAULT_PROGRESS, ...parsed });
+      const progress = checkStreakExpiry({ ...DEFAULT_PROGRESS, ...parsed });
+      return regenerateLives(progress);
     }
   } catch {}
   return { ...DEFAULT_PROGRESS };
@@ -55,6 +72,27 @@ export function useProgress() {
   const [progress, setProgress] = useState<UserProgress>(loadLocalProgress);
   const [cloudLoaded, setCloudLoaded] = useState(false);
   const prevUserId = useRef<string | null>(null);
+
+  // Auto-regenerate lives every minute check
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setProgress((prev) => {
+        const updated = regenerateLives(prev);
+        if (updated.lives !== prev.lives) {
+          saveLocalProgress(updated);
+          if (user) {
+            supabase
+              .from("profiles")
+              .update({ lives: updated.lives, lives_updated_at: updated.livesUpdatedAt })
+              .eq("user_id", user.id)
+              .then();
+          }
+        }
+        return updated;
+      });
+    }, 60_000); // check every minute
+    return () => clearInterval(interval);
+  }, [user]);
 
   // Load progress from cloud when user logs in
   useEffect(() => {
@@ -72,7 +110,7 @@ export function useProgress() {
         // Fetch profile
         const { data: profile } = await supabase
           .from("profiles")
-          .select("xp, streak, lives, is_premium, last_activity_date")
+          .select("xp, streak, lives, is_premium, last_activity_date, lives_updated_at")
           .eq("user_id", user.id)
           .single();
 
@@ -90,10 +128,11 @@ export function useProgress() {
         const cloudProgress: UserProgress = {
           xp: profile?.xp ?? 0,
           streak: profile?.streak ?? 0,
-          lives: profile?.lives ?? 3,
+          lives: profile?.lives ?? MAX_LIVES,
           isPremium: profile?.is_premium ?? false,
           lastActivityDate: profile?.last_activity_date ?? new Date().toISOString().split("T")[0],
           completedLessons: cloudCompleted,
+          livesUpdatedAt: profile?.lives_updated_at ?? new Date().toISOString(),
         };
 
         // Merge: take the maximum of local and cloud
@@ -182,12 +221,14 @@ export function useProgress() {
   const loseLife = useCallback(() => {
     setProgress((prev) => {
       if (prev.isPremium) return prev;
-      const newProgress = { ...prev, lives: Math.max(0, prev.lives - 1) };
+      const now = new Date().toISOString();
+      const newLives = Math.max(0, prev.lives - 1);
+      const newProgress = { ...prev, lives: newLives, livesUpdatedAt: prev.lives === MAX_LIVES ? now : prev.livesUpdatedAt };
       saveLocalProgress(newProgress);
       if (user) {
         supabase
           .from("profiles")
-          .update({ lives: newProgress.lives })
+          .update({ lives: newLives, lives_updated_at: newProgress.livesUpdatedAt })
           .eq("user_id", user.id)
           .then();
       }
@@ -197,12 +238,13 @@ export function useProgress() {
 
   const resetLives = useCallback(() => {
     setProgress((prev) => {
-      const newProgress = { ...prev, lives: 3 };
+      const now = new Date().toISOString();
+      const newProgress = { ...prev, lives: MAX_LIVES, livesUpdatedAt: now };
       saveLocalProgress(newProgress);
       if (user) {
         supabase
           .from("profiles")
-          .update({ lives: 3 })
+          .update({ lives: MAX_LIVES, lives_updated_at: now })
           .eq("user_id", user.id)
           .then();
       }
@@ -250,6 +292,7 @@ function mergeProgress(a: UserProgress, b: UserProgress): UserProgress {
     lastActivityDate:
       a.lastActivityDate > b.lastActivityDate ? a.lastActivityDate : b.lastActivityDate,
     completedLessons: mergedLessons,
+    livesUpdatedAt: a.livesUpdatedAt > b.livesUpdatedAt ? a.livesUpdatedAt : b.livesUpdatedAt,
   };
 }
 
@@ -275,6 +318,7 @@ async function syncToCloud(userId: string, p: UserProgress) {
       is_premium: p.isPremium,
       last_activity_date: p.lastActivityDate,
       best_streak: newBest,
+      lives_updated_at: p.livesUpdatedAt,
     })
     .eq("user_id", userId);
 
