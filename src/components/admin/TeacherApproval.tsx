@@ -10,8 +10,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   CheckCircle, XCircle, Clock, UserCheck, Plus, Copy,
   Link2, FileImage, KeyRound, Users, ExternalLink, Trash2,
+  Mail, MessageSquare,
 } from "lucide-react";
 import { toast } from "sonner";
+import VerificationChat from "@/components/teacher/VerificationChat";
 
 // ─── Requests Tab ───
 const RequestsTab = () => {
