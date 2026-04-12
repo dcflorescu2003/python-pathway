@@ -1,11 +1,11 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { useTestAssignments, useTestSubmissions, useTestAnswers, useTestItems, useUpdateAnswerScore } from "@/hooks/useTests";
-import { ArrowLeft, ChevronDown, ChevronUp, CheckCircle, XCircle, Save } from "lucide-react";
+import { ArrowLeft, ChevronDown, ChevronUp, CheckCircle, XCircle, Save, FileSpreadsheet, FileText } from "lucide-react";
 import { toast } from "sonner";
 
 interface TestResultsProps {
@@ -124,6 +124,141 @@ const TestResults = ({ testId, onBack }: TestResultsProps) => {
     return { question: "", type: testItem.source_type || "" };
   };
 
+  const escapeCSV = (val: any) => {
+    const s = String(val ?? "");
+    return s.includes(",") || s.includes('"') || s.includes("\n") ? `"${s.replace(/"/g, '""')}"` : s;
+  };
+
+  const exportTestCSV = async () => {
+    if (submissions.length === 0) return;
+    try {
+      // Fetch all answers for all submissions
+      const subIds = submissions.map((s: any) => s.id);
+      const { data: allAnswers } = await supabase
+        .from("test_answers")
+        .select("*")
+        .in("submission_id", subIds);
+
+      const rows: string[] = [];
+      rows.push(["Elev", "Variantă", "Scor", "Maxim", "Procent", "Trimis la"].map(escapeCSV).join(","));
+
+      submissions.forEach((sub: any) => {
+        const pct = sub.max_score > 0 ? Math.round((sub.total_score / sub.max_score) * 100) : 0;
+        rows.push([
+          sub.profile?.display_name || "Elev",
+          sub.variant,
+          sub.total_score ?? 0,
+          sub.max_score ?? 0,
+          `${pct}%`,
+          sub.submitted_at ? new Date(sub.submitted_at).toLocaleDateString("ro-RO") : "În curs",
+        ].map(escapeCSV).join(","));
+      });
+
+      // Detail section
+      rows.push("");
+      rows.push("--- Detalii per elev ---");
+      for (const sub of submissions) {
+        const subAnswers = (allAnswers || []).filter((a: any) => a.submission_id === sub.id);
+        rows.push("");
+        rows.push(`Elev: ${sub.profile?.display_name || "Elev"} (${sub.variant})`);
+        rows.push(["Item", "Tip", "Punctaj", "Maxim", "Feedback"].map(escapeCSV).join(","));
+        subAnswers.forEach((ans: any, idx: number) => {
+          const ti = itemMap.get(ans.test_item_id);
+          const qInfo = getQuestionInfo(ti);
+          rows.push([
+            `Item ${idx + 1}`,
+            qInfo.type,
+            ans.score ?? 0,
+            ans.max_points ?? 0,
+            ans.feedback || "",
+          ].map(escapeCSV).join(","));
+        });
+      }
+
+      const blob = new Blob(["\uFEFF" + rows.join("\n")], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `rezultate_test.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success("CSV exportat!");
+    } catch {
+      toast.error("Eroare la export CSV");
+    }
+  };
+
+  const exportTestPDF = async () => {
+    if (submissions.length === 0) return;
+    try {
+      const subIds = submissions.map((s: any) => s.id);
+      const { data: allAnswers } = await supabase
+        .from("test_answers")
+        .select("*")
+        .in("submission_id", subIds);
+
+      const className = assignments.find((a: any) => a.id === selectedAssignmentId)?.teacher_classes?.name || "Clasă";
+
+      let html = `<html><head><meta charset="utf-8"><title>Rezultate Test</title>
+        <style>
+          body { font-family: system-ui, sans-serif; padding: 24px; color: #1a1a2e; font-size: 13px; }
+          h1 { font-size: 20px; margin-bottom: 4px; }
+          h2 { font-size: 15px; color: #555; margin-top: 20px; }
+          table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+          th, td { border: 1px solid #ddd; padding: 6px 10px; text-align: left; font-size: 12px; }
+          th { background: #f0f0f5; font-weight: 600; }
+          .good { color: #16a34a; } .bad { color: #dc2626; }
+          @media print { body { padding: 0; } }
+        </style></head><body>`;
+      html += `<h1>Rezultate Test — ${className}</h1>`;
+      html += `<p style="color:#888;font-size:11px;">Exportat: ${new Date().toLocaleDateString("ro-RO")}</p>`;
+
+      // Summary table
+      html += `<table><tr><th>Elev</th><th>Variantă</th><th>Scor</th><th>Maxim</th><th>Procent</th><th>Trimis</th></tr>`;
+      submissions.forEach((sub: any) => {
+        const pct = sub.max_score > 0 ? Math.round((sub.total_score / sub.max_score) * 100) : 0;
+        html += `<tr>
+          <td>${sub.profile?.display_name || "Elev"}</td>
+          <td>${sub.variant}</td>
+          <td>${sub.total_score ?? 0}</td>
+          <td>${sub.max_score ?? 0}</td>
+          <td class="${pct >= 50 ? "good" : "bad"}">${pct}%</td>
+          <td>${sub.submitted_at ? new Date(sub.submitted_at).toLocaleDateString("ro-RO") : "În curs"}</td>
+        </tr>`;
+      });
+      html += `</table>`;
+
+      // Per-student details
+      for (const sub of submissions) {
+        const subAnswers = (allAnswers || []).filter((a: any) => a.submission_id === sub.id);
+        html += `<h2>${sub.profile?.display_name || "Elev"} (Nr. ${sub.variant})</h2>`;
+        html += `<table><tr><th>Item</th><th>Tip</th><th>Punctaj</th><th>Feedback</th></tr>`;
+        subAnswers.forEach((ans: any, idx: number) => {
+          const ti = itemMap.get(ans.test_item_id);
+          const qInfo = getQuestionInfo(ti);
+          html += `<tr>
+            <td>Item ${idx + 1}</td>
+            <td>${typeLabel(qInfo.type)}</td>
+            <td>${ans.score ?? 0}/${ans.max_points ?? 0}</td>
+            <td>${ans.feedback || "—"}</td>
+          </tr>`;
+        });
+        html += `</table>`;
+      }
+
+      html += `</body></html>`;
+      const w = window.open("", "_blank");
+      if (w) {
+        w.document.write(html);
+        w.document.close();
+        setTimeout(() => w.print(), 400);
+      }
+      toast.success("PDF generat!");
+    } catch {
+      toast.error("Eroare la export PDF");
+    }
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-3">
@@ -154,9 +289,21 @@ const TestResults = ({ testId, onBack }: TestResultsProps) => {
 
       {selectedAssignmentId && (
         <div className="space-y-2">
-          <p className="text-xs font-semibold text-muted-foreground">
-            Submiteri ({submissions.length})
-          </p>
+          <div className="flex items-center justify-between">
+            <p className="text-xs font-semibold text-muted-foreground">
+              Submiteri ({submissions.length})
+            </p>
+            {submissions.length > 0 && (
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={exportTestCSV}>
+                  <FileSpreadsheet className="h-3.5 w-3.5" /> CSV
+                </Button>
+                <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={exportTestPDF}>
+                  <FileText className="h-3.5 w-3.5" /> PDF
+                </Button>
+              </div>
+            )}
+          </div>
           {submissions.length === 0 ? (
             <p className="text-sm text-muted-foreground">Nicio submitere încă.</p>
           ) : (
