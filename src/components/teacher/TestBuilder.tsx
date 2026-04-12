@@ -456,6 +456,18 @@ const TestBuilder = ({ onBack, editTestId }: TestBuilderProps) => {
         <h2 className="text-lg font-bold text-foreground">{isEditing ? "Editează test" : "Creează test"}</h2>
       </div>
 
+      {/* Limits info for Profesor AI */}
+      {isTeacherPremium && (
+        <div className="flex flex-wrap gap-2">
+          <div className={`text-xs px-2 py-1 rounded-full border ${testsThisMonth >= MAX_TESTS_PER_MONTH ? 'border-destructive/50 bg-destructive/10 text-destructive' : 'border-border bg-muted text-muted-foreground'}`}>
+            Teste luna aceasta: {testsThisMonth}/{MAX_TESTS_PER_MONTH}
+          </div>
+          <div className={`text-xs px-2 py-1 rounded-full border ${problemItemCount >= MAX_AI_ITEMS_PER_TEST ? 'border-destructive/50 bg-destructive/10 text-destructive' : 'border-border bg-muted text-muted-foreground'}`}>
+            Probleme AI: {problemItemCount}/{MAX_AI_ITEMS_PER_TEST}
+          </div>
+        </div>
+      )}
+
       {/* Config */}
       <Card>
         <CardContent className="p-4 space-y-3">
