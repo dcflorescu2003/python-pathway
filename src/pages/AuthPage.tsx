@@ -171,7 +171,9 @@ const AccountView = () => {
       .select("teacher_status")
       .eq("user_id", user.id)
       .single();
-    setTeacherStatus(data?.teacher_status ?? null);
+    const newStatus = data?.teacher_status ?? null;
+    // If still unverified after submission, force to pending (RPC may have updated it)
+    setTeacherStatus(newStatus === "unverified" ? "pending" : newStatus);
     setShowVerificationForm(false);
   };
 
