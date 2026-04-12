@@ -31,7 +31,12 @@ const CouponRedemption = () => {
       }
 
       setRedeemed(true);
-      toast.success(`Premium activat pentru ${data.duration_days} zile! 🎉`);
+      const isTeacher = data.coupon_type === "teacher";
+      toast.success(
+        isTeacher
+          ? `Profesor AI activat pentru ${data.duration_days} zile! 🎓`
+          : `Premium activat pentru ${data.duration_days} zile! 🎉`
+      );
     } catch (err: any) {
       toast.error(err?.message || "Eroare la activare.");
     } finally {
