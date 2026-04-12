@@ -1,10 +1,11 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ArrowLeft, GraduationCap, AlertTriangle, Sparkles } from "lucide-react";
+import { ArrowLeft, GraduationCap, AlertTriangle, Sparkles, Copy, CheckCircle, Users } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useTeacherClasses } from "@/hooks/useTeacher";
+import { useTeacherClasses, useTeacherReferralCodes } from "@/hooks/useTeacher";
 import { useAuth } from "@/hooks/useAuth";
+import { toast } from "sonner";
 import { useSubscription } from "@/hooks/useSubscription";
 import { supabase } from "@/integrations/supabase/client";
 import ClassManager from "@/components/teacher/ClassManager";
@@ -20,6 +21,7 @@ const TeacherPage = () => {
   const { user } = useAuth();
   const { isTeacherPremium } = useSubscription();
   const { data: classes = [] } = useTeacherClasses();
+  const { data: referralCodes = [] } = useTeacherReferralCodes();
   const [selectedClassId, setSelectedClassId] = useState<string | null>(null);
   const [showTestBuilder, setShowTestBuilder] = useState(false);
   const [editingTestId, setEditingTestId] = useState<string | null>(null);
@@ -95,6 +97,50 @@ const TeacherPage = () => {
                 <Sparkles className="h-3 w-3" />
                 Upgrade
               </Button>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Referral codes for verified teachers */}
+        {isVerified && referralCodes.length > 0 && !showTestBuilder && !selectedClass && (
+          <Card className="mb-4 border-border">
+            <CardContent className="p-4">
+              <p className="text-sm font-semibold text-foreground mb-2 flex items-center gap-2">
+                <Users className="h-4 w-4 text-primary" />
+                Codurile tale de invitație pentru colegi
+              </p>
+              <p className="text-xs text-muted-foreground mb-3">
+                Trimite un cod unui coleg profesor — va fi verificat automat.
+              </p>
+              <div className="space-y-2">
+                {referralCodes.map((c: any) => (
+                  <div key={c.id} className="flex items-center justify-between bg-muted/50 rounded-lg px-3 py-2">
+                    <div>
+                      <span className="text-sm font-mono font-bold text-foreground">{c.code}</span>
+                      {c.used_by ? (
+                        <span className="text-xs text-muted-foreground ml-2 flex items-center gap-1 inline-flex">
+                          <CheckCircle className="h-3 w-3 text-primary" /> Folosit
+                        </span>
+                      ) : (
+                        <span className="text-xs text-primary ml-2">Disponibil</span>
+                      )}
+                    </div>
+                    {!c.used_by && (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="gap-1"
+                        onClick={() => {
+                          navigator.clipboard.writeText(c.code);
+                          toast.success("Cod copiat!");
+                        }}
+                      >
+                        <Copy className="h-3.5 w-3.5" />
+                      </Button>
+                    )}
+                  </div>
+                ))}
+              </div>
             </CardContent>
           </Card>
         )}

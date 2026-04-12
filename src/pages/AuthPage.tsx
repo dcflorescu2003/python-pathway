@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { ArrowLeft, Mail, Lock, User, Eye, EyeOff, LogOut, BookOpen, XCircle, Code, Zap, Flame, Trophy, Shield, Trash2, Settings, GraduationCap, UserPlus, Crown, CreditCard, Clock } from "lucide-react";
+import TeacherVerificationForm from "@/components/teacher/TeacherVerificationForm";
 import { useAdminAccess } from "@/hooks/useAdminAccess";
 import { useSubscription } from "@/hooks/useSubscription";
 import { toast } from "sonner";
@@ -26,6 +27,7 @@ const AccountView = () => {
   const [isClassMember, setIsClassMember] = useState(false);
   const [joinCode, setJoinCode] = useState("");
   const [joinLoading, setJoinLoading] = useState(false);
+  const [showVerificationForm, setShowVerificationForm] = useState(false);
   const [portalLoading, setPortalLoading] = useState(false);
 
   useEffect(() => {
@@ -73,21 +75,15 @@ const AccountView = () => {
     };
   }, [user, checkSubscription]);
 
-  const requestTeacher = async () => {
+  const reloadTeacherStatus = async () => {
     if (!user) return;
-    try {
-      const { error } = await supabase.rpc("request_teacher_status");
-      if (error) throw error;
-      setTeacherStatus("pending");
-      toast.success("Cererea a fost trimisă! Vei fi notificat când este aprobată. 🎓");
-    } catch (err: any) {
-      if (err.message?.includes("already set")) {
-        toast.error("Ai trimis deja o cerere.");
-      } else {
-        toast.error("Eroare la trimiterea cererii.");
-        console.error(err);
-      }
-    }
+    const { data } = await supabase
+      .from("profiles")
+      .select("teacher_status")
+      .eq("user_id", user.id)
+      .single();
+    setTeacherStatus(data?.teacher_status ?? null);
+    setShowVerificationForm(false);
   };
 
   const handleJoinClass = async () => {
@@ -246,11 +242,20 @@ const AccountView = () => {
                 <p className="text-xs text-muted-foreground mt-1">Vei fi notificat când contul tău este aprobat.</p>
               </CardContent>
             </Card>
+          ) : showVerificationForm ? (
+            <Card className="w-full max-w-sm mt-4">
+              <CardContent className="p-4">
+                <TeacherVerificationForm
+                  onSuccess={reloadTeacherStatus}
+                  onCancel={() => setShowVerificationForm(false)}
+                />
+              </CardContent>
+            </Card>
           ) : (
             <Button
               variant="outline"
               className="w-full max-w-sm mt-4 gap-2"
-              onClick={requestTeacher}
+              onClick={() => setShowVerificationForm(true)}
             >
               <GraduationCap className="h-4 w-4" />
               Devino Profesor
