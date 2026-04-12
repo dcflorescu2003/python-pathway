@@ -46,7 +46,7 @@ const Index = (): JSX.Element => {
   const [showChallenges, setShowChallenges] = useState(false);
   const [showRoadmap, setShowRoadmap] = useState(false);
   const { isInstalled } = useInstallPrompt();
-  const { couponExpired, dismissCouponExpired, startCheckout } = useSubscription();
+  const { couponExpired, couponType, dismissCouponExpired, startCheckout } = useSubscription();
   const [schoolSearch, setSchoolSearch] = useState("");
   const [showLevelUp, setShowLevelUp] = useState(false);
   const [showStreak, setShowStreak] = useState(false);
