@@ -327,8 +327,8 @@ const AccountView = () => {
 
         <CouponRedemption />
 
-        {/* Teacher section - hidden if user is a class member */}
-        {!isClassMember && (
+        {/* Teacher section */}
+        {(
           teacherStatus === "verified" ? (
             <div className="w-full max-w-sm mt-4 space-y-2">
               <Button
