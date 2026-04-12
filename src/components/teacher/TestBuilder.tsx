@@ -79,6 +79,8 @@ const TestBuilder = ({ onBack, editTestId }: TestBuilderProps) => {
   const createTest = useCreateTest();
   const updateTest = useUpdateTest();
   const { data: existingItems = [] } = useTestItems(editTestId || null);
+  const { data: allTests = [] } = useTeacherTests();
+  const { isTeacherPremium } = useSubscription();
   const isEditing = !!editTestId;
 
   const [title, setTitle] = useState("");
