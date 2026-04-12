@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { ArrowLeft, Mail, Lock, User, Eye, EyeOff, LogOut, BookOpen, XCircle, Code, Zap, Flame, Trophy, Shield, Trash2, Settings, GraduationCap, UserPlus, Crown, CreditCard, Clock, Pencil, Check, X } from "lucide-react";
+import { ArrowLeft, Mail, Lock, User, Eye, EyeOff, LogOut, BookOpen, XCircle, Code, Zap, Flame, Trophy, Shield, Trash2, Settings, GraduationCap, UserPlus, Crown, CreditCard, Clock, Pencil, Check, X, DoorOpen } from "lucide-react";
 import TeacherVerificationForm from "@/components/teacher/TeacherVerificationForm";
 import { useAdminAccess } from "@/hooks/useAdminAccess";
 import { useSubscription } from "@/hooks/useSubscription";
@@ -26,6 +26,8 @@ const AccountView = () => {
   const { subscribed, subscriptionEnd, source, openPortal, checkSubscription } = useSubscription();
   const [teacherStatus, setTeacherStatus] = useState<string | null>(null);
   const [isClassMember, setIsClassMember] = useState(false);
+  const [memberClassName, setMemberClassName] = useState<string | null>(null);
+  const [leavingClass, setLeavingClass] = useState(false);
   const [joinCode, setJoinCode] = useState("");
   const [joinLoading, setJoinLoading] = useState(false);
   const [showVerificationForm, setShowVerificationForm] = useState(false);
@@ -50,14 +52,26 @@ const AccountView = () => {
           .single(),
         supabase
           .from("class_members")
-          .select("id")
+          .select("id, class_id")
           .eq("student_id", user.id)
           .limit(1),
       ]);
 
       setTeacherStatus(profile?.teacher_status ?? null);
       setDisplayName(profile?.display_name ?? null);
-      setIsClassMember((memberships?.length ?? 0) > 0);
+      const isMember = (memberships?.length ?? 0) > 0;
+      setIsClassMember(isMember);
+
+      if (isMember && memberships?.[0]?.class_id) {
+        const { data: cls } = await supabase
+          .from("teacher_classes")
+          .select("name")
+          .eq("id", memberships[0].class_id)
+          .single();
+        setMemberClassName(cls?.name ?? null);
+      } else {
+        setMemberClassName(null);
+      }
     };
 
     void loadAccountFlags();
@@ -177,6 +191,26 @@ const AccountView = () => {
       setFullName("");
     } finally {
       setJoinLoading(false);
+    }
+  };
+
+  const handleLeaveClass = async () => {
+    if (!user) return;
+    setLeavingClass(true);
+    try {
+      const { error } = await supabase
+        .from("class_members")
+        .delete()
+        .eq("student_id", user.id);
+      if (error) {
+        toast.error("Eroare la părăsirea clasei.");
+      } else {
+        toast.success("Ai părăsit clasa.");
+        setIsClassMember(false);
+        setMemberClassName(null);
+      }
+    } finally {
+      setLeavingClass(false);
     }
   };
 
@@ -327,8 +361,32 @@ const AccountView = () => {
 
         <CouponRedemption />
 
-        {/* Teacher section */}
-        {(
+        {/* Class membership info */}
+        {isClassMember && (
+          <Card className="w-full max-w-sm mt-4 border-border">
+            <CardContent className="p-4">
+              <p className="text-sm font-medium text-foreground mb-2 flex items-center gap-2">
+                <BookOpen className="h-4 w-4 text-primary" /> Clasa ta
+              </p>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">{memberClassName ?? "Clasă"}</span>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  className="gap-1"
+                  disabled={leavingClass}
+                  onClick={handleLeaveClass}
+                >
+                  <DoorOpen className="h-4 w-4" />
+                  {leavingClass ? "..." : "Părăsește"}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Teacher section - hidden if user is a class member */}
+        {!isClassMember && (
           teacherStatus === "verified" ? (
             <div className="w-full max-w-sm mt-4 space-y-2">
               <Button
@@ -369,8 +427,8 @@ const AccountView = () => {
           )
         )}
 
-        {/* Join class - hidden if user is a teacher */}
-        {!teacherStatus && (
+        {/* Join class - hidden if user is a teacher or already in a class */}
+        {!teacherStatus && !isClassMember && (
           <Card className="w-full max-w-sm mt-4 border-border">
             <CardContent className="p-4">
               <p className="text-sm font-medium text-foreground mb-2 flex items-center gap-2">
