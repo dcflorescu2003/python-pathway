@@ -14,6 +14,7 @@ import {
   Upload,
   CheckCircle,
   Loader2,
+  Mail,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -57,6 +58,7 @@ const TeacherVerificationForm = ({ onSuccess, onCancel }: Props) => {
   const [loading, setLoading] = useState(false);
 
   // Form state
+  const [contactEmail, setContactEmail] = useState(user?.email || "");
   const [inviteCode, setInviteCode] = useState("");
   const [referralCode, setReferralCode] = useState("");
   const [publicLink, setPublicLink] = useState("");
@@ -65,29 +67,35 @@ const TeacherVerificationForm = ({ onSuccess, onCancel }: Props) => {
 
   const submit = async () => {
     if (!user) return;
+
+    // Validate contact email
+    if (!contactEmail.trim() || !contactEmail.includes("@")) {
+      toast.error("Introdu o adresă de email validă.");
+      return;
+    }
+
     setLoading(true);
 
     try {
-      let data: Record<string, string> = {};
+      let data: Record<string, string> = { contact_email: contactEmail.trim() };
 
       if (selected === "invite_code") {
         if (!inviteCode.trim()) { toast.error("Introdu codul."); return; }
-        data = { code: inviteCode.trim().toUpperCase() };
+        data = { ...data, code: inviteCode.trim().toUpperCase() };
       } else if (selected === "referral") {
         if (!referralCode.trim()) { toast.error("Introdu codul."); return; }
-        data = { code: referralCode.trim().toUpperCase() };
+        data = { ...data, code: referralCode.trim().toUpperCase() };
       } else if (selected === "public_link") {
         if (!publicLink.trim()) { toast.error("Introdu un link."); return; }
-        data = { link: publicLink.trim(), note: linkNote.trim() };
+        data = { ...data, link: publicLink.trim(), note: linkNote.trim() };
       } else if (selected === "document") {
         if (!docFile) { toast.error("Selectează un document."); return; }
-        // Upload file
         const path = `${user.id}/${Date.now()}-${docFile.name}`;
         const { error: upErr } = await supabase.storage
           .from("teacher-documents")
           .upload(path, docFile);
         if (upErr) throw upErr;
-        data = { document_path: path, file_name: docFile.name };
+        data = { ...data, document_path: path, file_name: docFile.name };
       }
 
       const { data: result, error } = await supabase.rpc(
@@ -164,6 +172,24 @@ const TeacherVerificationForm = ({ onSuccess, onCancel }: Props) => {
         <h3 className="text-base font-bold text-foreground">
           {methods.find((m) => m.id === selected)?.title}
         </h3>
+      </div>
+
+      {/* Contact email — always required */}
+      <div className="space-y-2">
+        <label className="text-sm font-medium text-foreground flex items-center gap-1.5">
+          <Mail className="h-3.5 w-3.5 text-primary" />
+          Email de contact *
+        </label>
+        <Input
+          type="email"
+          placeholder="adresa@email.com"
+          value={contactEmail}
+          onChange={(e) => setContactEmail(e.target.value)}
+          maxLength={100}
+        />
+        <p className="text-xs text-muted-foreground">
+          Adresa la care poți fi contactat dacă este nevoie de informații suplimentare.
+        </p>
       </div>
 
       {selected === "invite_code" && (
