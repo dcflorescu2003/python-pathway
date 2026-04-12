@@ -4,14 +4,14 @@ import { useAuth } from "@/hooks/useAuth";
 
 // Stripe product IDs for subscription type detection
 export const STUDENT_PRODUCT_IDS = [
-  "prod_UJytlzfmO6QOWq", // Elev Premium (monthly product)
-  "prod_UJyuPMfGUzX6VG", // Elev Premium (annual product)
-  "prod_SKTMeV1Qx2QN9V", // Legacy student product (if any)
+  "prod_UJytlzfmO6QOWq",
+  "prod_UJyuPMfGUzX6VG",
+  "prod_SKTMeV1Qx2QN9V",
 ];
 
 export const TEACHER_PRODUCT_IDS = [
-  "prod_UJyuT97MzPvyj8", // Profesor AI (monthly product)
-  "prod_UJyudq2JiikIbg", // Profesor AI (annual product)
+  "prod_UJyuT97MzPvyj8",
+  "prod_UJyudq2JiikIbg",
 ];
 
 // Price IDs for checkout
@@ -25,6 +25,8 @@ interface SubscriptionState {
   subscriptionEnd: string | null;
   source: "stripe" | "coupon" | null;
   couponExpired: boolean;
+  couponType: string | null;
+  couponDaysRemaining: number | null;
   loading: boolean;
   productId: string | null;
 }
@@ -34,6 +36,8 @@ const DEFAULT_STATE: SubscriptionState = {
   subscriptionEnd: null,
   source: null,
   couponExpired: false,
+  couponType: null,
+  couponDaysRemaining: null,
   loading: false,
   productId: null,
 };
@@ -53,6 +57,8 @@ async function fetchSubscriptionState(): Promise<SubscriptionState> {
     subscriptionEnd: data?.subscription_end ?? null,
     source: data?.source ?? null,
     couponExpired: data?.coupon_expired ?? false,
+    couponType: data?.coupon_type ?? null,
+    couponDaysRemaining: data?.coupon_days_remaining ?? null,
     loading: false,
     productId: data?.product_id ?? null,
   };
@@ -100,7 +106,9 @@ export function useSubscription() {
   const { user, session } = useAuth();
   const [state, setState] = useState<SubscriptionState>(cachedState ?? { ...DEFAULT_STATE, loading: !!user });
 
-  const isTeacherPremium = state.productId ? TEACHER_PRODUCT_IDS.includes(state.productId) : false;
+  const isTeacherPremium = state.productId
+    ? TEACHER_PRODUCT_IDS.includes(state.productId)
+    : (state.source === "coupon" && state.couponType === "teacher" && state.subscribed);
   const isStudentPremium = state.subscribed && !isTeacherPremium;
 
   const checkSubscription = useCallback(async (force = false) => {

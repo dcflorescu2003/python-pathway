@@ -19,7 +19,6 @@ Deno.serve(async (req) => {
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, serviceKey);
 
-    // Get user from token
     const anonClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY")!);
     const { data: { user }, error: authError } = await anonClient.auth.getUser(
       authHeader.replace("Bearer ", "")
@@ -77,15 +76,19 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Validate coupon type vs user status
+    const couponType = coupon.coupon_type || "student";
+
     // Redeem: calculate premium_until
     const premiumUntil = new Date();
     premiumUntil.setDate(premiumUntil.getDate() + coupon.duration_days);
 
-    // Insert redemption
+    // Insert redemption with coupon_type
     await supabase.from("coupon_redemptions").insert({
       coupon_id: coupon.id,
       user_id: user.id,
       premium_until: premiumUntil.toISOString(),
+      coupon_type: couponType,
     });
 
     // Increment used_count
@@ -94,17 +97,21 @@ Deno.serve(async (req) => {
       .update({ used_count: coupon.used_count + 1 })
       .eq("id", coupon.id);
 
-    // Set user as premium
-    await supabase
-      .from("profiles")
-      .update({ is_premium: true })
-      .eq("user_id", user.id);
+    // Set user as premium + if teacher coupon, also set teacher status
+    const profileUpdate: Record<string, any> = { is_premium: true };
+    if (couponType === "teacher") {
+      profileUpdate.is_teacher = true;
+      profileUpdate.teacher_status = "verified";
+      profileUpdate.verification_method = "coupon";
+    }
+    await supabase.from("profiles").update(profileUpdate).eq("user_id", user.id);
 
     return new Response(
       JSON.stringify({
         success: true,
         premium_until: premiumUntil.toISOString(),
         duration_days: coupon.duration_days,
+        coupon_type: couponType,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
