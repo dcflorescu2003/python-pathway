@@ -122,14 +122,26 @@ serve(async (req) => {
 
     const isPremium = stripeActive || couponActive;
 
-    // Sync profile: if coupon expired and no stripe, downgrade
+    // Sync profile: if coupon expired and no stripe, downgrade premium
     const profileUpdate: Record<string, any> = { is_premium: isPremium };
     if (couponExpired && !stripeActive && !couponActive) {
-      // If expired teacher coupon, also remove teacher premium status
+      // If expired teacher coupon, only remove teacher status if verification was via coupon
+      // Teachers verified through other methods (invite_code, document, referral) keep their status
       if (couponType === "teacher") {
-        profileUpdate.is_teacher = false;
-        profileUpdate.teacher_status = null;
-        profileUpdate.verification_method = null;
+        const { data: profile } = await supabaseClient
+          .from("profiles")
+          .select("verification_method")
+          .eq("user_id", userId)
+          .single();
+        
+        if (profile?.verification_method === "coupon") {
+          profileUpdate.is_teacher = false;
+          profileUpdate.teacher_status = null;
+          profileUpdate.verification_method = null;
+          logStep("Teacher coupon expired, removing teacher status (was coupon-verified)");
+        } else {
+          logStep("Teacher coupon expired, keeping teacher status (verified via " + profile?.verification_method + ")");
+        }
       }
     }
     await supabaseClient.from("profiles").update(profileUpdate).eq("user_id", userId);

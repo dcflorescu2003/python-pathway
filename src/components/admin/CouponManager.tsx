@@ -152,7 +152,7 @@ const CouponManager = () => {
     <div className="space-y-3">
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-bold text-foreground">🎟️ Cupoane</h2>
-        <Button size="sm" onClick={() => setShowCreate(!showCreate)}>
+        <Button size="sm" onClick={() => { setNewType(activeTab as "student" | "teacher"); setShowCreate(!showCreate); }}>
           <Plus className="h-4 w-4 mr-1" /> Nou
         </Button>
       </div>
