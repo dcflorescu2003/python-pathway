@@ -150,6 +150,7 @@ export type Database = {
       coupon_redemptions: {
         Row: {
           coupon_id: string
+          coupon_type: string
           id: string
           premium_until: string
           redeemed_at: string
@@ -157,6 +158,7 @@ export type Database = {
         }
         Insert: {
           coupon_id: string
+          coupon_type?: string
           id?: string
           premium_until: string
           redeemed_at?: string
@@ -164,6 +166,7 @@ export type Database = {
         }
         Update: {
           coupon_id?: string
+          coupon_type?: string
           id?: string
           premium_until?: string
           redeemed_at?: string
@@ -182,6 +185,7 @@ export type Database = {
       coupons: {
         Row: {
           code: string
+          coupon_type: string
           created_at: string
           duration_days: number
           expires_at: string | null
@@ -192,6 +196,7 @@ export type Database = {
         }
         Insert: {
           code: string
+          coupon_type?: string
           created_at?: string
           duration_days?: number
           expires_at?: string | null
@@ -202,6 +207,7 @@ export type Database = {
         }
         Update: {
           code?: string
+          coupon_type?: string
           created_at?: string
           duration_days?: number
           expires_at?: string | null
