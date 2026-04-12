@@ -48,10 +48,10 @@ serve(async (req) => {
     if (!userId || !userEmail) throw new Error("User not authenticated");
     logStep("User authenticated", { email: userEmail });
 
-    // Check coupon-based premium first
+    // Check coupon-based premium (latest active redemption)
     const { data: redemptions } = await supabaseClient
       .from("coupon_redemptions")
-      .select("premium_until")
+      .select("premium_until, coupon_type")
       .eq("user_id", userId)
       .order("premium_until", { ascending: false })
       .limit(1);
@@ -61,16 +61,18 @@ serve(async (req) => {
     let couponActive = false;
     let couponEnd: string | null = null;
     let couponExpired = false;
+    let couponType: string | null = null;
 
     if (latestRedemption) {
       const premiumUntil = new Date(latestRedemption.premium_until);
+      couponType = latestRedemption.coupon_type || "student";
       if (premiumUntil > now) {
         couponActive = true;
         couponEnd = latestRedemption.premium_until;
-        logStep("Active coupon premium", { until: couponEnd });
+        logStep("Active coupon premium", { until: couponEnd, type: couponType });
       } else {
         couponExpired = true;
-        logStep("Coupon premium expired", { expired_at: latestRedemption.premium_until });
+        logStep("Coupon premium expired", { expired_at: latestRedemption.premium_until, type: couponType });
       }
     }
 
@@ -94,7 +96,6 @@ serve(async (req) => {
         stripeActive = true;
         const sub = subscriptions.data[0];
 
-        // Get product ID to differentiate student vs teacher subscription
         if (sub.items?.data?.[0]?.price?.product) {
           const prod = sub.items.data[0].price.product;
           productId = typeof prod === "string" ? prod : prod.id;
@@ -121,14 +122,31 @@ serve(async (req) => {
 
     const isPremium = stripeActive || couponActive;
 
-    // Sync premium status to profile
-    await supabaseClient.from("profiles").update({ is_premium: isPremium }).eq("user_id", userId);
+    // Sync profile: if coupon expired and no stripe, downgrade
+    const profileUpdate: Record<string, any> = { is_premium: isPremium };
+    if (couponExpired && !stripeActive && !couponActive) {
+      // If expired teacher coupon, also remove teacher premium status
+      if (couponType === "teacher") {
+        profileUpdate.is_teacher = false;
+        profileUpdate.teacher_status = null;
+        profileUpdate.verification_method = null;
+      }
+    }
+    await supabaseClient.from("profiles").update(profileUpdate).eq("user_id", userId);
+
+    // Calculate days remaining for coupon
+    let couponDaysRemaining: number | null = null;
+    if (couponActive && couponEnd) {
+      couponDaysRemaining = Math.ceil((new Date(couponEnd).getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+    }
 
     return new Response(JSON.stringify({
       subscribed: isPremium,
       subscription_end: subscriptionEnd || couponEnd,
       source: stripeActive ? "stripe" : couponActive ? "coupon" : null,
       coupon_expired: couponExpired && !stripeActive,
+      coupon_type: couponType,
+      coupon_days_remaining: couponDaysRemaining,
       product_id: productId,
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
