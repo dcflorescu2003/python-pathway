@@ -5,13 +5,15 @@ import { useClassMembers } from "@/hooks/useTeacher";
 import { useChapters } from "@/hooks/useChapters";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell,
-  PieChart, Pie, Legend,
 } from "recharts";
 import {
   TrendingUp, TrendingDown, Users, Target, AlertTriangle, CheckCircle, Award,
+  Download, FileText, FileSpreadsheet,
 } from "lucide-react";
+import { toast } from "sonner";
 
 interface Props {
   classId: string;
@@ -25,12 +27,224 @@ const COLORS = [
   "hsl(var(--muted-foreground))",
 ];
 
+// ─── Export Helpers ───
+
+function escapeCSV(val: string | number | null | undefined): string {
+  const s = String(val ?? "");
+  if (s.includes(",") || s.includes('"') || s.includes("\n")) {
+    return `"${s.replace(/"/g, '""')}"`;
+  }
+  return s;
+}
+
+function downloadFile(content: string, filename: string, type: string) {
+  const BOM = "\uFEFF";
+  const blob = new Blob([BOM + content], { type: `${type};charset=utf-8` });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+interface StudentStat {
+  name: string;
+  lessonsCompleted: number;
+  avgScore: number;
+  avgTestScore: number | null;
+  xp: number;
+  streak: number;
+}
+
+function exportCSV(className: string, studentStats: StudentStat[], classAvg: number, totalLessons: number, weakestLessons: any[], testPerformance: any[]) {
+  const lines: string[] = [];
+  const date = new Date().toLocaleDateString("ro-RO");
+  
+  lines.push(`Raport clasă: ${className}`);
+  lines.push(`Data: ${date}`);
+  lines.push(`Medie clasă: ${classAvg}%`);
+  lines.push(`Total lecții completate: ${totalLessons}`);
+  lines.push("");
+  
+  // Student table
+  lines.push("Elev,Lecții completate,Medie lecții (%),Medie teste (%),XP,Streak");
+  studentStats.forEach((s) => {
+    lines.push([
+      escapeCSV(s.name),
+      s.lessonsCompleted,
+      s.avgScore,
+      s.avgTestScore ?? "-",
+      s.xp,
+      s.streak,
+    ].join(","));
+  });
+  
+  if (weakestLessons.length > 0) {
+    lines.push("");
+    lines.push("Lecții problematice (medie < 80%)");
+    lines.push("Lecție,Medie (%),Încercări");
+    weakestLessons.forEach((l) => {
+      lines.push([escapeCSV(l.name), l.avgScore, l.attempts].join(","));
+    });
+  }
+  
+  if (testPerformance.length > 0) {
+    lines.push("");
+    lines.push("Performanță teste");
+    lines.push("Test,Medie (%),Submisiuni");
+    testPerformance.forEach((t) => {
+      lines.push([escapeCSV(t.name), t.avg, t.count].join(","));
+    });
+  }
+  
+  downloadFile(lines.join("\n"), `raport_${className.replace(/\s+/g, "_")}_${date}.csv`, "text/csv");
+  toast.success("CSV descărcat! 📊");
+}
+
+function exportPDF(className: string, studentStats: StudentStat[], classAvg: number, totalLessons: number, totalTests: number, weakestLessons: any[], testPerformance: any[], frequentErrors: any[]) {
+  const date = new Date().toLocaleDateString("ro-RO");
+  
+  // Build HTML content for PDF
+  const html = `
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Raport ${className}</title>
+<style>
+  @page { size: A4; margin: 20mm; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: Arial, Helvetica, sans-serif; color: #1a1a1a; font-size: 12px; line-height: 1.5; }
+  .header { text-align: center; margin-bottom: 24px; padding-bottom: 16px; border-bottom: 2px solid #6d28d9; }
+  .header h1 { font-size: 22px; color: #6d28d9; margin-bottom: 4px; }
+  .header p { color: #666; font-size: 11px; }
+  .kpis { display: flex; gap: 12px; margin-bottom: 20px; }
+  .kpi { flex: 1; background: #f8f5ff; border-radius: 8px; padding: 12px; text-align: center; border: 1px solid #e9e0f7; }
+  .kpi .value { font-size: 24px; font-weight: bold; color: #6d28d9; }
+  .kpi .label { font-size: 10px; color: #666; }
+  .section { margin-bottom: 20px; }
+  .section h2 { font-size: 14px; color: #1a1a1a; margin-bottom: 8px; padding-bottom: 4px; border-bottom: 1px solid #e5e7eb; }
+  table { width: 100%; border-collapse: collapse; font-size: 11px; }
+  th { background: #f3f0ff; color: #6d28d9; text-align: left; padding: 6px 8px; font-weight: 600; }
+  td { padding: 5px 8px; border-bottom: 1px solid #f0f0f0; }
+  tr:nth-child(even) td { background: #fafafa; }
+  .badge { display: inline-block; padding: 1px 6px; border-radius: 4px; font-size: 10px; font-weight: 600; }
+  .badge-good { background: #dcfce7; color: #166534; }
+  .badge-mid { background: #fef3c7; color: #92400e; }
+  .badge-bad { background: #fee2e2; color: #991b1b; }
+  .footer { margin-top: 30px; text-align: center; font-size: 9px; color: #999; border-top: 1px solid #e5e7eb; padding-top: 8px; }
+</style>
+</head>
+<body>
+  <div class="header">
+    <h1>📊 Raport clasă: ${className}</h1>
+    <p>Generat pe ${date} • Python Pathway</p>
+  </div>
+  
+  <div class="kpis">
+    <div class="kpi">
+      <div class="value">${studentStats.filter(s => s.lessonsCompleted > 0).length}/${studentStats.length}</div>
+      <div class="label">Elevi activi</div>
+    </div>
+    <div class="kpi">
+      <div class="value">${classAvg}%</div>
+      <div class="label">Medie clasă</div>
+    </div>
+    <div class="kpi">
+      <div class="value">${totalLessons}</div>
+      <div class="label">Lecții completate</div>
+    </div>
+    <div class="kpi">
+      <div class="value">${totalTests}</div>
+      <div class="label">Teste trimise</div>
+    </div>
+  </div>
+  
+  <div class="section">
+    <h2>🏆 Clasament elevi</h2>
+    <table>
+      <thead>
+        <tr><th>#</th><th>Elev</th><th>Lecții</th><th>Medie lecții</th><th>Medie teste</th><th>XP</th><th>Streak</th></tr>
+      </thead>
+      <tbody>
+        ${studentStats.map((s, i) => {
+          const badgeClass = s.avgScore >= 80 ? "badge-good" : s.avgScore >= 50 ? "badge-mid" : "badge-bad";
+          return `<tr>
+            <td>${i + 1}</td>
+            <td>${s.name}</td>
+            <td>${s.lessonsCompleted}</td>
+            <td><span class="badge ${badgeClass}">${s.avgScore}%</span></td>
+            <td>${s.avgTestScore !== null ? `${s.avgTestScore}%` : "-"}</td>
+            <td>${s.xp}</td>
+            <td>${s.streak} 🔥</td>
+          </tr>`;
+        }).join("")}
+      </tbody>
+    </table>
+  </div>
+  
+  ${weakestLessons.length > 0 ? `
+  <div class="section">
+    <h2>⚠️ Lecții problematice (medie &lt; 80%)</h2>
+    <table>
+      <thead><tr><th>Lecție</th><th>Medie</th><th>Încercări</th></tr></thead>
+      <tbody>
+        ${weakestLessons.map(l => `<tr><td>${l.name}</td><td><span class="badge badge-bad">${l.avgScore}%</span></td><td>${l.attempts}</td></tr>`).join("")}
+      </tbody>
+    </table>
+  </div>` : ""}
+  
+  ${testPerformance.length > 0 ? `
+  <div class="section">
+    <h2>📝 Performanță teste</h2>
+    <table>
+      <thead><tr><th>Test</th><th>Medie</th><th>Submisiuni</th></tr></thead>
+      <tbody>
+        ${testPerformance.map(t => {
+          const bc = t.avg >= 80 ? "badge-good" : t.avg >= 50 ? "badge-mid" : "badge-bad";
+          return `<tr><td>${t.name}</td><td><span class="badge ${bc}">${t.avg}%</span></td><td>${t.count}</td></tr>`;
+        }).join("")}
+      </tbody>
+    </table>
+  </div>` : ""}
+  
+  ${frequentErrors.length > 0 ? `
+  <div class="section">
+    <h2>❌ Erori frecvente în teste</h2>
+    <table>
+      <thead><tr><th>Întrebare</th><th>Rată eroare</th><th>Total răspunsuri</th></tr></thead>
+      <tbody>
+        ${frequentErrors.map(e => `<tr><td>${e.question}</td><td><span class="badge badge-bad">${e.errorRate}%</span></td><td>${e.total}</td></tr>`).join("")}
+      </tbody>
+    </table>
+  </div>` : ""}
+  
+  <div class="footer">
+    Raport generat automat de Python Pathway • ${date}
+  </div>
+</body>
+</html>`;
+
+  // Open print dialog for PDF
+  const win = window.open("", "_blank");
+  if (!win) {
+    toast.error("Permite pop-up-urile pentru a descărca PDF-ul.");
+    return;
+  }
+  win.document.write(html);
+  win.document.close();
+  setTimeout(() => {
+    win.print();
+  }, 500);
+  toast.success("PDF pregătit pentru descărcare! 📄");
+}
+
 const ClassAnalytics = ({ classId, className: clsName }: Props) => {
   const { data: members = [] } = useClassMembers(classId);
   const { data: chapters = [] } = useChapters();
   const studentIds = useMemo(() => members.map((m) => m.student_id), [members]);
 
-  // Fetch all completed lessons for class students
   const { data: completedLessons = [] } = useQuery({
     queryKey: ["analytics-completed", classId, studentIds],
     queryFn: async () => {
@@ -44,11 +258,9 @@ const ClassAnalytics = ({ classId, className: clsName }: Props) => {
     enabled: studentIds.length > 0,
   });
 
-  // Fetch test submissions + answers for this class
   const { data: testData } = useQuery({
     queryKey: ["analytics-tests", classId],
     queryFn: async () => {
-      // Get assignments for this class
       const { data: assignments } = await supabase
         .from("test_assignments")
         .select("id, test_id, tests(title)")
@@ -84,9 +296,6 @@ const ClassAnalytics = ({ classId, className: clsName }: Props) => {
   const submissions = testData?.submissions || [];
   const answers = testData?.answers || [];
 
-  // ─── Computed Analytics ───
-
-  // 1. Per-student lesson scores
   const studentStats = useMemo(() => {
     return members.map((m) => {
       const lessons = completedLessons.filter((cl) => cl.user_id === m.student_id);
@@ -110,7 +319,6 @@ const ClassAnalytics = ({ classId, className: clsName }: Props) => {
     }).sort((a, b) => b.avgScore - a.avgScore);
   }, [members, completedLessons, submissions]);
 
-  // 2. Score distribution
   const scoreDistribution = useMemo(() => {
     const buckets = [
       { range: "0-49%", count: 0, fill: "hsl(var(--destructive))" },
@@ -127,7 +335,6 @@ const ClassAnalytics = ({ classId, className: clsName }: Props) => {
     return buckets;
   }, [completedLessons]);
 
-  // 3. Weakest lessons (most errors)
   const weakestLessons = useMemo(() => {
     const lessonScores: Record<string, { total: number; count: number; id: string }> = {};
     completedLessons.forEach((cl) => {
@@ -141,7 +348,6 @@ const ClassAnalytics = ({ classId, className: clsName }: Props) => {
     return Object.values(lessonScores)
       .map((ls) => {
         const avg = Math.round(ls.total / ls.count);
-        // Find lesson name
         let name = ls.id;
         for (const ch of chapters) {
           const lesson = ch.lessons.find((l) => l.id === ls.id);
@@ -154,7 +360,6 @@ const ClassAnalytics = ({ classId, className: clsName }: Props) => {
       .slice(0, 8);
   }, [completedLessons, chapters]);
 
-  // 4. Test performance overview
   const testPerformance = useMemo(() => {
     const testMap: Record<string, { title: string; scores: number[] }> = {};
     submissions.forEach((s: any) => {
@@ -168,7 +373,6 @@ const ClassAnalytics = ({ classId, className: clsName }: Props) => {
     }));
   }, [submissions]);
 
-  // 5. Frequent wrong answer patterns from test answers
   const frequentErrors = useMemo(() => {
     const errorMap: Record<string, { question: string; wrongCount: number; totalCount: number }> = {};
     answers.forEach((a: any) => {
@@ -194,7 +398,6 @@ const ClassAnalytics = ({ classId, className: clsName }: Props) => {
       .slice(0, 6);
   }, [answers]);
 
-  // Summary stats
   const classAvg = studentStats.length > 0
     ? Math.round(studentStats.reduce((s, st) => s + st.avgScore, 0) / studentStats.length)
     : 0;
@@ -211,6 +414,26 @@ const ClassAnalytics = ({ classId, className: clsName }: Props) => {
 
   return (
     <div className="space-y-5">
+      {/* Export buttons */}
+      <div className="flex gap-2 justify-end">
+        <Button
+          size="sm"
+          variant="outline"
+          className="gap-1.5"
+          onClick={() => exportCSV(clsName, studentStats, classAvg, totalLessonsCompleted, weakestLessons, testPerformance)}
+        >
+          <FileSpreadsheet className="h-3.5 w-3.5" /> Export CSV
+        </Button>
+        <Button
+          size="sm"
+          variant="outline"
+          className="gap-1.5"
+          onClick={() => exportPDF(clsName, studentStats, classAvg, totalLessonsCompleted, submissions.length, weakestLessons, testPerformance, frequentErrors)}
+        >
+          <FileText className="h-3.5 w-3.5" /> Export PDF
+        </Button>
+      </div>
+
       {/* Summary cards */}
       <div className="grid grid-cols-2 gap-3">
         <Card>
