@@ -1,66 +1,84 @@
 
 
-## Plan: Prețuri noi — Elev Premium + Profesor AI
+## Plan: Sistem complet de verificare profesor (4 metode + admin îmbunătățit)
 
 ### Rezumat
 
-Creăm produse și prețuri noi în Stripe, actualizăm dialogul Premium pentru elevi cu noile prețuri, adăugăm un dialog separat de abonament pentru profesori, și actualizăm `check-subscription` + `create-checkout` pentru a diferenția între cele două tipuri de abonament.
+Transformăm fluxul simplu "Devino Profesor" într-un formular cu 4 metode de verificare, adăugăm storage pentru documente, coduri de invitație în DB, sistem de referral între profesori, și îmbunătățim panoul admin pentru a gestiona toate aceste metode.
 
 ---
 
-### Pasul 1 — Creare produse Stripe noi
+### Pasul 1 — Migrare bază de date
 
-**4 prețuri noi:**
-- **Elev Premium Lunar**: 14.99 RON/lună (1499 bani)
-- **Elev Premium Anual**: 99 RON/an (9900 bani)
-- **Profesor AI Lunar**: 29 RON/lună (2900 bani)
-- **Profesor AI Anual**: 299 RON/an (29900 bani)
+Creăm tabelele și coloanele noi:
 
-Produse noi: „Elev Premium" și „Profesor AI". Prețurile vechi (5 RON/50 RON) rămân active în Stripe pentru abonații existenți, dar nu mai sunt afișate în UI.
+1. **`teacher_verification_requests`** — stochează cererile detaliate:
+   - `id`, `user_id`, `method` (enum: `invite_code`, `public_link`, `document`, `referral`), `status` (pending/approved/rejected), `data` (JSONB — conține link-ul, URL document, codul folosit, etc.), `admin_notes`, `reviewed_by`, `created_at`, `reviewed_at`
 
-### Pasul 2 — Actualizare `create-checkout`
+2. **`teacher_invite_codes`** — coduri de invitație gestionate de admin:
+   - `id`, `code` (unique), `label` (ex: "CANTEMIR2026"), `max_uses`, `used_count`, `is_active`, `created_at`
 
-Adăugăm noile price ID-uri în lista `PRICE_IDS` validată în edge function.
+3. **`teacher_referral_codes`** — coduri generate automat pentru profesori verificați (max 2 per profesor):
+   - `id`, `teacher_id`, `code` (unique), `used_by` (nullable UUID), `used_at`, `created_at`
 
-### Pasul 3 — Actualizare `check-subscription`
+4. **Storage bucket** `teacher-documents` — pentru pozele cu legitimații/adeverințe.
 
-Edge function-ul returnează deja `source` și `subscribed`. Adăugăm un câmp `product_id` în răspuns pentru a ști dacă e abonament elev sau profesor. Frontend-ul va folosi asta pentru a afișa corect starea.
+5. Adăugăm coloană `verification_method` pe `profiles` (text, nullable) — pentru a ști cum a fost verificat.
 
-### Pasul 4 — Actualizare `useSubscription` hook
-
-Adăugăm `productId` în state pentru a ști tipul de abonament (student vs teacher).
-
-### Pasul 5 — Actualizare `PremiumDialog` (Elevi)
-
-- Prețuri: **14,99 RON/lună** și **99 RON/an** (reducere ~45%)
-- Beneficii actualizate:
-  - Inimi nelimitate
-  - Fără reclame  
-  - Experiență mai fluidă
-  - **Sumar personalizat**: lecții unde te descurci bine vs. unde ai nevoie de exercițiu
-  - Challenge-uri și funcții premium
-- Mențiune „Preț de fondator, valabil în 2027"
-
-### Pasul 6 — Creare `TeacherPremiumDialog` (Profesori)
-
-Dialog nou, afișat din `TeacherPage.tsx`, cu:
-- **Free**: funcționalitate de bază (clase, provocări)
-- **Profesor AI**: 29 RON/lună sau 299 RON/an
-- Beneficii: până la 10 teste/lună, max 3 itemi AI/test, feedback AI, statistici avansate, corectura probleme cu AI
-- Mențiune „Preț de fondator, valabil în 2026"
-
-### Pasul 7 — Integrare în `TeacherPage.tsx`
-
-Buton/banner „Upgrade la Profesor AI" vizibil pentru profesorii verificați care nu au abonament profesor activ.
+RLS: cererile sunt vizibile doar utilizatorului propriu + admin; codurile de invitație admin-only; referral codes vizibile profesorului care le deține.
 
 ---
 
-### Fișiere modificate
+### Pasul 2 — Formular de verificare profesor (frontend)
 
-- `supabase/functions/create-checkout/index.ts` — adăugare price IDs noi
-- `supabase/functions/check-subscription/index.ts` — returnare `product_id`
-- `src/hooks/useSubscription.ts` — adăugare `productId` în state
-- `src/components/PremiumDialog.tsx` — prețuri noi elev + beneficii actualizate
-- `src/components/TeacherPremiumDialog.tsx` — dialog nou profesor
-- `src/pages/TeacherPage.tsx` — buton upgrade profesor AI
+Înlocuim butonul simplu "Devino Profesor" din `AuthPage.tsx` cu un dialog/pagină cu 4 opțiuni:
+
+**Metoda A — Cod de invitație**: Input pentru cod. Validare instant pe `teacher_invite_codes`. Dacă e valid → status `verified` direct (sau `pending` cu review rapid).
+
+**Metoda B — Link public**: Profesorul pune URL-ul paginii catedrei/site școlii unde apare numele lui. Se salvează în `teacher_verification_requests.data`.
+
+**Metoda C — Document minim**: Upload poză legitimație/adeverință. Se salvează în storage bucket. Menționăm că pot ascunde CNP/serie.
+
+**Metoda D — Cod de la un profesor verificat**: Input pentru codul de referral. Validare pe `teacher_referral_codes` — dacă e valid și nefolosit → verificare directă.
+
+Fișier nou: `src/components/teacher/TeacherVerificationForm.tsx`
+
+---
+
+### Pasul 3 — Panou Admin îmbunătățit (`TeacherApproval.tsx`)
+
+- **Tab "Cereri"**: afișează `teacher_verification_requests` cu status `pending`, grupate pe metodă. Pentru fiecare cerere se vede: metoda, datele furnizate (link clickabil, preview document, codul folosit), buton Aprobă/Respinge + câmp note admin.
+- **Tab "Coduri invitație"**: CRUD pe `teacher_invite_codes` — creare cod nou, activare/dezactivare, vizualizare utilizări.
+- **Tab "Profesori verificați"**: lista actuală + metoda de verificare + codurile lor de referral vizibile.
+- Când se aprobă o cerere → se trimit notificări (in-app + push, ca acum) + se generează automat 2 coduri de referral pentru noul profesor.
+
+---
+
+### Pasul 4 — Coduri de referral pentru profesori verificați
+
+- Pe `TeacherPage.tsx`, secțiune nouă: "Codurile tale de invitație" — afișează cele 2 coduri generate, cu status (folosit/disponibil) și buton copy.
+- Când un coleg folosește un cod de referral valid → `used_by` se completează, profesorul nou e verificat automat.
+
+---
+
+### Pasul 5 — Edge function `request_teacher_status` actualizat
+
+Transformăm RPC-ul existent într-o funcție mai complexă sau creăm o nouă funcție care:
+- Validează codul de invitație / referral
+- Creează înregistrarea în `teacher_verification_requests`
+- Pentru coduri valide (A și D): aprobă automat
+
+---
+
+### Fișiere modificate/create
+
+| Fișier | Acțiune |
+|--------|---------|
+| Migrare SQL | Nou — tabele + storage bucket + RLS |
+| `src/components/teacher/TeacherVerificationForm.tsx` | Nou — formular cu 4 metode |
+| `src/pages/AuthPage.tsx` | Modificat — înlocuire buton cu dialog verificare |
+| `src/components/admin/TeacherApproval.tsx` | Rescris — cereri detaliate + coduri invitație + referrals |
+| `src/pages/TeacherPage.tsx` | Modificat — secțiune coduri referral |
+| `src/hooks/useTeacher.ts` | Modificat — hooks pentru referral codes |
+| DB function `request_teacher_status` | Actualizat sau înlocuit |
 
