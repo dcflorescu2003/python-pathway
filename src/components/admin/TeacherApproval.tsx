@@ -352,10 +352,9 @@ const VerifiedTeachersTab = () => {
 
   const revoke = useMutation({
     mutationFn: async (userId: string) => {
-      const { error } = await supabase
-        .from("profiles")
-        .update({ teacher_status: null, is_teacher: false, verification_method: null })
-        .eq("user_id", userId);
+      const { error } = await supabase.rpc("revoke_teacher_status", {
+        p_user_id: userId,
+      });
       if (error) throw error;
     },
     onSuccess: () => {
