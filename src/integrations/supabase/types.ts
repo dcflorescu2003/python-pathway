@@ -546,6 +546,7 @@ export type Database = {
           teacher_status: string | null
           updated_at: string
           user_id: string
+          verification_method: string | null
           xp: number
         }
         Insert: {
@@ -564,6 +565,7 @@ export type Database = {
           teacher_status?: string | null
           updated_at?: string
           user_id: string
+          verification_method?: string | null
           xp?: number
         }
         Update: {
@@ -582,6 +584,7 @@ export type Database = {
           teacher_status?: string | null
           updated_at?: string
           user_id?: string
+          verification_method?: string | null
           xp?: number
         }
         Relationships: []
@@ -607,6 +610,99 @@ export type Database = {
           join_code?: string
           name?: string
           teacher_id?: string
+        }
+        Relationships: []
+      }
+      teacher_invite_codes: {
+        Row: {
+          code: string
+          created_at: string
+          id: string
+          is_active: boolean
+          label: string | null
+          max_uses: number
+          used_count: number
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          label?: string | null
+          max_uses?: number
+          used_count?: number
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          label?: string | null
+          max_uses?: number
+          used_count?: number
+        }
+        Relationships: []
+      }
+      teacher_referral_codes: {
+        Row: {
+          code: string
+          created_at: string
+          id: string
+          teacher_id: string
+          used_at: string | null
+          used_by: string | null
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          id?: string
+          teacher_id: string
+          used_at?: string | null
+          used_by?: string | null
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          id?: string
+          teacher_id?: string
+          used_at?: string | null
+          used_by?: string | null
+        }
+        Relationships: []
+      }
+      teacher_verification_requests: {
+        Row: {
+          admin_notes: string | null
+          created_at: string
+          data: Json | null
+          id: string
+          method: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          user_id: string
+        }
+        Insert: {
+          admin_notes?: string | null
+          created_at?: string
+          data?: Json | null
+          id?: string
+          method: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          user_id: string
+        }
+        Update: {
+          admin_notes?: string | null
+          created_at?: string
+          data?: Json | null
+          id?: string
+          method?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          user_id?: string
         }
         Relationships: []
       }
@@ -884,6 +980,10 @@ export type Database = {
       }
     }
     Functions: {
+      approve_teacher_request: {
+        Args: { p_notes?: string; p_request_id: string }
+        Returns: undefined
+      }
       get_problem_solution: { Args: { p_id: string }; Returns: string }
       get_test_items_for_student: {
         Args: { p_assignment_id: string; p_variant: string }
@@ -912,8 +1012,16 @@ export type Database = {
         Returns: boolean
       }
       is_verified_teacher: { Args: { _user_id: string }; Returns: boolean }
+      reject_teacher_request: {
+        Args: { p_notes?: string; p_request_id: string }
+        Returns: undefined
+      }
       request_teacher_status: { Args: never; Returns: undefined }
       student_can_view_test: { Args: { p_test_id: string }; Returns: boolean }
+      submit_teacher_verification: {
+        Args: { p_data?: Json; p_method: string }
+        Returns: Json
+      }
     }
     Enums: {
       app_role: "admin" | "user"
