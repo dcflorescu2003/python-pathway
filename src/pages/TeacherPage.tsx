@@ -1,20 +1,38 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ArrowLeft, GraduationCap } from "lucide-react";
+import { ArrowLeft, GraduationCap, AlertTriangle } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useTeacherClasses } from "@/hooks/useTeacher";
+import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
 import ClassManager from "@/components/teacher/ClassManager";
 import ClassDetail from "@/components/teacher/ClassDetail";
 import TestManager from "@/components/teacher/TestManager";
 import TestBuilder from "@/components/teacher/TestBuilder";
+import { Card, CardContent } from "@/components/ui/card";
 
 const TeacherPage = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const { data: classes = [] } = useTeacherClasses();
   const [selectedClassId, setSelectedClassId] = useState<string | null>(null);
   const [showTestBuilder, setShowTestBuilder] = useState(false);
   const [editingTestId, setEditingTestId] = useState<string | null>(null);
+  const [teacherStatus, setTeacherStatus] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!user) return;
+    supabase
+      .from("profiles")
+      .select("teacher_status")
+      .eq("user_id", user.id)
+      .single()
+      .then(({ data }) => setTeacherStatus(data?.teacher_status ?? null));
+  }, [user]);
+
+  const isVerified = teacherStatus === "verified";
+  const isPending = teacherStatus === "pending";
 
   const selectedClass = classes.find((c) => c.id === selectedClassId);
 
@@ -46,6 +64,17 @@ const TeacherPage = () => {
       </header>
 
       <main className="px-4 py-6 max-w-lg mx-auto">
+        {isPending && (
+          <Card className="mb-4 border-warning/30">
+            <CardContent className="p-4 flex items-center gap-3">
+              <AlertTriangle className="h-5 w-5 text-warning flex-shrink-0" />
+              <div>
+                <p className="text-sm font-medium text-foreground">Cont în așteptare</p>
+                <p className="text-xs text-muted-foreground">Funcționalitățile sunt limitate până la aprobare.</p>
+              </div>
+            </CardContent>
+          </Card>
+        )}
         {showTestBuilder ? (
           <TestBuilder onBack={handleCloseBuilder} editTestId={editingTestId} />
         ) : selectedClass ? (
@@ -59,17 +88,21 @@ const TeacherPage = () => {
           <Tabs defaultValue="classes" className="w-full">
             <TabsList className="w-full">
               <TabsTrigger value="classes" className="flex-1">Clase</TabsTrigger>
-              <TabsTrigger value="tests" className="flex-1">Teste</TabsTrigger>
+              {isVerified && (
+                <TabsTrigger value="tests" className="flex-1">Teste</TabsTrigger>
+              )}
             </TabsList>
             <TabsContent value="classes" className="mt-4">
               <ClassManager onSelectClass={setSelectedClassId} />
             </TabsContent>
-            <TabsContent value="tests" className="mt-4">
-              <TestManager
-                onCreateTest={() => { setEditingTestId(null); setShowTestBuilder(true); }}
-                onEditTest={handleEditTest}
-              />
-            </TabsContent>
+            {isVerified && (
+              <TabsContent value="tests" className="mt-4">
+                <TestManager
+                  onCreateTest={() => { setEditingTestId(null); setShowTestBuilder(true); }}
+                  onEditTest={handleEditTest}
+                />
+              </TabsContent>
+            )}
           </Tabs>
         )}
       </main>
