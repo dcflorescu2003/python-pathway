@@ -217,12 +217,13 @@ export function useProgress() {
 
   const resetLives = useCallback(() => {
     setProgress((prev) => {
-      const newProgress = { ...prev, lives: 3 };
+      const now = new Date().toISOString();
+      const newProgress = { ...prev, lives: MAX_LIVES, livesUpdatedAt: now };
       saveLocalProgress(newProgress);
       if (user) {
         supabase
           .from("profiles")
-          .update({ lives: 3 })
+          .update({ lives: MAX_LIVES, lives_updated_at: now })
           .eq("user_id", user.id)
           .then();
       }
@@ -296,6 +297,7 @@ async function syncToCloud(userId: string, p: UserProgress) {
       is_premium: p.isPremium,
       last_activity_date: p.lastActivityDate,
       best_streak: newBest,
+      lives_updated_at: p.livesUpdatedAt,
     })
     .eq("user_id", userId);
 
