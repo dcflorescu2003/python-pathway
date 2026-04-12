@@ -1,14 +1,11 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Heart, Zap, Crown, Infinity, Loader2, Settings, ShieldCheck, Code } from "lucide-react";
+import { Heart, Crown, Infinity, Loader2, Settings, ShieldCheck, Code, BarChart3, Trophy } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/useAuth";
-import { useSubscription } from "@/hooks/useSubscription";
+import { useSubscription, STUDENT_MONTHLY_PRICE, STUDENT_YEARLY_PRICE } from "@/hooks/useSubscription";
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
-
-const MONTHLY_PRICE_ID = "price_1TKFTORontECmDbLgZNvmacw";
-const YEARLY_PRICE_ID = "price_1TKFUfRontECmDbLmYHZUk9D";
 
 interface PremiumDialogProps {
   open: boolean;
@@ -51,7 +48,7 @@ const PremiumDialog = ({ open, onOpenChange }: PremiumDialogProps) => {
         <DialogHeader>
           <DialogTitle className="text-center text-xl flex items-center justify-center gap-2">
             <Crown className="h-6 w-6 text-yellow-500" />
-            PyRo Premium
+            Elev Premium
           </DialogTitle>
           <DialogDescription className="text-center text-foreground/70">
             Deblochează experiența completă
@@ -101,7 +98,27 @@ const PremiumDialog = ({ open, onOpenChange }: PremiumDialogProps) => {
                   </div>
                   <div>
                     <p className="text-sm font-bold text-foreground">Fără reclame</p>
-                    <p className="text-xs text-foreground/60">Experiență curată, fără întreruperi</p>
+                    <p className="text-xs text-foreground/60">Experiență curată și mai fluidă</p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3 rounded-lg border border-border bg-card p-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-accent/50">
+                    <BarChart3 className="h-5 w-5 text-accent-foreground" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold text-foreground">Sumar personalizat</p>
+                    <p className="text-xs text-foreground/60">Unde te descurci bine vs. unde ai nevoie de exercițiu</p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3 rounded-lg border border-border bg-card p-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-yellow-500/10">
+                    <Trophy className="h-5 w-5 text-yellow-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold text-foreground">Challenge-uri premium</p>
+                    <p className="text-xs text-foreground/60">Acces la toate provocările și funcțiile premium</p>
                   </div>
                 </div>
 
@@ -120,35 +137,39 @@ const PremiumDialog = ({ open, onOpenChange }: PremiumDialogProps) => {
               <div className="grid grid-cols-2 gap-3">
                 {/* Monthly */}
                 <button
-                  onClick={() => handlePurchase(MONTHLY_PRICE_ID)}
+                  onClick={() => handlePurchase(STUDENT_MONTHLY_PRICE)}
                   disabled={!!checkoutLoading}
                   className="relative rounded-xl border-2 border-border bg-card p-4 text-center hover:border-primary transition-colors disabled:opacity-50"
                 >
                   <p className="text-xs text-foreground/60 mb-1">Lunar</p>
-                  <p className="text-2xl font-bold text-foreground">5 <span className="text-sm font-normal">RON</span></p>
+                  <p className="text-2xl font-bold text-foreground">14,99 <span className="text-sm font-normal">RON</span></p>
                   <p className="text-xs text-foreground/50">/lună</p>
-                  {checkoutLoading === MONTHLY_PRICE_ID && (
+                  {checkoutLoading === STUDENT_MONTHLY_PRICE && (
                     <Loader2 className="absolute top-2 right-2 h-4 w-4 animate-spin text-primary" />
                   )}
                 </button>
 
                 {/* Yearly */}
                 <button
-                  onClick={() => handlePurchase(YEARLY_PRICE_ID)}
+                  onClick={() => handlePurchase(STUDENT_YEARLY_PRICE)}
                   disabled={!!checkoutLoading}
                   className="relative rounded-xl border-2 border-primary bg-card p-4 text-center hover:border-primary/80 transition-colors disabled:opacity-50"
                 >
                   <Badge className="absolute -top-2 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground text-[10px]">
-                    -17%
+                    -45%
                   </Badge>
                   <p className="text-xs text-foreground/60 mb-1">Anual</p>
-                  <p className="text-2xl font-bold text-foreground">50 <span className="text-sm font-normal">RON</span></p>
+                  <p className="text-2xl font-bold text-foreground">99 <span className="text-sm font-normal">RON</span></p>
                   <p className="text-xs text-foreground/50">/an</p>
-                  {checkoutLoading === YEARLY_PRICE_ID && (
+                  {checkoutLoading === STUDENT_YEARLY_PRICE && (
                     <Loader2 className="absolute top-2 right-2 h-4 w-4 animate-spin text-primary" />
                   )}
                 </button>
               </div>
+
+              <p className="text-[10px] text-center text-foreground/40">
+                Preț de fondator, valabil în 2027
+              </p>
 
               {!user && (
                 <p className="text-[10px] text-center text-foreground/40">

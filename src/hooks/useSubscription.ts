@@ -2,12 +2,31 @@ import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 
+// Stripe product IDs for subscription type detection
+export const STUDENT_PRODUCT_IDS = [
+  "prod_UJytlzfmO6QOWq", // Elev Premium (monthly product)
+  "prod_UJyuPMfGUzX6VG", // Elev Premium (annual product)
+  "prod_SKTMeV1Qx2QN9V", // Legacy student product (if any)
+];
+
+export const TEACHER_PRODUCT_IDS = [
+  "prod_UJyuT97MzPvyj8", // Profesor AI (monthly product)
+  "prod_UJyudq2JiikIbg", // Profesor AI (annual product)
+];
+
+// Price IDs for checkout
+export const STUDENT_MONTHLY_PRICE = "price_1TLKvsRontECmDbLYGMnGnZM";
+export const STUDENT_YEARLY_PRICE = "price_1TLKwHRontECmDbLIKWWHQXI";
+export const TEACHER_MONTHLY_PRICE = "price_1TLKwiRontECmDbL4q96Kth4";
+export const TEACHER_YEARLY_PRICE = "price_1TLKwxRontECmDbLbRNdw8GG";
+
 interface SubscriptionState {
   subscribed: boolean;
   subscriptionEnd: string | null;
   source: "stripe" | "coupon" | null;
   couponExpired: boolean;
   loading: boolean;
+  productId: string | null;
 }
 
 const DEFAULT_STATE: SubscriptionState = {
@@ -16,6 +35,7 @@ const DEFAULT_STATE: SubscriptionState = {
   source: null,
   couponExpired: false,
   loading: false,
+  productId: null,
 };
 
 let inFlightCheck: Promise<SubscriptionState> | null = null;
@@ -23,7 +43,7 @@ let lastCheckAt = 0;
 let lastCheckToken: string | null = null;
 let cachedState: SubscriptionState | null = null;
 
-async function fetchSubscriptionState(token: string): Promise<SubscriptionState> {
+async function fetchSubscriptionState(): Promise<SubscriptionState> {
   const { data, error } = await supabase.functions.invoke("check-subscription");
 
   if (error) throw error;
@@ -34,6 +54,7 @@ async function fetchSubscriptionState(token: string): Promise<SubscriptionState>
     source: data?.source ?? null,
     couponExpired: data?.coupon_expired ?? false,
     loading: false,
+    productId: data?.product_id ?? null,
   };
 }
 
@@ -45,7 +66,6 @@ function invalidateCache() {
 }
 
 async function getSharedSubscriptionState(force = false, userId?: string): Promise<SubscriptionState> {
-  // Invalidate cache when user changes
   if (userId && lastCheckToken && lastCheckToken !== userId) {
     invalidateCache();
     force = true;
@@ -63,7 +83,7 @@ async function getSharedSubscriptionState(force = false, userId?: string): Promi
     return inFlightCheck;
   }
 
-  inFlightCheck = fetchSubscriptionState("")
+  inFlightCheck = fetchSubscriptionState()
     .then((result) => {
       cachedState = result;
       lastCheckAt = Date.now();
@@ -80,6 +100,9 @@ export function useSubscription() {
   const { user, session } = useAuth();
   const [state, setState] = useState<SubscriptionState>(cachedState ?? { ...DEFAULT_STATE, loading: !!user });
 
+  const isTeacherPremium = state.productId ? TEACHER_PRODUCT_IDS.includes(state.productId) : false;
+  const isStudentPremium = state.subscribed && !isTeacherPremium;
+
   const checkSubscription = useCallback(async (force = false) => {
     if (!user) return;
     setState((s) => ({ ...s, loading: true }));
@@ -92,7 +115,6 @@ export function useSubscription() {
     }
   }, [user]);
 
-  // Check on mount and every 60s
   useEffect(() => {
     if (!user) {
       setState(DEFAULT_STATE);
@@ -106,7 +128,6 @@ export function useSubscription() {
     return () => clearInterval(interval);
   }, [user, checkSubscription]);
 
-  // Check after returning from checkout
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get("checkout") === "success") {
@@ -140,5 +161,13 @@ export function useSubscription() {
     if (data?.url) window.open(data.url, "_blank");
   }, [session]);
 
-  return { ...state, checkSubscription, startCheckout, openPortal, dismissCouponExpired };
+  return {
+    ...state,
+    isTeacherPremium,
+    isStudentPremium,
+    checkSubscription,
+    startCheckout,
+    openPortal,
+    dismissCouponExpired,
+  };
 }
