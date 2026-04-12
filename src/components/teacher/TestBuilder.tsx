@@ -10,9 +10,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useChapters } from "@/hooks/useChapters";
 import { useProblems } from "@/hooks/useProblems";
-import { useCreateTest, useUpdateTest, useTestItems, TestItem } from "@/hooks/useTests";
-import { ArrowLeft, Plus, Trash2, BookOpen, Code, GripVertical, PenLine, FileCheck, Copy, ChevronDown, ChevronRight, Eye } from "lucide-react";
+import { useCreateTest, useUpdateTest, useTestItems, useTeacherTests, TestItem } from "@/hooks/useTests";
+import { useSubscription } from "@/hooks/useSubscription";
+import { ArrowLeft, Plus, Trash2, BookOpen, Code, GripVertical, PenLine, FileCheck, Copy, ChevronDown, ChevronRight, Eye, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
+
+const MAX_AI_ITEMS_PER_TEST = 3;
+const MAX_TESTS_PER_MONTH = 10;
 
 interface TestBuilderProps {
   onBack: () => void;
@@ -75,6 +79,8 @@ const TestBuilder = ({ onBack, editTestId }: TestBuilderProps) => {
   const createTest = useCreateTest();
   const updateTest = useUpdateTest();
   const { data: existingItems = [] } = useTestItems(editTestId || null);
+  const { data: allTests = [] } = useTeacherTests();
+  const { isTeacherPremium } = useSubscription();
   const isEditing = !!editTestId;
 
   const [title, setTitle] = useState("");
@@ -117,9 +123,26 @@ const TestBuilder = ({ onBack, editTestId }: TestBuilderProps) => {
     });
   };
 
+  // Count problem items (AI-graded) in current test
+  const problemItemCount = items.filter(i => i.source_type === "problem").length;
+
+  // Count tests created this month
+  const testsThisMonth = allTests.filter(t => {
+    const created = new Date(t.created_at);
+    const now = new Date();
+    return created.getMonth() === now.getMonth() && created.getFullYear() === now.getFullYear();
+  }).length;
+
+  const canCreateMoreTests = isEditing || !isTeacherPremium || testsThisMonth < MAX_TESTS_PER_MONTH;
+
   const addItem = (sourceType: string, sourceId: string | null, variant: string = "both", customData: any = null) => {
     if (sourceId && items.some((i) => i.source_id === sourceId && i.source_type === sourceType)) {
       toast.info("Itemul este deja adăugat.");
+      return;
+    }
+    // Check AI item limit for problems
+    if (sourceType === "problem" && isTeacherPremium && problemItemCount >= MAX_AI_ITEMS_PER_TEST) {
+      toast.error(`Limita de ${MAX_AI_ITEMS_PER_TEST} probleme AI/test a fost atinsă.`);
       return;
     }
     setItems([...items, {
@@ -285,6 +308,10 @@ const TestBuilder = ({ onBack, editTestId }: TestBuilderProps) => {
   const handleSave = async () => {
     if (!title.trim()) { toast.error("Adaugă un titlu."); return; }
     if (items.length === 0) { toast.error("Adaugă cel puțin un item."); return; }
+    if (!isEditing && isTeacherPremium && testsThisMonth >= MAX_TESTS_PER_MONTH) {
+      toast.error(`Ai atins limita de ${MAX_TESTS_PER_MONTH} teste/lună. Vei putea crea altele luna viitoare.`);
+      return;
+    }
     try {
       if (isEditing) {
         await updateTest.mutateAsync({
@@ -428,6 +455,18 @@ const TestBuilder = ({ onBack, editTestId }: TestBuilderProps) => {
         </button>
         <h2 className="text-lg font-bold text-foreground">{isEditing ? "Editează test" : "Creează test"}</h2>
       </div>
+
+      {/* Limits info for Profesor AI */}
+      {isTeacherPremium && (
+        <div className="flex flex-wrap gap-2">
+          <div className={`text-xs px-2 py-1 rounded-full border ${testsThisMonth >= MAX_TESTS_PER_MONTH ? 'border-destructive/50 bg-destructive/10 text-destructive' : 'border-border bg-muted text-muted-foreground'}`}>
+            Teste luna aceasta: {testsThisMonth}/{MAX_TESTS_PER_MONTH}
+          </div>
+          <div className={`text-xs px-2 py-1 rounded-full border ${problemItemCount >= MAX_AI_ITEMS_PER_TEST ? 'border-destructive/50 bg-destructive/10 text-destructive' : 'border-border bg-muted text-muted-foreground'}`}>
+            Probleme AI: {problemItemCount}/{MAX_AI_ITEMS_PER_TEST}
+          </div>
+        </div>
+      )}
 
       {/* Config */}
       <Card>
