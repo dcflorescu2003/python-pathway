@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -16,6 +17,7 @@ interface TeacherProfile {
 
 const TeacherApproval = () => {
   const qc = useQueryClient();
+  const { user } = useAuth();
 
   const { data: pendingTeachers = [], isLoading: loadingPending } = useQuery({
     queryKey: ["admin-teachers-pending"],
@@ -60,6 +62,30 @@ const TeacherApproval = () => {
 
   const handleApprove = async (userId: string) => {
     await updateStatus.mutateAsync({ userId, status: "verified" });
+    
+    // Send in-app notification
+    await supabase.from("notifications").insert({
+      user_id: userId,
+      title: "Cont de profesor aprobat! 🎓",
+      body: "Felicitări! Contul tău de profesor a fost verificat. Acum ai acces complet la toate funcționalitățile.",
+    });
+
+    // Send push notification
+    try {
+      const { data: session } = await supabase.auth.getSession();
+      if (session?.session?.access_token) {
+        await supabase.functions.invoke("send-push", {
+          body: {
+            student_ids: [userId],
+            title: "Cont de profesor aprobat! 🎓",
+            body: "Felicitări! Ai acces complet la panoul de profesor.",
+          },
+        });
+      }
+    } catch (err) {
+      console.error("Push notification failed:", err);
+    }
+
     toast.success("Profesor aprobat! ✅");
   };
 
