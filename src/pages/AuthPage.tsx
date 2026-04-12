@@ -225,9 +225,50 @@ const AccountView = () => {
 
       <div className="flex-1 flex flex-col items-center px-6 pt-8 pb-12">
         <img src={logo} alt="PyRo" className="h-20 w-20 rounded-2xl mb-4" />
-        <h1 className="text-xl font-bold text-foreground mb-1">
-          {user?.user_metadata?.full_name || user?.email?.split("@")[0] || "Pythonist"}
-        </h1>
+        {editingName ? (
+          <div className="flex items-center gap-2 mb-1">
+            <Input
+              value={editName}
+              onChange={(e) => setEditName(e.target.value)}
+              className="h-8 w-48 text-center text-sm"
+              placeholder="Numele tău complet"
+              autoFocus
+            />
+            <button
+              disabled={savingName || editName.trim().length < 3}
+              onClick={async () => {
+                setSavingName(true);
+                const { error } = await supabase
+                  .from("profiles")
+                  .update({ display_name: editName.trim() })
+                  .eq("user_id", user!.id);
+                setSavingName(false);
+                if (error) {
+                  toast.error("Nu am putut salva numele.");
+                } else {
+                  setDisplayName(editName.trim());
+                  setEditingName(false);
+                  toast.success("Numele a fost actualizat!");
+                }
+              }}
+              className="text-primary hover:text-primary/80 disabled:opacity-40"
+            >
+              <Check className="h-4 w-4" />
+            </button>
+            <button onClick={() => setEditingName(false)} className="text-muted-foreground hover:text-foreground">
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        ) : (
+          <div className="flex items-center gap-2 mb-1">
+            <h1 className="text-xl font-bold text-foreground">
+              {displayName || user?.user_metadata?.full_name || user?.email?.split("@")[0] || "Pythonist"}
+            </h1>
+            <button onClick={() => { setEditName(displayName || ""); setEditingName(true); }} className="text-muted-foreground hover:text-foreground">
+              <Pencil className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        )}
         <p className="text-sm text-muted-foreground mb-1">{user?.email}</p>
         {(progress.isPremium || subscribed) && (
           <div className="flex flex-col items-center gap-2">
