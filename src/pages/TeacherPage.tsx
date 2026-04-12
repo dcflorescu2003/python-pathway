@@ -1,10 +1,11 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ArrowLeft, GraduationCap, AlertTriangle, Sparkles } from "lucide-react";
+import { ArrowLeft, GraduationCap, AlertTriangle, Sparkles, Copy, CheckCircle, Users } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useTeacherClasses } from "@/hooks/useTeacher";
+import { useTeacherClasses, useTeacherReferralCodes } from "@/hooks/useTeacher";
 import { useAuth } from "@/hooks/useAuth";
+import { toast } from "sonner";
 import { useSubscription } from "@/hooks/useSubscription";
 import { supabase } from "@/integrations/supabase/client";
 import ClassManager from "@/components/teacher/ClassManager";
