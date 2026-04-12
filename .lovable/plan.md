@@ -1,103 +1,66 @@
 
 
-## Plan: Restructura roluri profesor + sistem inimi îmbunătățit
+## Plan: Prețuri noi — Elev Premium + Profesor AI
 
-Planul ChatGPT este bun ca viziune, dar implementarea completă dintr-o dată ar fi riscantă. Propun împărțirea în **3 faze**, începând cu cea mai importantă.
+### Rezumat
 
----
-
-### Faza 1 — Roluri profesor (prioritate maximă)
-
-**Stare actuală**: Orice utilizator poate activa `is_teacher = true` din profil și primește acces complet la panoul profesor, teste, bareme.
-
-**Ce schimbăm**:
-
-1. **Nouă coloană `teacher_status`** pe `profiles`: valori `null` (elev), `pending`, `verified`
-   - Eliminăm dependența de `is_teacher` boolean — îl păstrăm ca fallback dar logica se bazează pe `teacher_status`
-   - Trigger-ul `protect_profile_privileged_columns` va proteja și `teacher_status`
-
-2. **Flux de activare profesor**:
-   - Userul apasă „Sunt profesor" → `teacher_status = 'pending'`
-   - Poate accesa panoul profesor cu funcționalitate limitată (creează clase demo, explorează)
-   - **Nu poate**: vedea biblioteca reală de teste predefinite, folosi AI grading, vedea bareme complete
-   - Admin-ul aprobă manual → `teacher_status = 'verified'`
-
-3. **Panou admin — secțiune „Profesori"**:
-   - Lista profesorilor pending cu buton Aprobă / Respinge
-   - Lista profesorilor verificați
-
-4. **Securizare server-side**:
-   - RLS pe `test_items`: custom_data cu răspunsuri corecte accesibile doar teacher verified (prin funcție SECURITY DEFINER)
-   - Funcția `get_test_items_for_student` deja filtrează — OK
-   - `grade-submission`: verifică `teacher_status = 'verified'` + `is_premium` pentru AI
-
-5. **UI updates**:
-   - `AuthPage.tsx`: butonul „Activează profesor" → setează `pending`, afișează mesaj „Contul tău de profesor este în așteptare"
-   - `TeacherPage.tsx`: banner vizibil pentru pending, funcții limitate
-   - Teste predefinite ascunse pentru pending
+Creăm produse și prețuri noi în Stripe, actualizăm dialogul Premium pentru elevi cu noile prețuri, adăugăm un dialog separat de abonament pentru profesori, și actualizăm `check-subscription` + `create-checkout` pentru a diferenția între cele două tipuri de abonament.
 
 ---
 
-### Faza 2 — Sistem inimi îmbunătățit
+### Pasul 1 — Creare produse Stripe noi
 
-**Stare actuală**: 3 inimi, se pierd la greșeli, `resetLives()` le readuce la 3, fără regenerare automată.
+**4 prețuri noi:**
+- **Elev Premium Lunar**: 14.99 RON/lună (1499 bani)
+- **Elev Premium Anual**: 99 RON/an (9900 bani)
+- **Profesor AI Lunar**: 29 RON/lună (2900 bani)
+- **Profesor AI Anual**: 299 RON/an (29900 bani)
 
-**Ce schimbăm**:
+Produse noi: „Elev Premium" și „Profesor AI". Prețurile vechi (5 RON/50 RON) rămân active în Stripe pentru abonații existenți, dar nu mai sunt afișate în UI.
 
-1. **5 inimi maximum** (în loc de 3)
-2. **Regenerare automată**: 1 inimă la 20 minute
-   - Nouă coloană `lives_updated_at` pe `profiles`
-   - La încărcarea progresului, calculăm câte inimi s-au regenerat de la ultima actualizare
-   - Formula: `min(5, lives + floor((now - lives_updated_at) / 20min))`
-3. **Premium**: inimi infinite (deja implementat cu `∞`)
-4. **Fără inimi, elevul poate**: vedea clasament, statistici, lecții deja parcurse, recapitulare
-   - Doar rezolvarea de lecții noi este blocată
+### Pasul 2 — Actualizare `create-checkout`
 
-5. **UI**: Afișare 5 inimi în header și pe ecranul lecției
+Adăugăm noile price ID-uri în lista `PRICE_IDS` validată în edge function.
 
----
+### Pasul 3 — Actualizare `check-subscription`
 
-### Faza 3 — Securizare avansată conținut (ulterior)
+Edge function-ul returnează deja `source` și `subscribed`. Adăugăm un câmp `product_id` în răspuns pentru a ști dacă e abonament elev sau profesor. Frontend-ul va folosi asta pentru a afișa corect starea.
 
-- Bibliotecă demo separată de biblioteca protejată
-- Baremul complet vizibil doar după deadline-ul testului
-- Generare dinamică ordine itemi (deja parțial cu variante A/B)
+### Pasul 4 — Actualizare `useSubscription` hook
 
----
+Adăugăm `productId` în state pentru a ști tipul de abonament (student vs teacher).
 
-### Detalii tehnice
+### Pasul 5 — Actualizare `PremiumDialog` (Elevi)
 
-**Migrare DB (Faza 1)**:
-```sql
-ALTER TABLE profiles ADD COLUMN teacher_status text DEFAULT null;
--- Update existing teachers
-UPDATE profiles SET teacher_status = 'verified' WHERE is_teacher = true;
--- Protect column in trigger
-```
+- Prețuri: **14,99 RON/lună** și **99 RON/an** (reducere ~45%)
+- Beneficii actualizate:
+  - Inimi nelimitate
+  - Fără reclame  
+  - Experiență mai fluidă
+  - **Sumar personalizat**: lecții unde te descurci bine vs. unde ai nevoie de exercițiu
+  - Challenge-uri și funcții premium
+- Mențiune „Preț de fondator, valabil în 2027"
 
-**Migrare DB (Faza 2)**:
-```sql
-ALTER TABLE profiles ALTER COLUMN lives SET DEFAULT 5;
-ALTER TABLE profiles ADD COLUMN lives_updated_at timestamptz DEFAULT now();
-UPDATE profiles SET lives = LEAST(lives, 5), lives_updated_at = now();
-```
+### Pasul 6 — Creare `TeacherPremiumDialog` (Profesori)
 
-**Fișiere modificate (Faza 1)**:
-- `src/pages/AuthPage.tsx` — flux activare profesor, UI pending/verified
-- `src/pages/TeacherPage.tsx` — banner pending, restricții funcționale
-- `src/pages/AdminPage.tsx` — secțiune aprobare profesori
-- `src/components/admin/` — nou component `TeacherApproval.tsx`
-- `src/hooks/useTeacher.ts` — verificare `teacher_status`
-- Trigger DB actualizat pentru `teacher_status`
+Dialog nou, afișat din `TeacherPage.tsx`, cu:
+- **Free**: funcționalitate de bază (clase, provocări)
+- **Profesor AI**: 29 RON/lună sau 299 RON/an
+- Beneficii: până la 10 teste/lună, max 3 itemi AI/test, feedback AI, statistici avansate, corectura probleme cu AI
+- Mențiune „Preț de fondator, valabil în 2026"
 
-**Fișiere modificate (Faza 2)**:
-- `src/hooks/useProgress.ts` — max 5, regenerare automată, blocare lecții la 0 inimi
-- `src/pages/LessonPage.tsx` — 5 inimi afișate, verificare acces
-- `src/pages/Index.tsx` — afișare 5 inimi
+### Pasul 7 — Integrare în `TeacherPage.tsx`
+
+Buton/banner „Upgrade la Profesor AI" vizibil pentru profesorii verificați care nu au abonament profesor activ.
 
 ---
 
-### Recomandare
+### Fișiere modificate
 
-Să implementăm **Faza 1 + Faza 2** acum. Faza 3 o lăsăm pentru mai târziu. Confirmă dacă ești de acord sau dacă vrei ajustări.
+- `supabase/functions/create-checkout/index.ts` — adăugare price IDs noi
+- `supabase/functions/check-subscription/index.ts` — returnare `product_id`
+- `src/hooks/useSubscription.ts` — adăugare `productId` în state
+- `src/components/PremiumDialog.tsx` — prețuri noi elev + beneficii actualizate
+- `src/components/TeacherPremiumDialog.tsx` — dialog nou profesor
+- `src/pages/TeacherPage.tsx` — buton upgrade profesor AI
 
