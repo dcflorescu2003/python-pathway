@@ -912,6 +912,7 @@ export type Database = {
         Returns: boolean
       }
       is_verified_teacher: { Args: { _user_id: string }; Returns: boolean }
+      request_teacher_status: { Args: never; Returns: undefined }
       student_can_view_test: { Args: { p_test_id: string }; Returns: boolean }
     }
     Enums: {
