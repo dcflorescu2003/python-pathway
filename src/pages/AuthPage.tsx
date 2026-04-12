@@ -194,6 +194,26 @@ const AccountView = () => {
     }
   };
 
+  const handleLeaveClass = async () => {
+    if (!user) return;
+    setLeavingClass(true);
+    try {
+      const { error } = await supabase
+        .from("class_members")
+        .delete()
+        .eq("student_id", user.id);
+      if (error) {
+        toast.error("Eroare la părăsirea clasei.");
+      } else {
+        toast.success("Ai părăsit clasa.");
+        setIsClassMember(false);
+        setMemberClassName(null);
+      }
+    } finally {
+      setLeavingClass(false);
+    }
+  };
+
   const totalLessons = (chapters || []).reduce((sum, ch) => sum + ch.lessons.length, 0);
   const completedCount = Object.values(progress.completedLessons).filter(l => l.completed).length;
   
