@@ -30,6 +30,9 @@ const AccountView = () => {
   const [joinLoading, setJoinLoading] = useState(false);
   const [showVerificationForm, setShowVerificationForm] = useState(false);
   const [portalLoading, setPortalLoading] = useState(false);
+  const [showNameDialog, setShowNameDialog] = useState(false);
+  const [fullName, setFullName] = useState("");
+  const [pendingClassId, setPendingClassId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user) return;
