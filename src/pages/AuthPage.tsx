@@ -345,6 +345,40 @@ const AccountView = () => {
           </Card>
         )}
 
+        {/* Name dialog for class join */}
+        <Dialog open={showNameDialog} onOpenChange={setShowNameDialog}>
+          <DialogContent className="max-w-sm mx-auto">
+            <DialogHeader>
+              <DialogTitle className="text-center flex items-center justify-center gap-2">
+                <User className="h-5 w-5 text-primary" />
+                Numele tău complet
+              </DialogTitle>
+              <DialogDescription className="text-center text-foreground/70">
+                Profesorul trebuie să te identifice. Scrie-ți numele real complet (prenume și nume de familie).
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-2">
+              <Input
+                placeholder="Ex: Andrei Popescu"
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+                className="text-center"
+                autoFocus
+              />
+              {fullName.trim().length > 0 && fullName.trim().length < 3 && (
+                <p className="text-xs text-destructive text-center">Numele trebuie să aibă minim 3 caractere.</p>
+              )}
+              <Button
+                className="w-full"
+                onClick={handleNameConfirm}
+                disabled={fullName.trim().length < 3 || joinLoading}
+              >
+                {joinLoading ? "Se înscrie..." : "Confirmă și intră în clasă"}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
         {isAdmin && (
           <Button
             variant="outline"
