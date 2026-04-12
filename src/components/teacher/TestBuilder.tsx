@@ -123,9 +123,26 @@ const TestBuilder = ({ onBack, editTestId }: TestBuilderProps) => {
     });
   };
 
+  // Count problem items (AI-graded) in current test
+  const problemItemCount = items.filter(i => i.source_type === "problem").length;
+
+  // Count tests created this month
+  const testsThisMonth = allTests.filter(t => {
+    const created = new Date(t.created_at);
+    const now = new Date();
+    return created.getMonth() === now.getMonth() && created.getFullYear() === now.getFullYear();
+  }).length;
+
+  const canCreateMoreTests = isEditing || !isTeacherPremium || testsThisMonth < MAX_TESTS_PER_MONTH;
+
   const addItem = (sourceType: string, sourceId: string | null, variant: string = "both", customData: any = null) => {
     if (sourceId && items.some((i) => i.source_id === sourceId && i.source_type === sourceType)) {
       toast.info("Itemul este deja adăugat.");
+      return;
+    }
+    // Check AI item limit for problems
+    if (sourceType === "problem" && isTeacherPremium && problemItemCount >= MAX_AI_ITEMS_PER_TEST) {
+      toast.error(`Limita de ${MAX_AI_ITEMS_PER_TEST} probleme AI/test a fost atinsă.`);
       return;
     }
     setItems([...items, {
