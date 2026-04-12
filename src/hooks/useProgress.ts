@@ -89,7 +89,7 @@ export function useProgress() {
         // Fetch profile
         const { data: profile } = await supabase
           .from("profiles")
-          .select("xp, streak, lives, is_premium, last_activity_date")
+          .select("xp, streak, lives, is_premium, last_activity_date, lives_updated_at")
           .eq("user_id", user.id)
           .single();
 
@@ -107,10 +107,11 @@ export function useProgress() {
         const cloudProgress: UserProgress = {
           xp: profile?.xp ?? 0,
           streak: profile?.streak ?? 0,
-          lives: profile?.lives ?? 3,
+          lives: profile?.lives ?? MAX_LIVES,
           isPremium: profile?.is_premium ?? false,
           lastActivityDate: profile?.last_activity_date ?? new Date().toISOString().split("T")[0],
           completedLessons: cloudCompleted,
+          livesUpdatedAt: profile?.lives_updated_at ?? new Date().toISOString(),
         };
 
         // Merge: take the maximum of local and cloud
@@ -267,6 +268,7 @@ function mergeProgress(a: UserProgress, b: UserProgress): UserProgress {
     lastActivityDate:
       a.lastActivityDate > b.lastActivityDate ? a.lastActivityDate : b.lastActivityDate,
     completedLessons: mergedLessons,
+    livesUpdatedAt: a.livesUpdatedAt > b.livesUpdatedAt ? a.livesUpdatedAt : b.livesUpdatedAt,
   };
 }
 
