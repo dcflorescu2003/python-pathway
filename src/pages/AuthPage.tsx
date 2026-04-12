@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { ArrowLeft, Mail, Lock, User, Eye, EyeOff, LogOut, BookOpen, XCircle, Code, Zap, Flame, Trophy, Shield, Trash2, Settings, GraduationCap, UserPlus, Crown, CreditCard, Clock } from "lucide-react";
+import TeacherVerificationForm from "@/components/teacher/TeacherVerificationForm";
 import { useAdminAccess } from "@/hooks/useAdminAccess";
 import { useSubscription } from "@/hooks/useSubscription";
 import { toast } from "sonner";
