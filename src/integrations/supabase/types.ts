@@ -1023,6 +1023,7 @@ export type Database = {
         Returns: undefined
       }
       request_teacher_status: { Args: never; Returns: undefined }
+      revoke_teacher_status: { Args: { p_user_id: string }; Returns: undefined }
       student_can_view_test: { Args: { p_test_id: string }; Returns: boolean }
       submit_teacher_verification: {
         Args: { p_data?: Json; p_method: string }
