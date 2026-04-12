@@ -73,6 +73,27 @@ export function useProgress() {
   const [cloudLoaded, setCloudLoaded] = useState(false);
   const prevUserId = useRef<string | null>(null);
 
+  // Auto-regenerate lives every minute check
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setProgress((prev) => {
+        const updated = regenerateLives(prev);
+        if (updated.lives !== prev.lives) {
+          saveLocalProgress(updated);
+          if (user) {
+            supabase
+              .from("profiles")
+              .update({ lives: updated.lives, lives_updated_at: updated.livesUpdatedAt })
+              .eq("user_id", user.id)
+              .then();
+          }
+        }
+        return updated;
+      });
+    }, 60_000); // check every minute
+    return () => clearInterval(interval);
+  }, [user]);
+
   // Load progress from cloud when user logs in
   useEffect(() => {
     if (!user) {
