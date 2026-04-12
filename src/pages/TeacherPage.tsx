@@ -40,6 +40,7 @@ const TeacherPage = () => {
 
   const isVerified = teacherStatus === "verified";
   const isPending = teacherStatus === "pending";
+  const isUnverified = teacherStatus === "unverified";
 
   const selectedClass = classes.find((c) => c.id === selectedClassId);
 
