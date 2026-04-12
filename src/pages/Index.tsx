@@ -497,7 +497,7 @@ const Index = (): JSX.Element => {
 
       <PremiumDialog open={showPremium || showPremiumPopup} onOpenChange={(open) => { setShowPremium(open); setShowPremiumPopup(open); }} />
       <LevelRoadmap open={showRoadmap} onOpenChange={setShowRoadmap} currentLevel={level} xpPerLevel={xpPerLevel} />
-      <CouponExpiredDialog open={couponExpired} onOpenChange={(open) => { if (!open) dismissCouponExpired(); }} onSubscribe={startCheckout} onStayFree={dismissCouponExpired} />
+      <CouponExpiredDialog open={couponExpired} onOpenChange={(open) => { if (!open) dismissCouponExpired(); }} onSubscribe={startCheckout} onStayFree={dismissCouponExpired} couponType={couponType} />
       <LevelUpDialog open={showLevelUp} onOpenChange={setShowLevelUp} levelInfo={levelInfo} newLevel={level} />
       <StreakDialog open={showStreak} onOpenChange={setShowStreak} streak={progress.streak} bestStreak={Math.max(bestStreak, progress.streak)} lastActivityDate={progress.lastActivityDate} />
     </motion.div>
