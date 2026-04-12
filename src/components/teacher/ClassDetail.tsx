@@ -2,12 +2,15 @@ import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useClassMembers, useClassChallenges, useDeleteChallenge } from "@/hooks/useTeacher";
 import { useChapters } from "@/hooks/useChapters";
 import { useProblems } from "@/hooks/useProblems";
+import { useSubscription } from "@/hooks/useSubscription";
 import { supabase } from "@/integrations/supabase/client";
 import ChallengeAssigner from "./ChallengeAssigner";
-import { ArrowLeft, Copy, Trash2, Target, BookOpen, Code, Zap, Flame, CheckCircle, XCircle, ChevronDown, ChevronUp } from "lucide-react";
+import ClassAnalytics from "./ClassAnalytics";
+import { ArrowLeft, Copy, Trash2, Target, BookOpen, Code, Zap, Flame, CheckCircle, XCircle, ChevronDown, ChevronUp, BarChart3, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 
 interface ClassDetailProps {
