@@ -9,15 +9,20 @@ export interface UserProgress {
   completedLessons: Record<string, { score: number; completed: boolean }>;
   lastActivityDate: string;
   isPremium: boolean;
+  livesUpdatedAt: string;
 }
+
+const MAX_LIVES = 5;
+const REGEN_INTERVAL_MS = 20 * 60 * 1000; // 20 minutes
 
 const DEFAULT_PROGRESS: UserProgress = {
   xp: 0,
   streak: 0,
-  lives: 3,
+  lives: MAX_LIVES,
   completedLessons: {},
   lastActivityDate: new Date().toISOString().split("T")[0],
   isPremium: false,
+  livesUpdatedAt: new Date().toISOString(),
 };
 
 const STORAGE_KEY = "pyro-progress";
@@ -35,12 +40,24 @@ function checkStreakExpiry(p: UserProgress): UserProgress {
   return p;
 }
 
+function regenerateLives(p: UserProgress): UserProgress {
+  if (p.isPremium || p.lives >= MAX_LIVES) return p;
+  const now = Date.now();
+  const lastUpdate = new Date(p.livesUpdatedAt).getTime();
+  const elapsed = now - lastUpdate;
+  const regenCount = Math.floor(elapsed / REGEN_INTERVAL_MS);
+  if (regenCount <= 0) return p;
+  const newLives = Math.min(MAX_LIVES, p.lives + regenCount);
+  return { ...p, lives: newLives, livesUpdatedAt: new Date().toISOString() };
+}
+
 function loadLocalProgress(): UserProgress {
   try {
     const stored = localStorage.getItem(STORAGE_KEY) || localStorage.getItem(LEGACY_KEY);
     if (stored) {
       const parsed = JSON.parse(stored);
-      return checkStreakExpiry({ ...DEFAULT_PROGRESS, ...parsed });
+      const progress = checkStreakExpiry({ ...DEFAULT_PROGRESS, ...parsed });
+      return regenerateLives(progress);
     }
   } catch {}
   return { ...DEFAULT_PROGRESS };
