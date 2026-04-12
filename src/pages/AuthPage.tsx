@@ -75,21 +75,15 @@ const AccountView = () => {
     };
   }, [user, checkSubscription]);
 
-  const requestTeacher = async () => {
+  const reloadTeacherStatus = async () => {
     if (!user) return;
-    try {
-      const { error } = await supabase.rpc("request_teacher_status");
-      if (error) throw error;
-      setTeacherStatus("pending");
-      toast.success("Cererea a fost trimisă! Vei fi notificat când este aprobată. 🎓");
-    } catch (err: any) {
-      if (err.message?.includes("already set")) {
-        toast.error("Ai trimis deja o cerere.");
-      } else {
-        toast.error("Eroare la trimiterea cererii.");
-        console.error(err);
-      }
-    }
+    const { data } = await supabase
+      .from("profiles")
+      .select("teacher_status")
+      .eq("user_id", user.id)
+      .single();
+    setTeacherStatus(data?.teacher_status ?? null);
+    setShowVerificationForm(false);
   };
 
   const handleJoinClass = async () => {
