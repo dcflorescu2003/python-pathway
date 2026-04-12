@@ -676,9 +676,45 @@ export type Database = {
         }
         Relationships: []
       }
+      teacher_verification_messages: {
+        Row: {
+          attachment_url: string | null
+          created_at: string
+          id: string
+          message: string
+          request_id: string
+          sender_id: string
+        }
+        Insert: {
+          attachment_url?: string | null
+          created_at?: string
+          id?: string
+          message?: string
+          request_id: string
+          sender_id: string
+        }
+        Update: {
+          attachment_url?: string | null
+          created_at?: string
+          id?: string
+          message?: string
+          request_id?: string
+          sender_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "teacher_verification_messages_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "teacher_verification_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       teacher_verification_requests: {
         Row: {
           admin_notes: string | null
+          contact_email: string | null
           created_at: string
           data: Json | null
           id: string
@@ -690,6 +726,7 @@ export type Database = {
         }
         Insert: {
           admin_notes?: string | null
+          contact_email?: string | null
           created_at?: string
           data?: Json | null
           id?: string
@@ -701,6 +738,7 @@ export type Database = {
         }
         Update: {
           admin_notes?: string | null
+          contact_email?: string | null
           created_at?: string
           data?: Json | null
           id?: string

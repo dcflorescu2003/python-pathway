@@ -10,13 +10,16 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   CheckCircle, XCircle, Clock, UserCheck, Plus, Copy,
   Link2, FileImage, KeyRound, Users, ExternalLink, Trash2,
+  Mail, MessageSquare,
 } from "lucide-react";
 import { toast } from "sonner";
+import VerificationChat from "@/components/teacher/VerificationChat";
 
 // ─── Requests Tab ───
 const RequestsTab = () => {
   const qc = useQueryClient();
   const [notes, setNotes] = useState<Record<string, string>>({});
+  const [openChat, setOpenChat] = useState<string | null>(null);
 
   const { data: requests = [], isLoading } = useQuery({
     queryKey: ["admin-verification-requests"],
@@ -142,6 +145,14 @@ const RequestsTab = () => {
                 <p className="text-xs text-muted-foreground">Cod folosit: {r.data.code}</p>
               )}
 
+              {/* Contact email */}
+              {(r.contact_email || r.data?.contact_email) && (
+                <p className="text-xs text-muted-foreground flex items-center gap-1">
+                  <Mail className="h-3 w-3" />
+                  {r.contact_email || r.data?.contact_email}
+                </p>
+              )}
+
               <Textarea
                 placeholder="Note admin (opțional)"
                 value={notes[r.id] || ""}
@@ -169,6 +180,24 @@ const RequestsTab = () => {
                   <XCircle className="h-3.5 w-3.5" /> Respinge
                 </Button>
               </div>
+
+              {/* Chat / messaging */}
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full gap-1"
+                onClick={() => setOpenChat(openChat === r.id ? null : r.id)}
+              >
+                <MessageSquare className="h-3.5 w-3.5" />
+                {openChat === r.id ? "Ascunde mesaje" : "Mesaje"}
+              </Button>
+
+              {openChat === r.id && (
+                <VerificationChat
+                  requestId={r.id}
+                  isAdmin
+                />
+              )}
             </CardContent>
           </Card>
         );

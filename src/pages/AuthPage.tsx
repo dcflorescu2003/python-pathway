@@ -11,11 +11,77 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { ArrowLeft, Mail, Lock, User, Eye, EyeOff, LogOut, BookOpen, XCircle, Code, Zap, Flame, Trophy, Shield, Trash2, Settings, GraduationCap, UserPlus, Crown, CreditCard, Clock, Pencil, Check, X, DoorOpen } from "lucide-react";
+import { ArrowLeft, Mail, Lock, User, Eye, EyeOff, LogOut, BookOpen, XCircle, Code, Zap, Flame, Trophy, Shield, Trash2, Settings, GraduationCap, UserPlus, Crown, CreditCard, Clock, Pencil, Check, X, DoorOpen, MessageSquare } from "lucide-react";
 import TeacherVerificationForm from "@/components/teacher/TeacherVerificationForm";
+import VerificationChat from "@/components/teacher/VerificationChat";
 import { useAdminAccess } from "@/hooks/useAdminAccess";
 import { useSubscription } from "@/hooks/useSubscription";
+import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
+
+// Pending teacher section with admin notes and messaging
+const PendingTeacherSection = ({ userId }: { userId?: string }) => {
+  const [showChat, setShowChat] = useState(false);
+
+  const { data: request } = useQuery({
+    queryKey: ["my-verification-request", userId],
+    queryFn: async () => {
+      if (!userId) return null;
+      const { data, error } = await supabase
+        .from("teacher_verification_requests")
+        .select("id, admin_notes, status, method, contact_email")
+        .eq("user_id", userId)
+        .eq("status", "pending")
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!userId,
+  });
+
+  return (
+    <Card className="w-full max-w-sm mt-4 border-warning/30">
+      <CardContent className="p-4 space-y-3">
+        <div className="text-center">
+          <Clock className="h-5 w-5 text-warning mx-auto mb-2" />
+          <p className="text-sm font-medium text-foreground">Cerere profesor în așteptare</p>
+          <p className="text-xs text-muted-foreground mt-1">Vei fi notificat când contul tău este aprobat.</p>
+        </div>
+
+        {request?.admin_notes && (
+          <div className="bg-warning/10 border border-warning/30 rounded-lg p-3">
+            <p className="text-xs font-semibold text-foreground mb-1">📋 Observații administrator</p>
+            <p className="text-xs text-muted-foreground">{request.admin_notes}</p>
+          </div>
+        )}
+
+        {request && (
+          <>
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full gap-2"
+              onClick={() => setShowChat(!showChat)}
+            >
+              <MessageSquare className="h-4 w-4" />
+              {showChat ? "Ascunde conversația" : "Mesaje & documente"}
+            </Button>
+
+            {showChat && (
+              <VerificationChat
+                requestId={request.id}
+                adminNotes={request.admin_notes}
+              />
+            )}
+          </>
+        )}
+      </CardContent>
+    </Card>
+  );
+};
+
 
 const AccountView = () => {
   const navigate = useNavigate();
@@ -385,28 +451,22 @@ const AccountView = () => {
           </Card>
         )}
 
-        {/* Teacher section - hidden if user is a class member */}
-        {!isClassMember && (
-          teacherStatus === "verified" ? (
-            <div className="w-full max-w-sm mt-4 space-y-2">
-              <Button
-                variant="outline"
-                className="w-full gap-2"
-                onClick={() => navigate("/teacher")}
-              >
-                <GraduationCap className="h-4 w-4" />
-                Panou Profesor
-              </Button>
-            </div>
-          ) : teacherStatus === "pending" ? (
-            <Card className="w-full max-w-sm mt-4 border-warning/30">
-              <CardContent className="p-4 text-center">
-                <Clock className="h-5 w-5 text-warning mx-auto mb-2" />
-                <p className="text-sm font-medium text-foreground">Cerere profesor în așteptare</p>
-                <p className="text-xs text-muted-foreground mt-1">Vei fi notificat când contul tău este aprobat.</p>
-              </CardContent>
-            </Card>
-          ) : showVerificationForm ? (
+        {/* Teacher section */}
+        {teacherStatus === "verified" ? (
+          <div className="w-full max-w-sm mt-4 space-y-2">
+            <Button
+              variant="outline"
+              className="w-full gap-2"
+              onClick={() => navigate("/teacher")}
+            >
+              <GraduationCap className="h-4 w-4" />
+              Panou Profesor
+            </Button>
+          </div>
+        ) : teacherStatus === "pending" ? (
+          <PendingTeacherSection userId={user?.id} />
+        ) : !isClassMember && (
+          showVerificationForm ? (
             <Card className="w-full max-w-sm mt-4">
               <CardContent className="p-4">
                 <TeacherVerificationForm
