@@ -52,14 +52,26 @@ const AccountView = () => {
           .single(),
         supabase
           .from("class_members")
-          .select("id")
+          .select("id, class_id")
           .eq("student_id", user.id)
           .limit(1),
       ]);
 
       setTeacherStatus(profile?.teacher_status ?? null);
       setDisplayName(profile?.display_name ?? null);
-      setIsClassMember((memberships?.length ?? 0) > 0);
+      const isMember = (memberships?.length ?? 0) > 0;
+      setIsClassMember(isMember);
+
+      if (isMember && memberships?.[0]?.class_id) {
+        const { data: cls } = await supabase
+          .from("teacher_classes")
+          .select("name")
+          .eq("id", memberships[0].class_id)
+          .single();
+        setMemberClassName(cls?.name ?? null);
+      } else {
+        setMemberClassName(null);
+      }
     };
 
     void loadAccountFlags();
