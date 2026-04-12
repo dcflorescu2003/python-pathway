@@ -8,8 +8,15 @@ const corsHeaders = {
 };
 
 const PRICE_IDS = [
+  // Legacy (kept for existing subscribers)
   "price_1TKFTORontECmDbLgZNvmacw", // lunar 5 RON
   "price_1TKFUfRontECmDbLmYHZUk9D", // anual 50 RON
+  // Elev Premium (fondator 2027)
+  "price_1TLKvsRontECmDbLYGMnGnZM", // lunar 14.99 RON
+  "price_1TLKwHRontECmDbLIKWWHQXI", // anual 99 RON
+  // Profesor AI (fondator 2026)
+  "price_1TLKwiRontECmDbL4q96Kth4", // lunar 29 RON
+  "price_1TLKwxRontECmDbLbRNdw8GG", // anual 299 RON
 ];
 
 serve(async (req) => {

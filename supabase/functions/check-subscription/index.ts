@@ -34,7 +34,6 @@ serve(async (req) => {
 
     const token = authHeader.replace("Bearer ", "");
     
-    // Use anon client to validate the token via getClaims
     const anonClient = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_ANON_KEY") ?? "",
@@ -70,7 +69,6 @@ serve(async (req) => {
         couponEnd = latestRedemption.premium_until;
         logStep("Active coupon premium", { until: couponEnd });
       } else {
-        // Coupon existed but expired
         couponExpired = true;
         logStep("Coupon premium expired", { expired_at: latestRedemption.premium_until });
       }
@@ -82,20 +80,26 @@ serve(async (req) => {
 
     let stripeActive = false;
     let subscriptionEnd: string | null = null;
+    let productId: string | null = null;
 
     if (customers.data.length > 0) {
       const customerId = customers.data[0].id;
       const subscriptions = await stripe.subscriptions.list({
         customer: customerId,
         status: "active",
-        limit: 1,
+        limit: 10,
       });
 
       if (subscriptions.data.length > 0) {
         stripeActive = true;
         const sub = subscriptions.data[0];
 
-        // current_period_end may be on the subscription or on items
+        // Get product ID to differentiate student vs teacher subscription
+        if (sub.items?.data?.[0]?.price?.product) {
+          const prod = sub.items.data[0].price.product;
+          productId = typeof prod === "string" ? prod : prod.id;
+        }
+
         let periodEnd: number | null = null;
         if (typeof sub.current_period_end === "number") {
           periodEnd = sub.current_period_end;
@@ -110,8 +114,7 @@ serve(async (req) => {
         logStep("Active Stripe subscription", {
           subscription_id: sub.id,
           end: subscriptionEnd,
-          raw_period_end: sub.current_period_end,
-          item_period_end: sub.items?.data?.[0]?.current_period_end,
+          product_id: productId,
         });
       }
     }
@@ -126,6 +129,7 @@ serve(async (req) => {
       subscription_end: subscriptionEnd || couponEnd,
       source: stripeActive ? "stripe" : couponActive ? "coupon" : null,
       coupon_expired: couponExpired && !stripeActive,
+      product_id: productId,
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
