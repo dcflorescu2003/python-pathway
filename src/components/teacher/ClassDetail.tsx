@@ -103,162 +103,194 @@ const ClassDetail = ({ classId, className: clsName, joinCode, onBack }: ClassDet
         </div>
       </div>
 
-      {/* Students */}
-      <div>
-        <h3 className="text-sm font-semibold text-muted-foreground mb-2">
-          Elevi ({members.length})
-        </h3>
-        {members.length === 0 ? (
-          <p className="text-sm text-muted-foreground">Niciun elev înscris încă.</p>
-        ) : (
-          <div className="space-y-2">
-            {members.map((m) => (
-              <Card key={m.id}>
-                <CardContent className="p-3 flex items-center justify-between">
-                  <span className="text-sm font-medium text-foreground">
-                    {m.profile?.display_name || "Elev"}
-                  </span>
-                  <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                    <span className="flex items-center gap-1">
-                      <Zap className="h-3 w-3 text-xp" /> {m.profile?.xp ?? 0}
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <Flame className="h-3 w-3 text-warning" /> {m.profile?.streak ?? 0}
-                    </span>
-                  </div>
+      <Tabs defaultValue="overview" className="w-full">
+        <TabsList className="w-full">
+          <TabsTrigger value="overview" className="flex-1">Clasă</TabsTrigger>
+          {isTeacherPremium && (
+            <TabsTrigger value="analytics" className="flex-1 gap-1">
+              <BarChart3 className="h-3.5 w-3.5" /> Statistici
+            </TabsTrigger>
+          )}
+        </TabsList>
+
+        <TabsContent value="overview" className="mt-4 space-y-4">
+          {/* Students */}
+          <div>
+            <h3 className="text-sm font-semibold text-muted-foreground mb-2">
+              Elevi ({members.length})
+            </h3>
+            {members.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Niciun elev înscris încă.</p>
+            ) : (
+              <div className="space-y-2">
+                {members.map((m) => (
+                  <Card key={m.id}>
+                    <CardContent className="p-3 flex items-center justify-between">
+                      <span className="text-sm font-medium text-foreground">
+                        {m.profile?.display_name || "Elev"}
+                      </span>
+                      <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                        <span className="flex items-center gap-1">
+                          <Zap className="h-3 w-3 text-xp" /> {m.profile?.xp ?? 0}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <Flame className="h-3 w-3 text-warning" /> {m.profile?.streak ?? 0}
+                        </span>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Challenges with per-student status */}
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-sm font-semibold text-muted-foreground">
+                Provocări ({challenges.length})
+              </h3>
+              <Button size="sm" variant="outline" onClick={() => setShowAssigner(true)} className="gap-1">
+                <Target className="h-3.5 w-3.5" /> Atribuie
+              </Button>
+            </div>
+
+            {showAssigner && (
+              <Card className="mb-3">
+                <CardContent className="p-4">
+                  <ChallengeAssigner
+                    classId={classId}
+                    existingChallengeIds={existingChallengeIds}
+                    onClose={() => setShowAssigner(false)}
+                  />
                 </CardContent>
               </Card>
-            ))}
-          </div>
-        )}
-      </div>
+            )}
 
-      {/* Challenges with per-student status */}
-      <div>
-        <div className="flex items-center justify-between mb-2">
-          <h3 className="text-sm font-semibold text-muted-foreground">
-            Provocări ({challenges.length})
-          </h3>
-          <Button size="sm" variant="outline" onClick={() => setShowAssigner(true)} className="gap-1">
-            <Target className="h-3.5 w-3.5" /> Atribuie
-          </Button>
-        </div>
+            {challenges.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Nicio provocare atribuită.</p>
+            ) : (
+              <div className="space-y-2">
+                {challenges.map((ch) => {
+                  const isExpanded = expandedChallenge === ch.id;
+                  const completedCount = members.filter(
+                    (m) => getStudentStatus(ch.item_id, m.student_id) !== null
+                  ).length;
 
-        {showAssigner && (
-          <Card className="mb-3">
-            <CardContent className="p-4">
-              <ChallengeAssigner
-                classId={classId}
-                existingChallengeIds={existingChallengeIds}
-                onClose={() => setShowAssigner(false)}
-              />
-            </CardContent>
-          </Card>
-        )}
-
-        {challenges.length === 0 ? (
-          <p className="text-sm text-muted-foreground">Nicio provocare atribuită.</p>
-        ) : (
-          <div className="space-y-2">
-            {challenges.map((ch) => {
-              const isExpanded = expandedChallenge === ch.id;
-              const completedCount = members.filter(
-                (m) => getStudentStatus(ch.item_id, m.student_id) !== null
-              ).length;
-
-              return (
-                <Card key={ch.id}>
-                  <CardContent className="p-0">
-                    {/* Challenge header */}
-                    <button
-                      onClick={() => setExpandedChallenge(isExpanded ? null : ch.id)}
-                      className="w-full p-3 flex items-center justify-between text-left"
-                    >
-                      <div className="flex items-center gap-2 flex-1 min-w-0">
-                        {ch.item_type === "lesson" ? (
-                          <BookOpen className="h-4 w-4 text-primary shrink-0" />
-                        ) : (
-                          <Code className="h-4 w-4 text-accent-foreground shrink-0" />
-                        )}
-                        <div className="min-w-0">
-                          <p className="text-sm font-medium text-foreground truncate">
-                            {getItemName(ch.item_type, ch.item_id)}
-                          </p>
-                          <p className="text-[10px] text-muted-foreground">
-                            {new Date(ch.created_at).toLocaleDateString("ro-RO")} · {completedCount}/{members.length} completat
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-1 shrink-0">
+                  return (
+                    <Card key={ch.id}>
+                      <CardContent className="p-0">
                         <button
-                          onClick={(e) => { e.stopPropagation(); handleDeleteChallenge(ch.id); }}
-                          className="p-1.5 rounded-md hover:bg-destructive/10 text-muted-foreground hover:text-destructive"
+                          onClick={() => setExpandedChallenge(isExpanded ? null : ch.id)}
+                          className="w-full p-3 flex items-center justify-between text-left"
                         >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </button>
-                        {isExpanded ? (
-                          <ChevronUp className="h-4 w-4 text-muted-foreground" />
-                        ) : (
-                          <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                        )}
-                      </div>
-                    </button>
-
-                    {/* Expanded: per-student status */}
-                    {isExpanded && members.length > 0 && (
-                      <div className="border-t border-border px-3 pb-3 pt-2 space-y-1.5">
-                        {members.map((m) => {
-                          const status = getStudentStatus(ch.item_id, m.student_id);
-                          const completed = status !== null;
-                          const hasMistakes = completed && status.score < 100;
-                          const mistakePoints = completed ? Math.max(0, 100 - status.score) : 0;
-
-                          return (
-                            <div
-                              key={m.id}
-                              className={`flex items-center justify-between rounded-lg px-2.5 py-1.5 text-sm ${
-                                completed
-                                  ? hasMistakes
-                                    ? "bg-warning/10"
-                                    : "bg-primary/5"
-                                  : "bg-muted/50"
-                              }`}
-                            >
-                              <div className="flex items-center gap-2">
-                                {completed ? (
-                                  hasMistakes ? (
-                                    <XCircle className="h-3.5 w-3.5 text-warning shrink-0" />
-                                  ) : (
-                                    <CheckCircle className="h-3.5 w-3.5 text-primary shrink-0" />
-                                  )
-                                ) : (
-                                  <div className="h-3.5 w-3.5 rounded-full border-2 border-muted-foreground/30 shrink-0" />
-                                )}
-                                <span className="text-foreground text-xs font-medium">
-                                  {m.profile?.display_name || "Elev"}
-                                </span>
-                              </div>
-                              <div className="text-xs">
-                                {completed ? (
-                                  <span className={hasMistakes ? "text-warning font-medium" : "text-primary font-medium"}>
-                                    {status.score}% {hasMistakes && `· ${mistakePoints} pct. pierdute`}
-                                  </span>
-                                ) : (
-                                  <span className="text-muted-foreground">Necompletat</span>
-                                )}
-                              </div>
+                          <div className="flex items-center gap-2 flex-1 min-w-0">
+                            {ch.item_type === "lesson" ? (
+                              <BookOpen className="h-4 w-4 text-primary shrink-0" />
+                            ) : (
+                              <Code className="h-4 w-4 text-accent-foreground shrink-0" />
+                            )}
+                            <div className="min-w-0">
+                              <p className="text-sm font-medium text-foreground truncate">
+                                {getItemName(ch.item_type, ch.item_id)}
+                              </p>
+                              <p className="text-[10px] text-muted-foreground">
+                                {new Date(ch.created_at).toLocaleDateString("ro-RO")} · {completedCount}/{members.length} completat
+                              </p>
                             </div>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              );
-            })}
+                          </div>
+                          <div className="flex items-center gap-1 shrink-0">
+                            <button
+                              onClick={(e) => { e.stopPropagation(); handleDeleteChallenge(ch.id); }}
+                              className="p-1.5 rounded-md hover:bg-destructive/10 text-muted-foreground hover:text-destructive"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                            {isExpanded ? (
+                              <ChevronUp className="h-4 w-4 text-muted-foreground" />
+                            ) : (
+                              <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                            )}
+                          </div>
+                        </button>
+
+                        {isExpanded && members.length > 0 && (
+                          <div className="border-t border-border px-3 pb-3 pt-2 space-y-1.5">
+                            {members.map((m) => {
+                              const status = getStudentStatus(ch.item_id, m.student_id);
+                              const completed = status !== null;
+                              const hasMistakes = completed && status.score < 100;
+                              const mistakePoints = completed ? Math.max(0, 100 - status.score) : 0;
+
+                              return (
+                                <div
+                                  key={m.id}
+                                  className={`flex items-center justify-between rounded-lg px-2.5 py-1.5 text-sm ${
+                                    completed
+                                      ? hasMistakes
+                                        ? "bg-warning/10"
+                                        : "bg-primary/5"
+                                      : "bg-muted/50"
+                                  }`}
+                                >
+                                  <div className="flex items-center gap-2">
+                                    {completed ? (
+                                      hasMistakes ? (
+                                        <XCircle className="h-3.5 w-3.5 text-warning shrink-0" />
+                                      ) : (
+                                        <CheckCircle className="h-3.5 w-3.5 text-primary shrink-0" />
+                                      )
+                                    ) : (
+                                      <div className="h-3.5 w-3.5 rounded-full border-2 border-muted-foreground/30 shrink-0" />
+                                    )}
+                                    <span className="text-foreground text-xs font-medium">
+                                      {m.profile?.display_name || "Elev"}
+                                    </span>
+                                  </div>
+                                  <div className="text-xs">
+                                    {completed ? (
+                                      <span className={hasMistakes ? "text-warning font-medium" : "text-primary font-medium"}>
+                                        {status.score}% {hasMistakes && `· ${mistakePoints} pct. pierdute`}
+                                      </span>
+                                    ) : (
+                                      <span className="text-muted-foreground">Necompletat</span>
+                                    )}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+            )}
           </div>
+
+          {/* Upsell for non-premium */}
+          {!isTeacherPremium && (
+            <Card className="border-primary/30 bg-primary/5">
+              <CardContent className="p-4 flex items-center gap-3">
+                <Sparkles className="h-5 w-5 text-primary flex-shrink-0" />
+                <div>
+                  <p className="text-sm font-medium text-foreground">Statistici avansate</p>
+                  <p className="text-xs text-muted-foreground">
+                    Upgrade la Profesor AI pentru grafice detaliate, erori frecvente și clasament.
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
+
+        {isTeacherPremium && (
+          <TabsContent value="analytics" className="mt-4">
+            <ClassAnalytics classId={classId} className={clsName} />
+          </TabsContent>
         )}
-      </div>
+      </Tabs>
     </div>
   );
 };
