@@ -27,6 +27,7 @@ import NotificationBell from "@/components/NotificationBell";
 import LoadingScreen from "@/components/states/LoadingScreen";
 import LevelUpDialog from "@/components/LevelUpDialog";
 import StreakDialog from "@/components/StreakDialog";
+import PersonalizedSummary from "@/components/PersonalizedSummary";
 import { Capacitor } from "@capacitor/core";
 
 const Index = (): JSX.Element => {
@@ -448,6 +449,10 @@ const Index = (): JSX.Element => {
               );
             })}
           </motion.div>
+        )}
+
+        {progress.isPremium && chapters && (
+          <PersonalizedSummary chapters={chapters} progress={progress} />
         )}
 
         <div className="space-y-3">
