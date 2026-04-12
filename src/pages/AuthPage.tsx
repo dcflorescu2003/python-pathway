@@ -45,7 +45,7 @@ const AccountView = () => {
       const [{ data: profile }, { data: memberships }] = await Promise.all([
         supabase
           .from("profiles")
-          .select("is_teacher, teacher_status")
+          .select("is_teacher, teacher_status, display_name")
           .eq("user_id", user.id)
           .single(),
         supabase
@@ -56,6 +56,7 @@ const AccountView = () => {
       ]);
 
       setTeacherStatus(profile?.teacher_status ?? null);
+      setDisplayName(profile?.display_name ?? null);
       setIsClassMember((memberships?.length ?? 0) > 0);
     };
 
