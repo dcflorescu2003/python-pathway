@@ -75,43 +75,19 @@ const AccountView = () => {
 
   const requestTeacher = async () => {
     if (!user) return;
-    // Set teacher_status to pending - the trigger prevents non-admin from changing it,
-    // so we need a special approach: use is_teacher which will be caught by trigger,
-    // but teacher_status change is also blocked. We'll handle this via admin approval.
-    // For now, the user requests and admin sets pending/verified.
-    // Actually, teacher_status IS protected by the trigger. So we need to set it
-    // to pending initially when the profile is created or via admin.
-    // Workaround: we'll just set is_teacher to true (trigger allows it for non-admin? No, it blocks it!)
-    // The trigger blocks is_teacher AND teacher_status for non-admin.
-    // We need to allow users to SET teacher_status to 'pending' only.
-    // For now, we'll call an edge function or use a different approach.
-    // Simplest: insert a notification for admin, and let admin approve.
-    
-    // Insert a notification for the admin about the teacher request
-    const { data: adminEmails } = await supabase.from("admin_emails").select("email");
-    // We can't actually notify admins this way since user can't read admin_emails.
-    // Instead, let's just inform the user to contact admin.
-    // But the plan says user clicks "Sunt profesor" -> pending.
-    // Since trigger blocks it, we need to allow 'pending' specifically.
-    // This requires a DB function. Let's create one via a simple RPC approach.
-    
-    // Actually, let's just use the existing notification system for the user
-    await supabase.from("notifications").insert({
-      user_id: user.id,
-      title: "Cerere profesor trimisă",
-      body: "Cererea ta de profesor a fost trimisă. Vei fi notificat când este aprobată.",
-    });
-    
-    setTeacherStatus("pending");
-    toast.success("Cererea a fost trimisă! Vei fi notificat când este aprobată. 🎓");
-  };
-
-  const deactivateTeacher = async () => {
-    if (!user) return;
-    // This also won't work due to trigger... 
-    // For verified teachers, they should contact admin to deactivate
-    setTeacherStatus(null);
-    toast.success("Mod profesor dezactivat.");
+    try {
+      const { error } = await supabase.rpc("request_teacher_status");
+      if (error) throw error;
+      setTeacherStatus("pending");
+      toast.success("Cererea a fost trimisă! Vei fi notificat când este aprobată. 🎓");
+    } catch (err: any) {
+      if (err.message?.includes("already set")) {
+        toast.error("Ai trimis deja o cerere.");
+      } else {
+        toast.error("Eroare la trimiterea cererii.");
+        console.error(err);
+      }
+    }
   };
 
   const handleJoinClass = async () => {
