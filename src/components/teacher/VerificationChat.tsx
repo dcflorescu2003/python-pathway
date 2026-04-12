@@ -15,7 +15,7 @@ interface Props {
   teacherUserId?: string;
 }
 
-const VerificationChat = ({ requestId, adminNotes, isAdmin = false }: Props) => {
+const VerificationChat = ({ requestId, adminNotes, isAdmin = false, teacherUserId }: Props) => {
   const { user } = useAuth();
   const qc = useQueryClient();
   const [message, setMessage] = useState("");
