@@ -26,6 +26,8 @@ const AccountView = () => {
   const { subscribed, subscriptionEnd, source, openPortal, checkSubscription } = useSubscription();
   const [teacherStatus, setTeacherStatus] = useState<string | null>(null);
   const [isClassMember, setIsClassMember] = useState(false);
+  const [memberClassName, setMemberClassName] = useState<string | null>(null);
+  const [leavingClass, setLeavingClass] = useState(false);
   const [joinCode, setJoinCode] = useState("");
   const [joinLoading, setJoinLoading] = useState(false);
   const [showVerificationForm, setShowVerificationForm] = useState(false);
