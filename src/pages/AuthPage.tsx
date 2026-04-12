@@ -408,22 +408,24 @@ const AccountView = () => {
           </div>
         )}
 
-        <Card className="w-full max-w-sm mt-6 border-border">
-          <CardContent className="p-4 space-y-3">
-            {stats.map((stat) => {
-              const Icon = stat.icon;
-              return (
-                <div key={stat.label} className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <Icon className={`h-5 w-5 ${stat.color}`} />
-                    <span className="text-sm text-foreground">{stat.label}</span>
+        {!teacherStatus && (
+          <Card className="w-full max-w-sm mt-6 border-border">
+            <CardContent className="p-4 space-y-3">
+              {stats.map((stat) => {
+                const Icon = stat.icon;
+                return (
+                  <div key={stat.label} className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <Icon className={`h-5 w-5 ${stat.color}`} />
+                      <span className="text-sm text-foreground">{stat.label}</span>
+                    </div>
+                    <span className="text-sm font-bold text-foreground">{stat.value}</span>
                   </div>
-                  <span className="text-sm font-bold text-foreground">{stat.value}</span>
-                </div>
-              );
-            })}
-          </CardContent>
-        </Card>
+                );
+              })}
+            </CardContent>
+          </Card>
+        )}
 
         <CouponRedemption />
 
