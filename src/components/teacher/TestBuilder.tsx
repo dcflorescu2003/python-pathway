@@ -308,6 +308,10 @@ const TestBuilder = ({ onBack, editTestId }: TestBuilderProps) => {
   const handleSave = async () => {
     if (!title.trim()) { toast.error("Adaugă un titlu."); return; }
     if (items.length === 0) { toast.error("Adaugă cel puțin un item."); return; }
+    if (!isEditing && isTeacherPremium && testsThisMonth >= MAX_TESTS_PER_MONTH) {
+      toast.error(`Ai atins limita de ${MAX_TESTS_PER_MONTH} teste/lună. Vei putea crea altele luna viitoare.`);
+      return;
+    }
     try {
       if (isEditing) {
         await updateTest.mutateAsync({
