@@ -27,6 +27,7 @@ import NotificationBell from "@/components/NotificationBell";
 import LoadingScreen from "@/components/states/LoadingScreen";
 import LevelUpDialog from "@/components/LevelUpDialog";
 import StreakDialog from "@/components/StreakDialog";
+import PersonalizedSummary from "@/components/PersonalizedSummary";
 import { Capacitor } from "@capacitor/core";
 
 const Index = (): JSX.Element => {
