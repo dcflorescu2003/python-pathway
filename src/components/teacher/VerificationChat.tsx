@@ -12,6 +12,7 @@ interface Props {
   requestId: string;
   adminNotes?: string | null;
   isAdmin?: boolean;
+  teacherUserId?: string;
 }
 
 const VerificationChat = ({ requestId, adminNotes, isAdmin = false }: Props) => {
