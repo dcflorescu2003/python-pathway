@@ -103,17 +103,73 @@ const AccountView = () => {
         toast.error("Cod invalid.");
         return;
       }
-      const { error } = await supabase
+
+      // Check if already a member
+      const { data: existing } = await supabase
         .from("class_members")
-        .insert({ class_id: cls.id, student_id: user.id });
-      if (error) {
-        if (error.code === "23505") toast.error("Ești deja înscris în această clasă.");
-        else toast.error("Eroare la înscriere.");
-      } else {
-        toast.success("Te-ai alăturat clasei! 🎉");
-        setJoinCode("");
-        setIsClassMember(true);
+        .select("id")
+        .eq("class_id", cls.id)
+        .eq("student_id", user.id)
+        .maybeSingle();
+      if (existing) {
+        toast.error("Ești deja înscris în această clasă.");
+        return;
       }
+
+      // Check if user has a proper display_name
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("display_name")
+        .eq("user_id", user.id)
+        .single();
+
+      const name = profile?.display_name?.trim();
+      const isNameMissing = !name || name === user.email || name.length < 3;
+
+      if (isNameMissing) {
+        setPendingClassId(cls.id);
+        setFullName(name && name !== user.email ? name : "");
+        setShowNameDialog(true);
+        return;
+      }
+
+      // Name already set — join directly
+      await joinClassDirect(cls.id);
+    } finally {
+      setJoinLoading(false);
+    }
+  };
+
+  const joinClassDirect = async (classId: string) => {
+    if (!user) return;
+    const { error } = await supabase
+      .from("class_members")
+      .insert({ class_id: classId, student_id: user.id });
+    if (error) {
+      if (error.code === "23505") toast.error("Ești deja înscris în această clasă.");
+      else toast.error("Eroare la înscriere.");
+    } else {
+      toast.success("Te-ai alăturat clasei! 🎉");
+      setJoinCode("");
+      setIsClassMember(true);
+    }
+  };
+
+  const handleNameConfirm = async () => {
+    if (!user || !pendingClassId || fullName.trim().length < 3) return;
+    setJoinLoading(true);
+    try {
+      // Update display_name
+      await supabase
+        .from("profiles")
+        .update({ display_name: fullName.trim() })
+        .eq("user_id", user.id);
+
+      // Join class
+      await joinClassDirect(pendingClassId);
+      setShowNameDialog(false);
+      setPendingClassId(null);
+      setFullName("");
     } finally {
       setJoinLoading(false);
     }
