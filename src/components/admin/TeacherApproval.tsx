@@ -196,6 +196,7 @@ const RequestsTab = () => {
                 <VerificationChat
                   requestId={r.id}
                   isAdmin
+                  teacherUserId={r.user_id}
                 />
               )}
             </CardContent>
