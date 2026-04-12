@@ -385,28 +385,22 @@ const AccountView = () => {
           </Card>
         )}
 
-        {/* Teacher section - hidden if user is a class member */}
-        {!isClassMember && (
-          teacherStatus === "verified" ? (
-            <div className="w-full max-w-sm mt-4 space-y-2">
-              <Button
-                variant="outline"
-                className="w-full gap-2"
-                onClick={() => navigate("/teacher")}
-              >
-                <GraduationCap className="h-4 w-4" />
-                Panou Profesor
-              </Button>
-            </div>
-          ) : teacherStatus === "pending" ? (
-            <Card className="w-full max-w-sm mt-4 border-warning/30">
-              <CardContent className="p-4 text-center">
-                <Clock className="h-5 w-5 text-warning mx-auto mb-2" />
-                <p className="text-sm font-medium text-foreground">Cerere profesor în așteptare</p>
-                <p className="text-xs text-muted-foreground mt-1">Vei fi notificat când contul tău este aprobat.</p>
-              </CardContent>
-            </Card>
-          ) : showVerificationForm ? (
+        {/* Teacher section */}
+        {teacherStatus === "verified" ? (
+          <div className="w-full max-w-sm mt-4 space-y-2">
+            <Button
+              variant="outline"
+              className="w-full gap-2"
+              onClick={() => navigate("/teacher")}
+            >
+              <GraduationCap className="h-4 w-4" />
+              Panou Profesor
+            </Button>
+          </div>
+        ) : teacherStatus === "pending" ? (
+          <PendingTeacherSection userId={user?.id} />
+        ) : !isClassMember && (
+          showVerificationForm ? (
             <Card className="w-full max-w-sm mt-4">
               <CardContent className="p-4">
                 <TeacherVerificationForm
