@@ -94,11 +94,11 @@ Deno.serve(async (req) => {
             if (test) {
               const { data: teacherProfile } = await supabase
                 .from("profiles")
-                .select("is_premium")
+                .select("is_premium, teacher_status")
                 .eq("user_id", test.teacher_id)
                 .single();
 
-              if (teacherProfile?.is_premium) {
+              if (teacherProfile?.is_premium && teacherProfile?.teacher_status === "verified") {
                 const aiResult = await aiReviewCode(
                   problem.solution,
                   answer.answer_data.code,
