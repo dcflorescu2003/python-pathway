@@ -451,6 +451,10 @@ const Index = (): JSX.Element => {
           </motion.div>
         )}
 
+        {progress.isPremium && chapters && (
+          <PersonalizedSummary chapters={chapters} progress={progress} />
+        )}
+
         <div className="space-y-3">
           {chapters.map((chapter, idx) => {
             const completedCount = chapter.lessons.filter((l) => progress.completedLessons[l.id]?.completed).length;
