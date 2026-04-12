@@ -178,21 +178,17 @@ const TeacherPage = () => {
           <Tabs defaultValue="classes" className="w-full">
             <TabsList className="w-full">
               <TabsTrigger value="classes" className="flex-1">Clase</TabsTrigger>
-              {isVerified && (
-                <TabsTrigger value="tests" className="flex-1">Teste</TabsTrigger>
-              )}
+              <TabsTrigger value="tests" className="flex-1">Teste</TabsTrigger>
             </TabsList>
             <TabsContent value="classes" className="mt-4">
               <ClassManager onSelectClass={setSelectedClassId} />
             </TabsContent>
-            {isVerified && (
-              <TabsContent value="tests" className="mt-4">
-                <TestManager
-                  onCreateTest={() => { setEditingTestId(null); setShowTestBuilder(true); }}
-                  onEditTest={handleEditTest}
-                />
-              </TabsContent>
-            )}
+            <TabsContent value="tests" className="mt-4">
+              <TestManager
+                onCreateTest={() => { setEditingTestId(null); setShowTestBuilder(true); }}
+                onEditTest={handleEditTest}
+              />
+            </TabsContent>
           </Tabs>
         )}
       </main>
