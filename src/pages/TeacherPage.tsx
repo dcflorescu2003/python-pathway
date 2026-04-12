@@ -21,6 +21,7 @@ const TeacherPage = () => {
   const { user } = useAuth();
   const { isTeacherPremium } = useSubscription();
   const { data: classes = [] } = useTeacherClasses();
+  const { data: referralCodes = [] } = useTeacherReferralCodes();
   const [selectedClassId, setSelectedClassId] = useState<string | null>(null);
   const [showTestBuilder, setShowTestBuilder] = useState(false);
   const [editingTestId, setEditingTestId] = useState<string | null>(null);
