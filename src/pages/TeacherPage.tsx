@@ -40,6 +40,7 @@ const TeacherPage = () => {
 
   const isVerified = teacherStatus === "verified";
   const isPending = teacherStatus === "pending";
+  const isUnverified = teacherStatus === "unverified";
 
   const selectedClass = classes.find((c) => c.id === selectedClassId);
 
@@ -71,13 +72,32 @@ const TeacherPage = () => {
       </header>
 
       <main className="px-4 py-6 max-w-lg mx-auto">
+        {isUnverified && (
+          <Card className="mb-4 border-primary/30 bg-primary/5">
+            <CardContent className="p-4">
+              <p className="text-sm font-medium text-foreground mb-1 flex items-center gap-2">
+                <GraduationCap className="h-4 w-4 text-primary" />
+                Bine ai venit, profesor!
+              </p>
+              <p className="text-xs text-muted-foreground mb-2">
+                Poți crea clase, provocări și teste cu exerciții existente sau personalizate.
+              </p>
+              <div className="bg-muted/50 rounded-lg p-2.5">
+                <p className="text-xs text-muted-foreground">
+                  🔒 Pentru acces la <strong>subiecte și teste predefinite</strong>, parcurge pașii de verificare din pagina de cont.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {isPending && (
           <Card className="mb-4 border-warning/30">
             <CardContent className="p-4 flex items-center gap-3">
               <AlertTriangle className="h-5 w-5 text-warning flex-shrink-0" />
               <div>
-                <p className="text-sm font-medium text-foreground">Cont în așteptare</p>
-                <p className="text-xs text-muted-foreground">Funcționalitățile sunt limitate până la aprobare.</p>
+                <p className="text-sm font-medium text-foreground">Verificare în curs</p>
+                <p className="text-xs text-muted-foreground">Cererea ta este analizată. Vei fi notificat când este aprobată.</p>
               </div>
             </CardContent>
           </Card>
@@ -158,21 +178,17 @@ const TeacherPage = () => {
           <Tabs defaultValue="classes" className="w-full">
             <TabsList className="w-full">
               <TabsTrigger value="classes" className="flex-1">Clase</TabsTrigger>
-              {isVerified && (
-                <TabsTrigger value="tests" className="flex-1">Teste</TabsTrigger>
-              )}
+              <TabsTrigger value="tests" className="flex-1">Teste</TabsTrigger>
             </TabsList>
             <TabsContent value="classes" className="mt-4">
               <ClassManager onSelectClass={setSelectedClassId} />
             </TabsContent>
-            {isVerified && (
-              <TabsContent value="tests" className="mt-4">
-                <TestManager
-                  onCreateTest={() => { setEditingTestId(null); setShowTestBuilder(true); }}
-                  onEditTest={handleEditTest}
-                />
-              </TabsContent>
-            )}
+            <TabsContent value="tests" className="mt-4">
+              <TestManager
+                onCreateTest={() => { setEditingTestId(null); setShowTestBuilder(true); }}
+                onEditTest={handleEditTest}
+              />
+            </TabsContent>
           </Tabs>
         )}
       </main>

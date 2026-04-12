@@ -464,27 +464,64 @@ const AccountView = () => {
             </Button>
           </div>
         ) : teacherStatus === "pending" ? (
-          <PendingTeacherSection userId={user?.id} />
-        ) : !isClassMember && (
-          showVerificationForm ? (
-            <Card className="w-full max-w-sm mt-4">
-              <CardContent className="p-4">
-                <TeacherVerificationForm
-                  onSuccess={reloadTeacherStatus}
-                  onCancel={() => setShowVerificationForm(false)}
-                />
-              </CardContent>
-            </Card>
-          ) : (
+          <div className="w-full max-w-sm mt-4 space-y-2">
             <Button
               variant="outline"
-              className="w-full max-w-sm mt-4 gap-2"
-              onClick={() => setShowVerificationForm(true)}
+              className="w-full gap-2"
+              onClick={() => navigate("/teacher")}
             >
               <GraduationCap className="h-4 w-4" />
-              Devino Profesor
+              Panou Profesor
             </Button>
-          )
+            <PendingTeacherSection userId={user?.id} />
+          </div>
+        ) : teacherStatus === "unverified" ? (
+          <div className="w-full max-w-sm mt-4 space-y-2">
+            <Button
+              variant="outline"
+              className="w-full gap-2"
+              onClick={() => navigate("/teacher")}
+            >
+              <GraduationCap className="h-4 w-4" />
+              Panou Profesor
+            </Button>
+            {showVerificationForm ? (
+              <Card>
+                <CardContent className="p-4">
+                  <TeacherVerificationForm
+                    onSuccess={reloadTeacherStatus}
+                    onCancel={() => setShowVerificationForm(false)}
+                  />
+                </CardContent>
+              </Card>
+            ) : (
+              <Button
+                variant="secondary"
+                className="w-full gap-2"
+                onClick={() => setShowVerificationForm(true)}
+              >
+                <Shield className="h-4 w-4" />
+                Începe verificarea
+              </Button>
+            )}
+          </div>
+        ) : !isClassMember && (
+          <Button
+            variant="outline"
+            className="w-full max-w-sm mt-4 gap-2"
+            onClick={async () => {
+              try {
+                await supabase.rpc("request_teacher_status");
+                setTeacherStatus("unverified");
+                toast.success("Ești acum profesor! Accesează panoul pentru a crea clase și teste.");
+              } catch (err: any) {
+                toast.error(err.message || "Eroare");
+              }
+            }}
+          >
+            <GraduationCap className="h-4 w-4" />
+            Devino Profesor
+          </Button>
         )}
 
         {/* Join class - hidden if user is a teacher or already in a class */}

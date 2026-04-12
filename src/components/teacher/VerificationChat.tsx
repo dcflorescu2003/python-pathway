@@ -12,9 +12,10 @@ interface Props {
   requestId: string;
   adminNotes?: string | null;
   isAdmin?: boolean;
+  teacherUserId?: string;
 }
 
-const VerificationChat = ({ requestId, adminNotes, isAdmin = false }: Props) => {
+const VerificationChat = ({ requestId, adminNotes, isAdmin = false, teacherUserId }: Props) => {
   const { user } = useAuth();
   const qc = useQueryClient();
   const [message, setMessage] = useState("");
@@ -58,6 +59,15 @@ const VerificationChat = ({ requestId, adminNotes, isAdmin = false }: Props) => 
           attachment_url: attachmentUrl,
         });
       if (error) throw error;
+
+      // If admin sends message, notify the teacher
+      if (isAdmin && teacherUserId) {
+        await supabase.from("notifications").insert({
+          user_id: teacherUserId,
+          title: "Mesaj nou de la administrator",
+          body: "Ai primit un mesaj în conversația de verificare profesor. Verifică secțiunea din contul tău.",
+        });
+      }
 
       setMessage("");
       setFile(null);
