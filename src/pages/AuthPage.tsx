@@ -10,6 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { ArrowLeft, Mail, Lock, User, Eye, EyeOff, LogOut, BookOpen, XCircle, Code, Zap, Flame, Trophy, Shield, Trash2, Settings, GraduationCap, UserPlus, Crown, CreditCard, Clock } from "lucide-react";
 import TeacherVerificationForm from "@/components/teacher/TeacherVerificationForm";
 import { useAdminAccess } from "@/hooks/useAdminAccess";
@@ -29,6 +30,9 @@ const AccountView = () => {
   const [joinLoading, setJoinLoading] = useState(false);
   const [showVerificationForm, setShowVerificationForm] = useState(false);
   const [portalLoading, setPortalLoading] = useState(false);
+  const [showNameDialog, setShowNameDialog] = useState(false);
+  const [fullName, setFullName] = useState("");
+  const [pendingClassId, setPendingClassId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -99,17 +103,73 @@ const AccountView = () => {
         toast.error("Cod invalid.");
         return;
       }
-      const { error } = await supabase
+
+      // Check if already a member
+      const { data: existing } = await supabase
         .from("class_members")
-        .insert({ class_id: cls.id, student_id: user.id });
-      if (error) {
-        if (error.code === "23505") toast.error("Ești deja înscris în această clasă.");
-        else toast.error("Eroare la înscriere.");
-      } else {
-        toast.success("Te-ai alăturat clasei! 🎉");
-        setJoinCode("");
-        setIsClassMember(true);
+        .select("id")
+        .eq("class_id", cls.id)
+        .eq("student_id", user.id)
+        .maybeSingle();
+      if (existing) {
+        toast.error("Ești deja înscris în această clasă.");
+        return;
       }
+
+      // Check if user has a proper display_name
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("display_name")
+        .eq("user_id", user.id)
+        .single();
+
+      const name = profile?.display_name?.trim();
+      const isNameMissing = !name || name === user.email || name.length < 3;
+
+      if (isNameMissing) {
+        setPendingClassId(cls.id);
+        setFullName(name && name !== user.email ? name : "");
+        setShowNameDialog(true);
+        return;
+      }
+
+      // Name already set — join directly
+      await joinClassDirect(cls.id);
+    } finally {
+      setJoinLoading(false);
+    }
+  };
+
+  const joinClassDirect = async (classId: string) => {
+    if (!user) return;
+    const { error } = await supabase
+      .from("class_members")
+      .insert({ class_id: classId, student_id: user.id });
+    if (error) {
+      if (error.code === "23505") toast.error("Ești deja înscris în această clasă.");
+      else toast.error("Eroare la înscriere.");
+    } else {
+      toast.success("Te-ai alăturat clasei! 🎉");
+      setJoinCode("");
+      setIsClassMember(true);
+    }
+  };
+
+  const handleNameConfirm = async () => {
+    if (!user || !pendingClassId || fullName.trim().length < 3) return;
+    setJoinLoading(true);
+    try {
+      // Update display_name
+      await supabase
+        .from("profiles")
+        .update({ display_name: fullName.trim() })
+        .eq("user_id", user.id);
+
+      // Join class
+      await joinClassDirect(pendingClassId);
+      setShowNameDialog(false);
+      setPendingClassId(null);
+      setFullName("");
     } finally {
       setJoinLoading(false);
     }
@@ -284,6 +344,40 @@ const AccountView = () => {
             </CardContent>
           </Card>
         )}
+
+        {/* Name dialog for class join */}
+        <Dialog open={showNameDialog} onOpenChange={setShowNameDialog}>
+          <DialogContent className="max-w-sm mx-auto">
+            <DialogHeader>
+              <DialogTitle className="text-center flex items-center justify-center gap-2">
+                <User className="h-5 w-5 text-primary" />
+                Numele tău complet
+              </DialogTitle>
+              <DialogDescription className="text-center text-foreground/70">
+                Profesorul trebuie să te identifice. Scrie-ți numele real complet (prenume și nume de familie).
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-2">
+              <Input
+                placeholder="Ex: Andrei Popescu"
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+                className="text-center"
+                autoFocus
+              />
+              {fullName.trim().length > 0 && fullName.trim().length < 3 && (
+                <p className="text-xs text-destructive text-center">Numele trebuie să aibă minim 3 caractere.</p>
+              )}
+              <Button
+                className="w-full"
+                onClick={handleNameConfirm}
+                disabled={fullName.trim().length < 3 || joinLoading}
+              >
+                {joinLoading ? "Se înscrie..." : "Confirmă și intră în clasă"}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
 
         {isAdmin && (
           <Button
