@@ -27,6 +27,7 @@ const AccountView = () => {
   const [isClassMember, setIsClassMember] = useState(false);
   const [joinCode, setJoinCode] = useState("");
   const [joinLoading, setJoinLoading] = useState(false);
+  const [showVerificationForm, setShowVerificationForm] = useState(false);
   const [portalLoading, setPortalLoading] = useState(false);
 
   useEffect(() => {
