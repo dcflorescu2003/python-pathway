@@ -242,11 +242,20 @@ const AccountView = () => {
                 <p className="text-xs text-muted-foreground mt-1">Vei fi notificat când contul tău este aprobat.</p>
               </CardContent>
             </Card>
+          ) : showVerificationForm ? (
+            <Card className="w-full max-w-sm mt-4">
+              <CardContent className="p-4">
+                <TeacherVerificationForm
+                  onSuccess={reloadTeacherStatus}
+                  onCancel={() => setShowVerificationForm(false)}
+                />
+              </CardContent>
+            </Card>
           ) : (
             <Button
               variant="outline"
               className="w-full max-w-sm mt-4 gap-2"
-              onClick={requestTeacher}
+              onClick={() => setShowVerificationForm(true)}
             >
               <GraduationCap className="h-4 w-4" />
               Devino Profesor
