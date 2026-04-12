@@ -60,6 +60,15 @@ const VerificationChat = ({ requestId, adminNotes, isAdmin = false, teacherUserI
         });
       if (error) throw error;
 
+      // If admin sends message, notify the teacher
+      if (isAdmin && teacherUserId) {
+        await supabase.from("notifications").insert({
+          user_id: teacherUserId,
+          title: "Mesaj nou de la administrator",
+          body: "Ai primit un mesaj în conversația de verificare profesor. Verifică secțiunea din contul tău.",
+        });
+      }
+
       setMessage("");
       setFile(null);
       qc.invalidateQueries({ queryKey: ["verification-messages", requestId] });
