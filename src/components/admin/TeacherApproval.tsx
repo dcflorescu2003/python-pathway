@@ -19,6 +19,7 @@ import VerificationChat from "@/components/teacher/VerificationChat";
 const RequestsTab = () => {
   const qc = useQueryClient();
   const [notes, setNotes] = useState<Record<string, string>>({});
+  const [openChat, setOpenChat] = useState<string | null>(null);
 
   const { data: requests = [], isLoading } = useQuery({
     queryKey: ["admin-verification-requests"],
