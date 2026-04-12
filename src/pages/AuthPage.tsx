@@ -361,8 +361,32 @@ const AccountView = () => {
 
         <CouponRedemption />
 
-        {/* Teacher section */}
-        {(
+        {/* Class membership info */}
+        {isClassMember && (
+          <Card className="w-full max-w-sm mt-4 border-border">
+            <CardContent className="p-4">
+              <p className="text-sm font-medium text-foreground mb-2 flex items-center gap-2">
+                <BookOpen className="h-4 w-4 text-primary" /> Clasa ta
+              </p>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">{memberClassName ?? "Clasă"}</span>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  className="gap-1"
+                  disabled={leavingClass}
+                  onClick={handleLeaveClass}
+                >
+                  <DoorOpen className="h-4 w-4" />
+                  {leavingClass ? "..." : "Părăsește"}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Teacher section - hidden if user is a class member */}
+        {!isClassMember && (
           teacherStatus === "verified" ? (
             <div className="w-full max-w-sm mt-4 space-y-2">
               <Button
@@ -403,8 +427,8 @@ const AccountView = () => {
           )
         )}
 
-        {/* Join class - hidden if user is a teacher */}
-        {!teacherStatus && (
+        {/* Join class - hidden if user is a teacher or already in a class */}
+        {!teacherStatus && !isClassMember && (
           <Card className="w-full max-w-sm mt-4 border-border">
             <CardContent className="p-4">
               <p className="text-sm font-medium text-foreground mb-2 flex items-center gap-2">
