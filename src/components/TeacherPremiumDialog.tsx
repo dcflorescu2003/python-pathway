@@ -118,12 +118,12 @@ const TeacherPremiumDialog = ({ open, onOpenChange }: TeacherPremiumDialogProps)
                 </div>
               </div>
 
-              {/* Pricing cards */}
-              <div className="grid grid-cols-2 gap-3">
+              {/* Pricing card */}
+              <div className="flex justify-center">
                 <button
                   onClick={() => handlePurchase(TEACHER_MONTHLY_PRICE)}
                   disabled={!!checkoutLoading}
-                  className="relative rounded-xl border-2 border-border bg-card p-4 text-center hover:border-primary transition-colors disabled:opacity-50"
+                  className="relative w-full rounded-xl border-2 border-primary bg-card p-4 text-center hover:border-primary/80 transition-colors disabled:opacity-50"
                 >
                   <p className="text-xs text-foreground/60 mb-1">Lunar</p>
                   <p className="text-2xl font-bold text-foreground">29 <span className="text-sm font-normal">RON</span></p>
@@ -132,7 +132,6 @@ const TeacherPremiumDialog = ({ open, onOpenChange }: TeacherPremiumDialogProps)
                     <Loader2 className="absolute top-2 right-2 h-4 w-4 animate-spin text-primary" />
                   )}
                 </button>
-
               </div>
 
               <p className="text-[10px] text-center text-foreground/40">
