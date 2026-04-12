@@ -540,8 +540,10 @@ export type Database = {
           is_teacher: boolean
           last_activity_date: string
           lives: number
+          lives_updated_at: string | null
           school_id: string | null
           streak: number
+          teacher_status: string | null
           updated_at: string
           user_id: string
           xp: number
@@ -556,8 +558,10 @@ export type Database = {
           is_teacher?: boolean
           last_activity_date?: string
           lives?: number
+          lives_updated_at?: string | null
           school_id?: string | null
           streak?: number
+          teacher_status?: string | null
           updated_at?: string
           user_id: string
           xp?: number
@@ -572,8 +576,10 @@ export type Database = {
           is_teacher?: boolean
           last_activity_date?: string
           lives?: number
+          lives_updated_at?: string | null
           school_id?: string | null
           streak?: number
+          teacher_status?: string | null
           updated_at?: string
           user_id?: string
           xp?: number
@@ -905,6 +911,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_verified_teacher: { Args: { _user_id: string }; Returns: boolean }
       student_can_view_test: { Args: { p_test_id: string }; Returns: boolean }
     }
     Enums: {
