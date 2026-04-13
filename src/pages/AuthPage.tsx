@@ -675,6 +675,7 @@ const AccountView = () => {
       </div>
 
       <PremiumDialog open={showPremiumDialog} onOpenChange={setShowPremiumDialog} />
+      <TeacherPremiumDialog open={showTeacherPremiumDialog} onOpenChange={setShowTeacherPremiumDialog} />
     </motion.div>
   );
 };
