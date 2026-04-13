@@ -1,30 +1,28 @@
 
 
-## Plan: Drag-and-drop reordonare + preview întrebări în secțiunea "Itemi selectați"
+## Plan: Separarea ordinii pe variante + mesaj shuffle
 
 ### Modificări în `src/components/teacher/TestBuilder.tsx`
 
-### 1. Drag-and-drop pentru reordonarea itemilor selectați
+### 1. Shuffle mode — eliminare preview Nr.1/Nr.2
+Secțiunea "Side-by-side variant preview" (liniile 928-983) se afișează doar dacă `variantMode === "manual"`. Dacă `variantMode === "shuffle"`, afișăm în loc un mesaj informativ: *"Elevii vor primi același test cu întrebările în ordine aleatorie."*
 
-Secțiunea "Itemi selectați" (liniile 822-859) are deja un `GripVertical` icon dar fără funcționalitate. Adăugăm HTML5 drag-and-drop (identic cu pattern-ul din `TakeTestPage` / `OrderExercise`):
+### 2. Variante manuale — ordine separată per variantă
+Problema curentă: `reorderVariantItems` (linia 477) mută itemul în array-ul principal `items`, ceea ce afectează ambele variante dacă itemul are `variant === "both"`.
 
-- Adăugăm un `dragIdx` ref
-- Pe fiecare item: `draggable`, `onDragStart`, `onDragOver`, `onDragEnd`
-- La drop, mutăm itemul în `items` array și actualizăm `sort_order`
-- Funcționează atât în modul shuffle cât și manual (lista e unică, variantele se filtrează doar la preview)
+Soluția: Introducem un state separat pentru ordinea per variantă:
+- `variantOrder`: `{ A: string[], B: string[] }` — arrays de chei unice (index sau id) care definesc ordinea de afișare în fiecare variantă
+- La prima construire și la adăugare/ștergere de itemi, se sincronizează automat
+- Drag-and-drop în Nr.1 mută doar în `variantOrder.A`, fără a afecta `variantOrder.B`
+- Itemii cu `variant === "both"` apar în ambele liste dar cu ordine independentă
 
-### 2. Buton Eye (preview) pe fiecare item selectat
+Concret:
+- Adăugăm `variantOrderA` și `variantOrderB` ca state arrays de indici
+- Recalculăm aceste arrays când `items` se schimbă (useEffect)
+- `variant1Items` și `variant2Items` se derivă din aceste arrays în loc de filtrare directă
+- Drag în preview Nr.1 reordonează doar `variantOrderA`; drag în Nr.2 doar `variantOrderB`
+- La salvare, `sort_order` din `items` rămâne pentru lista principală; ordinea variantelor se salvează separat (sau se encodează în items)
 
-Adăugăm un buton `Eye` (similar cu cel din browser-ul de exerciții, linia 586-589) pe fiecare item din lista "Itemi selectați". La click:
-
-- Toggle `previewItemId` pe acel item
-- Sub item, afișăm `renderExercisePreview()` sau `renderProblemPreview()` sau un preview custom (pentru `custom_data`) — funcțiile există deja (liniile 218-270)
-- Pentru custom items, extragem datele din `item.custom_data` și le pasăm la `renderExercisePreview`
-
-### 3. Preview în secțiunea variant preview (Nr. 1 / Nr. 2)
-
-Adăugăm același buton Eye pe fiecare item din preview-ul variantelor (liniile 862-905), cu aceeași logică de expand/collapse.
-
-### Fișiere modificate
-- `src/components/teacher/TestBuilder.tsx` — singura modificare
+### Fișier modificat
+- `src/components/teacher/TestBuilder.tsx`
 
