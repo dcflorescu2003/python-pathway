@@ -51,8 +51,6 @@ const Index = (): JSX.Element => {
   const [showLevelUp, setShowLevelUp] = useState(false);
   const [showStreak, setShowStreak] = useState(false);
   const [bestStreak, setBestStreak] = useState(0);
-  const prevLevelRef = useRef<number | null>(null);
-  const initialLoadRef = useRef(true);
 
   useEffect(() => {
     if (authLoading) return;
