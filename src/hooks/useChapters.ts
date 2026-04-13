@@ -19,7 +19,7 @@ export interface Exercise {
   correctOptionId?: string;
   codeTemplate?: string;
   blanks?: { id: string; answer: string }[];
-  lines?: { id: string; text: string; order: number }[];
+  lines?: { id: string; text: string; order: number; group?: number }[];
   statement?: string;
   isTrue?: boolean;
   explanation?: string;
