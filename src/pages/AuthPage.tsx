@@ -11,7 +11,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { ArrowLeft, Mail, Lock, User, Eye, EyeOff, LogOut, BookOpen, XCircle, Code, Zap, Flame, Trophy, Shield, Trash2, Settings, GraduationCap, UserPlus, Crown, CreditCard, Clock, Pencil, Check, X, DoorOpen, MessageSquare } from "lucide-react";
+import { ArrowLeft, Mail, Lock, User, Eye, EyeOff, LogOut, BookOpen, XCircle, Code, Zap, Flame, Trophy, Shield, Trash2, Settings, GraduationCap, UserPlus, Crown, CreditCard, Clock, Pencil, Check, X, DoorOpen, MessageSquare, Sparkles } from "lucide-react";
+import PremiumDialog from "@/components/PremiumDialog";
 import TeacherVerificationForm from "@/components/teacher/TeacherVerificationForm";
 import VerificationChat from "@/components/teacher/VerificationChat";
 import { useAdminAccess } from "@/hooks/useAdminAccess";
@@ -426,8 +427,20 @@ const AccountView = () => {
           </div>
         )}
 
+        {/* Premium CTA for free users */}
+        {!progress.isPremium && (
+          <Button
+            className="w-full max-w-sm mt-6 gap-2 bg-gradient-to-r from-yellow-500 to-amber-500 hover:from-yellow-600 hover:to-amber-600 text-white font-bold shadow-lg"
+            onClick={() => setShowPremiumDialog(true)}
+          >
+            <Crown className="h-5 w-5" />
+            Pyro Premium
+            <Sparkles className="h-4 w-4" />
+          </Button>
+        )}
+
         {!teacherStatus && (
-          <Card className="w-full max-w-sm mt-6 border-border">
+          <Card className="w-full max-w-sm mt-4 border-border">
             <CardContent className="p-4 space-y-3">
               {stats.map((stat) => {
                 const Icon = stat.icon;
