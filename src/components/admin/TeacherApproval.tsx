@@ -448,6 +448,14 @@ const VerifiedTeachersTab = () => {
                       </span>
                     )}
                   </div>
+                  {t.school_name && (
+                    <p className="text-xs text-muted-foreground">🏫 {t.school_name}</p>
+                  )}
+                  {t.contact_email && (
+                    <p className="text-xs text-muted-foreground flex items-center gap-1">
+                      <Mail className="h-3 w-3" /> {t.contact_email}
+                    </p>
+                  )}
                 </div>
                 <Button
                   size="sm"
