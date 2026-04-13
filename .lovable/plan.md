@@ -1,27 +1,30 @@
 
 
-## Plan: Folosește componentele reale de exerciții în teste
+## Plan: Drag-and-drop reordonare + preview întrebări în secțiunea "Itemi selectați"
 
-### Problema
-Pagina de teste (`TakeTestPage.tsx`) are un `ExerciseRenderer` simplificat inline care:
-- La **"completează codul" (fill)**: afișează doar câmpuri de input fără codul din `codeTemplate`
-- La **"aranjează" (order)**: permite doar click pentru mutat în sus, fără drag-and-drop
+### Modificări în `src/components/teacher/TestBuilder.tsx`
 
-În lecții se folosesc componentele din `src/components/exercises/` care funcționează corect.
+### 1. Drag-and-drop pentru reordonarea itemilor selectați
 
-### Soluția
-Înlocuim `ExerciseRenderer`-ul inline cu componentele reale (`FillExercise`, `OrderExercise`, `MatchExercise`, `QuizExercise`, `TrueFalseExercise`), adaptate pentru contextul de test.
+Secțiunea "Itemi selectați" (liniile 822-859) are deja un `GripVertical` icon dar fără funcționalitate. Adăugăm HTML5 drag-and-drop (identic cu pattern-ul din `TakeTestPage` / `OrderExercise`):
 
-### Modificări în `src/pages/TakeTestPage.tsx`
+- Adăugăm un `dragIdx` ref
+- Pe fiecare item: `draggable`, `onDragStart`, `onDragOver`, `onDragEnd`
+- La drop, mutăm itemul în `items` array și actualizăm `sort_order`
+- Funcționează atât în modul shuffle cât și manual (lista e unică, variantele se filtrează doar la preview)
 
-1. **Import** componentele reale de exerciții
-2. **Refactor `ExerciseRenderer`**: pentru tipurile `fill`, `order`, `quiz`, `truefalse`, `match` — folosim componentele din `src/components/exercises/` cu un wrapper care:
-   - Transformă `exercise_data` din DB (cu `code_template`) în formatul așteptat de componente (cu `codeTemplate`)
-   - Captează răspunsul prin `onAnswer` callback-ul testului (salvează datele în `answers` state) în loc de a verifica corect/greșit instant
-   - Setează `feedback` la `null` permanent (nu arătăm corect/greșit în test)
-3. **Mapare câmpuri DB → componente**: `code_template` → `codeTemplate`, `correct_answer` → `correctAnswer` etc., pentru compatibilitate cu interfețele componentelor
+### 2. Buton Eye (preview) pe fiecare item selectat
 
-### Rezultat
-- Exercițiile din teste vor arăta și funcționa identic cu cele din lecții (drag-and-drop, cod afișat, etc.)
-- Răspunsurile se colectează pentru trimitere la final
+Adăugăm un buton `Eye` (similar cu cel din browser-ul de exerciții, linia 586-589) pe fiecare item din lista "Itemi selectați". La click:
+
+- Toggle `previewItemId` pe acel item
+- Sub item, afișăm `renderExercisePreview()` sau `renderProblemPreview()` sau un preview custom (pentru `custom_data`) — funcțiile există deja (liniile 218-270)
+- Pentru custom items, extragem datele din `item.custom_data` și le pasăm la `renderExercisePreview`
+
+### 3. Preview în secțiunea variant preview (Nr. 1 / Nr. 2)
+
+Adăugăm același buton Eye pe fiecare item din preview-ul variantelor (liniile 862-905), cu aceeași logică de expand/collapse.
+
+### Fișiere modificate
+- `src/components/teacher/TestBuilder.tsx` — singura modificare
 
