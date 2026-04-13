@@ -456,7 +456,7 @@ const AccountView = () => {
         )}
 
         {/* Teacher section */}
-        {teacherStatus === "verified" ? (
+        {(teacherStatus === "verified" || teacherStatus === "pending" || teacherStatus === "unverified") ? (
           <div className="w-full max-w-sm mt-4 space-y-2">
             <Button
               variant="outline"
@@ -466,47 +466,53 @@ const AccountView = () => {
               <GraduationCap className="h-4 w-4" />
               Panou Profesor
             </Button>
-          </div>
-        ) : teacherStatus === "pending" ? (
-          <div className="w-full max-w-sm mt-4 space-y-2">
+
+            {/* Deactivate teacher mode */}
             <Button
-              variant="outline"
-              className="w-full gap-2"
-              onClick={() => navigate("/teacher")}
+              variant="ghost"
+              size="sm"
+              className="w-full gap-2 text-muted-foreground hover:text-destructive"
+              onClick={async () => {
+                if (!confirm("Sigur vrei să dezactivezi modul profesor? Vei redeveni elev.")) return;
+                try {
+                  await supabase.rpc("deactivate_teacher_mode");
+                  setTeacherStatus(null);
+                  toast.success("Modul profesor a fost dezactivat.");
+                } catch (err: any) {
+                  toast.error(err.message || "Eroare la dezactivare.");
+                }
+              }}
             >
-              <GraduationCap className="h-4 w-4" />
-              Panou Profesor
+              <XCircle className="h-4 w-4" />
+              Dezactivează modul profesor
             </Button>
-            <PendingTeacherSection userId={user?.id} />
-          </div>
-        ) : teacherStatus === "unverified" ? (
-          <div className="w-full max-w-sm mt-4 space-y-2">
-            <Button
-              variant="outline"
-              className="w-full gap-2"
-              onClick={() => navigate("/teacher")}
-            >
-              <GraduationCap className="h-4 w-4" />
-              Panou Profesor
-            </Button>
-            {showVerificationForm ? (
-              <Card>
-                <CardContent className="p-4">
-                  <TeacherVerificationForm
-                    onSuccess={reloadTeacherStatus}
-                    onCancel={() => setShowVerificationForm(false)}
-                  />
-                </CardContent>
-              </Card>
-            ) : (
-              <Button
-                variant="secondary"
-                className="w-full gap-2"
-                onClick={() => setShowVerificationForm(true)}
-              >
-                <Shield className="h-4 w-4" />
-                Începe verificarea
-              </Button>
+
+            {/* Unverified: show verification button or form */}
+            {teacherStatus === "unverified" && (
+              showVerificationForm ? (
+                <Card>
+                  <CardContent className="p-4">
+                    <TeacherVerificationForm
+                      onSuccess={reloadTeacherStatus}
+                      onCancel={() => setShowVerificationForm(false)}
+                    />
+                  </CardContent>
+                </Card>
+              ) : (
+                <Button
+                  variant="secondary"
+                  className="w-full gap-2"
+                  onClick={() => setShowVerificationForm(true)}
+                >
+                  <Shield className="h-4 w-4" />
+                  Începe verificarea contului de profesor
+                </Button>
+              )
+            )}
+
+            {/* Pending: show status + chat */}
+            {teacherStatus === "pending" && (
+              <PendingTeacherSection userId={user?.id} />
             )}
           </div>
         ) : !isClassMember && (
