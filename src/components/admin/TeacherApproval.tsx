@@ -153,6 +153,13 @@ const RequestsTab = () => {
                 </p>
               )}
 
+              {/* School */}
+              {r.data?.school_name && (
+                <p className="text-xs text-muted-foreground flex items-center gap-1">
+                  🏫 {r.data.school_name}
+                </p>
+              )}
+
               <Textarea
                 placeholder="Note admin (opțional)"
                 value={notes[r.id] || ""}
