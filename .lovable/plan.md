@@ -1,23 +1,22 @@
 
 
-## Plan: Apple Sign-In nativ pe Android (la fel ca Google)
+## Plan: Popup-uri o singură dată pe zi
 
 ### Problema
-Pe Android nativ, Apple Sign-In deschide un browser extern care nu se închide automat după autentificare. Google funcționează corect pentru că folosește SDK-ul nativ (`@capgo/capacitor-social-login`), dar Apple încă folosește fluxul vechi cu browser.
+De fiecare dată când navighezi la pagina Home (prin bottom nav), popup-ul Premium și animația Level Up se re-declanșează, pentru că starea se resetează la fiecare montare a componentei Index.
 
 ### Soluția
-Folosim același plugin `@capgo/capacitor-social-login` și pentru Apple, identic cu Google. Pluginul gestionează intern fluxul Apple pe Android și returnează un `idToken` care se trimite la Supabase.
+Folosim `sessionStorage` (o dată per sesiune de app) sau `localStorage` cu timestamp (o dată pe zi) pentru a preveni re-afișarea popup-urilor.
 
-### Modificări fișiere
+### Modificări în `src/pages/Index.tsx`
 
-| Fișier | Schimbare |
-|--------|-----------|
-| `capacitor.config.ts` | Setează `apple: true` în `SocialLogin.providers` |
-| `src/hooks/useAuth.tsx` | Adaugă funcția `signInWithNativeApple()` (similară cu `signInWithNativeGoogle`), care folosește `SocialLogin.login({ provider: "apple" })` și `supabase.auth.signInWithIdToken({ provider: "apple" })`. Actualizează `signInWithApple` să o apeleze pe Android nativ |
+1. **Premium popup** (liniile 144-151): În loc să se afișeze la fiecare montare, verifică în `localStorage` dacă a fost deja afișat astăzi (`pyro-premium-popup-date`). Dacă data salvată === data de azi, nu mai afișa. Când se afișează, salvează data curentă.
 
-### Detalii tehnice
-- `SocialLogin.login({ provider: "apple" })` pe Android deschide un dialog gestionat de plugin (nu browser extern), returnează `idToken`
-- Token-ul se trimite direct la Supabase cu `signInWithIdToken({ provider: "apple", token: idToken })`
-- Nu mai este nevoie de `Browser.open()` sau de mecanismul de deep link pentru Apple pe Android
-- Inițializarea Apple în `SocialLogin.initialize()` nu necesită un `webClientId` ca Google
+2. **Level Up dialog** (liniile 153-166): `initialLoadRef` se resetează la fiecare montare. Mutăm flag-ul "nivel deja văzut" în `sessionStorage` (`pyro-last-seen-level`). La montare, citim ultimul nivel văzut din sessionStorage; declanșăm dialogul doar dacă nivelul curent > nivelul salvat. Când dialogul se afișează, actualizăm sessionStorage.
+
+3. **Coupon Expired dialog** — acesta pare gestionat de `useSubscription`, deci îl las neschimbat (se afișează doar la expirare reală).
+
+### Rezultat
+- Premium popup: maxim o dată pe zi per utilizator free
+- Level Up: o dată per sesiune, doar la avansare reală (nu la re-navigare pe Home)
 
