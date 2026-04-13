@@ -1,28 +1,23 @@
 
 
-## Plan: Restricții TestBuilder pentru profesori neverificați + navigare înapoi corectă
+## Plan: Apple Sign-In nativ pe Android (la fel ca Google)
 
-### 1. Restricții conținut în TestBuilder
+### Problema
+Pe Android nativ, Apple Sign-In deschide un browser extern care nu se închide automat după autentificare. Google funcționează corect pentru că folosește SDK-ul nativ (`@capgo/capacitor-social-login`), dar Apple încă folosește fluxul vechi cu browser.
 
-**Ce se schimbă:** TestBuilder primește `teacherStatus` ca prop (din TeacherPage). Dacă statusul nu este `verified`:
-- Tab-ul **"Predefinite"** (templates) este ascuns sau dezactivat cu mesaj explicativ
-- Tab-urile **"Exerciții"** și **"Probleme"** rămân vizibile (profesorii neverificați pot vedea întrebările din lecții și probleme)
-- Tab-ul **"Custom"** rămâne vizibil
-
-**Fișiere:** `TestBuilder.tsx`, `TeacherPage.tsx`
-
-### 2. Navigare înapoi corectă
-
-**Problema:** Butonul "Înapoi" din header-ul TeacherPage face `navigate("/")`. După crearea/editarea unui test, `onBack` revine la lista de teste — asta e deja corect.
-
-**Ce se schimbă:** 
-- Header-ul TeacherPage: butonul "Înapoi" folosește `navigate(-1)` în loc de `navigate("/")` pentru a reveni la pagina anterioară (de ex. pagina de cont)
-- După salvarea testului în TestBuilder, `onBack()` deja se apelează — funcționează corect
+### Soluția
+Folosim același plugin `@capgo/capacitor-social-login` și pentru Apple, identic cu Google. Pluginul gestionează intern fluxul Apple pe Android și returnează un `idToken` care se trimite la Supabase.
 
 ### Modificări fișiere
 
 | Fișier | Schimbare |
 |--------|-----------|
-| `src/components/teacher/TestBuilder.tsx` | Adaugă prop `teacherStatus`, ascunde tab-ul "Predefinite" dacă nu e `verified` |
-| `src/pages/TeacherPage.tsx` | Pasează `teacherStatus` la TestBuilder, schimbă `navigate("/")` cu `navigate(-1)` |
+| `capacitor.config.ts` | Setează `apple: true` în `SocialLogin.providers` |
+| `src/hooks/useAuth.tsx` | Adaugă funcția `signInWithNativeApple()` (similară cu `signInWithNativeGoogle`), care folosește `SocialLogin.login({ provider: "apple" })` și `supabase.auth.signInWithIdToken({ provider: "apple" })`. Actualizează `signInWithApple` să o apeleze pe Android nativ |
+
+### Detalii tehnice
+- `SocialLogin.login({ provider: "apple" })` pe Android deschide un dialog gestionat de plugin (nu browser extern), returnează `idToken`
+- Token-ul se trimite direct la Supabase cu `signInWithIdToken({ provider: "apple", token: idToken })`
+- Nu mai este nevoie de `Browser.open()` sau de mecanismul de deep link pentru Apple pe Android
+- Inițializarea Apple în `SocialLogin.initialize()` nu necesită un `webClientId` ca Google
 
