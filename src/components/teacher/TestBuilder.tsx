@@ -825,38 +825,64 @@ const TestBuilder = ({ onBack, editTestId, teacherStatus }: TestBuilderProps) =>
         <Card>
           <CardContent className="p-3 space-y-2">
             <p className="text-xs font-semibold text-muted-foreground">Itemi selectați ({items.length})</p>
-            {items.map((item, idx) => (
-              <div key={idx} className="flex items-center gap-2 bg-muted/50 rounded-lg px-2 py-1.5">
-                <GripVertical className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                <div className="flex items-center gap-1.5 flex-1 min-w-0">
-                  {getItemIcon(item)}
-                  <span className="text-xs text-foreground truncate">{getItemLabel(item)}</span>
+            {items.map((item, idx) => {
+              const itemKey = `sel-${idx}`;
+              return (
+                <div key={idx}>
+                  <div
+                    className="flex items-center gap-2 bg-muted/50 rounded-lg px-2 py-1.5 cursor-grab active:cursor-grabbing"
+                    draggable
+                    onDragStart={() => { dragIdxRef.current = idx; }}
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      if (dragIdxRef.current === null || dragIdxRef.current === idx) return;
+                      const reordered = [...items];
+                      const [moved] = reordered.splice(dragIdxRef.current, 1);
+                      reordered.splice(idx, 0, moved);
+                      dragIdxRef.current = idx;
+                      setItems(reordered.map((it, i) => ({ ...it, sort_order: i })));
+                    }}
+                    onDragEnd={() => { dragIdxRef.current = null; }}
+                  >
+                    <GripVertical className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                    <div className="flex items-center gap-1.5 flex-1 min-w-0">
+                      {getItemIcon(item)}
+                      <span className="text-xs text-foreground truncate">{getItemLabel(item)}</span>
+                    </div>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setPreviewItemId(previewItemId === itemKey ? null : itemKey); }}
+                      className="p-1 text-muted-foreground hover:text-primary"
+                    >
+                      <Eye className="h-3 w-3" />
+                    </button>
+                    <Input
+                      type="number"
+                      value={item.points}
+                      onChange={(e) => updateItemPoints(idx, Number(e.target.value))}
+                      className="w-14 h-6 text-[10px] text-center"
+                      min={1}
+                    />
+                    <span className="text-[10px] text-muted-foreground">pct</span>
+                    {variantMode === "manual" && (
+                      <Select value={item.variant} onValueChange={(v) => updateItemVariant(idx, v)}>
+                        <SelectTrigger className="h-6 w-16 text-[10px]">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="both">Ambele</SelectItem>
+                          <SelectItem value="A">Nr. 1</SelectItem>
+                          <SelectItem value="B">Nr. 2</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    )}
+                    <button onClick={() => removeItem(idx)} className="p-1 text-muted-foreground hover:text-destructive">
+                      <Trash2 className="h-3 w-3" />
+                    </button>
+                  </div>
+                  {previewItemId === itemKey && renderItemPreview(item)}
                 </div>
-                <Input
-                  type="number"
-                  value={item.points}
-                  onChange={(e) => updateItemPoints(idx, Number(e.target.value))}
-                  className="w-14 h-6 text-[10px] text-center"
-                  min={1}
-                />
-                <span className="text-[10px] text-muted-foreground">pct</span>
-                {variantMode === "manual" && (
-                  <Select value={item.variant} onValueChange={(v) => updateItemVariant(idx, v)}>
-                    <SelectTrigger className="h-6 w-16 text-[10px]">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="both">Ambele</SelectItem>
-                      <SelectItem value="A">Nr. 1</SelectItem>
-                      <SelectItem value="B">Nr. 2</SelectItem>
-                    </SelectContent>
-                  </Select>
-                )}
-                <button onClick={() => removeItem(idx)} className="p-1 text-muted-foreground hover:text-destructive">
-                  <Trash2 className="h-3 w-3" />
-                </button>
-              </div>
-            ))}
+              );
+            })}
           </CardContent>
         </Card>
       )}
