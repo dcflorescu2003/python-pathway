@@ -97,7 +97,7 @@ function saveLocalProgress(p: UserProgress, userId?: string) {
 
 export function useProgress() {
   const { user } = useAuth();
-  const [progress, setProgress] = useState<UserProgress>(() => loadLocalProgress());
+  const [progress, setProgress] = useState<UserProgress>(() => createDefaultProgress());
   const prevUserId = useRef<string | null>(null);
 
   useEffect(() => {
