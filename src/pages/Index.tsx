@@ -139,18 +139,14 @@ const Index = (): JSX.Element => {
   const xpToNext = getXPForNextLevel(progress.xp, xpPerLevel);
   const xpInLevel = Math.round(xpPerLevel) - xpToNext;
   const levelInfo = getLevelInfo(level);
-  // Show premium popup after login for non-premium users (once per session)
+  // Show premium popup after login for non-premium users (every app open)
   const [showPremiumPopup, setShowPremiumPopup] = useState(false);
   useEffect(() => {
     if (!user || progress.isPremium || authLoading) return;
-    const shown = sessionStorage.getItem("pyro-premium-popup-shown");
-    if (!shown) {
-      const timer = setTimeout(() => {
-        setShowPremiumPopup(true);
-        sessionStorage.setItem("pyro-premium-popup-shown", "true");
-      }, 1500);
-      return () => clearTimeout(timer);
-    }
+    const timer = setTimeout(() => {
+      setShowPremiumPopup(true);
+    }, 1500);
+    return () => clearTimeout(timer);
   }, [user, progress.isPremium, authLoading]);
 
   useEffect(() => {
