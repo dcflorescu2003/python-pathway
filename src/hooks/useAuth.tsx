@@ -66,11 +66,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!isNativeAndroid || !GOOGLE_WEB_CLIENT_ID) return;
+    if (!isNativeAndroid) return;
 
-    initializeNativeGoogleLogin().catch((error) => {
-      console.error("Failed to initialize native Google login:", error);
-    });
+    const initPromises: Promise<void>[] = [];
+
+    if (GOOGLE_WEB_CLIENT_ID) {
+      initPromises.push(
+        initializeNativeGoogleLogin().catch((error) => {
+          console.error("Failed to initialize native Google login:", error);
+        })
+      );
+    }
+
+    // Apple doesn't need a webClientId
+    initPromises.push(
+      SocialLogin.initialize({ apple: {} }).catch((error) => {
+        console.error("Failed to initialize native Apple login:", error);
+      })
+    );
+
+    Promise.all(initPromises);
   }, []);
 
   useEffect(() => {
@@ -169,7 +184,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { error: result.error || null };
   };
 
+  const signInWithNativeApple = async () => {
+    try {
+      await SocialLogin.initialize({ apple: {} });
+
+      const response = await SocialLogin.login({
+        provider: "apple",
+      } as any);
+
+      const result = response.result as any;
+
+      if (!result.idToken) {
+        throw new Error("Apple login nu a returnat un ID token.");
+      }
+
+      const { error } = await supabase.auth.signInWithIdToken({
+        provider: "apple",
+        token: result.idToken,
+      });
+
+      return { error };
+    } catch (error) {
+      return { error };
+    }
+  };
+
   const signInWithApple = async () => {
+    if (isNativeAndroid) {
+      return signInWithNativeApple();
+    }
     if (Capacitor.isNativePlatform()) {
       return signInWithOAuthNative("apple");
     }
