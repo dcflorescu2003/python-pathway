@@ -103,7 +103,8 @@ const AccountView = () => {
   const [fullName, setFullName] = useState("");
   const [pendingClassId, setPendingClassId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState(false);
-  const [editName, setEditName] = useState("");
+  const [editName, setEditName] = "";
+  const [showPremiumDialog, setShowPremiumDialog] = useState(false);
   const [savingName, setSavingName] = useState(false);
   const [displayName, setDisplayName] = useState<string | null>(null);
 
