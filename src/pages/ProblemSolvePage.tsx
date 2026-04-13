@@ -20,7 +20,7 @@ const ProblemSolvePage = () => {
   const { data, isLoading: problemsLoading } = useProblems();
   const problem = data?.problems.find((p) => p.id === problemId);
   const { loading, running, runCode } = usePyodide();
-  const { progress, completeLesson } = useProgress();
+  const { progress, completeLesson, recordActivity } = useProgress();
   const { subscribed } = useSubscription();
 
   const [code, setCode] = useState("");
@@ -76,6 +76,7 @@ const ProblemSolvePage = () => {
       completeLesson(`problem-${problem.id}`, problem.xpReward, 100);
       toast.success(`Felicitări! Ai câștigat ${problem.xpReward} XP! 🎉`);
     } else if (passed === total) {
+      recordActivity();
       toast.success("Toate testele au trecut! ✅");
     } else {
       toast.error(`${passed}/${total} teste trecute`);

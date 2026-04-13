@@ -52,6 +52,7 @@ const Index = (): JSX.Element => {
   const [showStreak, setShowStreak] = useState(false);
   const [bestStreak, setBestStreak] = useState(0);
   const prevLevelRef = useRef<number | null>(null);
+  const initialLoadRef = useRef(true);
 
   useEffect(() => {
     if (authLoading) return;
@@ -150,11 +151,19 @@ const Index = (): JSX.Element => {
   }, [user, progress.isPremium, authLoading]);
 
   useEffect(() => {
+    if (initialLoadRef.current) {
+      // Skip the first render cycle (cloud data loading causes level to jump from 0)
+      if (level > 0 || progress.xp > 0) {
+        initialLoadRef.current = false;
+        prevLevelRef.current = level;
+      }
+      return;
+    }
     if (prevLevelRef.current !== null && level > prevLevelRef.current) {
       setShowLevelUp(true);
     }
     prevLevelRef.current = level;
-  }, [level]);
+  }, [level, progress.xp]);
 
   if (needsOnboarding === true) {
     return <SchoolOnboarding onComplete={() => {

@@ -294,7 +294,32 @@ export function useProgress() {
     [user]
   );
 
-  return { progress, completeLesson, loseLife, resetLives, setPremium };
+  const recordActivity = useCallback(() => {
+    setProgress((prev) => {
+      const today = getTodayDate();
+      if (prev.lastActivityDate === today) return prev;
+
+      const wasYesterday = (() => {
+        const d = new Date(prev.lastActivityDate);
+        d.setDate(d.getDate() + 1);
+        return d.toISOString().split("T")[0] === today;
+      })();
+
+      const newProgress: UserProgress = {
+        ...prev,
+        streak: wasYesterday ? prev.streak + 1 : 1,
+        lastActivityDate: today,
+      };
+
+      saveLocalProgress(newProgress, user?.id);
+      if (user) {
+        syncToCloud(user.id, newProgress).catch(console.error);
+      }
+      return newProgress;
+    });
+  }, [user]);
+
+  return { progress, completeLesson, loseLife, resetLives, setPremium, recordActivity };
 }
 
 function mergeProgress(a: UserProgress, b: UserProgress): UserProgress {
