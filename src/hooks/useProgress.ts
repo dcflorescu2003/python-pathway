@@ -135,16 +135,28 @@ export function useProgress() {
           livesUpdatedAt: profile?.lives_updated_at ?? new Date().toISOString(),
         };
 
-        // Merge: take the maximum of local and cloud
-        const local = loadLocalProgress();
-        const merged = checkStreakExpiry(mergeProgress(local, cloudProgress));
+        // If this is a fresh account (no XP, no lessons in cloud), 
+        // do NOT merge with stale localStorage from a previous account.
+        const isNewAccount = cloudProgress.xp === 0 && Object.keys(cloudCompleted).length === 0;
+        
+        let finalProgress: UserProgress;
+        if (isNewAccount) {
+          // Fresh account — use cloud defaults, discard localStorage
+          finalProgress = checkStreakExpiry(cloudProgress);
+        } else {
+          // Existing account — merge local + cloud, keeping the best
+          const local = loadLocalProgress();
+          finalProgress = checkStreakExpiry(mergeProgress(local, cloudProgress));
+        }
 
-        setProgress(merged);
-        saveLocalProgress(merged);
+        setProgress(finalProgress);
+        saveLocalProgress(finalProgress);
         setCloudLoaded(true);
 
-        // Push merged data back to cloud
-        await syncToCloud(user.id, merged);
+        // Push merged data back to cloud (skip for fresh accounts to avoid overwriting with stale data)
+        if (!isNewAccount) {
+          await syncToCloud(user.id, finalProgress);
+        }
       } catch (err) {
         console.error("Failed to load cloud progress:", err);
         setCloudLoaded(true);
