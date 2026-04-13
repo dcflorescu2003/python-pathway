@@ -21,6 +21,7 @@ const MAX_TESTS_PER_MONTH = 10;
 interface TestBuilderProps {
   onBack: () => void;
   editTestId?: string | null;
+  teacherStatus?: string | null;
 }
 
 // Predefined test templates
@@ -71,7 +72,7 @@ interface CustomOption {
   text: string;
 }
 
-const TestBuilder = ({ onBack, editTestId }: TestBuilderProps) => {
+const TestBuilder = ({ onBack, editTestId, teacherStatus }: TestBuilderProps) => {
   const { data: chapters = [] } = useChapters();
   const { data: problemsData } = useProblems();
   const allProblems = problemsData?.problems ?? [];
@@ -509,11 +510,13 @@ const TestBuilder = ({ onBack, editTestId }: TestBuilderProps) => {
       </Card>
 
       {/* Item source tabs */}
-      <Tabs defaultValue="templates" className="w-full">
+      <Tabs defaultValue={teacherStatus === "verified" ? "templates" : "exercises"} className="w-full">
         <TabsList className="w-full">
-          <TabsTrigger value="templates" className="flex-1 text-xs gap-1">
-            <FileCheck className="h-3 w-3" /> Predefinite
-          </TabsTrigger>
+          {teacherStatus === "verified" && (
+            <TabsTrigger value="templates" className="flex-1 text-xs gap-1">
+              <FileCheck className="h-3 w-3" /> Predefinite
+            </TabsTrigger>
+          )}
           <TabsTrigger value="exercises" className="flex-1 text-xs gap-1">
             <BookOpen className="h-3 w-3" /> Exerciții
           </TabsTrigger>
@@ -525,7 +528,7 @@ const TestBuilder = ({ onBack, editTestId }: TestBuilderProps) => {
           </TabsTrigger>
         </TabsList>
 
-        {/* Templates tab */}
+        {/* Templates tab - only for verified teachers */}
         <TabsContent value="templates" className="space-y-2 mt-2">
           <p className="text-xs text-muted-foreground">Alege un test predefinit. Itemii sunt selectați automat din baza de date.</p>
           {TEMPLATES.map((tmpl) => (

@@ -63,7 +63,7 @@ const TeacherPage = () => {
     >
       <header className="sticky top-0 z-40 border-b border-border bg-background/80 backdrop-blur-md pt-[calc(env(safe-area-inset-top)+8px)]">
         <div className="flex items-center gap-3 px-4 py-3">
-          <button onClick={() => navigate("/")} className="active:scale-90 transition-transform">
+          <button onClick={() => navigate(-1)} className="active:scale-90 transition-transform">
             <ArrowLeft className="h-6 w-6 text-foreground" />
           </button>
           <GraduationCap className="h-5 w-5 text-primary" />
@@ -166,7 +166,7 @@ const TeacherPage = () => {
         )}
 
         {showTestBuilder ? (
-          <TestBuilder onBack={handleCloseBuilder} editTestId={editingTestId} />
+          <TestBuilder onBack={handleCloseBuilder} editTestId={editingTestId} teacherStatus={teacherStatus} />
         ) : selectedClass ? (
           <ClassDetail
             classId={selectedClass.id}
