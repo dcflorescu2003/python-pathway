@@ -313,7 +313,19 @@ const ExerciseEditor = ({ exercise, onSave, onCancel, lessonId, nextIndex }: Pro
               updateField("lines", newLines);
             }}
             placeholder={`Linia ${i + 1}`}
-            className="font-mono text-sm"
+            className="font-mono text-sm flex-1"
+          />
+          <Input
+            value={line.group !== undefined ? String(line.group) : ""}
+            onChange={(e) => {
+              const newLines = [...(data.lines || [])];
+              const val = e.target.value.trim();
+              newLines[i] = { ...newLines[i], group: val === "" ? undefined : Number(val) };
+              updateField("lines", newLines);
+            }}
+            placeholder="Grup"
+            className="w-16 text-xs text-center"
+            title="Liniile cu același număr de grup sunt interschimbabile"
           />
           <Button
             variant="ghost"
