@@ -1,42 +1,49 @@
 
 
-## Plan: Restructurare flux profesor cu 3 statusuri
-
-### Situația curentă
-- `teacher_status` are valorile: `null`, `pending`, `verified`
-- "Devino Profesor" deschide direct formularul de verificare
-- Profesorii `pending` au acces limitat (doar teste demo)
+## Plan: Adaugă selecție rol la onboarding + restructurare panou profesor în cont
 
 ### Ce se schimbă
 
-**Noul flux cu 3 statusuri:**
-1. **`unverified`** — Click pe "Devino Profesor" → setează instant `teacher_status = 'unverified'`, `is_teacher = true`. Profesorul poate crea clase, provocări, teste cu exerciții existente + custom. Vede un banner în TeacherPage explicând că pentru acces la subiecte predefinite trebuie să se verifice.
-2. **`pending`** — Profesorul completează formularul de verificare → status devine `pending`. Mesajele admin apar în secțiunea profesor din pagina de cont, cu posibilitate de răspuns + documente atașate. Profesorul primește notificare când adminul trimite mesaj.
-3. **`verified`** — Acces complet.
+**1. Onboarding: pas nou de selecție rol (Profesor / Elev)**
+- În `SchoolOnboarding.tsx`, adăugăm un pas intermediar (după Welcome, înainte de School Picker): **"Sunt Profesor" / "Sunt Elev"**
+- **Elev**: mesaj motivant — „Te poți alătura unei clase, poți concura cu colegii de liceu și poți primi provocări de la profesori." → continuă la School Picker
+- **Profesor**: mesaj — „Poți crea clase, da provocări și crea teste. Pentru a folosi baza de teste a aplicației, trebuie să-ți confirmi contul de profesor." → apelează `request_teacher_status()` RPC → setează `unverified` → continuă la School Picker (sau skip)
+- Pasul de selecție nu apare dacă userul are deja `teacher_status` setat (re-login)
 
-### Modificări tehnice
+**2. AuthPage.tsx (pagina de cont) — restructurare secțiune profesor**
+- **`unverified`**: 
+  - Buton „Panou Profesor"
+  - Buton „Dezactivează modul profesor" (apelează `revoke_teacher_status` sau resetează local)
+  - Buton „Începe verificarea contului de profesor" → deschide formularul
+- **`pending`** (după trimiterea cererii):
+  - Buton „Panou Profesor"  
+  - Buton „Dezactivează modul profesor"
+  - Text „În curs de verificare" (în loc de „Începe verificarea")
+  - Secțiune mesaje de la admin cu posibilitate de reply + atașare documente (VerificationChat existent)
+- **`verified`**:
+  - Buton „Panou Profesor"
+  - Buton „Dezactivează modul profesor"
+  - (Fără secțiune de verificare)
 
-**1. Migrare DB**
-- Actualizare `request_teacher_status()` RPC: setează `teacher_status = 'unverified'` (nu `pending`)
-- Actualizare `submit_teacher_verification()`: verifică dacă user este `unverified`, schimbă în `pending` (pentru metode manual-review) sau `verified` (pentru coduri)
-- Actualizare `protect_profile_privileged_columns()` să permită și valoarea `unverified`
-- Actualizare `reject_teacher_request()`: resetează la `unverified` (nu `null`), ca profesorul să rămână profesor dar neverificat
+**3. Dezactivare mod profesor**
+- DB migration: creăm un nou RPC `deactivate_teacher_mode()` care resetează `teacher_status = NULL`, `is_teacher = false`
+- Butonul necesită confirmare (dialog)
+- După dezactivare, userul redevine elev și vede din nou opțiunile de elev
 
-**2. AuthPage.tsx (pagina de cont)**
-- "Devino Profesor": apelează `request_teacher_status()` direct (fără formular) → setează `unverified`
-- Secțiunea profesor pentru `unverified`: buton "Panou Profesor" + buton "Începe verificarea" care deschide formularul
-- Secțiunea profesor pentru `pending`: buton "Panou Profesor" + `PendingTeacherSection` cu chat/mesaje admin
-- Secțiunea profesor pentru `verified`: buton "Panou Profesor" (ca acum)
+**4. Index.tsx — onboarding flow update**
+- Onboarding-ul verifică dacă `school_id` lipsește (ca acum), dar pasul de rol se adaugă în `SchoolOnboarding`
+- Pasul de rol vine primul, apoi school picker
 
-**3. TeacherPage.tsx**
-- Adaugă status `unverified` (lângă `pending` și `verified`)
-- Banner nou pentru `unverified`: explică facilitățile disponibile și mesaj că pentru subiecte predefinite trebuie verificare
-- Banner pentru `pending`: mesaj că verificarea este în curs
-- `unverified` și `pending` au acces la clase, provocări, teste custom (dar NU la biblioteca de teste predefinite complete)
+### Modificări fișiere
 
-**4. Notificări admin → profesor**
-- În `TeacherApproval.tsx` (admin), la trimiterea unui mesaj: inserează o notificare in-app în tabelul `notifications` pentru profesorul respectiv
+| Fișier | Ce se schimbă |
+|--------|--------------|
+| `src/components/onboarding/SchoolOnboarding.tsx` | Pas nou: selecție rol (Profesor/Elev) cu mesaje explicative, 3 pași total |
+| `src/pages/AuthPage.tsx` | Restructurare secțiune profesor: buton dezactivare, logică pending fără buton verificare, text „În curs de verificare" |
+| DB migration | Nou RPC `deactivate_teacher_mode()` — resetează `teacher_status` și `is_teacher` |
 
-**5. Vizibilitate conținut**
-- TestBuilder/TestManager: păstrează restricția existentă — doar `verified` vede biblioteca completă de teste predefinite. `unverified` și `pending` văd doar demo + pot crea teste custom.
+### Note
+- Butonul „Devino Profesor" din AuthPage dispare (selecția se face la onboarding)
+- Dacă un user deja existent nu a trecut prin noul onboarding, păstrăm butonul „Devino Profesor" ca fallback în AuthPage (pentru userii care au deja `school_id` setat dar nu au ales rol)
+- `SchoolOnboarding` primește callback pentru rol ales, pentru a putea apela RPC-ul
 
