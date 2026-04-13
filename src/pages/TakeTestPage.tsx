@@ -367,11 +367,12 @@ const ExerciseRenderer = ({ exercise, answer, onAnswer }: { exercise: any; answe
 
   if (type === "fill") {
     const blanks = (exercise.blanks || []) as { id: string; answer: string }[];
+    const codeTemplate = exercise.code_template || exercise.codeTemplate || "";
     const currentAnswers = answer?.blanks || {};
-    return (
-      <div className="space-y-3">
-        <p className="text-sm font-medium text-foreground">{exercise.question}</p>
-        {blanks.map((blank, idx) => (
+
+    const renderCodeWithBlanks = () => {
+      if (!codeTemplate) {
+        return blanks.map((blank, idx) => (
           <Input
             key={blank.id}
             placeholder={`Spațiu ${idx + 1}`}
@@ -379,36 +380,88 @@ const ExerciseRenderer = ({ exercise, answer, onAnswer }: { exercise: any; answe
             onChange={(e) => onAnswer({ blanks: { ...currentAnswers, [blank.id]: e.target.value } })}
             className="text-sm"
           />
-        ))}
+        ));
+      }
+      const parts = codeTemplate.split("___");
+      return (
+        <pre className="bg-muted/50 border border-border rounded-lg p-3 mb-2 whitespace-pre-wrap font-mono text-sm text-foreground">
+          {parts.map((part: string, i: number) => (
+            <span key={i}>
+              <span>{part}</span>
+              {i < parts.length - 1 && blanks[i] && (
+                <Input
+                  autoCapitalize="none"
+                  className="inline-block w-28 h-7 mx-1 font-mono text-sm bg-secondary border-primary/50 text-primary"
+                  value={currentAnswers[blanks[i].id] || ""}
+                  onChange={(e) => onAnswer({ blanks: { ...currentAnswers, [blanks[i].id]: e.target.value } })}
+                  placeholder={"_".repeat(blanks[i].answer.length)}
+                />
+              )}
+            </span>
+          ))}
+        </pre>
+      );
+    };
+
+    return (
+      <div className="space-y-3">
+        <p className="text-sm font-medium text-foreground">{exercise.question}</p>
+        {renderCodeWithBlanks()}
       </div>
     );
   }
 
   if (type === "order") {
     const lines = (exercise.lines || []) as { id: string; text: string }[];
-    const ordered = answer?.order || lines.map((l) => l.id);
-    const moveUp = (idx: number) => {
-      if (idx === 0) return;
+    const ordered: string[] = answer?.order || lines.map((l) => l.id);
+    const dragIdxRef = { current: null as number | null };
+
+    const moveItem = (from: number, to: number) => {
       const newOrder = [...ordered];
-      [newOrder[idx - 1], newOrder[idx]] = [newOrder[idx], newOrder[idx - 1]];
+      const [item] = newOrder.splice(from, 1);
+      newOrder.splice(to, 0, item);
       onAnswer({ order: newOrder });
     };
+
     return (
       <div className="space-y-2">
         <p className="text-sm font-medium text-foreground">{exercise.question}</p>
-        {ordered.map((lineId: string, idx: number) => {
-          const line = lines.find((l) => l.id === lineId);
-          return (
-            <button
-              key={lineId}
-              onClick={() => moveUp(idx)}
-              className="w-full text-left p-2 rounded-md border border-border text-xs font-mono hover:bg-muted/50"
-            >
-              {line?.text || lineId}
-            </button>
-          );
-        })}
-        <p className="text-[10px] text-muted-foreground">Apasă pe o linie ca s-o muti în sus.</p>
+        <div className="space-y-2">
+          {ordered.map((lineId: string, idx: number) => {
+            const line = lines.find((l) => l.id === lineId);
+            return (
+              <div
+                key={lineId}
+                draggable
+                onDragStart={() => { dragIdxRef.current = idx; }}
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  if (dragIdxRef.current !== null && dragIdxRef.current !== idx) {
+                    moveItem(dragIdxRef.current, idx);
+                    dragIdxRef.current = idx;
+                  }
+                }}
+                onDragEnd={() => { dragIdxRef.current = null; }}
+                className="flex items-center gap-2 p-3 rounded-lg border border-border bg-card text-sm font-mono cursor-grab active:cursor-grabbing select-none touch-none"
+              >
+                <span className="text-muted-foreground shrink-0">≡</span>
+                <code className="text-foreground whitespace-pre-wrap break-words flex-1">{line?.text || lineId}</code>
+                <div className="ml-auto flex gap-1">
+                  <button
+                    onClick={() => idx > 0 && moveItem(idx, idx - 1)}
+                    disabled={idx === 0}
+                    className="text-base text-muted-foreground hover:text-foreground disabled:opacity-30 px-1"
+                  >▲</button>
+                  <button
+                    onClick={() => idx < ordered.length - 1 && moveItem(idx, idx + 1)}
+                    disabled={idx === ordered.length - 1}
+                    className="text-base text-muted-foreground hover:text-foreground disabled:opacity-30 px-1"
+                  >▼</button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
       </div>
     );
   }
