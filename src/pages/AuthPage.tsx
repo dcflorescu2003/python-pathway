@@ -660,6 +660,8 @@ const AccountView = () => {
           Șterge contul
         </button>
       </div>
+
+      <PremiumDialog open={showPremiumDialog} onOpenChange={setShowPremiumDialog} />
     </motion.div>
   );
 };
