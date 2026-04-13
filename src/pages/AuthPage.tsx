@@ -428,8 +428,7 @@ const AccountView = () => {
           </div>
         )}
 
-        {/* Premium CTA for free users */}
-        {!progress.isPremium && (
+        {!(progress.isPremium || subscribed) && (
           <Button
             className="w-full max-w-sm mt-6 gap-2 bg-gradient-to-r from-yellow-500 to-amber-500 hover:from-yellow-600 hover:to-amber-600 text-white font-bold shadow-lg"
             onClick={() => setShowPremiumDialog(true)}
