@@ -123,7 +123,23 @@ const AccountView = () => {
           .limit(1),
       ]);
 
-      setTeacherStatus(profile?.teacher_status ?? null);
+      let resolvedStatus = profile?.teacher_status ?? null;
+      
+      // If status is unverified, check if there's a pending verification request
+      if (resolvedStatus === "unverified") {
+        const { data: pendingReq } = await supabase
+          .from("teacher_verification_requests")
+          .select("id")
+          .eq("user_id", user.id)
+          .eq("status", "pending")
+          .limit(1)
+          .maybeSingle();
+        if (pendingReq) {
+          resolvedStatus = "pending";
+        }
+      }
+      
+      setTeacherStatus(resolvedStatus);
       setDisplayName(profile?.display_name ?? null);
       const isMember = (memberships?.length ?? 0) > 0;
       setIsClassMember(isMember);
