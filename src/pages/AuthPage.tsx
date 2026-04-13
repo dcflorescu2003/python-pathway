@@ -14,6 +14,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { ArrowLeft, Mail, Lock, User, Eye, EyeOff, LogOut, BookOpen, XCircle, Code, Zap, Flame, Trophy, Shield, Trash2, Settings, GraduationCap, UserPlus, Crown, CreditCard, Clock, Pencil, Check, X, DoorOpen, MessageSquare, Sparkles } from "lucide-react";
 import PremiumDialog from "@/components/PremiumDialog";
+import TeacherPremiumDialog from "@/components/TeacherPremiumDialog";
 import TeacherVerificationForm from "@/components/teacher/TeacherVerificationForm";
 import VerificationChat from "@/components/teacher/VerificationChat";
 import { useAdminAccess } from "@/hooks/useAdminAccess";
@@ -106,6 +107,7 @@ const AccountView = () => {
   const [editingName, setEditingName] = useState(false);
   const [editName, setEditName] = useState("");
   const [showPremiumDialog, setShowPremiumDialog] = useState(false);
+  const [showTeacherPremiumDialog, setShowTeacherPremiumDialog] = useState(false);
   const [savingName, setSavingName] = useState(false);
   const [displayName, setDisplayName] = useState<string | null>(null);
 
@@ -430,14 +432,25 @@ const AccountView = () => {
         )}
 
         {!(progress.isPremium || subscribed) && (
-          <Button
-            className="w-full max-w-sm mt-6 gap-2 bg-gradient-to-r from-yellow-500 to-amber-500 hover:from-yellow-600 hover:to-amber-600 text-white font-bold shadow-lg"
-            onClick={() => setShowPremiumDialog(true)}
-          >
-            <Crown className="h-5 w-5" />
-            Pyro Premium
-            <Sparkles className="h-4 w-4" />
-          </Button>
+          teacherStatus === "verified" ? (
+            <Button
+              className="w-full max-w-sm mt-6 gap-2 bg-gradient-to-r from-violet-500 to-purple-600 hover:from-violet-600 hover:to-purple-700 text-white font-bold shadow-lg"
+              onClick={() => setShowTeacherPremiumDialog(true)}
+            >
+              <Crown className="h-5 w-5" />
+              Upgrade la Profesor AI
+              <Sparkles className="h-4 w-4" />
+            </Button>
+          ) : (
+            <Button
+              className="w-full max-w-sm mt-6 gap-2 bg-gradient-to-r from-yellow-500 to-amber-500 hover:from-yellow-600 hover:to-amber-600 text-white font-bold shadow-lg"
+              onClick={() => setShowPremiumDialog(true)}
+            >
+              <Crown className="h-5 w-5" />
+              Pyro Premium
+              <Sparkles className="h-4 w-4" />
+            </Button>
+          )
         )}
 
         {!teacherStatus && (
@@ -662,6 +675,7 @@ const AccountView = () => {
       </div>
 
       <PremiumDialog open={showPremiumDialog} onOpenChange={setShowPremiumDialog} />
+      <TeacherPremiumDialog open={showTeacherPremiumDialog} onOpenChange={setShowTeacherPremiumDialog} />
     </motion.div>
   );
 };
