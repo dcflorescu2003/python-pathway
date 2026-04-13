@@ -271,6 +271,20 @@ const TestBuilder = ({ onBack, editTestId, teacherStatus }: TestBuilderProps) =>
     );
   };
 
+  // Generic item preview renderer
+  const renderItemPreview = (item: TestItem) => {
+    if (item.source_type === "exercise" && item.source_id) {
+      return renderExercisePreview(getExerciseDetails(item.source_id));
+    }
+    if (item.source_type === "problem" && item.source_id) {
+      return renderProblemPreview(getProblemDetails(item.source_id));
+    }
+    if (item.source_type === "custom" && item.custom_data) {
+      return renderExercisePreview(item.custom_data);
+    }
+    return null;
+  };
+
   // Load existing test data when editing
   useEffect(() => {
     if (!isEditing || editLoaded) return;
