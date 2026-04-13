@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent } from "@/components/ui/card";
@@ -15,8 +15,11 @@ import {
   CheckCircle,
   Loader2,
   Mail,
+  School,
+  Search,
 } from "lucide-react";
 import { toast } from "sonner";
+import { schools } from "@/data/schools";
 
 type Method = "invite_code" | "public_link" | "document" | "referral" | null;
 
@@ -59,6 +62,9 @@ const TeacherVerificationForm = ({ onSuccess, onCancel }: Props) => {
 
   // Form state
   const [contactEmail, setContactEmail] = useState(user?.email || "");
+  const [schoolSearch, setSchoolSearch] = useState("");
+  const [selectedSchool, setSelectedSchool] = useState<string>("");
+  const [showSchoolDropdown, setShowSchoolDropdown] = useState(false);
   const [inviteCode, setInviteCode] = useState("");
   const [referralCode, setReferralCode] = useState("");
   const [publicLink, setPublicLink] = useState("");
