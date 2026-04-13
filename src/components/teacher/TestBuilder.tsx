@@ -928,70 +928,57 @@ const TestBuilder = ({ onBack, editTestId, teacherStatus }: TestBuilderProps) =>
       {/* Side-by-side variant preview */}
       {items.length > 0 && (
         <div className="grid grid-cols-2 gap-3">
-          <Card>
-            <CardContent className="p-3 space-y-1.5">
-              <p className="text-xs font-semibold text-foreground">Nr. 1 <span className="text-muted-foreground font-normal">({variant1Items.length} itemi)</span></p>
-              {variant1Items.length === 0 ? (
-                <p className="text-[10px] text-muted-foreground italic">Niciun item</p>
-              ) : (
-                variant1Items.map((item, idx) => {
-                  const vKey = `v1-${idx}`;
-                  return (
-                    <div key={idx}>
-                      <div className="flex items-center gap-1.5 text-[11px] text-foreground py-0.5">
-                        <span className="text-muted-foreground w-4 shrink-0 text-right">{idx + 1}.</span>
-                        {getItemIcon(item)}
-                        <span className="truncate flex-1">{getItemLabel(item)}</span>
-                        <button
-                          onClick={() => setPreviewVariantKey(previewVariantKey === vKey ? null : vKey)}
-                          className="p-0.5 text-muted-foreground hover:text-primary shrink-0"
-                        >
-                          <Eye className="h-3 w-3" />
-                        </button>
-                        <span className="text-[10px] text-muted-foreground shrink-0">{item.points}p</span>
-                      </div>
-                      {previewVariantKey === vKey && renderItemPreview(item)}
-                    </div>
-                  );
-                })
-              )}
-              <div className="border-t border-border pt-1 mt-1">
-                <p className="text-[10px] text-muted-foreground">Total: <span className="font-medium text-foreground">{variant1Items.reduce((s, i) => s + i.points, 0)} puncte</span></p>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-3 space-y-1.5">
-              <p className="text-xs font-semibold text-foreground">Nr. 2 <span className="text-muted-foreground font-normal">({variant2Items.length} itemi)</span></p>
-              {variant2Items.length === 0 ? (
-                <p className="text-[10px] text-muted-foreground italic">Niciun item</p>
-              ) : (
-                variant2Items.map((item, idx) => {
-                  const vKey = `v2-${idx}`;
-                  return (
-                    <div key={idx}>
-                      <div className="flex items-center gap-1.5 text-[11px] text-foreground py-0.5">
-                        <span className="text-muted-foreground w-4 shrink-0 text-right">{idx + 1}.</span>
-                        {getItemIcon(item)}
-                        <span className="truncate flex-1">{getItemLabel(item)}</span>
-                        <button
-                          onClick={() => setPreviewVariantKey(previewVariantKey === vKey ? null : vKey)}
-                          className="p-0.5 text-muted-foreground hover:text-primary shrink-0"
-                        >
-                          <Eye className="h-3 w-3" />
-                        </button>
-                        <span className="text-[10px] text-muted-foreground shrink-0">{item.points}p</span>
-                      </div>
-                      {previewVariantKey === vKey && renderItemPreview(item)}
-                    </div>
-                  );
-                })
-              )}
-              <div className="border-t border-border pt-1 mt-1">
-                <p className="text-[10px] text-muted-foreground">Total: <span className="font-medium text-foreground">{variant2Items.reduce((s, i) => s + i.points, 0)} puncte</span></p>
-              </div>
-            </CardContent>
-          </Card>
+          {(["A", "B"] as const).map((variant, vi) => {
+            const vItems = variant === "A" ? variant1Items : variant2Items;
+            const label = variant === "A" ? "Nr. 1" : "Nr. 2";
+            const prefix = variant === "A" ? "v1" : "v2";
+            return (
+              <Card key={variant}>
+                <CardContent className="p-3 space-y-1.5">
+                  <p className="text-xs font-semibold text-foreground">{label} <span className="text-muted-foreground font-normal">({vItems.length} itemi)</span></p>
+                  {vItems.length === 0 ? (
+                    <p className="text-[10px] text-muted-foreground italic">Niciun item</p>
+                  ) : (
+                    vItems.map((item, idx) => {
+                      const vKey = `${prefix}-${idx}`;
+                      return (
+                        <div key={idx}>
+                          <div
+                            className="flex items-center gap-1.5 text-[11px] text-foreground py-0.5 cursor-grab active:cursor-grabbing"
+                            draggable
+                            onDragStart={() => { variantDragRef.current = { variant, fromIdx: idx }; }}
+                            onDragOver={(e) => {
+                              e.preventDefault();
+                              if (!variantDragRef.current || variantDragRef.current.variant !== variant || variantDragRef.current.fromIdx === idx) return;
+                              reorderVariantItems(variant, variantDragRef.current.fromIdx, idx);
+                              variantDragRef.current = { variant, fromIdx: idx };
+                            }}
+                            onDragEnd={() => { variantDragRef.current = null; }}
+                          >
+                            <GripVertical className="h-3 w-3 text-muted-foreground shrink-0" />
+                            <span className="text-muted-foreground w-4 shrink-0 text-right">{idx + 1}.</span>
+                            {getItemIcon(item)}
+                            <span className="truncate flex-1">{getItemLabel(item)}</span>
+                            <button
+                              onClick={(e) => { e.stopPropagation(); setPreviewVariantKey(previewVariantKey === vKey ? null : vKey); }}
+                              className="p-0.5 text-muted-foreground hover:text-primary shrink-0"
+                            >
+                              <Eye className="h-3 w-3" />
+                            </button>
+                            <span className="text-[10px] text-muted-foreground shrink-0">{item.points}p</span>
+                          </div>
+                          {previewVariantKey === vKey && renderItemPreview(item)}
+                        </div>
+                      );
+                    })
+                  )}
+                  <div className="border-t border-border pt-1 mt-1">
+                    <p className="text-[10px] text-muted-foreground">Total: <span className="font-medium text-foreground">{vItems.reduce((s, i) => s + i.points, 0)} puncte</span></p>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       )}
 
