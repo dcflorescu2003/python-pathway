@@ -460,32 +460,40 @@ const TestBuilder = ({ onBack, editTestId, teacherStatus }: TestBuilderProps) =>
   const selectedChapter = chapters.find((c) => c.id === selectedChapterId);
   const filteredProblems = allProblems.filter((p) => p.chapter === selectedProblemChapterId);
 
-  // Variant preview helpers
-  const variantItems = (v: string) => items.filter(i => i.variant === v || i.variant === "both");
-  const variant1Items = variantItems("A");
-  const variant2Items = variantItems("B");
+  // Independent variant order state
+  const [variantOrderA, setVariantOrderA] = useState<number[]>([]);
+  const [variantOrderB, setVariantOrderB] = useState<number[]>([]);
 
-  // Get original items indices for a variant's filtered list
-  const getVariantIndices = (v: string) => {
-    const indices: number[] = [];
-    items.forEach((item, idx) => {
-      if (item.variant === v || item.variant === "both") indices.push(idx);
+  // Sync variant orders when items change (add/remove/variant change)
+  useEffect(() => {
+    const indicesA = items.map((item, idx) => ({ item, idx })).filter(({ item }) => item.variant === "A" || item.variant === "both").map(({ idx }) => idx);
+    const indicesB = items.map((item, idx) => ({ item, idx })).filter(({ item }) => item.variant === "B" || item.variant === "both").map(({ idx }) => idx);
+
+    // Keep existing order for items that are still present, append new ones
+    setVariantOrderA(prev => {
+      const still = prev.filter(i => indicesA.includes(i));
+      const added = indicesA.filter(i => !still.includes(i));
+      return [...still, ...added];
     });
-    return indices;
-  };
+    setVariantOrderB(prev => {
+      const still = prev.filter(i => indicesB.includes(i));
+      const added = indicesB.filter(i => !still.includes(i));
+      return [...still, ...added];
+    });
+  }, [items]);
 
-  const reorderVariantItems = (variant: string, fromFilteredIdx: number, toFilteredIdx: number) => {
-    if (fromFilteredIdx === toFilteredIdx) return;
-    const indices = getVariantIndices(variant);
-    const fromOrigIdx = indices[fromFilteredIdx];
-    const toOrigIdx = indices[toFilteredIdx];
-    const reordered = [...items];
-    const [moved] = reordered.splice(fromOrigIdx, 1);
-    // Recalculate target after splice
-    const adjustedTo = toOrigIdx > fromOrigIdx ? toOrigIdx - 1 : toOrigIdx;
-    const insertAt = adjustedTo > reordered.length ? reordered.length : adjustedTo;
-    reordered.splice(insertAt, 0, moved);
-    setItems(reordered.map((it, i) => ({ ...it, sort_order: i })));
+  const variant1Items = variantOrderA.map(i => items[i]).filter(Boolean);
+  const variant2Items = variantOrderB.map(i => items[i]).filter(Boolean);
+
+  const reorderVariantOrder = (variant: string, fromIdx: number, toIdx: number) => {
+    if (fromIdx === toIdx) return;
+    const setter = variant === "A" ? setVariantOrderA : setVariantOrderB;
+    setter(prev => {
+      const reordered = [...prev];
+      const [moved] = reordered.splice(fromIdx, 1);
+      reordered.splice(toIdx, 0, moved);
+      return reordered;
+    });
   };
 
   return (
@@ -926,9 +934,20 @@ const TestBuilder = ({ onBack, editTestId, teacherStatus }: TestBuilderProps) =>
       )}
 
       {/* Side-by-side variant preview */}
-      {items.length > 0 && (
+      {items.length > 0 && variantMode === "shuffle" && (
+        <Card>
+          <CardContent className="p-4">
+            <p className="text-sm text-muted-foreground text-center">
+              🔀 Elevii vor primi același test cu întrebările în ordine aleatorie.
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Side-by-side variant preview — only for manual mode */}
+      {items.length > 0 && variantMode === "manual" && (
         <div className="grid grid-cols-2 gap-3">
-          {(["A", "B"] as const).map((variant, vi) => {
+          {(["A", "B"] as const).map((variant) => {
             const vItems = variant === "A" ? variant1Items : variant2Items;
             const label = variant === "A" ? "Nr. 1" : "Nr. 2";
             const prefix = variant === "A" ? "v1" : "v2";
@@ -950,7 +969,7 @@ const TestBuilder = ({ onBack, editTestId, teacherStatus }: TestBuilderProps) =>
                             onDragOver={(e) => {
                               e.preventDefault();
                               if (!variantDragRef.current || variantDragRef.current.variant !== variant || variantDragRef.current.fromIdx === idx) return;
-                              reorderVariantItems(variant, variantDragRef.current.fromIdx, idx);
+                              reorderVariantOrder(variant, variantDragRef.current.fromIdx, idx);
                               variantDragRef.current = { variant, fromIdx: idx };
                             }}
                             onDragEnd={() => { variantDragRef.current = null; }}
