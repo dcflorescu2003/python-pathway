@@ -1,22 +1,27 @@
 
 
-## Plan: Popup-uri o singură dată pe zi
+## Plan: Folosește componentele reale de exerciții în teste
 
 ### Problema
-De fiecare dată când navighezi la pagina Home (prin bottom nav), popup-ul Premium și animația Level Up se re-declanșează, pentru că starea se resetează la fiecare montare a componentei Index.
+Pagina de teste (`TakeTestPage.tsx`) are un `ExerciseRenderer` simplificat inline care:
+- La **"completează codul" (fill)**: afișează doar câmpuri de input fără codul din `codeTemplate`
+- La **"aranjează" (order)**: permite doar click pentru mutat în sus, fără drag-and-drop
+
+În lecții se folosesc componentele din `src/components/exercises/` care funcționează corect.
 
 ### Soluția
-Folosim `sessionStorage` (o dată per sesiune de app) sau `localStorage` cu timestamp (o dată pe zi) pentru a preveni re-afișarea popup-urilor.
+Înlocuim `ExerciseRenderer`-ul inline cu componentele reale (`FillExercise`, `OrderExercise`, `MatchExercise`, `QuizExercise`, `TrueFalseExercise`), adaptate pentru contextul de test.
 
-### Modificări în `src/pages/Index.tsx`
+### Modificări în `src/pages/TakeTestPage.tsx`
 
-1. **Premium popup** (liniile 144-151): În loc să se afișeze la fiecare montare, verifică în `localStorage` dacă a fost deja afișat astăzi (`pyro-premium-popup-date`). Dacă data salvată === data de azi, nu mai afișa. Când se afișează, salvează data curentă.
-
-2. **Level Up dialog** (liniile 153-166): `initialLoadRef` se resetează la fiecare montare. Mutăm flag-ul "nivel deja văzut" în `sessionStorage` (`pyro-last-seen-level`). La montare, citim ultimul nivel văzut din sessionStorage; declanșăm dialogul doar dacă nivelul curent > nivelul salvat. Când dialogul se afișează, actualizăm sessionStorage.
-
-3. **Coupon Expired dialog** — acesta pare gestionat de `useSubscription`, deci îl las neschimbat (se afișează doar la expirare reală).
+1. **Import** componentele reale de exerciții
+2. **Refactor `ExerciseRenderer`**: pentru tipurile `fill`, `order`, `quiz`, `truefalse`, `match` — folosim componentele din `src/components/exercises/` cu un wrapper care:
+   - Transformă `exercise_data` din DB (cu `code_template`) în formatul așteptat de componente (cu `codeTemplate`)
+   - Captează răspunsul prin `onAnswer` callback-ul testului (salvează datele în `answers` state) în loc de a verifica corect/greșit instant
+   - Setează `feedback` la `null` permanent (nu arătăm corect/greșit în test)
+3. **Mapare câmpuri DB → componente**: `code_template` → `codeTemplate`, `correct_answer` → `correctAnswer` etc., pentru compatibilitate cu interfețele componentelor
 
 ### Rezultat
-- Premium popup: maxim o dată pe zi per utilizator free
-- Level Up: o dată per sesiune, doar la avansare reală (nu la re-navigare pe Home)
+- Exercițiile din teste vor arăta și funcționa identic cu cele din lecții (drag-and-drop, cod afișat, etc.)
+- Răspunsurile se colectează pentru trimitere la final
 
