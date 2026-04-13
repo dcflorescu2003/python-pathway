@@ -138,29 +138,29 @@ const Index = (): JSX.Element => {
   const xpToNext = getXPForNextLevel(progress.xp, xpPerLevel);
   const xpInLevel = Math.round(xpPerLevel) - xpToNext;
   const levelInfo = getLevelInfo(level);
-  // Show premium popup after login for non-premium users (every app open)
+
+  // Show premium popup max once per day for non-premium users
   const [showPremiumPopup, setShowPremiumPopup] = useState(false);
   useEffect(() => {
     if (!user || progress.isPremium || authLoading) return;
+    const today = new Date().toDateString();
+    const lastShown = localStorage.getItem("pyro-premium-popup-date");
+    if (lastShown === today) return;
     const timer = setTimeout(() => {
       setShowPremiumPopup(true);
+      localStorage.setItem("pyro-premium-popup-date", today);
     }, 1500);
     return () => clearTimeout(timer);
   }, [user, progress.isPremium, authLoading]);
 
+  // Level Up dialog: only show once per session when level actually increases
   useEffect(() => {
-    if (initialLoadRef.current) {
-      // Skip the first render cycle (cloud data loading causes level to jump from 0)
-      if (level > 0 || progress.xp > 0) {
-        initialLoadRef.current = false;
-        prevLevelRef.current = level;
-      }
-      return;
-    }
-    if (prevLevelRef.current !== null && level > prevLevelRef.current) {
+    if (level <= 0 && progress.xp <= 0) return; // still loading
+    const lastSeenLevel = parseInt(sessionStorage.getItem("pyro-last-seen-level") || "0", 10);
+    if (level > lastSeenLevel && lastSeenLevel > 0) {
       setShowLevelUp(true);
     }
-    prevLevelRef.current = level;
+    sessionStorage.setItem("pyro-last-seen-level", String(level));
   }, [level, progress.xp]);
 
   if (needsOnboarding === true) {
