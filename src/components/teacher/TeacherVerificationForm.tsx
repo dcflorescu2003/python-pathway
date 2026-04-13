@@ -210,7 +210,59 @@ const TeacherVerificationForm = ({ onSuccess, onCancel }: Props) => {
         </p>
       </div>
 
-      {selected === "invite_code" && (
+      {/* School picker — always required */}
+      <div className="space-y-2 relative">
+        <label className="text-sm font-medium text-foreground flex items-center gap-1.5">
+          <School className="h-3.5 w-3.5 text-primary" />
+          Liceul la care predai *
+        </label>
+        {selectedSchool ? (
+          <div className="flex items-center gap-2">
+            <div className="flex-1 bg-muted rounded-md px-3 py-2 text-sm text-foreground">
+              {selectedSchool}
+            </div>
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              onClick={() => { setSelectedSchool(""); setSchoolSearch(""); }}
+            >
+              Schimbă
+            </Button>
+          </div>
+        ) : (
+          <>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+              <Input
+                placeholder="Caută liceul..."
+                value={schoolSearch}
+                onChange={(e) => { setSchoolSearch(e.target.value); setShowSchoolDropdown(true); }}
+                onFocus={() => setShowSchoolDropdown(true)}
+                className="pl-9"
+              />
+            </div>
+            {showSchoolDropdown && filteredSchools.length > 0 && (
+              <div className="absolute z-50 w-full mt-1 bg-background border border-border rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                {filteredSchools.map((s) => (
+                  <button
+                    key={s.id}
+                    className="w-full text-left px-3 py-2 text-sm hover:bg-accent transition-colors"
+                    onClick={() => {
+                      setSelectedSchool(`${s.name}, ${s.city}`);
+                      setSchoolSearch("");
+                      setShowSchoolDropdown(false);
+                    }}
+                  >
+                    <span className="font-medium text-foreground">{s.name}</span>
+                    <span className="text-xs text-muted-foreground ml-1">— {s.city}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </>
+        )}
+      </div>
         <div className="space-y-3">
           <p className="text-sm text-muted-foreground">
             Introdu codul de invitație primit de la școală sau administrator.
