@@ -910,14 +910,26 @@ const TestBuilder = ({ onBack, editTestId, teacherStatus }: TestBuilderProps) =>
               {variant1Items.length === 0 ? (
                 <p className="text-[10px] text-muted-foreground italic">Niciun item</p>
               ) : (
-                variant1Items.map((item, idx) => (
-                  <div key={idx} className="flex items-center gap-1.5 text-[11px] text-foreground py-0.5">
-                    <span className="text-muted-foreground w-4 shrink-0 text-right">{idx + 1}.</span>
-                    {getItemIcon(item)}
-                    <span className="truncate">{getItemLabel(item)}</span>
-                    <span className="text-[10px] text-muted-foreground ml-auto shrink-0">{item.points}p</span>
-                  </div>
-                ))
+                variant1Items.map((item, idx) => {
+                  const vKey = `v1-${idx}`;
+                  return (
+                    <div key={idx}>
+                      <div className="flex items-center gap-1.5 text-[11px] text-foreground py-0.5">
+                        <span className="text-muted-foreground w-4 shrink-0 text-right">{idx + 1}.</span>
+                        {getItemIcon(item)}
+                        <span className="truncate flex-1">{getItemLabel(item)}</span>
+                        <button
+                          onClick={() => setPreviewVariantKey(previewVariantKey === vKey ? null : vKey)}
+                          className="p-0.5 text-muted-foreground hover:text-primary shrink-0"
+                        >
+                          <Eye className="h-3 w-3" />
+                        </button>
+                        <span className="text-[10px] text-muted-foreground shrink-0">{item.points}p</span>
+                      </div>
+                      {previewVariantKey === vKey && renderItemPreview(item)}
+                    </div>
+                  );
+                })
               )}
               <div className="border-t border-border pt-1 mt-1">
                 <p className="text-[10px] text-muted-foreground">Total: <span className="font-medium text-foreground">{variant1Items.reduce((s, i) => s + i.points, 0)} puncte</span></p>
@@ -930,14 +942,26 @@ const TestBuilder = ({ onBack, editTestId, teacherStatus }: TestBuilderProps) =>
               {variant2Items.length === 0 ? (
                 <p className="text-[10px] text-muted-foreground italic">Niciun item</p>
               ) : (
-                variant2Items.map((item, idx) => (
-                  <div key={idx} className="flex items-center gap-1.5 text-[11px] text-foreground py-0.5">
-                    <span className="text-muted-foreground w-4 shrink-0 text-right">{idx + 1}.</span>
-                    {getItemIcon(item)}
-                    <span className="truncate">{getItemLabel(item)}</span>
-                    <span className="text-[10px] text-muted-foreground ml-auto shrink-0">{item.points}p</span>
-                  </div>
-                ))
+                variant2Items.map((item, idx) => {
+                  const vKey = `v2-${idx}`;
+                  return (
+                    <div key={idx}>
+                      <div className="flex items-center gap-1.5 text-[11px] text-foreground py-0.5">
+                        <span className="text-muted-foreground w-4 shrink-0 text-right">{idx + 1}.</span>
+                        {getItemIcon(item)}
+                        <span className="truncate flex-1">{getItemLabel(item)}</span>
+                        <button
+                          onClick={() => setPreviewVariantKey(previewVariantKey === vKey ? null : vKey)}
+                          className="p-0.5 text-muted-foreground hover:text-primary shrink-0"
+                        >
+                          <Eye className="h-3 w-3" />
+                        </button>
+                        <span className="text-[10px] text-muted-foreground shrink-0">{item.points}p</span>
+                      </div>
+                      {previewVariantKey === vKey && renderItemPreview(item)}
+                    </div>
+                  );
+                })
               )}
               <div className="border-t border-border pt-1 mt-1">
                 <p className="text-[10px] text-muted-foreground">Total: <span className="font-medium text-foreground">{variant2Items.reduce((s, i) => s + i.points, 0)} puncte</span></p>
