@@ -465,6 +465,29 @@ const TestBuilder = ({ onBack, editTestId, teacherStatus }: TestBuilderProps) =>
   const variant1Items = variantItems("A");
   const variant2Items = variantItems("B");
 
+  // Get original items indices for a variant's filtered list
+  const getVariantIndices = (v: string) => {
+    const indices: number[] = [];
+    items.forEach((item, idx) => {
+      if (item.variant === v || item.variant === "both") indices.push(idx);
+    });
+    return indices;
+  };
+
+  const reorderVariantItems = (variant: string, fromFilteredIdx: number, toFilteredIdx: number) => {
+    if (fromFilteredIdx === toFilteredIdx) return;
+    const indices = getVariantIndices(variant);
+    const fromOrigIdx = indices[fromFilteredIdx];
+    const toOrigIdx = indices[toFilteredIdx];
+    const reordered = [...items];
+    const [moved] = reordered.splice(fromOrigIdx, 1);
+    // Recalculate target after splice
+    const adjustedTo = toOrigIdx > fromOrigIdx ? toOrigIdx - 1 : toOrigIdx;
+    const insertAt = adjustedTo > reordered.length ? reordered.length : adjustedTo;
+    reordered.splice(insertAt, 0, moved);
+    setItems(reordered.map((it, i) => ({ ...it, sort_order: i })));
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-3">
