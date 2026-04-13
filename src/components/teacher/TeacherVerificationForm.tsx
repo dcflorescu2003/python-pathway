@@ -263,6 +263,8 @@ const TeacherVerificationForm = ({ onSuccess, onCancel }: Props) => {
           </>
         )}
       </div>
+
+      {selected === "invite_code" && (
         <div className="space-y-3">
           <p className="text-sm text-muted-foreground">
             Introdu codul de invitație primit de la școală sau administrator.
