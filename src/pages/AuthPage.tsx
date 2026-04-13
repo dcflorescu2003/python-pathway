@@ -432,14 +432,25 @@ const AccountView = () => {
         )}
 
         {!(progress.isPremium || subscribed) && (
-          <Button
-            className="w-full max-w-sm mt-6 gap-2 bg-gradient-to-r from-yellow-500 to-amber-500 hover:from-yellow-600 hover:to-amber-600 text-white font-bold shadow-lg"
-            onClick={() => setShowPremiumDialog(true)}
-          >
-            <Crown className="h-5 w-5" />
-            Pyro Premium
-            <Sparkles className="h-4 w-4" />
-          </Button>
+          teacherStatus === "verified" ? (
+            <Button
+              className="w-full max-w-sm mt-6 gap-2 bg-gradient-to-r from-violet-500 to-purple-600 hover:from-violet-600 hover:to-purple-700 text-white font-bold shadow-lg"
+              onClick={() => setShowTeacherPremiumDialog(true)}
+            >
+              <Crown className="h-5 w-5" />
+              Upgrade la Profesor AI
+              <Sparkles className="h-4 w-4" />
+            </Button>
+          ) : (
+            <Button
+              className="w-full max-w-sm mt-6 gap-2 bg-gradient-to-r from-yellow-500 to-amber-500 hover:from-yellow-600 hover:to-amber-600 text-white font-bold shadow-lg"
+              onClick={() => setShowPremiumDialog(true)}
+            >
+              <Crown className="h-5 w-5" />
+              Pyro Premium
+              <Sparkles className="h-4 w-4" />
+            </Button>
+          )
         )}
 
         {!teacherStatus && (
