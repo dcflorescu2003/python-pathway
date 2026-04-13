@@ -98,6 +98,7 @@ const TestBuilder = ({ onBack, editTestId, teacherStatus }: TestBuilderProps) =>
   const [previewItemId, setPreviewItemId] = useState<string | null>(null);
   const [previewVariantKey, setPreviewVariantKey] = useState<string | null>(null);
   const dragIdxRef = useRef<number | null>(null);
+  const variantDragRef = useRef<{ variant: string; fromIdx: number } | null>(null);
 
   // Custom question editor state
   const [showCustomEditor, setShowCustomEditor] = useState(false);
