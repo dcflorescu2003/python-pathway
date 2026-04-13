@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
@@ -96,6 +96,8 @@ const TestBuilder = ({ onBack, editTestId, teacherStatus }: TestBuilderProps) =>
   const [selectedProblemChapterId, setSelectedProblemChapterId] = useState<string>("");
   const [expandedLessons, setExpandedLessons] = useState<Set<string>>(new Set());
   const [previewItemId, setPreviewItemId] = useState<string | null>(null);
+  const [previewVariantKey, setPreviewVariantKey] = useState<string | null>(null);
+  const dragIdxRef = useRef<number | null>(null);
 
   // Custom question editor state
   const [showCustomEditor, setShowCustomEditor] = useState(false);
@@ -267,6 +269,20 @@ const TestBuilder = ({ onBack, editTestId, teacherStatus }: TestBuilderProps) =>
         {prob.difficulty && <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary">{prob.difficulty}</span>}
       </div>
     );
+  };
+
+  // Generic item preview renderer
+  const renderItemPreview = (item: TestItem) => {
+    if (item.source_type === "exercise" && item.source_id) {
+      return renderExercisePreview(getExerciseDetails(item.source_id));
+    }
+    if (item.source_type === "problem" && item.source_id) {
+      return renderProblemPreview(getProblemDetails(item.source_id));
+    }
+    if (item.source_type === "custom" && item.custom_data) {
+      return renderExercisePreview(item.custom_data);
+    }
+    return null;
   };
 
   // Load existing test data when editing
@@ -823,38 +839,64 @@ const TestBuilder = ({ onBack, editTestId, teacherStatus }: TestBuilderProps) =>
         <Card>
           <CardContent className="p-3 space-y-2">
             <p className="text-xs font-semibold text-muted-foreground">Itemi selectați ({items.length})</p>
-            {items.map((item, idx) => (
-              <div key={idx} className="flex items-center gap-2 bg-muted/50 rounded-lg px-2 py-1.5">
-                <GripVertical className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                <div className="flex items-center gap-1.5 flex-1 min-w-0">
-                  {getItemIcon(item)}
-                  <span className="text-xs text-foreground truncate">{getItemLabel(item)}</span>
+            {items.map((item, idx) => {
+              const itemKey = `sel-${idx}`;
+              return (
+                <div key={idx}>
+                  <div
+                    className="flex items-center gap-2 bg-muted/50 rounded-lg px-2 py-1.5 cursor-grab active:cursor-grabbing"
+                    draggable
+                    onDragStart={() => { dragIdxRef.current = idx; }}
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      if (dragIdxRef.current === null || dragIdxRef.current === idx) return;
+                      const reordered = [...items];
+                      const [moved] = reordered.splice(dragIdxRef.current, 1);
+                      reordered.splice(idx, 0, moved);
+                      dragIdxRef.current = idx;
+                      setItems(reordered.map((it, i) => ({ ...it, sort_order: i })));
+                    }}
+                    onDragEnd={() => { dragIdxRef.current = null; }}
+                  >
+                    <GripVertical className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                    <div className="flex items-center gap-1.5 flex-1 min-w-0">
+                      {getItemIcon(item)}
+                      <span className="text-xs text-foreground truncate">{getItemLabel(item)}</span>
+                    </div>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setPreviewItemId(previewItemId === itemKey ? null : itemKey); }}
+                      className="p-1 text-muted-foreground hover:text-primary"
+                    >
+                      <Eye className="h-3 w-3" />
+                    </button>
+                    <Input
+                      type="number"
+                      value={item.points}
+                      onChange={(e) => updateItemPoints(idx, Number(e.target.value))}
+                      className="w-14 h-6 text-[10px] text-center"
+                      min={1}
+                    />
+                    <span className="text-[10px] text-muted-foreground">pct</span>
+                    {variantMode === "manual" && (
+                      <Select value={item.variant} onValueChange={(v) => updateItemVariant(idx, v)}>
+                        <SelectTrigger className="h-6 w-16 text-[10px]">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="both">Ambele</SelectItem>
+                          <SelectItem value="A">Nr. 1</SelectItem>
+                          <SelectItem value="B">Nr. 2</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    )}
+                    <button onClick={() => removeItem(idx)} className="p-1 text-muted-foreground hover:text-destructive">
+                      <Trash2 className="h-3 w-3" />
+                    </button>
+                  </div>
+                  {previewItemId === itemKey && renderItemPreview(item)}
                 </div>
-                <Input
-                  type="number"
-                  value={item.points}
-                  onChange={(e) => updateItemPoints(idx, Number(e.target.value))}
-                  className="w-14 h-6 text-[10px] text-center"
-                  min={1}
-                />
-                <span className="text-[10px] text-muted-foreground">pct</span>
-                {variantMode === "manual" && (
-                  <Select value={item.variant} onValueChange={(v) => updateItemVariant(idx, v)}>
-                    <SelectTrigger className="h-6 w-16 text-[10px]">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="both">Ambele</SelectItem>
-                      <SelectItem value="A">Nr. 1</SelectItem>
-                      <SelectItem value="B">Nr. 2</SelectItem>
-                    </SelectContent>
-                  </Select>
-                )}
-                <button onClick={() => removeItem(idx)} className="p-1 text-muted-foreground hover:text-destructive">
-                  <Trash2 className="h-3 w-3" />
-                </button>
-              </div>
-            ))}
+              );
+            })}
           </CardContent>
         </Card>
       )}
@@ -868,14 +910,26 @@ const TestBuilder = ({ onBack, editTestId, teacherStatus }: TestBuilderProps) =>
               {variant1Items.length === 0 ? (
                 <p className="text-[10px] text-muted-foreground italic">Niciun item</p>
               ) : (
-                variant1Items.map((item, idx) => (
-                  <div key={idx} className="flex items-center gap-1.5 text-[11px] text-foreground py-0.5">
-                    <span className="text-muted-foreground w-4 shrink-0 text-right">{idx + 1}.</span>
-                    {getItemIcon(item)}
-                    <span className="truncate">{getItemLabel(item)}</span>
-                    <span className="text-[10px] text-muted-foreground ml-auto shrink-0">{item.points}p</span>
-                  </div>
-                ))
+                variant1Items.map((item, idx) => {
+                  const vKey = `v1-${idx}`;
+                  return (
+                    <div key={idx}>
+                      <div className="flex items-center gap-1.5 text-[11px] text-foreground py-0.5">
+                        <span className="text-muted-foreground w-4 shrink-0 text-right">{idx + 1}.</span>
+                        {getItemIcon(item)}
+                        <span className="truncate flex-1">{getItemLabel(item)}</span>
+                        <button
+                          onClick={() => setPreviewVariantKey(previewVariantKey === vKey ? null : vKey)}
+                          className="p-0.5 text-muted-foreground hover:text-primary shrink-0"
+                        >
+                          <Eye className="h-3 w-3" />
+                        </button>
+                        <span className="text-[10px] text-muted-foreground shrink-0">{item.points}p</span>
+                      </div>
+                      {previewVariantKey === vKey && renderItemPreview(item)}
+                    </div>
+                  );
+                })
               )}
               <div className="border-t border-border pt-1 mt-1">
                 <p className="text-[10px] text-muted-foreground">Total: <span className="font-medium text-foreground">{variant1Items.reduce((s, i) => s + i.points, 0)} puncte</span></p>
@@ -888,14 +942,26 @@ const TestBuilder = ({ onBack, editTestId, teacherStatus }: TestBuilderProps) =>
               {variant2Items.length === 0 ? (
                 <p className="text-[10px] text-muted-foreground italic">Niciun item</p>
               ) : (
-                variant2Items.map((item, idx) => (
-                  <div key={idx} className="flex items-center gap-1.5 text-[11px] text-foreground py-0.5">
-                    <span className="text-muted-foreground w-4 shrink-0 text-right">{idx + 1}.</span>
-                    {getItemIcon(item)}
-                    <span className="truncate">{getItemLabel(item)}</span>
-                    <span className="text-[10px] text-muted-foreground ml-auto shrink-0">{item.points}p</span>
-                  </div>
-                ))
+                variant2Items.map((item, idx) => {
+                  const vKey = `v2-${idx}`;
+                  return (
+                    <div key={idx}>
+                      <div className="flex items-center gap-1.5 text-[11px] text-foreground py-0.5">
+                        <span className="text-muted-foreground w-4 shrink-0 text-right">{idx + 1}.</span>
+                        {getItemIcon(item)}
+                        <span className="truncate flex-1">{getItemLabel(item)}</span>
+                        <button
+                          onClick={() => setPreviewVariantKey(previewVariantKey === vKey ? null : vKey)}
+                          className="p-0.5 text-muted-foreground hover:text-primary shrink-0"
+                        >
+                          <Eye className="h-3 w-3" />
+                        </button>
+                        <span className="text-[10px] text-muted-foreground shrink-0">{item.points}p</span>
+                      </div>
+                      {previewVariantKey === vKey && renderItemPreview(item)}
+                    </div>
+                  );
+                })
               )}
               <div className="border-t border-border pt-1 mt-1">
                 <p className="text-[10px] text-muted-foreground">Total: <span className="font-medium text-foreground">{variant2Items.reduce((s, i) => s + i.points, 0)} puncte</span></p>
