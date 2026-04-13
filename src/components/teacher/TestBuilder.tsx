@@ -934,9 +934,20 @@ const TestBuilder = ({ onBack, editTestId, teacherStatus }: TestBuilderProps) =>
       )}
 
       {/* Side-by-side variant preview */}
-      {items.length > 0 && (
+      {items.length > 0 && variantMode === "shuffle" && (
+        <Card>
+          <CardContent className="p-4">
+            <p className="text-sm text-muted-foreground text-center">
+              🔀 Elevii vor primi același test cu întrebările în ordine aleatorie.
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Side-by-side variant preview — only for manual mode */}
+      {items.length > 0 && variantMode === "manual" && (
         <div className="grid grid-cols-2 gap-3">
-          {(["A", "B"] as const).map((variant, vi) => {
+          {(["A", "B"] as const).map((variant) => {
             const vItems = variant === "A" ? variant1Items : variant2Items;
             const label = variant === "A" ? "Nr. 1" : "Nr. 2";
             const prefix = variant === "A" ? "v1" : "v2";
@@ -958,7 +969,7 @@ const TestBuilder = ({ onBack, editTestId, teacherStatus }: TestBuilderProps) =>
                             onDragOver={(e) => {
                               e.preventDefault();
                               if (!variantDragRef.current || variantDragRef.current.variant !== variant || variantDragRef.current.fromIdx === idx) return;
-                              reorderVariantItems(variant, variantDragRef.current.fromIdx, idx);
+                              reorderVariantOrder(variant, variantDragRef.current.fromIdx, idx);
                               variantDragRef.current = { variant, fromIdx: idx };
                             }}
                             onDragEnd={() => { variantDragRef.current = null; }}
