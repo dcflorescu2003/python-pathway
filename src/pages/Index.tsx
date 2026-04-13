@@ -156,11 +156,17 @@ const Index = (): JSX.Element => {
   // Level Up dialog: only show once per session when level actually increases
   useEffect(() => {
     if (level <= 0 && progress.xp <= 0) return; // still loading
-    const lastSeenLevel = parseInt(sessionStorage.getItem("pyro-last-seen-level") || "0", 10);
+    const lastSeenLevel = parseInt(localStorage.getItem("pyro-last-seen-level") || "0", 10);
+    const lastShownDate = localStorage.getItem("pyro-levelup-shown-date") || "";
+    const today = new Date().toDateString();
+
     if (level > lastSeenLevel && lastSeenLevel > 0) {
+      // Real level change — always show
       setShowLevelUp(true);
+      localStorage.setItem("pyro-levelup-shown-date", today);
     }
-    sessionStorage.setItem("pyro-last-seen-level", String(level));
+    // Save current level so we detect future changes
+    localStorage.setItem("pyro-last-seen-level", String(level));
   }, [level, progress.xp]);
 
   if (needsOnboarding === true) {
