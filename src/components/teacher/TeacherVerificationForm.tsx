@@ -86,10 +86,16 @@ const TeacherVerificationForm = ({ onSuccess, onCancel }: Props) => {
       return;
     }
 
+    // Validate school
+    if (!selectedSchool.trim()) {
+      toast.error("Selectează liceul la care predai.");
+      return;
+    }
+
     setLoading(true);
 
     try {
-      let data: Record<string, string> = { contact_email: contactEmail.trim() };
+      let data: Record<string, string> = { contact_email: contactEmail.trim(), school_name: selectedSchool.trim() };
 
       if (selected === "invite_code") {
         if (!inviteCode.trim()) { toast.error("Introdu codul."); return; }
