@@ -474,6 +474,9 @@ const AccountView = () => {
         {/* Teacher section */}
         {(teacherStatus === "verified" || teacherStatus === "pending" || teacherStatus === "unverified") ? (
           <div className="w-full max-w-sm mt-4 space-y-2">
+            {teacherStatus === "verified" && (
+              <p className="text-center text-sm font-medium text-green-600">✓ Verificat</p>
+            )}
             <Button
               variant="outline"
               className="w-full gap-2"
