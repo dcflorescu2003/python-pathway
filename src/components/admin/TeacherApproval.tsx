@@ -153,6 +153,13 @@ const RequestsTab = () => {
                 </p>
               )}
 
+              {/* School */}
+              {r.data?.school_name && (
+                <p className="text-xs text-muted-foreground flex items-center gap-1">
+                  🏫 {r.data.school_name}
+                </p>
+              )}
+
               <Textarea
                 placeholder="Note admin (opțional)"
                 value={notes[r.id] || ""}
@@ -365,7 +372,26 @@ const VerifiedTeachersTab = () => {
         .eq("teacher_status", "verified")
         .order("created_at", { ascending: false });
       if (error) throw error;
-      return data;
+
+      // Fetch verification requests to get school_name and contact_email
+      const userIds = data.map((t: any) => t.user_id);
+      let requestsMap: Record<string, any> = {};
+      if (userIds.length > 0) {
+        const { data: reqs } = await supabase
+          .from("teacher_verification_requests")
+          .select("user_id, data, contact_email")
+          .in("user_id", userIds)
+          .eq("status", "approved");
+        if (reqs) {
+          reqs.forEach((r: any) => { requestsMap[r.user_id] = r; });
+        }
+      }
+
+      return data.map((t: any) => ({
+        ...t,
+        school_name: requestsMap[t.user_id]?.data?.school_name || null,
+        contact_email: requestsMap[t.user_id]?.contact_email || requestsMap[t.user_id]?.data?.contact_email || null,
+      }));
     },
   });
 
@@ -422,6 +448,14 @@ const VerifiedTeachersTab = () => {
                       </span>
                     )}
                   </div>
+                  {t.school_name && (
+                    <p className="text-xs text-muted-foreground">🏫 {t.school_name}</p>
+                  )}
+                  {t.contact_email && (
+                    <p className="text-xs text-muted-foreground flex items-center gap-1">
+                      <Mail className="h-3 w-3" /> {t.contact_email}
+                    </p>
+                  )}
                 </div>
                 <Button
                   size="sm"

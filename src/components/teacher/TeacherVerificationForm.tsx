@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent } from "@/components/ui/card";
@@ -15,8 +15,11 @@ import {
   CheckCircle,
   Loader2,
   Mail,
+  School,
+  Search,
 } from "lucide-react";
 import { toast } from "sonner";
+import { schools } from "@/data/schools";
 
 type Method = "invite_code" | "public_link" | "document" | "referral" | null;
 
@@ -59,11 +62,20 @@ const TeacherVerificationForm = ({ onSuccess, onCancel }: Props) => {
 
   // Form state
   const [contactEmail, setContactEmail] = useState(user?.email || "");
+  const [schoolSearch, setSchoolSearch] = useState("");
+  const [selectedSchool, setSelectedSchool] = useState<string>("");
+  const [showSchoolDropdown, setShowSchoolDropdown] = useState(false);
   const [inviteCode, setInviteCode] = useState("");
   const [referralCode, setReferralCode] = useState("");
   const [publicLink, setPublicLink] = useState("");
   const [linkNote, setLinkNote] = useState("");
   const [docFile, setDocFile] = useState<File | null>(null);
+
+  const filteredSchools = useMemo(() => {
+    if (!schoolSearch.trim()) return [];
+    const q = schoolSearch.toLowerCase();
+    return schools.filter(s => s.name.toLowerCase().includes(q) || s.city.toLowerCase().includes(q)).slice(0, 50);
+  }, [schoolSearch]);
 
   const submit = async () => {
     if (!user) return;
@@ -74,10 +86,16 @@ const TeacherVerificationForm = ({ onSuccess, onCancel }: Props) => {
       return;
     }
 
+    // Validate school
+    if (!selectedSchool.trim()) {
+      toast.error("Selectează liceul la care predai.");
+      return;
+    }
+
     setLoading(true);
 
     try {
-      let data: Record<string, string> = { contact_email: contactEmail.trim() };
+      let data: Record<string, string> = { contact_email: contactEmail.trim(), school_name: selectedSchool.trim() };
 
       if (selected === "invite_code") {
         if (!inviteCode.trim()) { toast.error("Introdu codul."); return; }
@@ -190,6 +208,60 @@ const TeacherVerificationForm = ({ onSuccess, onCancel }: Props) => {
         <p className="text-xs text-muted-foreground">
           Adresa la care poți fi contactat dacă este nevoie de informații suplimentare.
         </p>
+      </div>
+
+      {/* School picker — always required */}
+      <div className="space-y-2 relative">
+        <label className="text-sm font-medium text-foreground flex items-center gap-1.5">
+          <School className="h-3.5 w-3.5 text-primary" />
+          Liceul la care predai *
+        </label>
+        {selectedSchool ? (
+          <div className="flex items-center gap-2">
+            <div className="flex-1 bg-muted rounded-md px-3 py-2 text-sm text-foreground">
+              {selectedSchool}
+            </div>
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              onClick={() => { setSelectedSchool(""); setSchoolSearch(""); }}
+            >
+              Schimbă
+            </Button>
+          </div>
+        ) : (
+          <>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+              <Input
+                placeholder="Caută liceul..."
+                value={schoolSearch}
+                onChange={(e) => { setSchoolSearch(e.target.value); setShowSchoolDropdown(true); }}
+                onFocus={() => setShowSchoolDropdown(true)}
+                className="pl-9"
+              />
+            </div>
+            {showSchoolDropdown && filteredSchools.length > 0 && (
+              <div className="absolute z-50 w-full mt-1 bg-background border border-border rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                {filteredSchools.map((s) => (
+                  <button
+                    key={s.id}
+                    className="w-full text-left px-3 py-2 text-sm hover:bg-accent transition-colors"
+                    onClick={() => {
+                      setSelectedSchool(`${s.name}, ${s.city}`);
+                      setSchoolSearch("");
+                      setShowSchoolDropdown(false);
+                    }}
+                  >
+                    <span className="font-medium text-foreground">{s.name}</span>
+                    <span className="text-xs text-muted-foreground ml-1">— {s.city}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </>
+        )}
       </div>
 
       {selected === "invite_code" && (
