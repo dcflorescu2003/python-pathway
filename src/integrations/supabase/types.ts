@@ -1028,6 +1028,7 @@ export type Database = {
         Args: { p_notes?: string; p_request_id: string }
         Returns: undefined
       }
+      deactivate_teacher_mode: { Args: never; Returns: undefined }
       get_problem_solution: { Args: { p_id: string }; Returns: string }
       get_test_items_for_student: {
         Args: { p_assignment_id: string; p_variant: string }
