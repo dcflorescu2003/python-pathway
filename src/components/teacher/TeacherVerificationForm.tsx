@@ -71,6 +71,12 @@ const TeacherVerificationForm = ({ onSuccess, onCancel }: Props) => {
   const [linkNote, setLinkNote] = useState("");
   const [docFile, setDocFile] = useState<File | null>(null);
 
+  const filteredSchools = useMemo(() => {
+    if (!schoolSearch.trim()) return [];
+    const q = schoolSearch.toLowerCase();
+    return schools.filter(s => s.name.toLowerCase().includes(q) || s.city.toLowerCase().includes(q)).slice(0, 50);
+  }, [schoolSearch]);
+
   const submit = async () => {
     if (!user) return;
 
