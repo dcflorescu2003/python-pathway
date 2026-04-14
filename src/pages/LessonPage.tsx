@@ -52,6 +52,7 @@ const LessonPage = () => {
   const [isFinished, setIsFinished] = useState(false);
   const [feedback, setFeedback] = useState<"correct" | "wrong" | null>(null);
   const [lastExplanation, setLastExplanation] = useState<string | null>(null);
+  const [wasFirstTime] = useState(() => !progress.completedLessons[lessonId || ""]?.completed);
 
   const handleAnswer = useCallback(
     (isCorrect: boolean) => {
