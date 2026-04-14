@@ -112,9 +112,10 @@ const TestBuilder = ({ onBack, editTestId, teacherStatus }: TestBuilderProps) =>
       toast.info("Itemul este deja adăugat.");
       return;
     }
-    // Check AI item limit for problems
-    if (sourceType === "problem" && isTeacherPremium && aiItemCount >= MAX_AI_ITEMS_PER_TEST) {
-      toast.error(`Limita de ${MAX_AI_ITEMS_PER_TEST} probleme AI/test a fost atinsă.`);
+    // Check AI item limit for problems and open_answer
+    const isAIItem = sourceType === "problem" || (sourceType === "custom" && customData?.type === "open_answer");
+    if (isAIItem && isTeacherPremium && aiItemCount >= MAX_AI_ITEMS_PER_TEST) {
+      toast.error(`Limita de ${MAX_AI_ITEMS_PER_TEST} itemi AI/test a fost atinsă.`);
       return;
     }
     setItems([...items, {
