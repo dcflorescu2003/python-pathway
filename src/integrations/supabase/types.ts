@@ -242,6 +242,109 @@ export type Database = {
         }
         Relationships: []
       }
+      eval_chapters: {
+        Row: {
+          icon: string
+          id: string
+          sort_order: number
+          title: string
+        }
+        Insert: {
+          icon?: string
+          id: string
+          sort_order?: number
+          title: string
+        }
+        Update: {
+          icon?: string
+          id?: string
+          sort_order?: number
+          title?: string
+        }
+        Relationships: []
+      }
+      eval_exercises: {
+        Row: {
+          blanks: Json | null
+          correct_option_id: string | null
+          explanation: string | null
+          id: string
+          is_true: boolean | null
+          lesson_id: string
+          lines: Json | null
+          options: Json | null
+          question: string
+          sort_order: number
+          statement: string | null
+          type: string
+        }
+        Insert: {
+          blanks?: Json | null
+          correct_option_id?: string | null
+          explanation?: string | null
+          id: string
+          is_true?: boolean | null
+          lesson_id: string
+          lines?: Json | null
+          options?: Json | null
+          question: string
+          sort_order?: number
+          statement?: string | null
+          type: string
+        }
+        Update: {
+          blanks?: Json | null
+          correct_option_id?: string | null
+          explanation?: string | null
+          id?: string
+          is_true?: boolean | null
+          lesson_id?: string
+          lines?: Json | null
+          options?: Json | null
+          question?: string
+          sort_order?: number
+          statement?: string | null
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "eval_exercises_lesson_id_fkey"
+            columns: ["lesson_id"]
+            isOneToOne: false
+            referencedRelation: "eval_lessons"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      eval_lessons: {
+        Row: {
+          chapter_id: string
+          id: string
+          sort_order: number
+          title: string
+        }
+        Insert: {
+          chapter_id: string
+          id: string
+          sort_order?: number
+          title: string
+        }
+        Update: {
+          chapter_id?: string
+          id?: string
+          sort_order?: number
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "eval_lessons_chapter_id_fkey"
+            columns: ["chapter_id"]
+            isOneToOne: false
+            referencedRelation: "eval_chapters"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       exercises: {
         Row: {
           blanks: Json | null
@@ -461,6 +564,80 @@ export type Database = {
           read?: boolean
           title?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      predefined_test_items: {
+        Row: {
+          custom_data: Json | null
+          id: string
+          points: number
+          sort_order: number
+          source_id: string | null
+          source_type: string
+          test_id: string
+          variant: string
+        }
+        Insert: {
+          custom_data?: Json | null
+          id?: string
+          points?: number
+          sort_order?: number
+          source_id?: string | null
+          source_type: string
+          test_id: string
+          variant?: string
+        }
+        Update: {
+          custom_data?: Json | null
+          id?: string
+          points?: number
+          sort_order?: number
+          source_id?: string | null
+          source_type?: string
+          test_id?: string
+          variant?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "predefined_test_items_test_id_fkey"
+            columns: ["test_id"]
+            isOneToOne: false
+            referencedRelation: "predefined_tests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      predefined_tests: {
+        Row: {
+          created_at: string
+          description: string
+          difficulty: string
+          id: string
+          sort_order: number
+          time_limit_minutes: number | null
+          title: string
+          variant_mode: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string
+          difficulty?: string
+          id?: string
+          sort_order?: number
+          time_limit_minutes?: number | null
+          title: string
+          variant_mode?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string
+          difficulty?: string
+          id?: string
+          sort_order?: number
+          time_limit_minutes?: number | null
+          title?: string
+          variant_mode?: string
         }
         Relationships: []
       }
