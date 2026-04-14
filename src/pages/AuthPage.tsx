@@ -547,9 +547,19 @@ const AccountView = () => {
                     className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                     onClick={async () => {
                       try {
-                        await supabase.rpc("deactivate_teacher_mode");
-                        setTeacherStatus(null);
-                        toast.success("Modul profesor a fost dezactivat.");
+                        const { error } = await supabase.rpc("deactivate_teacher_mode");
+                        if (error) throw error;
+                        const { data: profile } = await supabase
+                          .from("profiles")
+                          .select("is_teacher, teacher_status")
+                          .eq("user_id", user!.id)
+                          .single();
+                        if (profile?.is_teacher === false) {
+                          setTeacherStatus(null);
+                          toast.success("Modul profesor a fost dezactivat.");
+                        } else {
+                          toast.error("Dezactivarea nu a fost confirmată. Încearcă din nou.");
+                        }
                       } catch (err: any) {
                         toast.error(err.message || "Eroare la dezactivare.");
                       }
