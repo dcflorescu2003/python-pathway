@@ -80,6 +80,34 @@ const PredefinedTestEditor = () => {
   );
 };
 
+// --- Sortable Test Item ---
+function SortableTestItem({ id, item, idx, ex, typeLabels, getExerciseLabel, updatePoints, updateVariant, removeItem, variantMode }: any) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
+  const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.5 : 1, position: "relative" as const, zIndex: isDragging ? 50 : "auto" as any };
+  return (
+    <div ref={setNodeRef} style={style} className="flex items-center gap-2 p-2 rounded border border-border/50 bg-secondary/20 text-xs">
+      <div className="cursor-grab active:cursor-grabbing" {...attributes} {...listeners}>
+        <GripVertical className="h-3.5 w-3.5 text-muted-foreground/50" />
+      </div>
+      {ex && <span className="px-1.5 py-0.5 rounded bg-primary/10 text-primary font-medium">{typeLabels[ex.type] || ex.type}</span>}
+      <span className="flex-1 truncate text-foreground">{getExerciseLabel(item)}</span>
+      <Input type="number" value={item.points} onChange={(e: any) => updatePoints(idx, Number(e.target.value))} className="w-16 h-7 text-xs text-center" min={1} />
+      <span className="text-muted-foreground text-[10px]">pct</span>
+      {variantMode === "manual" && (
+        <Select value={item.variant} onValueChange={(v: string) => updateVariant(idx, v)}>
+          <SelectTrigger className="w-16 h-7 text-xs"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="both">A+B</SelectItem>
+            <SelectItem value="A">A</SelectItem>
+            <SelectItem value="B">B</SelectItem>
+          </SelectContent>
+        </Select>
+      )}
+      <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => removeItem(idx)}><Trash2 className="h-3 w-3" /></Button>
+    </div>
+  );
+}
+
 // --- Test Form ---
 function TestForm({ testId, onBack, mutations }: { testId: string | null; onBack: () => void; mutations: ReturnType<typeof usePredefinedTestMutations> }) {
   const sensors = useSensors(
