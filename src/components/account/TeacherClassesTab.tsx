@@ -1,10 +1,8 @@
 import { useState } from "react";
-import { useAuth } from "@/hooks/useAuth";
-import { useTeacherReferralCodes } from "@/hooks/useTeacher";
+import { useTeacherClasses, useTeacherReferralCodes } from "@/hooks/useTeacher";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Users, Copy, CheckCircle, AlertTriangle, Sparkles } from "lucide-react";
-import { useSubscription } from "@/hooks/useSubscription";
+import { Users, Copy, CheckCircle, AlertTriangle } from "lucide-react";
 import ClassManager from "@/components/teacher/ClassManager";
 import ClassDetail from "@/components/teacher/ClassDetail";
 import { toast } from "sonner";
@@ -14,18 +12,18 @@ interface TeacherClassesTabProps {
 }
 
 const TeacherClassesTab = ({ teacherStatus }: TeacherClassesTabProps) => {
+  const { data: classes = [] } = useTeacherClasses();
   const { data: referralCodes = [] } = useTeacherReferralCodes();
-  const { isTeacherPremium } = useSubscription();
   const [selectedClassId, setSelectedClassId] = useState<string | null>(null);
-  const [selectedClassName, setSelectedClassName] = useState<string>("");
-  const [selectedJoinCode, setSelectedJoinCode] = useState<string>("");
 
-  if (selectedClassId) {
+  const selectedClass = classes.find((c) => c.id === selectedClassId);
+
+  if (selectedClass) {
     return (
       <ClassDetail
-        classId={selectedClassId}
-        className={selectedClassName}
-        joinCode={selectedJoinCode}
+        classId={selectedClass.id}
+        className={selectedClass.name}
+        joinCode={selectedClass.join_code}
         onBack={() => setSelectedClassId(null)}
       />
     );
@@ -52,7 +50,6 @@ const TeacherClassesTab = ({ teacherStatus }: TeacherClassesTabProps) => {
         </Card>
       )}
 
-      {/* Referral codes for verified teachers */}
       {teacherStatus === "verified" && referralCodes.length > 0 && (
         <Card className="border-border">
           <CardContent className="p-4">
@@ -84,13 +81,7 @@ const TeacherClassesTab = ({ teacherStatus }: TeacherClassesTabProps) => {
         </Card>
       )}
 
-      <ClassManager
-        onSelectClass={(classId) => {
-          // We need class name and join code - ClassManager passes the id
-          // ClassDetail will handle fetching them
-          setSelectedClassId(classId);
-        }}
-      />
+      <ClassManager onSelectClass={setSelectedClassId} />
     </div>
   );
 };
