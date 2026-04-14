@@ -1,23 +1,49 @@
 import { useState } from "react";
-import { useEvalChapters, useEvalLessons, useEvalExercises, useEvalBankMutations, EvalExercise } from "@/hooks/useEvalBank";
+import { supabase } from "@/integrations/supabase/client";
+import { useQueryClient } from "@tanstack/react-query";
+import { useEvalChapters, useEvalLessons, useEvalExercises, useEvalBankMutations, EvalExercise, EvalChapter } from "@/hooks/useEvalBank";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ChevronDown, ChevronRight, Edit2, Trash2, Plus, Save, X } from "lucide-react";
+import { ChevronDown, ChevronRight, Edit2, Trash2, Plus, Save, X, GripVertical } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import {
+  DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 
 const typeLabels: Record<string, string> = { quiz: "Quiz", fill: "Completare", order: "Ordonare", truefalse: "A/F" };
+
+// --- Sortable wrappers ---
+function SortableItem({ id, children, gripSize = "h-4 w-4" }: { id: string; children: React.ReactNode; gripSize?: string }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
+  const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.5 : 1, position: "relative" as const, zIndex: isDragging ? 50 : "auto" as any };
+  return (
+    <div ref={setNodeRef} style={style}>
+      <div className="absolute left-0 top-0 bottom-0 flex items-center pl-1 cursor-grab active:cursor-grabbing z-10" {...attributes} {...listeners}>
+        <GripVertical className={`${gripSize} text-muted-foreground/50`} />
+      </div>
+      <div className="pl-6">{children}</div>
+    </div>
+  );
+}
 
 const EvalBankEditor = () => {
   const { data: chapters = [], isLoading } = useEvalChapters();
   const mutations = useEvalBankMutations();
+  const queryClient = useQueryClient();
 
   const [expandedChapter, setExpandedChapter] = useState<string | null>(null);
   const [expandedLesson, setExpandedLesson] = useState<string | null>(null);
@@ -29,39 +55,70 @@ const EvalBankEditor = () => {
   const [editingLesson, setEditingLesson] = useState<string | null>(null);
   const [editingExercise, setEditingExercise] = useState<{ lessonId: string; exercise?: EvalExercise } | null>(null);
 
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
+
+  const invalidateAll = () => {
+    queryClient.invalidateQueries({ queryKey: ["eval-chapters"] });
+    queryClient.invalidateQueries({ queryKey: ["eval-lessons"] });
+    queryClient.invalidateQueries({ queryKey: ["eval-exercises"] });
+    queryClient.invalidateQueries({ queryKey: ["eval-exercises-all"] });
+  };
+
+  const handleChapterReorder = async (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const oldIndex = chapters.findIndex(c => c.id === active.id);
+    const newIndex = chapters.findIndex(c => c.id === over.id);
+    if (oldIndex === -1 || newIndex === -1) return;
+    const reordered = arrayMove(chapters, oldIndex, newIndex);
+    await Promise.all(reordered.map((ch, i) => supabase.from("eval_chapters").update({ sort_order: i } as any).eq("id", ch.id)));
+    toast.success("Ordine capitole actualizată!");
+    invalidateAll();
+  };
+
   if (isLoading) return <p className="text-sm text-muted-foreground p-4">Se încarcă...</p>;
 
   return (
     <div className="space-y-3">
-      {chapters.map(chapter => (
-        <ChapterBlock
-          key={chapter.id}
-          chapter={chapter}
-          isExpanded={expandedChapter === chapter.id}
-          onToggle={() => setExpandedChapter(expandedChapter === chapter.id ? null : chapter.id)}
-          isEditing={editingChapter === chapter.id}
-          onStartEdit={() => { setEditingChapter(chapter.id); setChapterForm({ title: chapter.title, icon: chapter.icon }); }}
-          onCancelEdit={() => setEditingChapter(null)}
-          editForm={chapterForm}
-          setEditForm={setChapterForm}
-          onSaveEdit={async () => {
-            await mutations.updateChapter.mutateAsync({ id: chapter.id, title: chapterForm.title, icon: chapterForm.icon });
-            toast.success("Capitol salvat!"); setEditingChapter(null);
-          }}
-          onDelete={async () => { await mutations.deleteChapter.mutateAsync(chapter.id); toast.success("Capitol șters!"); }}
-          expandedLesson={expandedLesson}
-          setExpandedLesson={setExpandedLesson}
-          creatingLesson={creatingLesson}
-          setCreatingLesson={setCreatingLesson}
-          lessonForm={lessonForm}
-          setLessonForm={setLessonForm}
-          editingLesson={editingLesson}
-          setEditingLesson={setEditingLesson}
-          editingExercise={editingExercise}
-          setEditingExercise={setEditingExercise}
-          mutations={mutations}
-        />
-      ))}
+      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleChapterReorder}>
+        <SortableContext items={chapters.map(c => c.id)} strategy={verticalListSortingStrategy}>
+          {chapters.map(chapter => (
+            <SortableItem key={chapter.id} id={chapter.id} gripSize="h-5 w-5">
+              <ChapterBlock
+                chapter={chapter}
+                isExpanded={expandedChapter === chapter.id}
+                onToggle={() => setExpandedChapter(expandedChapter === chapter.id ? null : chapter.id)}
+                isEditing={editingChapter === chapter.id}
+                onStartEdit={() => { setEditingChapter(chapter.id); setChapterForm({ title: chapter.title, icon: chapter.icon }); }}
+                onCancelEdit={() => setEditingChapter(null)}
+                editForm={chapterForm}
+                setEditForm={setChapterForm}
+                onSaveEdit={async () => {
+                  await mutations.updateChapter.mutateAsync({ id: chapter.id, title: chapterForm.title, icon: chapterForm.icon });
+                  toast.success("Capitol salvat!"); setEditingChapter(null);
+                }}
+                onDelete={async () => { await mutations.deleteChapter.mutateAsync(chapter.id); toast.success("Capitol șters!"); }}
+                expandedLesson={expandedLesson}
+                setExpandedLesson={setExpandedLesson}
+                creatingLesson={creatingLesson}
+                setCreatingLesson={setCreatingLesson}
+                lessonForm={lessonForm}
+                setLessonForm={setLessonForm}
+                editingLesson={editingLesson}
+                setEditingLesson={setEditingLesson}
+                editingExercise={editingExercise}
+                setEditingExercise={setEditingExercise}
+                mutations={mutations}
+                sensors={sensors}
+                invalidateAll={invalidateAll}
+              />
+            </SortableItem>
+          ))}
+        </SortableContext>
+      </DndContext>
 
       {creatingChapter ? (
         <div className="rounded-xl border border-border bg-card p-4 space-y-3">
@@ -89,7 +146,7 @@ const EvalBankEditor = () => {
 };
 
 // --- Chapter Block ---
-function ChapterBlock({ chapter, isExpanded, onToggle, isEditing, onStartEdit, onCancelEdit, editForm, setEditForm, onSaveEdit, onDelete, expandedLesson, setExpandedLesson, creatingLesson, setCreatingLesson, lessonForm, setLessonForm, editingLesson, setEditingLesson, editingExercise, setEditingExercise, mutations }: any) {
+function ChapterBlock({ chapter, isExpanded, onToggle, isEditing, onStartEdit, onCancelEdit, editForm, setEditForm, onSaveEdit, onDelete, expandedLesson, setExpandedLesson, creatingLesson, setCreatingLesson, lessonForm, setLessonForm, editingLesson, setEditingLesson, editingExercise, setEditingExercise, mutations, sensors, invalidateAll }: any) {
   return (
     <div className="rounded-xl border border-border bg-card overflow-hidden">
       <div className="flex items-center gap-3 p-4">
@@ -140,6 +197,8 @@ function ChapterBlock({ chapter, isExpanded, onToggle, isEditing, onStartEdit, o
                 editingExercise={editingExercise}
                 setEditingExercise={setEditingExercise}
                 mutations={mutations}
+                sensors={sensors}
+                invalidateAll={invalidateAll}
               />
             </div>
           </motion.div>
@@ -150,32 +209,51 @@ function ChapterBlock({ chapter, isExpanded, onToggle, isEditing, onStartEdit, o
 }
 
 // --- Lessons List ---
-function LessonsList({ chapterId, expandedLesson, setExpandedLesson, creatingLesson, setCreatingLesson, lessonForm, setLessonForm, editingLesson, setEditingLesson, editingExercise, setEditingExercise, mutations }: any) {
+function LessonsList({ chapterId, expandedLesson, setExpandedLesson, creatingLesson, setCreatingLesson, lessonForm, setLessonForm, editingLesson, setEditingLesson, editingExercise, setEditingExercise, mutations, sensors, invalidateAll }: any) {
   const { data: lessons = [] } = useEvalLessons(chapterId);
+
+  const handleLessonReorder = async (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const oldIndex = lessons.findIndex((l: any) => l.id === active.id);
+    const newIndex = lessons.findIndex((l: any) => l.id === over.id);
+    if (oldIndex === -1 || newIndex === -1) return;
+    const reordered = arrayMove(lessons, oldIndex, newIndex);
+    await Promise.all(reordered.map((l: any, i: number) => supabase.from("eval_lessons").update({ sort_order: i } as any).eq("id", l.id)));
+    toast.success("Ordine lecții actualizată!");
+    invalidateAll();
+  };
 
   return (
     <>
-      {lessons.map(lesson => (
-        <LessonBlock
-          key={lesson.id}
-          lesson={lesson}
-          isExpanded={expandedLesson === lesson.id}
-          onToggle={() => setExpandedLesson(expandedLesson === lesson.id ? null : lesson.id)}
-          isEditing={editingLesson === lesson.id}
-          onStartEdit={() => { setEditingLesson(lesson.id); setLessonForm({ title: lesson.title }); }}
-          onCancelEdit={() => setEditingLesson(null)}
-          editForm={lessonForm}
-          setEditForm={setLessonForm}
-          onSaveEdit={async () => {
-            await mutations.updateLesson.mutateAsync({ id: lesson.id, title: lessonForm.title });
-            toast.success("Lecție salvată!"); setEditingLesson(null);
-          }}
-          onDelete={async () => { await mutations.deleteLesson.mutateAsync(lesson.id); toast.success("Lecție ștearsă!"); }}
-          editingExercise={editingExercise}
-          setEditingExercise={setEditingExercise}
-          mutations={mutations}
-        />
-      ))}
+      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleLessonReorder}>
+        <SortableContext items={lessons.map((l: any) => l.id)} strategy={verticalListSortingStrategy}>
+          {lessons.map((lesson: any) => (
+            <SortableItem key={lesson.id} id={lesson.id} gripSize="h-4 w-4">
+              <LessonBlock
+                lesson={lesson}
+                isExpanded={expandedLesson === lesson.id}
+                onToggle={() => setExpandedLesson(expandedLesson === lesson.id ? null : lesson.id)}
+                isEditing={editingLesson === lesson.id}
+                onStartEdit={() => { setEditingLesson(lesson.id); setLessonForm({ title: lesson.title }); }}
+                onCancelEdit={() => setEditingLesson(null)}
+                editForm={lessonForm}
+                setEditForm={setLessonForm}
+                onSaveEdit={async () => {
+                  await mutations.updateLesson.mutateAsync({ id: lesson.id, title: lessonForm.title });
+                  toast.success("Lecție salvată!"); setEditingLesson(null);
+                }}
+                onDelete={async () => { await mutations.deleteLesson.mutateAsync(lesson.id); toast.success("Lecție ștearsă!"); }}
+                editingExercise={editingExercise}
+                setEditingExercise={setEditingExercise}
+                mutations={mutations}
+                sensors={sensors}
+                invalidateAll={invalidateAll}
+              />
+            </SortableItem>
+          ))}
+        </SortableContext>
+      </DndContext>
 
       {creatingLesson === chapterId ? (
         <div className="rounded-lg border border-border p-3 space-y-2 bg-secondary/20">
@@ -200,7 +278,7 @@ function LessonsList({ chapterId, expandedLesson, setExpandedLesson, creatingLes
 }
 
 // --- Lesson Block ---
-function LessonBlock({ lesson, isExpanded, onToggle, isEditing, onStartEdit, onCancelEdit, editForm, setEditForm, onSaveEdit, onDelete, editingExercise, setEditingExercise, mutations }: any) {
+function LessonBlock({ lesson, isExpanded, onToggle, isEditing, onStartEdit, onCancelEdit, editForm, setEditForm, onSaveEdit, onDelete, editingExercise, setEditingExercise, mutations, sensors, invalidateAll }: any) {
   return (
     <div className="rounded-lg border border-border bg-secondary/30">
       <div className="flex items-center gap-2 p-3">
@@ -239,6 +317,8 @@ function LessonBlock({ lesson, isExpanded, onToggle, isEditing, onStartEdit, onC
                 editingExercise={editingExercise}
                 setEditingExercise={setEditingExercise}
                 mutations={mutations}
+                sensors={sensors}
+                invalidateAll={invalidateAll}
               />
             </div>
           </motion.div>
@@ -249,8 +329,20 @@ function LessonBlock({ lesson, isExpanded, onToggle, isEditing, onStartEdit, onC
 }
 
 // --- Exercises List ---
-function ExercisesList({ lessonId, editingExercise, setEditingExercise, mutations }: any) {
+function ExercisesList({ lessonId, editingExercise, setEditingExercise, mutations, sensors, invalidateAll }: any) {
   const { data: exercises = [] } = useEvalExercises(lessonId);
+
+  const handleExerciseReorder = async (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const oldIndex = exercises.findIndex((e: any) => e.id === active.id);
+    const newIndex = exercises.findIndex((e: any) => e.id === over.id);
+    if (oldIndex === -1 || newIndex === -1) return;
+    const reordered = arrayMove(exercises, oldIndex, newIndex);
+    await Promise.all(reordered.map((e: any, i: number) => supabase.from("eval_exercises").update({ sort_order: i } as any).eq("id", e.id)));
+    toast.success("Ordine exerciții actualizată!");
+    invalidateAll();
+  };
 
   if (editingExercise?.lessonId === lessonId) {
     return (
@@ -276,22 +368,28 @@ function ExercisesList({ lessonId, editingExercise, setEditingExercise, mutation
 
   return (
     <>
-      {exercises.map(ex => (
-        <div key={ex.id} className="flex items-center gap-2 p-2 rounded border border-border/50 bg-background/50 text-xs">
-          <span className="px-1.5 py-0.5 rounded bg-primary/10 text-primary font-medium">{typeLabels[ex.type] || ex.type}</span>
-          <span className="flex-1 truncate text-foreground">{ex.question}</span>
-          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setEditingExercise({ lessonId, exercise: ex })}>
-            <Edit2 className="h-3 w-3" />
-          </Button>
-          <AlertDialog>
-            <AlertDialogTrigger asChild><Button variant="ghost" size="icon" className="h-6 w-6 text-destructive"><Trash2 className="h-3 w-3" /></Button></AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader><AlertDialogTitle>Șterge exercițiul?</AlertDialogTitle></AlertDialogHeader>
-              <AlertDialogFooter><AlertDialogCancel>Anulează</AlertDialogCancel><AlertDialogAction onClick={async () => { await mutations.deleteExercise.mutateAsync(ex.id); toast.success("Exercițiu șters!"); }}>Șterge</AlertDialogAction></AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-        </div>
-      ))}
+      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleExerciseReorder}>
+        <SortableContext items={exercises.map((e: any) => e.id)} strategy={verticalListSortingStrategy}>
+          {exercises.map((ex: any) => (
+            <SortableItem key={ex.id} id={ex.id} gripSize="h-3.5 w-3.5">
+              <div className="flex items-center gap-2 p-2 rounded border border-border/50 bg-background/50 text-xs">
+                <span className="px-1.5 py-0.5 rounded bg-primary/10 text-primary font-medium">{typeLabels[ex.type] || ex.type}</span>
+                <span className="flex-1 truncate text-foreground">{ex.question}</span>
+                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setEditingExercise({ lessonId, exercise: ex })}>
+                  <Edit2 className="h-3 w-3" />
+                </Button>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild><Button variant="ghost" size="icon" className="h-6 w-6 text-destructive"><Trash2 className="h-3 w-3" /></Button></AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader><AlertDialogTitle>Șterge exercițiul?</AlertDialogTitle></AlertDialogHeader>
+                    <AlertDialogFooter><AlertDialogCancel>Anulează</AlertDialogCancel><AlertDialogAction onClick={async () => { await mutations.deleteExercise.mutateAsync(ex.id); toast.success("Exercițiu șters!"); }}>Șterge</AlertDialogAction></AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </div>
+            </SortableItem>
+          ))}
+        </SortableContext>
+      </DndContext>
       <Button variant="ghost" size="sm" className="w-full text-xs" onClick={() => setEditingExercise({ lessonId })}>
         <Plus className="h-3 w-3 mr-1" />Exercițiu nou
       </Button>

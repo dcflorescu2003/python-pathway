@@ -7,7 +7,16 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { ArrowLeft, Plus, Trash2, Save, Edit2, ChevronDown, ChevronRight, BookOpen } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Save, Edit2, ChevronDown, ChevronRight, BookOpen, GripVertical } from "lucide-react";
+import {
+  DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { toast } from "sonner";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -71,8 +80,40 @@ const PredefinedTestEditor = () => {
   );
 };
 
+// --- Sortable Test Item ---
+function SortableTestItem({ id, item, idx, ex, typeLabels, getExerciseLabel, updatePoints, updateVariant, removeItem, variantMode }: any) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
+  const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.5 : 1, position: "relative" as const, zIndex: isDragging ? 50 : "auto" as any };
+  return (
+    <div ref={setNodeRef} style={style} className="flex items-center gap-2 p-2 rounded border border-border/50 bg-secondary/20 text-xs">
+      <div className="cursor-grab active:cursor-grabbing" {...attributes} {...listeners}>
+        <GripVertical className="h-3.5 w-3.5 text-muted-foreground/50" />
+      </div>
+      {ex && <span className="px-1.5 py-0.5 rounded bg-primary/10 text-primary font-medium">{typeLabels[ex.type] || ex.type}</span>}
+      <span className="flex-1 truncate text-foreground">{getExerciseLabel(item)}</span>
+      <Input type="number" value={item.points} onChange={(e: any) => updatePoints(idx, Number(e.target.value))} className="w-16 h-7 text-xs text-center" min={1} />
+      <span className="text-muted-foreground text-[10px]">pct</span>
+      {variantMode === "manual" && (
+        <Select value={item.variant} onValueChange={(v: string) => updateVariant(idx, v)}>
+          <SelectTrigger className="w-16 h-7 text-xs"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="both">A+B</SelectItem>
+            <SelectItem value="A">A</SelectItem>
+            <SelectItem value="B">B</SelectItem>
+          </SelectContent>
+        </Select>
+      )}
+      <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => removeItem(idx)}><Trash2 className="h-3 w-3" /></Button>
+    </div>
+  );
+}
+
 // --- Test Form ---
 function TestForm({ testId, onBack, mutations }: { testId: string | null; onBack: () => void; mutations: ReturnType<typeof usePredefinedTestMutations> }) {
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
   const { data: existingTest } = usePredefinedTests();
   const test = testId ? existingTest?.find(t => t.id === testId) : null;
   const { data: existingItems = [] } = usePredefinedTestItems(testId);
@@ -112,6 +153,14 @@ function TestForm({ testId, onBack, mutations }: { testId: string | null; onBack
   const removeItem = (idx: number) => setItems(items.filter((_, i) => i !== idx));
   const updatePoints = (idx: number, points: number) => { const n = [...items]; n[idx] = { ...n[idx], points }; setItems(n); };
   const updateVariant = (idx: number, variant: string) => { const n = [...items]; n[idx] = { ...n[idx], variant }; setItems(n); };
+
+  const handleItemReorder = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const oldIndex = Number(active.id);
+    const newIndex = Number(over.id);
+    setItems(arrayMove(items, oldIndex, newIndex));
+  };
 
   const getExerciseLabel = (item: TestItemDraft) => {
     if (item.source_type === "eval_exercise" && item.source_id) {
@@ -201,28 +250,14 @@ function TestForm({ testId, onBack, mutations }: { testId: string | null; onBack
           <h3 className="text-sm font-bold text-foreground">Itemi ({items.length}) — {totalPoints} puncte</h3>
         </div>
 
-        {items.map((item, idx) => {
-          const ex = item.source_type === "eval_exercise" ? allExercises.find(e => e.id === item.source_id) : null;
-          return (
-            <div key={idx} className="flex items-center gap-2 p-2 rounded border border-border/50 bg-secondary/20 text-xs">
-              {ex && <span className="px-1.5 py-0.5 rounded bg-primary/10 text-primary font-medium">{typeLabels[ex.type] || ex.type}</span>}
-              <span className="flex-1 truncate text-foreground">{getExerciseLabel(item)}</span>
-              <Input type="number" value={item.points} onChange={e => updatePoints(idx, Number(e.target.value))} className="w-16 h-7 text-xs text-center" min={1} />
-              <span className="text-muted-foreground text-[10px]">pct</span>
-              {variantMode === "manual" && (
-                <Select value={item.variant} onValueChange={v => updateVariant(idx, v)}>
-                  <SelectTrigger className="w-16 h-7 text-xs"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="both">A+B</SelectItem>
-                    <SelectItem value="A">A</SelectItem>
-                    <SelectItem value="B">B</SelectItem>
-                  </SelectContent>
-                </Select>
-              )}
-              <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => removeItem(idx)}><Trash2 className="h-3 w-3" /></Button>
-            </div>
-          );
-        })}
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleItemReorder}>
+          <SortableContext items={items.map((_, i) => i)} strategy={verticalListSortingStrategy}>
+            {items.map((item, idx) => {
+              const ex = item.source_type === "eval_exercise" ? allExercises.find(e => e.id === item.source_id) : null;
+              return <SortableTestItem key={idx} id={idx} item={item} idx={idx} ex={ex} typeLabels={typeLabels} getExerciseLabel={getExerciseLabel} updatePoints={updatePoints} updateVariant={updateVariant} removeItem={removeItem} variantMode={variantMode} />;
+            })}
+          </SortableContext>
+        </DndContext>
       </div>
 
       {/* Bank browser */}
