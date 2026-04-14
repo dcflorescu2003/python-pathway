@@ -2,6 +2,8 @@ import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 import { useEvalChapters, useEvalLessons, useEvalExercises, useEvalBankMutations, EvalExercise, EvalChapter } from "@/hooks/useEvalBank";
+import CsvImporter from "./CsvImporter";
+import CsvLessonImporter from "./CsvLessonImporter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -269,9 +271,12 @@ function LessonsList({ chapterId, expandedLesson, setExpandedLesson, creatingLes
           </div>
         </div>
       ) : (
-        <Button variant="ghost" size="sm" className="w-full text-xs" onClick={() => { setCreatingLesson(chapterId); setLessonForm({ title: "" }); }}>
-          <Plus className="h-3 w-3 mr-1" />Lecție nouă
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="ghost" size="sm" className="flex-1 text-xs" onClick={() => { setCreatingLesson(chapterId); setLessonForm({ title: "" }); }}>
+            <Plus className="h-3 w-3 mr-1" />Lecție nouă
+          </Button>
+          <CsvLessonImporter mode="eval" chapterId={chapterId} existingLessonCount={lessons.length} onSuccess={invalidateAll} />
+        </div>
       )}
     </>
   );
@@ -390,9 +395,12 @@ function ExercisesList({ lessonId, editingExercise, setEditingExercise, mutation
           ))}
         </SortableContext>
       </DndContext>
-      <Button variant="ghost" size="sm" className="w-full text-xs" onClick={() => setEditingExercise({ lessonId })}>
-        <Plus className="h-3 w-3 mr-1" />Exercițiu nou
-      </Button>
+      <div className="flex items-center gap-2">
+        <Button variant="ghost" size="sm" className="flex-1 text-xs" onClick={() => setEditingExercise({ lessonId })}>
+          <Plus className="h-3 w-3 mr-1" />Exercițiu nou
+        </Button>
+        <CsvImporter targetTable="eval_exercises" lessonId={lessonId} existingCount={exercises.length} existingExercises={exercises} onSuccess={invalidateAll} />
+      </div>
     </>
   );
 }

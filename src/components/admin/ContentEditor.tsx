@@ -3,6 +3,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useChapters, Chapter, Lesson, Exercise } from "@/hooks/useChapters";
 import { useQueryClient } from "@tanstack/react-query";
 import ExerciseEditor from "./ExerciseEditor";
+import CsvImporter from "./CsvImporter";
+import CsvLessonImporter from "./CsvLessonImporter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -409,7 +411,10 @@ const ContentEditor = () => {
                                               {editingExercise?.lessonId === lesson.id ? (
                                                 <ExerciseEditor exercise={editingExercise.exercise} onSave={handleSaveExercise} onCancel={() => setEditingExercise(null)} lessonId={lesson.id} nextIndex={lesson.exercises.length + 1} />
                                               ) : (
-                                                <Button variant="outline" size="sm" className="w-full" onClick={() => setEditingExercise({ lessonId: lesson.id })}><Plus className="h-4 w-4 mr-1" /> Adaugă exercițiu</Button>
+                                                <div className="flex items-center gap-2">
+                                                  <Button variant="outline" size="sm" className="flex-1" onClick={() => setEditingExercise({ lessonId: lesson.id })}><Plus className="h-4 w-4 mr-1" /> Adaugă exercițiu</Button>
+                                                  <CsvImporter targetTable="exercises" lessonId={lesson.id} existingCount={lesson.exercises.length} existingExercises={lesson.exercises} onSuccess={invalidate} />
+                                                </div>
                                               )}
                                             </div>
                                           </motion.div>
@@ -432,9 +437,12 @@ const ContentEditor = () => {
                               </div>
                             </div>
                           ) : (
-                            <Button variant="outline" size="sm" className="w-full" onClick={() => { setNewLessonChapter(chapter.id); setLessonForm({ title: "", description: "", xpReward: 20, isPremium: false }); }}>
-                              <Plus className="h-4 w-4 mr-1" /> Adaugă lecție
-                            </Button>
+                            <div className="flex items-center gap-2">
+                              <Button variant="outline" size="sm" className="flex-1" onClick={() => { setNewLessonChapter(chapter.id); setLessonForm({ title: "", description: "", xpReward: 20, isPremium: false }); }}>
+                                <Plus className="h-4 w-4 mr-1" /> Adaugă lecție
+                              </Button>
+                              <CsvLessonImporter mode="content" chapterId={chapter.id} existingLessonCount={chapter.lessons.length} onSuccess={invalidate} />
+                            </div>
                           )}
                         </div>
                       </motion.div>
