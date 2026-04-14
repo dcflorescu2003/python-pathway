@@ -539,17 +539,16 @@ const TestBuilder = ({ onBack, editTestId, teacherStatus }: TestBuilderProps) =>
 
         {/* Templates tab - only for verified teachers */}
         <TabsContent value="templates" className="space-y-2 mt-2">
-          <p className="text-xs text-muted-foreground">Alege un test predefinit. Itemii sunt copiați automat.</p>
+          <p className="text-xs text-muted-foreground">Duplică un test predefinit în testul tău. Poți personaliza itemii, punctajele și timpul după duplicare.</p>
           {predefinedTests.length === 0 && <p className="text-xs text-muted-foreground italic">Nu există teste predefinite încă.</p>}
           {predefinedTests.map((tmpl) => (
-            <button
+            <div
               key={tmpl.id}
-              onClick={() => applyPredefinedTemplate(tmpl)}
-              className="w-full text-left p-3 rounded-lg border border-border hover:border-primary/50 transition-colors"
+              className="w-full p-3 rounded-lg border border-border hover:border-primary/50 transition-colors"
             >
               <div className="flex items-center gap-2">
                 <Copy className="h-4 w-4 text-primary shrink-0" />
-                <div className="min-w-0">
+                <div className="min-w-0 flex-1">
                   <p className="text-sm font-medium text-foreground">{tmpl.title}</p>
                   <p className="text-[10px] text-muted-foreground">{tmpl.description}</p>
                   <div className="flex gap-1 mt-1">
@@ -557,8 +556,16 @@ const TestBuilder = ({ onBack, editTestId, teacherStatus }: TestBuilderProps) =>
                     {tmpl.time_limit_minutes && <span className="text-[9px] px-1 py-0.5 rounded bg-accent/10 text-accent-foreground">{tmpl.time_limit_minutes} min</span>}
                   </div>
                 </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="text-xs gap-1 shrink-0"
+                  onClick={() => applyPredefinedTemplate(tmpl)}
+                >
+                  <Copy className="h-3 w-3" /> Duplică
+                </Button>
               </div>
-            </button>
+            </div>
           ))}
         </TabsContent>
 
