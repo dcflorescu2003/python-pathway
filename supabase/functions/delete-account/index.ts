@@ -44,9 +44,58 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
+    // Check if user is a teacher and clean teacher data first
+    const { data: profile } = await adminClient
+      .from("profiles")
+      .select("is_teacher")
+      .eq("user_id", userId)
+      .single();
+
+    if (profile?.is_teacher) {
+      // Delete test answers for this teacher's tests
+      const { data: tests } = await adminClient.from("tests").select("id").eq("teacher_id", userId);
+      const testIds = tests?.map(t => t.id) || [];
+      if (testIds.length > 0) {
+        const { data: assignments } = await adminClient.from("test_assignments").select("id").in("test_id", testIds);
+        const assignmentIds = assignments?.map(a => a.id) || [];
+        if (assignmentIds.length > 0) {
+          const { data: submissions } = await adminClient.from("test_submissions").select("id").in("assignment_id", assignmentIds);
+          const submissionIds = submissions?.map(s => s.id) || [];
+          if (submissionIds.length > 0) {
+            await adminClient.from("test_answers").delete().in("submission_id", submissionIds);
+          }
+          await adminClient.from("test_submissions").delete().in("assignment_id", assignmentIds);
+        }
+        await adminClient.from("test_items").delete().in("test_id", testIds);
+        await adminClient.from("test_assignments").delete().in("test_id", testIds);
+        await adminClient.from("tests").delete().eq("teacher_id", userId);
+      }
+
+      // Delete classes and related data
+      const { data: classes } = await adminClient.from("teacher_classes").select("id").eq("teacher_id", userId);
+      const classIds = classes?.map(c => c.id) || [];
+      if (classIds.length > 0) {
+        await adminClient.from("challenges").delete().in("class_id", classIds);
+        await adminClient.from("class_members").delete().in("class_id", classIds);
+      }
+      await adminClient.from("teacher_classes").delete().eq("teacher_id", userId);
+
+      // Delete verification data
+      const { data: requests } = await adminClient.from("teacher_verification_requests").select("id").eq("user_id", userId);
+      const requestIds = requests?.map(r => r.id) || [];
+      if (requestIds.length > 0) {
+        await adminClient.from("teacher_verification_messages").delete().in("request_id", requestIds);
+      }
+      await adminClient.from("teacher_verification_requests").delete().eq("user_id", userId);
+      await adminClient.from("teacher_referral_codes").delete().eq("teacher_id", userId);
+    }
+
     // Delete user data from all tables
     await adminClient.from("completed_lessons").delete().eq("user_id", userId);
     await adminClient.from("coupon_redemptions").delete().eq("user_id", userId);
+    await adminClient.from("notifications").delete().eq("user_id", userId);
+    await adminClient.from("device_tokens").delete().eq("user_id", userId);
+    await adminClient.from("user_roles").delete().eq("user_id", userId);
     await adminClient.from("profiles").delete().eq("user_id", userId);
 
     // Delete the auth user
