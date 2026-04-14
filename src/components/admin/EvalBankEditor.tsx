@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useQueryClient } from "@tanstack/react-query";
 import { useEvalChapters, useEvalLessons, useEvalExercises, useEvalBankMutations, EvalExercise, EvalChapter } from "@/hooks/useEvalBank";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -42,6 +43,7 @@ function SortableItem({ id, children, gripSize = "h-4 w-4" }: { id: string; chil
 const EvalBankEditor = () => {
   const { data: chapters = [], isLoading } = useEvalChapters();
   const mutations = useEvalBankMutations();
+  const queryClient = useQueryClient();
 
   const [expandedChapter, setExpandedChapter] = useState<string | null>(null);
   const [expandedLesson, setExpandedLesson] = useState<string | null>(null);
@@ -58,6 +60,13 @@ const EvalBankEditor = () => {
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
 
+  const invalidateAll = () => {
+    queryClient.invalidateQueries({ queryKey: ["eval-chapters"] });
+    queryClient.invalidateQueries({ queryKey: ["eval-lessons"] });
+    queryClient.invalidateQueries({ queryKey: ["eval-exercises"] });
+    queryClient.invalidateQueries({ queryKey: ["eval-exercises-all"] });
+  };
+
   const handleChapterReorder = async (event: DragEndEvent) => {
     const { active, over } = event;
     if (!over || active.id === over.id) return;
@@ -67,12 +76,7 @@ const EvalBankEditor = () => {
     const reordered = arrayMove(chapters, oldIndex, newIndex);
     await Promise.all(reordered.map((ch, i) => supabase.from("eval_chapters").update({ sort_order: i } as any).eq("id", ch.id)));
     toast.success("Ordine capitole actualizată!");
-    mutations.createChapter.reset(); // trigger invalidation
-    mutations.updateChapter.reset();
-    // Force refetch
-    const { queryClient } = await import("@tanstack/react-query").then(() => ({ queryClient: null }));
-    // Simple invalidation via mutation side effect
-    await mutations.updateChapter.mutateAsync({ id: reordered[0].id, sort_order: 0 });
+    invalidateAll();
   };
 
   if (isLoading) return <p className="text-sm text-muted-foreground p-4">Se încarcă...</p>;
