@@ -59,6 +59,7 @@ Deno.serve(async (req) => {
 
     // Determine teacher and check Profesor AI subscription
     let teacherHasAI = false;
+    let aiGradingItemIds: string[] = [];
     const firstItem = answers[0]?.test_items;
     if (firstItem?.test_id) {
       const { data: test } = await supabase
@@ -67,7 +68,7 @@ Deno.serve(async (req) => {
         .eq("id", firstItem.test_id)
         .single();
 
-      const aiGradingItemIds: string[] = (test as any)?.ai_grading_item_ids ?? [];
+      aiGradingItemIds = (test as any)?.ai_grading_item_ids ?? [];
 
       if (test) {
         const { data: profile } = await supabase
