@@ -24,7 +24,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 
-const typeLabels: Record<string, string> = { quiz: "Quiz", fill: "Completare", order: "Ordonare", truefalse: "A/F" };
+const typeLabels: Record<string, string> = { quiz: "Quiz", fill: "Completare", order: "Ordonare", truefalse: "A/F", problem: "Problemă", open_answer: "Răspuns deschis" };
 
 // --- Sortable wrappers ---
 function SortableItem({ id, children, gripSize = "h-4 w-4" }: { id: string; children: React.ReactNode; gripSize?: string }) {
@@ -404,22 +404,32 @@ function EvalExerciseEditor({ exercise, lessonId, nextIndex, onSave, onCancel }:
   const [options, setOptions] = useState(exercise?.options || [{ id: "a", text: "" }, { id: "b", text: "" }, { id: "c", text: "" }, { id: "d", text: "" }]);
   const [correctOptionId, setCorrectOptionId] = useState(exercise?.correct_option_id || "a");
   const [blanks, setBlanks] = useState(exercise?.blanks || [{ id: "b1", answer: "" }]);
-  const [lines, setLines] = useState(exercise?.lines || [{ id: "l1", text: "", order: 1 }]);
+  const [lines, setLines] = useState(exercise?.lines || [{ id: "l1", text: "", order: 1, group: undefined as number | undefined }]);
   const [statement, setStatement] = useState(exercise?.statement || "");
   const [isTrue, setIsTrue] = useState(exercise?.is_true ?? true);
   const [explanation, setExplanation] = useState(exercise?.explanation || "");
+  const [codeTemplate, setCodeTemplate] = useState(exercise?.code_template || "");
+  const [solution, setSolution] = useState(exercise?.solution || "");
+  const [testCases, setTestCases] = useState<{ input: string; expected_output: string; hidden: boolean }[]>(
+    exercise?.test_cases && Array.isArray(exercise.test_cases) && exercise.test_cases.length > 0
+      ? exercise.test_cases
+      : [{ input: "", expected_output: "", hidden: false }]
+  );
 
   const handleTypeChange = (newType: string) => {
     setType(newType);
     if (newType === "quiz") { setOptions([{ id: "a", text: "" }, { id: "b", text: "" }, { id: "c", text: "" }, { id: "d", text: "" }]); setCorrectOptionId("a"); }
-    if (newType === "fill") { setBlanks([{ id: "b1", answer: "" }]); }
-    if (newType === "order") { setLines([{ id: "l1", text: "", order: 1 }]); }
+    if (newType === "fill") { setBlanks([{ id: "b1", answer: "" }]); setCodeTemplate(""); }
+    if (newType === "order") { setLines([{ id: "l1", text: "", order: 1, group: undefined }]); }
     if (newType === "truefalse") { setStatement(""); setIsTrue(true); }
+    if (newType === "problem") { setCodeTemplate(""); setSolution(""); setTestCases([{ input: "", expected_output: "", hidden: false }]); }
   };
 
   const handleSave = () => {
-    if (!question.trim() && type !== "truefalse") { toast.error("Completează întrebarea."); return; }
+    if (type === "open_answer" && !question.trim()) { toast.error("Completează întrebarea."); return; }
+    if (!question.trim() && type !== "truefalse" && type !== "open_answer") { toast.error("Completează întrebarea."); return; }
     if (type === "truefalse" && !statement.trim()) { toast.error("Completează afirmația."); return; }
+    if (type === "problem" && !solution.trim()) { toast.error("Completează soluția."); return; }
     const id = exercise?.id || `eval-e-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
     onSave({
       id, type, question: type === "truefalse" ? statement : question,
@@ -430,6 +440,9 @@ function EvalExerciseEditor({ exercise, lessonId, nextIndex, onSave, onCancel }:
       statement: type === "truefalse" ? statement : null,
       is_true: type === "truefalse" ? isTrue : null,
       explanation: explanation || null,
+      code_template: (type === "fill" || type === "problem") ? (codeTemplate || null) : null,
+      solution: type === "problem" ? solution : null,
+      test_cases: type === "problem" ? testCases : null,
     });
   };
 
@@ -447,6 +460,8 @@ function EvalExerciseEditor({ exercise, lessonId, nextIndex, onSave, onCancel }:
               <SelectItem value="fill">Completare</SelectItem>
               <SelectItem value="order">Ordonare</SelectItem>
               <SelectItem value="truefalse">Adevărat/Fals</SelectItem>
+              <SelectItem value="problem">💻 Problemă</SelectItem>
+              <SelectItem value="open_answer">💬 Răspuns deschis</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -477,11 +492,15 @@ function EvalExerciseEditor({ exercise, lessonId, nextIndex, onSave, onCancel }:
 
       {type === "fill" && (
         <div className="space-y-2">
-          <Label className="text-xs text-foreground">Răspunsuri blanks</Label>
+          <div>
+            <Label className="text-xs text-foreground">Șablon cod (folosește ___ pentru spații goale)</Label>
+            <Textarea value={codeTemplate} onChange={e => setCodeTemplate(e.target.value)} rows={4} className="font-mono text-sm" placeholder={'x = ___\nprint(___)'} />
+          </div>
+          <Label className="text-xs text-foreground">Răspunsuri (variante separate prin virgulă)</Label>
           {blanks.map((b: any, i: number) => (
             <div key={b.id} className="flex items-center gap-2">
               <span className="text-xs text-muted-foreground">#{i + 1}</span>
-              <Input value={b.answer} onChange={e => { const n = [...blanks]; n[i] = { ...n[i], answer: e.target.value }; setBlanks(n); }} />
+              <Input value={b.answer} onChange={e => { const n = [...blanks]; n[i] = { ...n[i], answer: e.target.value }; setBlanks(n); }} placeholder="răspuns1, răspuns2" />
               <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setBlanks(blanks.filter((_: any, j: number) => j !== i))}><Trash2 className="h-3 w-3" /></Button>
             </div>
           ))}
@@ -495,11 +514,19 @@ function EvalExerciseEditor({ exercise, lessonId, nextIndex, onSave, onCancel }:
           {lines.map((l: any, i: number) => (
             <div key={l.id} className="flex items-center gap-2">
               <span className="text-xs text-muted-foreground">{i + 1}.</span>
-              <Input value={l.text} onChange={e => { const n = [...lines]; n[i] = { ...n[i], text: e.target.value }; setLines(n); }} className="font-mono text-sm" />
+              <Input value={l.text} onChange={e => { const n = [...lines]; n[i] = { ...n[i], text: e.target.value }; setLines(n); }} className="font-mono text-sm flex-1" />
+              <Input
+                type="number"
+                value={l.group ?? ""}
+                onChange={e => { const n = [...lines]; n[i] = { ...n[i], group: e.target.value ? Number(e.target.value) : undefined }; setLines(n); }}
+                className="w-16 text-xs"
+                placeholder="Grup"
+                title="Linii cu același grup sunt interschimbabile"
+              />
               <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setLines(lines.filter((_: any, j: number) => j !== i).map((l: any, j: number) => ({ ...l, order: j + 1 })))}><Trash2 className="h-3 w-3" /></Button>
             </div>
           ))}
-          <Button variant="outline" size="sm" onClick={() => setLines([...lines, { id: `l${lines.length + 1}`, text: "", order: lines.length + 1 }])}><Plus className="h-3 w-3 mr-1" />Linie</Button>
+          <Button variant="outline" size="sm" onClick={() => setLines([...lines, { id: `l${lines.length + 1}`, text: "", order: lines.length + 1, group: undefined }])}><Plus className="h-3 w-3 mr-1" />Linie</Button>
         </div>
       )}
 
@@ -516,7 +543,37 @@ function EvalExerciseEditor({ exercise, lessonId, nextIndex, onSave, onCancel }:
         </div>
       )}
 
-      <div><Label className="text-xs text-foreground">Explicație (opțional)</Label><Textarea value={explanation} onChange={e => setExplanation(e.target.value)} rows={2} /></div>
+      {type === "problem" && (
+        <div className="space-y-3">
+          <div>
+            <Label className="text-xs text-foreground">Cod inițial (opțional)</Label>
+            <Textarea value={codeTemplate} onChange={e => setCodeTemplate(e.target.value)} rows={3} className="font-mono text-sm" placeholder="def rezolva(n):" />
+          </div>
+          <div>
+            <Label className="text-xs text-foreground">Soluție</Label>
+            <Textarea value={solution} onChange={e => setSolution(e.target.value)} rows={4} className="font-mono text-sm" placeholder="def rezolva(n):&#10;    return n * 2" />
+          </div>
+          <div className="space-y-2">
+            <Label className="text-xs text-foreground">Cazuri de test</Label>
+            {testCases.map((tc, i) => (
+              <div key={i} className="grid grid-cols-[1fr_1fr_auto_auto] gap-2 items-center">
+                <Input value={tc.input} onChange={e => { const n = [...testCases]; n[i] = { ...n[i], input: e.target.value }; setTestCases(n); }} placeholder="Input" className="font-mono text-xs" />
+                <Input value={tc.expected_output} onChange={e => { const n = [...testCases]; n[i] = { ...n[i], expected_output: e.target.value }; setTestCases(n); }} placeholder="Output așteptat" className="font-mono text-xs" />
+                <label className="flex items-center gap-1 text-[10px] text-muted-foreground cursor-pointer">
+                  <input type="checkbox" checked={tc.hidden} onChange={e => { const n = [...testCases]; n[i] = { ...n[i], hidden: e.target.checked }; setTestCases(n); }} />
+                  Ascuns
+                </label>
+                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setTestCases(testCases.filter((_, j) => j !== i))}><Trash2 className="h-3 w-3" /></Button>
+              </div>
+            ))}
+            <Button variant="outline" size="sm" onClick={() => setTestCases([...testCases, { input: "", expected_output: "", hidden: false }])}><Plus className="h-3 w-3 mr-1" />Caz de test</Button>
+          </div>
+        </div>
+      )}
+
+      {type !== "problem" && (
+        <div><Label className="text-xs text-foreground">Explicație (opțional)</Label><Textarea value={explanation} onChange={e => setExplanation(e.target.value)} rows={2} /></div>
+      )}
 
       <div className="flex gap-2">
         <Button size="sm" onClick={handleSave}><Save className="h-4 w-4 mr-1" />Salvează</Button>

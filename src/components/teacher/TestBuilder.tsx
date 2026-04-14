@@ -28,7 +28,7 @@ interface TestBuilderProps {
 // Predefined test templates are now loaded from the database
 
 // Custom question type definitions
-type CustomQuestionType = "quiz" | "truefalse" | "fill" | "order";
+type CustomQuestionType = "quiz" | "truefalse" | "fill" | "order" | "open_answer";
 
 interface CustomOption {
   id: string;
@@ -396,6 +396,15 @@ const TestBuilder = ({ onBack, editTestId, teacherStatus }: TestBuilderProps) =>
         type: "order",
         question: "Ordonează liniile de cod corect:",
         lines: customLines.map((l, i) => ({ ...l, order: i })),
+      };
+    } else if (customType === "open_answer") {
+      if (!customQuestion.trim()) {
+        toast.error("Completează întrebarea.");
+        return;
+      }
+      customData = {
+        type: "open_answer",
+        question: customQuestion,
       };
     }
 

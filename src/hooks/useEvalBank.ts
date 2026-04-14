@@ -28,6 +28,9 @@ export interface EvalExercise {
   is_true: boolean | null;
   explanation: string | null;
   sort_order: number;
+  code_template: string | null;
+  test_cases: any;
+  solution: string | null;
 }
 
 export function useEvalChapters() {
