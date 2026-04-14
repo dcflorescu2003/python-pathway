@@ -266,6 +266,7 @@ export type Database = {
       eval_exercises: {
         Row: {
           blanks: Json | null
+          code_template: string | null
           correct_option_id: string | null
           explanation: string | null
           id: string
@@ -274,12 +275,15 @@ export type Database = {
           lines: Json | null
           options: Json | null
           question: string
+          solution: string | null
           sort_order: number
           statement: string | null
+          test_cases: Json | null
           type: string
         }
         Insert: {
           blanks?: Json | null
+          code_template?: string | null
           correct_option_id?: string | null
           explanation?: string | null
           id: string
@@ -288,12 +292,15 @@ export type Database = {
           lines?: Json | null
           options?: Json | null
           question: string
+          solution?: string | null
           sort_order?: number
           statement?: string | null
+          test_cases?: Json | null
           type: string
         }
         Update: {
           blanks?: Json | null
+          code_template?: string | null
           correct_option_id?: string | null
           explanation?: string | null
           id?: string
@@ -302,8 +309,10 @@ export type Database = {
           lines?: Json | null
           options?: Json | null
           question?: string
+          solution?: string | null
           sort_order?: number
           statement?: string | null
+          test_cases?: Json | null
           type?: string
         }
         Relationships: [

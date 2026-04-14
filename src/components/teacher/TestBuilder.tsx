@@ -28,7 +28,7 @@ interface TestBuilderProps {
 // Predefined test templates are now loaded from the database
 
 // Custom question type definitions
-type CustomQuestionType = "quiz" | "truefalse" | "fill" | "order";
+type CustomQuestionType = "quiz" | "truefalse" | "fill" | "order" | "open_answer";
 
 interface CustomOption {
   id: string;
@@ -92,8 +92,11 @@ const TestBuilder = ({ onBack, editTestId, teacherStatus }: TestBuilderProps) =>
     });
   };
 
-  // Count problem items (AI-graded) in current test
-  const problemItemCount = items.filter(i => i.source_type === "problem").length;
+  // Count AI-graded items (problems + open_answer) in current test
+  const aiItemCount = items.filter(i => 
+    i.source_type === "problem" || 
+    (i.source_type === "custom" && i.custom_data?.type === "open_answer")
+  ).length;
 
   // Count tests created this month
   const testsThisMonth = allTests.filter(t => {
@@ -109,9 +112,10 @@ const TestBuilder = ({ onBack, editTestId, teacherStatus }: TestBuilderProps) =>
       toast.info("Itemul este deja adăugat.");
       return;
     }
-    // Check AI item limit for problems
-    if (sourceType === "problem" && isTeacherPremium && problemItemCount >= MAX_AI_ITEMS_PER_TEST) {
-      toast.error(`Limita de ${MAX_AI_ITEMS_PER_TEST} probleme AI/test a fost atinsă.`);
+    // Check AI item limit for problems and open_answer
+    const isAIItem = sourceType === "problem" || (sourceType === "custom" && customData?.type === "open_answer");
+    if (isAIItem && isTeacherPremium && aiItemCount >= MAX_AI_ITEMS_PER_TEST) {
+      toast.error(`Limita de ${MAX_AI_ITEMS_PER_TEST} itemi AI/test a fost atinsă.`);
       return;
     }
     setItems([...items, {
@@ -397,6 +401,15 @@ const TestBuilder = ({ onBack, editTestId, teacherStatus }: TestBuilderProps) =>
         question: "Ordonează liniile de cod corect:",
         lines: customLines.map((l, i) => ({ ...l, order: i })),
       };
+    } else if (customType === "open_answer") {
+      if (!customQuestion.trim()) {
+        toast.error("Completează întrebarea.");
+        return;
+      }
+      customData = {
+        type: "open_answer",
+        question: customQuestion,
+      };
     }
 
     addItem("custom", null, "both", customData);
@@ -476,8 +489,8 @@ const TestBuilder = ({ onBack, editTestId, teacherStatus }: TestBuilderProps) =>
           <div className={`text-xs px-2 py-1 rounded-full border ${testsThisMonth >= MAX_TESTS_PER_MONTH ? 'border-destructive/50 bg-destructive/10 text-destructive' : 'border-border bg-muted text-muted-foreground'}`}>
             Teste luna aceasta: {testsThisMonth}/{MAX_TESTS_PER_MONTH}
           </div>
-          <div className={`text-xs px-2 py-1 rounded-full border ${problemItemCount >= MAX_AI_ITEMS_PER_TEST ? 'border-destructive/50 bg-destructive/10 text-destructive' : 'border-border bg-muted text-muted-foreground'}`}>
-            Probleme AI: {problemItemCount}/{MAX_AI_ITEMS_PER_TEST}
+          <div className={`text-xs px-2 py-1 rounded-full border ${aiItemCount >= MAX_AI_ITEMS_PER_TEST ? 'border-destructive/50 bg-destructive/10 text-destructive' : 'border-border bg-muted text-muted-foreground'}`}>
+            Itemi AI: {aiItemCount}/{MAX_AI_ITEMS_PER_TEST}
           </div>
         </div>
       )}
@@ -683,6 +696,7 @@ const TestBuilder = ({ onBack, editTestId, teacherStatus }: TestBuilderProps) =>
                       <SelectItem value="truefalse">Adevărat / Fals</SelectItem>
                       <SelectItem value="fill">Completare spații</SelectItem>
                       <SelectItem value="order">Ordonare linii</SelectItem>
+                      <SelectItem value="open_answer">💬 Răspuns deschis</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

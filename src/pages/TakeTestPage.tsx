@@ -248,12 +248,14 @@ const TakeTestPage = () => {
                   {currentItem.points} puncte
                 </span>
                 <span className="text-[10px] text-muted-foreground">
-                  {currentItem.source_type === "exercise" ? "Exercițiu" : "Problemă"}
+                  {currentItem.source_type === "exercise" || currentItem.source_type === "custom"
+                    ? "Exercițiu"
+                    : currentItem.source_type === "problem" ? "Problemă" : "Exercițiu"}
                 </span>
               </div>
 
               {/* Render based on type */}
-              {currentItem.source_type === "exercise" && currentItem.exercise_data && (
+              {(currentItem.source_type === "exercise" || currentItem.source_type === "custom") && currentItem.exercise_data && (
                 <ExerciseRenderer
                   exercise={currentItem.exercise_data}
                   answer={answers[currentItem.id]}
