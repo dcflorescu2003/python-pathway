@@ -12,6 +12,7 @@ import { useChapters } from "@/hooks/useChapters";
 import { useProblems } from "@/hooks/useProblems";
 import { useCreateTest, useUpdateTest, useTestItems, useTeacherTests, TestItem } from "@/hooks/useTests";
 import { useSubscription } from "@/hooks/useSubscription";
+import { usePredefinedTests, usePredefinedTestItems } from "@/hooks/usePredefinedTests";
 import { ArrowLeft, Plus, Trash2, BookOpen, Code, GripVertical, PenLine, FileCheck, Copy, ChevronDown, ChevronRight, Eye, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 
@@ -24,45 +25,7 @@ interface TestBuilderProps {
   teacherStatus?: string | null;
 }
 
-// Predefined test templates
-const TEMPLATES = [
-  {
-    id: "variables",
-    title: "Test: Variabile și tipuri de date",
-    description: "Quiz-uri și exerciții despre variabile, tipuri de date și operatori de bază.",
-    lessonKeywords: ["variabil", "tipuri", "date", "operatori"],
-  },
-  {
-    id: "conditionale",
-    title: "Test: Structuri condiționale",
-    description: "If/else, elif, operatori logici.",
-    lessonKeywords: ["if", "condiți", "elif", "else"],
-  },
-  {
-    id: "bucle",
-    title: "Test: Bucle",
-    description: "For, while, range, break, continue.",
-    lessonKeywords: ["for", "while", "bucl", "range"],
-  },
-  {
-    id: "functii",
-    title: "Test: Funcții",
-    description: "Definire funcții, parametri, return, recursivitate.",
-    lessonKeywords: ["funcți", "def", "return", "parametr"],
-  },
-  {
-    id: "liste",
-    title: "Test: Liste și structuri de date",
-    description: "Liste, dicționare, tuple, seturi.",
-    lessonKeywords: ["list", "dicționar", "tupl", "set"],
-  },
-  {
-    id: "stringuri",
-    title: "Test: Stringuri",
-    description: "Manipularea stringurilor, metode, formatare.",
-    lessonKeywords: ["string", "șir", "text", "caracter"],
-  },
-];
+// Predefined test templates are now loaded from the database
 
 // Custom question type definitions
 type CustomQuestionType = "quiz" | "truefalse" | "fill" | "order";
