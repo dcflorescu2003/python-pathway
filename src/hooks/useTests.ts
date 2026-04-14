@@ -57,6 +57,7 @@ export function useCreateTest() {
       time_limit_minutes: number | null;
       variant_mode: string;
       items: TestItem[];
+      allow_run_tests?: boolean;
     }) => {
       if (!user) throw new Error("Not authenticated");
       const { data: test, error } = await supabase
@@ -66,6 +67,7 @@ export function useCreateTest() {
           title: params.title,
           time_limit_minutes: params.time_limit_minutes,
           variant_mode: params.variant_mode,
+          allow_run_tests: params.allow_run_tests ?? false,
         })
         .select()
         .single();
@@ -99,6 +101,7 @@ export function useUpdateTest() {
       time_limit_minutes: number | null;
       variant_mode: string;
       items: TestItem[];
+      allow_run_tests?: boolean;
     }) => {
       // Update test metadata
       const { error: testError } = await supabase
@@ -107,6 +110,7 @@ export function useUpdateTest() {
           title: params.title,
           time_limit_minutes: params.time_limit_minutes,
           variant_mode: params.variant_mode,
+          allow_run_tests: params.allow_run_tests ?? false,
         })
         .eq("id", params.id);
       if (testError) throw testError;
