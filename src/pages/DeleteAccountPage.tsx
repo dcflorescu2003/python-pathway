@@ -206,7 +206,7 @@ const DeleteAccountPage = () => {
                 variant="destructive"
                 className="w-full gap-2"
                 disabled={confirmText !== "STERGE" || loading}
-                onClick={handleDelete}
+                onClick={() => setShowFinalDialog(true)}
               >
                 {loading ? (
                   <>
@@ -228,6 +228,40 @@ const DeleteAccountPage = () => {
             </div>
           </div>
         )}
+
+        <AlertDialog open={showFinalDialog} onOpenChange={setShowFinalDialog}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Confirmare finală</AlertDialogTitle>
+              <AlertDialogDescription asChild>
+                <div className="space-y-2 text-sm text-muted-foreground">
+                  <p>Ești absolut sigur? Această acțiune este <strong className="text-destructive">permanentă și ireversibilă</strong>. Se vor șterge definitiv:</p>
+                  <ul className="list-disc pl-5 space-y-1">
+                    <li>Progresul tău complet (XP, lecții, serie zilnică)</li>
+                    <li>Profilul și datele de autentificare</li>
+                    <li>Statusul Premium și cupoanele</li>
+                    {isTeacher && (
+                      <>
+                        <li>Toate clasele create și elevii înscriși</li>
+                        <li>Toate testele și rezultatele elevilor</li>
+                        <li>Progresul de verificare profesor</li>
+                      </>
+                    )}
+                  </ul>
+                </div>
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Renunță</AlertDialogCancel>
+              <AlertDialogAction
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                onClick={handleDelete}
+              >
+                Sunt de acord — Șterge tot
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </main>
     </motion.div>
   );
