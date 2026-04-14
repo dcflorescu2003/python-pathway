@@ -269,6 +269,7 @@ const TestBuilder = ({ onBack, editTestId, teacherStatus }: TestBuilderProps) =>
         setTitle(test.title);
         setVariantMode(test.variant_mode);
         setAllowRunTests(test.allow_run_tests ?? false);
+        setAiGradingItemIds((test as any).ai_grading_item_ids ?? []);
         if (test.time_limit_minutes) {
           setTimeLimitEnabled(true);
           setTimeLimit(test.time_limit_minutes);
