@@ -395,7 +395,7 @@ const typeLabel = (t: string) => {
   const map: Record<string, string> = {
     quiz: "Quiz", truefalse: "A/F", fill: "Completare",
     order: "Ordonare", match: "Potrivire", problem: "Problemă",
-    exercise: "Exercițiu", custom: "Custom",
+    exercise: "Exercițiu", custom: "Custom", open_answer: "Răspuns deschis",
   };
   return map[t] || t;
 };
