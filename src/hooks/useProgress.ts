@@ -27,7 +27,7 @@ function createDefaultProgress(): UserProgress {
     streak: 0,
     lives: MAX_LIVES,
     completedLessons: {},
-    lastActivityDate: getTodayDate(),
+    lastActivityDate: "",
     isPremium: false,
     livesUpdatedAt: new Date().toISOString(),
   };
@@ -37,16 +37,28 @@ function getScopedStorageKey(userId: string) {
   return `${STORAGE_KEY_PREFIX}:${userId}`;
 }
 
+function getYesterdayDate(): string {
+  const d = new Date();
+  d.setDate(d.getDate() - 1);
+  return d.toISOString().split("T")[0];
+}
+
 function checkStreakExpiry(p: UserProgress): UserProgress {
+  if (!p.lastActivityDate) return { ...p, streak: 0 };
   const today = getTodayDate();
-  const yesterday = new Date();
-  yesterday.setDate(yesterday.getDate() - 1);
-  const yesterdayStr = yesterday.toISOString().split("T")[0];
+  const yesterdayStr = getYesterdayDate();
 
   if (p.lastActivityDate !== today && p.lastActivityDate !== yesterdayStr) {
     return { ...p, streak: 0 };
   }
   return p;
+}
+
+function computeNewStreak(currentStreak: number, lastActivityDate: string): number {
+  const today = getTodayDate();
+  if (lastActivityDate === today) return currentStreak;
+  if (lastActivityDate === getYesterdayDate()) return currentStreak + 1;
+  return 1;
 }
 
 function regenerateLives(p: UserProgress): UserProgress {
@@ -210,16 +222,10 @@ export function useProgress() {
         const finalXP = Math.round((alreadyCompleted ? 3 : xpEarned) * bonusMultiplier);
 
         const today = getTodayDate();
-        const wasYesterday = (() => {
-          const d = new Date(prev.lastActivityDate);
-          d.setDate(d.getDate() + 1);
-          return d.toISOString().split("T")[0] === today;
-        })();
-
         const newProgress: UserProgress = {
           ...prev,
           xp: prev.xp + finalXP,
-          streak: prev.lastActivityDate === today ? prev.streak : wasYesterday ? prev.streak + 1 : 1,
+          streak: computeNewStreak(prev.streak, prev.lastActivityDate),
           lastActivityDate: today,
           completedLessons: {
             ...prev.completedLessons,
@@ -299,15 +305,9 @@ export function useProgress() {
       const today = getTodayDate();
       if (prev.lastActivityDate === today) return prev;
 
-      const wasYesterday = (() => {
-        const d = new Date(prev.lastActivityDate);
-        d.setDate(d.getDate() + 1);
-        return d.toISOString().split("T")[0] === today;
-      })();
-
       const newProgress: UserProgress = {
         ...prev,
-        streak: wasYesterday ? prev.streak + 1 : 1,
+        streak: computeNewStreak(prev.streak, prev.lastActivityDate),
         lastActivityDate: today,
       };
 
@@ -333,12 +333,16 @@ function mergeProgress(a: UserProgress, b: UserProgress): UserProgress {
     }
   }
 
+  const mergedDate = !a.lastActivityDate ? b.lastActivityDate
+    : !b.lastActivityDate ? a.lastActivityDate
+    : a.lastActivityDate > b.lastActivityDate ? a.lastActivityDate : b.lastActivityDate;
+
   return {
     xp: Math.max(a.xp, b.xp),
     streak: Math.max(a.streak, b.streak),
     lives: Math.max(a.lives, b.lives),
     isPremium: a.isPremium || b.isPremium,
-    lastActivityDate: a.lastActivityDate > b.lastActivityDate ? a.lastActivityDate : b.lastActivityDate,
+    lastActivityDate: mergedDate,
     completedLessons: mergedLessons,
     livesUpdatedAt: a.livesUpdatedAt > b.livesUpdatedAt ? a.livesUpdatedAt : b.livesUpdatedAt,
   };
