@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from "@/components/ui/alert-dialog";
 import { ArrowLeft, Mail, Lock, User, Eye, EyeOff, LogOut, BookOpen, XCircle, Code, Zap, Flame, Trophy, Shield, Trash2, Settings, GraduationCap, UserPlus, Crown, CreditCard, Clock, Pencil, Check, X, DoorOpen, MessageSquare, Sparkles } from "lucide-react";
 import PremiumDialog from "@/components/PremiumDialog";
 import TeacherPremiumDialog from "@/components/TeacherPremiumDialog";
@@ -100,6 +101,7 @@ const AccountView = () => {
   const [joinCode, setJoinCode] = useState("");
   const [joinLoading, setJoinLoading] = useState(false);
   const [showVerificationForm, setShowVerificationForm] = useState(false);
+  const [showDeactivateDialog, setShowDeactivateDialog] = useState(false);
   const [portalLoading, setPortalLoading] = useState(false);
   const [showNameDialog, setShowNameDialog] = useState(false);
   const [fullName, setFullName] = useState("");
@@ -513,25 +515,51 @@ const AccountView = () => {
               Panou Profesor
             </Button>
 
-            {/* Deactivate teacher mode */}
             <Button
               variant="ghost"
               size="sm"
               className="w-full gap-2 text-muted-foreground hover:text-destructive"
-              onClick={async () => {
-                if (!confirm("Sigur vrei să dezactivezi modul profesor? Vei redeveni elev.")) return;
-                try {
-                  await supabase.rpc("deactivate_teacher_mode");
-                  setTeacherStatus(null);
-                  toast.success("Modul profesor a fost dezactivat.");
-                } catch (err: any) {
-                  toast.error(err.message || "Eroare la dezactivare.");
-                }
-              }}
+              onClick={() => setShowDeactivateDialog(true)}
             >
               <XCircle className="h-4 w-4" />
               Dezactivează modul profesor
             </Button>
+
+            <AlertDialog open={showDeactivateDialog} onOpenChange={setShowDeactivateDialog}>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Dezactivează modul profesor</AlertDialogTitle>
+                  <AlertDialogDescription asChild>
+                    <div className="space-y-2 text-sm text-muted-foreground">
+                      <p>Ești pe cale să treci pe contul de elev. Această acțiune este <strong className="text-destructive">ireversibilă</strong> și va șterge permanent:</p>
+                      <ul className="list-disc pl-5 space-y-1">
+                        <li>Toate clasele create și elevii înscriși</li>
+                        <li>Toate testele create și rezultatele elevilor</li>
+                        <li>Toate provocările trimise</li>
+                        <li>Progresul de verificare — va trebui reluat de la zero</li>
+                      </ul>
+                    </div>
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Renunță</AlertDialogCancel>
+                  <AlertDialogAction
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    onClick={async () => {
+                      try {
+                        await supabase.rpc("deactivate_teacher_mode");
+                        setTeacherStatus(null);
+                        toast.success("Modul profesor a fost dezactivat.");
+                      } catch (err: any) {
+                        toast.error(err.message || "Eroare la dezactivare.");
+                      }
+                    }}
+                  >
+                    Sunt de acord
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
 
             {/* Unverified: show verification button or form */}
             {teacherStatus === "unverified" && (
