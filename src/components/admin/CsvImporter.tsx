@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Upload, FileText, AlertCircle, Check, Download } from "lucide-react";
 import { toast } from "sonner";
-import { parseExercisesCSV, exerciseToDbRow, generateExportCSV, getExercisesTemplateCSV, downloadCSV, type ParsedExercise } from "./csvParser";
+import { parseExercisesCSV, exerciseToDbRow, generateExportCSV, getExercisesTemplateCSV, downloadCSV, CONTENT_TYPES, EVAL_TYPES, MANUAL_TYPES, type ParsedExercise } from "./csvParser";
 
 interface CsvImporterProps {
   targetTable: "exercises" | "eval_exercises" | "manual_exercises";
@@ -39,14 +39,17 @@ export default function CsvImporter({ targetTable, lessonId, existingCount, exis
     reader.readAsText(file);
   };
 
+  const allowedTypes = targetTable === "exercises" ? CONTENT_TYPES : targetTable === "eval_exercises" ? EVAL_TYPES : MANUAL_TYPES;
   const validExercises = parsed.filter(ex => !ex.error);
+  const importableExercises = validExercises.filter(ex => allowedTypes.includes(ex.type));
+  const skippedExercises = validExercises.filter(ex => !allowedTypes.includes(ex.type));
 
   const handleImport = async () => {
-    if (validExercises.length === 0) return;
+    if (importableExercises.length === 0) return;
     setImporting(true);
     try {
       const prefix = targetTable === "eval_exercises" ? "eval-" : `${lessonId}-`;
-      const rows = validExercises.map((ex, i) =>
+      const rows = importableExercises.map((ex, i) =>
         exerciseToDbRow(ex, lessonId, existingCount + i, prefix)
       );
 
@@ -64,7 +67,7 @@ export default function CsvImporter({ targetTable, lessonId, existingCount, exis
 
       const { error } = await supabase.from(targetTable).insert(cleaned as any);
       if (error) throw error;
-      toast.success(`${validExercises.length} exerciții importate!`);
+      toast.success(`${importableExercises.length} exerciții importate!`);
       setOpen(false);
       setParsed([]);
       setErrors([]);
@@ -121,8 +124,14 @@ export default function CsvImporter({ targetTable, lessonId, existingCount, exis
           {parsed.length > 0 && (
             <div className="space-y-3">
               <div className="text-sm text-foreground font-medium">
-                Preview: {validExercises.length} valide / {parsed.length} total
+                Preview: {importableExercises.length} importabile / {parsed.length} total
               </div>
+
+              {skippedExercises.length > 0 && (
+                <div className="text-xs text-amber-400 bg-amber-400/10 border border-amber-400/30 rounded p-2">
+                  ⚠ {skippedExercises.length} exerciții excluse (tipuri nepermise: {skippedExercises.map(e => typeLabels[e.type] || e.type).join(", ")})
+                </div>
+              )}
 
               <div className="space-y-1 max-h-60 overflow-y-auto">
                 {parsed.map((ex, i) => (
@@ -150,8 +159,8 @@ export default function CsvImporter({ targetTable, lessonId, existingCount, exis
                 </div>
               )}
 
-              <Button onClick={handleImport} disabled={importing || validExercises.length === 0} className="w-full">
-                {importing ? "Se importă..." : `Importă ${validExercises.length} exerciții`}
+              <Button onClick={handleImport} disabled={importing || importableExercises.length === 0} className="w-full">
+                {importing ? "Se importă..." : `Importă ${importableExercises.length} exerciții`}
               </Button>
             </div>
           )}
