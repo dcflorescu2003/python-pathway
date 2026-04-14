@@ -350,9 +350,17 @@ const TestResults = ({ testId, onBack }: TestResultsProps) => {
       {selectedAssignmentId && (
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <p className="text-xs font-semibold text-muted-foreground">
-              Submiteri ({submissions.length})
-            </p>
+            <div className="flex items-center gap-2">
+              <p className="text-xs font-semibold text-muted-foreground">
+                Submiteri ({submissions.length})
+              </p>
+              {totalUngradedCount > 0 && (
+                <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-warning/10 border border-warning/30 text-warning font-medium">
+                  <AlertCircle className="h-3 w-3" />
+                  {totalUngradedCount} {totalUngradedCount === 1 ? "item neevaluat" : "itemi neevaluați"}
+                </span>
+              )}
+            </div>
             {submissions.length > 0 && (
               <div className="flex gap-2">
                 <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={exportTestCSV}>
