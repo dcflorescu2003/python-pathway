@@ -304,6 +304,7 @@ const TestBuilder = ({ onBack, editTestId, teacherStatus }: TestBuilderProps) =>
           time_limit_minutes: timeLimitEnabled ? timeLimit : null,
           variant_mode: variantMode,
           items,
+          allow_run_tests: allowRunTests,
         });
         toast.success("Test actualizat!");
       } else {
@@ -312,6 +313,7 @@ const TestBuilder = ({ onBack, editTestId, teacherStatus }: TestBuilderProps) =>
           time_limit_minutes: timeLimitEnabled ? timeLimit : null,
           variant_mode: variantMode,
           items,
+          allow_run_tests: allowRunTests,
         });
         toast.success("Test creat cu succes!");
       }
