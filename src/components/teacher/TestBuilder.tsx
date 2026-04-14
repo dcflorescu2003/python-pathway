@@ -311,6 +311,7 @@ const TestBuilder = ({ onBack, editTestId, teacherStatus }: TestBuilderProps) =>
           variant_mode: variantMode,
           items,
           allow_run_tests: allowRunTests,
+          ai_grading_item_ids: aiGradingItemIds,
         });
         toast.success("Test actualizat!");
       } else {
@@ -320,6 +321,7 @@ const TestBuilder = ({ onBack, editTestId, teacherStatus }: TestBuilderProps) =>
           variant_mode: variantMode,
           items,
           allow_run_tests: allowRunTests,
+          ai_grading_item_ids: aiGradingItemIds,
         });
         toast.success("Test creat cu succes!");
       }
