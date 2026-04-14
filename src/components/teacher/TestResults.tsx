@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { useTestAssignments, useTestSubmissions, useTestAnswers, useTestItems, useUpdateAnswerScore, useToggleScoresReleased } from "@/hooks/useTests";
-import { ArrowLeft, ChevronDown, ChevronUp, CheckCircle, XCircle, Save, FileSpreadsheet, FileText, Eye, EyeOff } from "lucide-react";
+import { ArrowLeft, ChevronDown, ChevronUp, CheckCircle, XCircle, Save, FileSpreadsheet, FileText, Eye, EyeOff, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 
 interface TestResultsProps {
@@ -26,6 +26,8 @@ const TestResults = ({ testId, onBack }: TestResultsProps) => {
 
   // Enriched data: exercise/problem details keyed by source_id
   const [enrichedData, setEnrichedData] = useState<Record<string, any>>({});
+  // All answers for all submissions in the selected assignment (for badge computation)
+  const [allAssignmentAnswers, setAllAssignmentAnswers] = useState<any[]>([]);
 
   // Fetch exercise/problem details when testItems load
   useEffect(() => {
@@ -48,6 +50,46 @@ const TestResults = ({ testId, onBack }: TestResultsProps) => {
     };
     fetchDetails();
   }, [testItems]);
+
+  // Fetch all answers for all submissions to compute ungraded badges
+  useEffect(() => {
+    if (submissions.length === 0) { setAllAssignmentAnswers([]); return; }
+    const fetchAll = async () => {
+      const subIds = submissions.map((s: any) => s.id);
+      const { data } = await supabase.from("test_answers").select("*").in("submission_id", subIds);
+      setAllAssignmentAnswers(data || []);
+    };
+    fetchAll();
+  }, [submissions]);
+
+  // Identify which test_item IDs need manual grading (problem/open_answer)
+  const manualGradingItemIds = useMemo(() => {
+    return new Set(
+      testItems
+        .filter((ti: any) =>
+          ti.source_type === "problem" ||
+          (ti.source_type === "custom" && ti.custom_data?.type === "open_answer")
+        )
+        .map((ti: any) => ti.id)
+    );
+  }, [testItems]);
+
+  // Count ungraded manual items per submission
+  const ungradedCountBySubmission = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const sub of submissions) {
+      const subAnswers = allAssignmentAnswers.filter((a: any) => a.submission_id === sub.id);
+      const ungraded = subAnswers.filter(
+        (a: any) => manualGradingItemIds.has(a.test_item_id) && (a.score === null || a.score === 0) && !a.ai_reviewed
+      ).length;
+      counts[sub.id] = ungraded;
+    }
+    return counts;
+  }, [submissions, allAssignmentAnswers, manualGradingItemIds]);
+
+  const totalUngradedCount = useMemo(() => {
+    return Object.values(ungradedCountBySubmission).reduce((sum, c) => sum + c, 0);
+  }, [ungradedCountBySubmission]);
 
   const [scoreEdits, setScoreEdits] = useState<Record<string, string>>({});
   const [feedbackEdits, setFeedbackEdits] = useState<Record<string, string>>({});
@@ -308,9 +350,17 @@ const TestResults = ({ testId, onBack }: TestResultsProps) => {
       {selectedAssignmentId && (
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <p className="text-xs font-semibold text-muted-foreground">
-              Submiteri ({submissions.length})
-            </p>
+            <div className="flex items-center gap-2">
+              <p className="text-xs font-semibold text-muted-foreground">
+                Submiteri ({submissions.length})
+              </p>
+              {totalUngradedCount > 0 && (
+                <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-warning/10 border border-warning/30 text-warning font-medium">
+                  <AlertCircle className="h-3 w-3" />
+                  {totalUngradedCount} {totalUngradedCount === 1 ? "item neevaluat" : "itemi neevaluați"}
+                </span>
+              )}
+            </div>
             {submissions.length > 0 && (
               <div className="flex gap-2">
                 <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={exportTestCSV}>
@@ -328,6 +378,7 @@ const TestResults = ({ testId, onBack }: TestResultsProps) => {
             submissions.map((sub: any) => {
               const isExpanded = expandedSubmissionId === sub.id;
               const percentage = sub.max_score > 0 ? Math.round((sub.total_score / sub.max_score) * 100) : 0;
+              const ungradedCount = ungradedCountBySubmission[sub.id] || 0;
               return (
                 <Card key={sub.id}>
                   <CardContent className="p-0">
@@ -348,6 +399,11 @@ const TestResults = ({ testId, onBack }: TestResultsProps) => {
                         </p>
                       </div>
                       <div className="flex items-center gap-2">
+                        {ungradedCount > 0 && (
+                          <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-warning/10 border border-warning/30 text-warning font-medium">
+                            {ungradedCount} ✏️
+                          </span>
+                        )}
                         {sub.submitted_at && (
                           <span className={`text-sm font-bold ${percentage >= 50 ? "text-primary" : "text-destructive"}`}>
                             {percentage}%
