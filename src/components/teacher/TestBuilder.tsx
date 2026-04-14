@@ -45,6 +45,7 @@ const TestBuilder = ({ onBack, editTestId, teacherStatus }: TestBuilderProps) =>
   const { data: existingItems = [] } = useTestItems(editTestId || null);
   const { data: allTests = [] } = useTeacherTests();
   const { isTeacherPremium } = useSubscription();
+  const { data: predefinedTests = [] } = usePredefinedTests();
   const isEditing = !!editTestId;
 
   const [title, setTitle] = useState("");
@@ -318,35 +319,32 @@ const TestBuilder = ({ onBack, editTestId, teacherStatus }: TestBuilderProps) =>
     }
   };
 
-  // Template: auto-pick matching exercises from DB
-  const applyTemplate = (template: typeof TEMPLATES[0]) => {
+  // Apply a predefined test template from the database
+  const applyPredefinedTemplate = async (template: any) => {
     setTitle(template.title);
-    const matchedItems: TestItem[] = [];
-    for (const ch of chapters) {
-      for (const lesson of ch.lessons) {
-        const titleLower = lesson.title.toLowerCase();
-        const matches = template.lessonKeywords.some((kw) => titleLower.includes(kw));
-        if (matches && lesson.exercises) {
-          for (const ex of lesson.exercises) {
-            if (matchedItems.length >= 15) break;
-            matchedItems.push({
-              variant: "both",
-              sort_order: matchedItems.length,
-              source_type: "exercise",
-              source_id: ex.id,
-              custom_data: null,
-              points: 10,
-            });
-          }
-        }
-      }
-    }
-    if (matchedItems.length === 0) {
-      toast.info("Nu s-au găsit exerciții potrivite pentru acest template.");
+    if (template.time_limit_minutes) { setTimeLimitEnabled(true); setTimeLimit(template.time_limit_minutes); }
+    setVariantMode(template.variant_mode);
+    // Fetch items for this predefined test
+    const { data: predefinedItems } = await (await import("@/integrations/supabase/client")).supabase
+      .from("predefined_test_items")
+      .select("*")
+      .eq("test_id", template.id)
+      .order("sort_order");
+    if (!predefinedItems || predefinedItems.length === 0) {
+      toast.info("Acest test nu are itemi definiți.");
       return;
     }
-    setItems(matchedItems);
-    toast.success(`${matchedItems.length} exerciții adăugate automat.`);
+    // Convert eval_exercise items to exercise-compatible format
+    const newItems: TestItem[] = predefinedItems.map((pi: any, i: number) => ({
+      variant: pi.variant,
+      sort_order: i,
+      source_type: pi.source_type === "eval_exercise" ? "exercise" : pi.source_type,
+      source_id: pi.source_id,
+      custom_data: pi.custom_data,
+      points: pi.points,
+    }));
+    setItems(newItems);
+    toast.success(`${newItems.length} itemi adăugați din testul predefinit.`);
   };
 
   // Add custom question
@@ -541,11 +539,12 @@ const TestBuilder = ({ onBack, editTestId, teacherStatus }: TestBuilderProps) =>
 
         {/* Templates tab - only for verified teachers */}
         <TabsContent value="templates" className="space-y-2 mt-2">
-          <p className="text-xs text-muted-foreground">Alege un test predefinit. Itemii sunt selectați automat din baza de date.</p>
-          {TEMPLATES.map((tmpl) => (
+          <p className="text-xs text-muted-foreground">Alege un test predefinit. Itemii sunt copiați automat.</p>
+          {predefinedTests.length === 0 && <p className="text-xs text-muted-foreground italic">Nu există teste predefinite încă.</p>}
+          {predefinedTests.map((tmpl) => (
             <button
               key={tmpl.id}
-              onClick={() => applyTemplate(tmpl)}
+              onClick={() => applyPredefinedTemplate(tmpl)}
               className="w-full text-left p-3 rounded-lg border border-border hover:border-primary/50 transition-colors"
             >
               <div className="flex items-center gap-2">
@@ -553,6 +552,10 @@ const TestBuilder = ({ onBack, editTestId, teacherStatus }: TestBuilderProps) =>
                 <div className="min-w-0">
                   <p className="text-sm font-medium text-foreground">{tmpl.title}</p>
                   <p className="text-[10px] text-muted-foreground">{tmpl.description}</p>
+                  <div className="flex gap-1 mt-1">
+                    <span className="text-[9px] px-1 py-0.5 rounded bg-primary/10 text-primary">{tmpl.difficulty}</span>
+                    {tmpl.time_limit_minutes && <span className="text-[9px] px-1 py-0.5 rounded bg-accent/10 text-accent-foreground">{tmpl.time_limit_minutes} min</span>}
+                  </div>
                 </div>
               </div>
             </button>
