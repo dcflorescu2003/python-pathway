@@ -401,6 +401,7 @@ function ExercisesList({ lessonId, editingExercise, setEditingExercise, mutation
         </Button>
         <CsvImporter targetTable="eval_exercises" lessonId={lessonId} existingCount={exercises.length} existingExercises={exercises} onSuccess={invalidateAll} />
       </div>
+    </>
   );
 }
 
