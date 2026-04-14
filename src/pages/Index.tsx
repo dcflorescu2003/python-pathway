@@ -153,21 +153,39 @@ const Index = (): JSX.Element => {
     return () => clearTimeout(timer);
   }, [user, progress.isPremium, authLoading]);
 
-  // Level Up dialog: only show once per session when level actually increases
+  // Level Up dialog: only show when level truly increases after cloud data loads
+  const levelInitialized = useRef(false);
   useEffect(() => {
-    if (level <= 0 && progress.xp <= 0) return; // still loading
-    const lastSeenLevel = parseInt(localStorage.getItem("pyro-last-seen-level") || "0", 10);
-    const lastShownDate = localStorage.getItem("pyro-levelup-shown-date") || "";
-    const today = new Date().toDateString();
+    if (!user) return;
+    // Wait for real data — skip if XP is still 0 (default/loading state)
+    if (progress.xp <= 0 && level <= 0) return;
+
+    const userKey = `pyro-last-seen-level-${user.id}`;
+    const lastSeenLevel = parseInt(localStorage.getItem(userKey) || "0", 10);
+
+    if (!levelInitialized.current) {
+      // First load: seed with current level, don't show dialog
+      levelInitialized.current = true;
+      if (lastSeenLevel === 0) {
+        // Brand new or never stored — just save, no popup
+        localStorage.setItem(userKey, String(level));
+        return;
+      }
+    }
 
     if (level > lastSeenLevel && lastSeenLevel > 0) {
-      // Real level change — always show
-      setShowLevelUp(true);
-      localStorage.setItem("pyro-levelup-shown-date", today);
+      // Real level change
+      const dateKey = `pyro-levelup-shown-date-${user.id}`;
+      const today = new Date().toDateString();
+      const lastShownDate = localStorage.getItem(dateKey) || "";
+      if (lastShownDate !== today) {
+        setShowLevelUp(true);
+        localStorage.setItem(dateKey, today);
+      }
     }
-    // Save current level so we detect future changes
-    localStorage.setItem("pyro-last-seen-level", String(level));
-  }, [level, progress.xp]);
+    // Always update to latest
+    localStorage.setItem(userKey, String(level));
+  }, [level, progress.xp, user]);
 
   if (needsOnboarding === true) {
     return <SchoolOnboarding onComplete={() => {
