@@ -1,26 +1,30 @@
 
 
-## Plan: Fix CSV — auto-quoting și documentare
+## Plan: Filtrare tipuri nepermise la import lecție content
 
-### Cauza
-CSV standard cere ca orice celulă cu virgulă să fie între ghilimele (`"`). 3 celule din fișier nu respectă asta.
+### Problema
+Tabelul `exercises` permite doar: `quiz`, `fill`, `order`, `truefalse`, `match`, `card`. Tipurile `open_answer` și `problem` cauzează eroare la INSERT.
 
-### Soluție (2 părți)
+### Soluție
 
-**1. Îmbunătățire parser (`csvParser.ts`)**
-- Adaug o funcție de pre-procesare `autoRepairCSV(text)` care detectează rânduri cu mai multe câmpuri decât headerul și încearcă să le repare prin îmbinarea câmpurilor excedentare
-- Algoritmul: dacă un rând are mai multe celule decât headerul, încearcă să recombine celulele adiacente (mai ales în câmpurile text lungi precum `question`, `explanation`, `statement`) care probabil au fost sparte de o virgulă neprotejată
-- Adaug mesaj de eroare mai clar: „Câmpul conține virgulă neprotejată — încadrați-l cu ghilimele"
+**1. `csvParser.ts`** — adaug constante per tabel:
+```typescript
+export const CONTENT_TYPES = ["quiz", "truefalse", "fill", "order", "card", "match"];
+export const EVAL_TYPES = ["quiz", "truefalse", "fill", "order", "card", "open_answer", "problem"];
+export const MANUAL_TYPES = ["quiz", "truefalse", "fill", "order", "card", "open_answer", "problem", "match"];
+```
 
-**2. Documentare mai clară în UI**
-- În secțiunea de format din dialogul de import, adaug nota: **„Dacă un câmp conține virgulă, încadrați-l cu ghilimele: `"text cu, virgulă"`"**
-- Actualizez template-ul descărcabil pentru a arăta exemple cu ghilimele pe câmpuri cu virgulă
+Actualizez `getLessonTemplateCSV()` să nu includă exemple `open_answer`/`problem` (acestea sunt doar pentru eval/manual).
+
+**2. `CsvLessonImporter.tsx`** — când `mode === "content"`, filtrez exercițiile cu tipuri nepermise din `validExercises` și afișez un warning vizibil cu câte au fost excluse și de ce.
+
+**3. `CsvImporter.tsx`** — aceeași filtrare pe baza `targetTable`: dacă e `exercises`, exclud `open_answer`/`problem`.
 
 ### Fișiere modificate
 
 | Fișier | Ce |
-|--------|----|
-| `csvParser.ts` | Funcție `autoRepairCSV`, mesaje de eroare mai clare |
-| `CsvImporter.tsx` | Notă UI despre ghilimele |
-| `CsvLessonImporter.tsx` | Aceeași notă UI |
+|--------|-----|
+| `csvParser.ts` | Constante tipuri per tabel, template actualizat |
+| `CsvLessonImporter.tsx` | Filtrare + warning UI |
+| `CsvImporter.tsx` | Filtrare + warning UI |
 
