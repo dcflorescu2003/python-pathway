@@ -515,25 +515,51 @@ const AccountView = () => {
               Panou Profesor
             </Button>
 
-            {/* Deactivate teacher mode */}
             <Button
               variant="ghost"
               size="sm"
               className="w-full gap-2 text-muted-foreground hover:text-destructive"
-              onClick={async () => {
-                if (!confirm("Sigur vrei să dezactivezi modul profesor? Vei redeveni elev.")) return;
-                try {
-                  await supabase.rpc("deactivate_teacher_mode");
-                  setTeacherStatus(null);
-                  toast.success("Modul profesor a fost dezactivat.");
-                } catch (err: any) {
-                  toast.error(err.message || "Eroare la dezactivare.");
-                }
-              }}
+              onClick={() => setShowDeactivateDialog(true)}
             >
               <XCircle className="h-4 w-4" />
               Dezactivează modul profesor
             </Button>
+
+            <AlertDialog open={showDeactivateDialog} onOpenChange={setShowDeactivateDialog}>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Dezactivează modul profesor</AlertDialogTitle>
+                  <AlertDialogDescription asChild>
+                    <div className="space-y-2 text-sm text-muted-foreground">
+                      <p>Ești pe cale să treci pe contul de elev. Această acțiune este <strong className="text-destructive">ireversibilă</strong> și va șterge permanent:</p>
+                      <ul className="list-disc pl-5 space-y-1">
+                        <li>Toate clasele create și elevii înscriși</li>
+                        <li>Toate testele create și rezultatele elevilor</li>
+                        <li>Toate provocările trimise</li>
+                        <li>Progresul de verificare — va trebui reluat de la zero</li>
+                      </ul>
+                    </div>
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Renunță</AlertDialogCancel>
+                  <AlertDialogAction
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    onClick={async () => {
+                      try {
+                        await supabase.rpc("deactivate_teacher_mode");
+                        setTeacherStatus(null);
+                        toast.success("Modul profesor a fost dezactivat.");
+                      } catch (err: any) {
+                        toast.error(err.message || "Eroare la dezactivare.");
+                      }
+                    }}
+                  >
+                    Sunt de acord
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
 
             {/* Unverified: show verification button or form */}
             {teacherStatus === "unverified" && (
