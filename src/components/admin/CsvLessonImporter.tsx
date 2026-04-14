@@ -172,6 +172,7 @@ export default function CsvLessonImporter({ mode, chapterId, existingLessonCount
             </div>
             <p>[META] conține: title, description, xp_reward</p>
             <p>[EXERCISES] conține exercițiile (quiz, truefalse, fill, order, card, open_answer, problem)</p>
+            <p className="text-amber-400/80 font-medium">⚠ Dacă un câmp conține virgulă, încadrați-l cu ghilimele: "text cu, virgulă"</p>
           </div>
         </DialogContent>
       </Dialog>
