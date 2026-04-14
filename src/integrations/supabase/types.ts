@@ -1107,6 +1107,7 @@ export type Database = {
       }
       tests: {
         Row: {
+          allow_run_tests: boolean
           created_at: string
           id: string
           teacher_id: string
@@ -1116,6 +1117,7 @@ export type Database = {
           variant_mode: string
         }
         Insert: {
+          allow_run_tests?: boolean
           created_at?: string
           id?: string
           teacher_id: string
@@ -1125,6 +1127,7 @@ export type Database = {
           variant_mode?: string
         }
         Update: {
+          allow_run_tests?: boolean
           created_at?: string
           id?: string
           teacher_id?: string
