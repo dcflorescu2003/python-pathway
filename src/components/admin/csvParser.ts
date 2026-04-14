@@ -79,13 +79,54 @@ function parseCSVLine(line: string, sep: string): string[] {
   return result;
 }
 
+/**
+ * Auto-repair a CSV row that has more fields than headers.
+ * Strategy: merge excess fields back into the longest text column
+ * (likely question, explanation, or statement that contained unquoted commas).
+ */
+function autoRepairRow(values: string[], headerCount: number, headers: string[]): string[] {
+  if (values.length <= headerCount) return values;
+
+  const textCols = ["question", "explanation", "statement", "code_template"];
+  // Find the rightmost text column index — that's the most likely split point
+  let bestIdx = -1;
+  for (const col of textCols) {
+    const idx = headers.indexOf(col);
+    if (idx !== -1 && idx > bestIdx) bestIdx = idx;
+  }
+
+  // Try each text column from right to left: merge excess fields at that position
+  for (const col of [...textCols].reverse()) {
+    const idx = headers.indexOf(col);
+    if (idx === -1 || idx >= values.length) continue;
+
+    const excess = values.length - headerCount;
+    // Merge fields [idx .. idx+excess] into one
+    const merged = values.slice(idx, idx + excess + 1).join(",");
+    const repaired = [...values.slice(0, idx), merged, ...values.slice(idx + excess + 1)];
+    if (repaired.length === headerCount) return repaired;
+  }
+
+  // Fallback: just merge all excess into the last known text column
+  if (bestIdx !== -1) {
+    const excess = values.length - headerCount;
+    const merged = values.slice(bestIdx, bestIdx + excess + 1).join(",");
+    return [...values.slice(0, bestIdx), merged, ...values.slice(bestIdx + excess + 1)];
+  }
+
+  return values;
+}
+
 function parseCSVRows(text: string): { headers: string[]; rows: Record<string, string>[] } {
   const sep = detectSeparator(text);
   const lines = splitLogicalLines(text).filter(l => l.trim());
   if (lines.length < 2) return { headers: [], rows: [] };
   const headers = parseCSVLine(lines[0], sep).map(h => h.toLowerCase().trim());
   const rows = lines.slice(1).map(line => {
-    const values = parseCSVLine(line, sep);
+    let values = parseCSVLine(line, sep);
+    if (values.length > headers.length) {
+      values = autoRepairRow(values, headers.length, headers);
+    }
     const obj: Record<string, string> = {};
     headers.forEach((h, i) => { obj[h] = values[i] || ""; });
     return obj;

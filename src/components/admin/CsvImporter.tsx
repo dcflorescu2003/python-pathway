@@ -166,6 +166,7 @@ export default function CsvImporter({ targetTable, lessonId, existingCount, exis
             <p>Tipuri: quiz, truefalse, fill, order, card, open_answer, problem</p>
             <p>Blanks: variante separate prin „;" (mai multe blank-uri)</p>
             <p>Lines/Groups: separate prin „|"</p>
+            <p className="text-amber-400/80 font-medium">⚠ Dacă un câmp conține virgulă, încadrați-l cu ghilimele: "text cu, virgulă"</p>
           </div>
         </DialogContent>
       </Dialog>
