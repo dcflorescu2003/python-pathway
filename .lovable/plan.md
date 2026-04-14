@@ -1,37 +1,32 @@
 
 
-## Plan: Opțiune „Rulare teste" pentru probleme în teste
+## Plan: Fix card counting + XP display bugs
 
-### Ce se schimbă
+### Problems found
 
-**1. Coloană nouă pe tabela `tests`**
+**Bug 1: Cards not counted as correct**
+In `handleAnswer`, when `exercise.type === "card"`, it returns early WITHOUT incrementing `correctCount`. The finish screen shows "Ai răspuns corect la X/Y" with cards excluded from both numerator and denominator (they should count as correct).
 
-Se adaugă `allow_run_tests boolean NOT NULL DEFAULT false` — profesorul alege dacă elevii pot rula teste pe probleme înainte de trimitere.
+**Bug 2: XP shows wrong value (race condition)**
+`completeLesson` is called which updates `progress.completedLessons[lessonId].completed = true` via `setProgress`. Then the finish screen checks `progress.completedLessons[lesson.id]?.completed` — but by now the state has already been updated, so `wasAlreadyCompleted` is always `true`, showing 3 XP even on first completion.
 
-**2. TestBuilder — switch nou (`TestBuilder.tsx`)**
+**Bug 3: Score passed to completeLesson excludes cards**
+`correctCount` never includes cards, so the score saved to the database is lower than actual.
 
-Alături de switch-ul de timp, se adaugă un switch „Permite rularea testelor la probleme" (implicit dezactivat). Valoarea se salvează/citește din `allow_run_tests`.
+### Fix (single file: `LessonPage.tsx`)
 
-**3. TakeTestPage — ProblemRenderer cu Pyodide (`TakeTestPage.tsx`)**
+1. **Count cards as correct**: In the card branch of `handleAnswer`, call `setCorrectCount(c => c + 1)` before advancing.
 
-- Se citește `allow_run_tests` din `tests` (deja preluat prin join pe assignment).
-- Dacă `allow_run_tests = true`: ProblemRenderer folosește `CodeEditor` + `usePyodide` pentru a permite elevului să ruleze testele vizibile (similar cu `ProblemExercise` din lecții), apoi trimite codul.
-- Dacă `allow_run_tests = false` (implicit): rămâne interfața actuală cu `Textarea` simplă.
+2. **Capture `wasAlreadyCompleted` before completing**: Add a state variable `wasAlreadyCompleted` (boolean, initially computed from progress). Set it BEFORE calling `completeLesson` so the finish screen uses the pre-update value. Compute it once when the lesson starts (from `progress.completedLessons`).
 
-**4. RPC `get_test_items_for_student`** — nu necesită modificări (flag-ul e pe test, nu pe item).
+3. **Fix exercise count display**: On the finish screen, exclude card exercises from the denominator (since they're always "correct" and not really answerable), OR include them in both — I'll include cards in `correctCount` and keep denominator as `lesson.exercises.length`.
 
-### Fișiere modificate
+### Technical details
 
-| Fișier | Ce se schimbă |
-|--------|---------------|
-| Migrare SQL | `ALTER TABLE tests ADD COLUMN allow_run_tests boolean NOT NULL DEFAULT false` |
-| `src/components/teacher/TestBuilder.tsx` | Switch nou + salvare/citire `allow_run_tests` |
-| `src/hooks/useTests.ts` | Adaugă `allow_run_tests` la create/update params |
-| `src/pages/TakeTestPage.tsx` | Citire flag din testInfo, ProblemRenderer condiționat cu CodeEditor + usePyodide |
-
-### Detalii tehnice
-
-- `ProblemRenderer` primește prop `allowRunTests: boolean`
-- Când `true`: importă `CodeEditor` și `usePyodide`, afișează editor de cod + buton „Rulează teste" care arată rezultatele vizibile (fără cele hidden), apoi elevul trimite codul ca `answer.code`
-- Când `false`: textarea simplu, ca acum
+| Change | Where |
+|--------|-------|
+| Add `setCorrectCount(c => c + 1)` in the card branch | `handleAnswer`, line ~59-69 |
+| Add `const [wasFirstTime] = useState(() => !progress.completedLessons[lessonId]?.completed)` | State init, after line 54 |
+| Use `wasFirstTime` instead of computing `wasAlreadyCompleted` in the render | Finish screen, line 104 |
+| Ensure `completeLesson` receives correct `correctCount` (including card +1) | Both call sites |
 
