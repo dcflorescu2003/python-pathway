@@ -53,6 +53,7 @@ const TestBuilder = ({ onBack, editTestId, teacherStatus }: TestBuilderProps) =>
   const [timeLimit, setTimeLimit] = useState(45);
   const [variantMode, setVariantMode] = useState<string>("shuffle");
   const [items, setItems] = useState<TestItem[]>([]);
+  const [allowRunTests, setAllowRunTests] = useState(false);
   const [editLoaded, setEditLoaded] = useState(false);
 
   // Browser state
@@ -262,6 +263,7 @@ const TestBuilder = ({ onBack, editTestId, teacherStatus }: TestBuilderProps) =>
       if (test) {
         setTitle(test.title);
         setVariantMode(test.variant_mode);
+        setAllowRunTests(test.allow_run_tests ?? false);
         if (test.time_limit_minutes) {
           setTimeLimitEnabled(true);
           setTimeLimit(test.time_limit_minutes);
@@ -302,6 +304,7 @@ const TestBuilder = ({ onBack, editTestId, teacherStatus }: TestBuilderProps) =>
           time_limit_minutes: timeLimitEnabled ? timeLimit : null,
           variant_mode: variantMode,
           items,
+          allow_run_tests: allowRunTests,
         });
         toast.success("Test actualizat!");
       } else {
@@ -310,6 +313,7 @@ const TestBuilder = ({ onBack, editTestId, teacherStatus }: TestBuilderProps) =>
           time_limit_minutes: timeLimitEnabled ? timeLimit : null,
           variant_mode: variantMode,
           items,
+          allow_run_tests: allowRunTests,
         });
         toast.success("Test creat cu succes!");
       }
@@ -514,6 +518,10 @@ const TestBuilder = ({ onBack, editTestId, teacherStatus }: TestBuilderProps) =>
                 <SelectItem value="manual">2 seturi manuale</SelectItem>
               </SelectContent>
             </Select>
+          </div>
+          <div className="flex items-center gap-2">
+            <Switch id="allow-run-tests" checked={allowRunTests} onCheckedChange={setAllowRunTests} />
+            <Label htmlFor="allow-run-tests" className="text-sm">Permite rularea testelor la probleme</Label>
           </div>
         </CardContent>
       </Card>

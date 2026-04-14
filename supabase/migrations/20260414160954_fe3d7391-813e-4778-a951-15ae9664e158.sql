@@ -1,0 +1,1 @@
+ALTER TABLE public.tests ADD COLUMN allow_run_tests boolean NOT NULL DEFAULT false;
