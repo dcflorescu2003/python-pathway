@@ -113,7 +113,7 @@ const TestBuilder = ({ onBack, editTestId, teacherStatus }: TestBuilderProps) =>
       return;
     }
     // Check AI item limit for problems
-    if (sourceType === "problem" && isTeacherPremium && problemItemCount >= MAX_AI_ITEMS_PER_TEST) {
+    if (sourceType === "problem" && isTeacherPremium && aiItemCount >= MAX_AI_ITEMS_PER_TEST) {
       toast.error(`Limita de ${MAX_AI_ITEMS_PER_TEST} probleme AI/test a fost atinsă.`);
       return;
     }
@@ -488,8 +488,8 @@ const TestBuilder = ({ onBack, editTestId, teacherStatus }: TestBuilderProps) =>
           <div className={`text-xs px-2 py-1 rounded-full border ${testsThisMonth >= MAX_TESTS_PER_MONTH ? 'border-destructive/50 bg-destructive/10 text-destructive' : 'border-border bg-muted text-muted-foreground'}`}>
             Teste luna aceasta: {testsThisMonth}/{MAX_TESTS_PER_MONTH}
           </div>
-          <div className={`text-xs px-2 py-1 rounded-full border ${problemItemCount >= MAX_AI_ITEMS_PER_TEST ? 'border-destructive/50 bg-destructive/10 text-destructive' : 'border-border bg-muted text-muted-foreground'}`}>
-            Probleme AI: {problemItemCount}/{MAX_AI_ITEMS_PER_TEST}
+          <div className={`text-xs px-2 py-1 rounded-full border ${aiItemCount >= MAX_AI_ITEMS_PER_TEST ? 'border-destructive/50 bg-destructive/10 text-destructive' : 'border-border bg-muted text-muted-foreground'}`}>
+            Probleme AI: {aiItemCount}/{MAX_AI_ITEMS_PER_TEST}
           </div>
         </div>
       )}
