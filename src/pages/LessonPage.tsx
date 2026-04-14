@@ -60,10 +60,11 @@ const LessonPage = () => {
       if (exercise?.type === "card") {
         setFeedback(null);
         setLastExplanation(null);
+        setCorrectCount((c) => c + 1);
         if (!lesson) return;
         if (currentIndex + 1 >= lesson.exercises.length) {
           setIsFinished(true);
-          completeLesson(lesson.id, lesson.xpReward, correctCount);
+          completeLesson(lesson.id, lesson.xpReward, correctCount + 1);
         } else {
           setCurrentIndex((i) => i + 1);
         }
