@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Upload, FileText, AlertCircle, Check, Download } from "lucide-react";
 import { toast } from "sonner";
-import { parseLessonCSV, exerciseToDbRow, getLessonTemplateCSV, downloadCSV, type ParsedExercise } from "./csvParser";
+import { parseLessonCSV, exerciseToDbRow, getLessonTemplateCSV, getContentLessonTemplateCSV, downloadCSV, CONTENT_TYPES, EVAL_TYPES, type ParsedExercise } from "./csvParser";
 
 interface CsvLessonImporterProps {
   /** "content" for lessons+exercises tables, "eval" for eval_lessons+eval_exercises */
@@ -41,10 +41,13 @@ export default function CsvLessonImporter({ mode, chapterId, existingLessonCount
     reader.readAsText(file);
   };
 
+  const allowedTypes = mode === "content" ? CONTENT_TYPES : EVAL_TYPES;
   const validExercises = parsed.filter(ex => !ex.error);
+  const importableExercises = validExercises.filter(ex => allowedTypes.includes(ex.type));
+  const skippedExercises = validExercises.filter(ex => !allowedTypes.includes(ex.type));
 
   const handleImport = async () => {
-    if (!meta || validExercises.length === 0) return;
+    if (!meta || importableExercises.length === 0) return;
     setImporting(true);
     try {
       const lessonId = mode === "eval"
@@ -69,7 +72,7 @@ export default function CsvLessonImporter({ mode, chapterId, existingLessonCount
       // Create exercises
       const table = mode === "eval" ? "eval_exercises" : "exercises";
       const prefix = mode === "eval" ? "eval-" : `${lessonId}-`;
-      const rows = validExercises.map((ex, i) => exerciseToDbRow(ex, lessonId, i, prefix));
+      const rows = importableExercises.map((ex, i) => exerciseToDbRow(ex, lessonId, i, prefix));
 
       const cleaned = rows.map(r => {
         if (mode === "content") {
@@ -84,7 +87,7 @@ export default function CsvLessonImporter({ mode, chapterId, existingLessonCount
         if (error) throw error;
       }
 
-      toast.success(`Lecție "${meta.title}" creată cu ${validExercises.length} exerciții!`);
+      toast.success(`Lecție "${meta.title}" creată cu ${importableExercises.length} exerciții!`);
       setOpen(false);
       setMeta(null);
       setParsed([]);
@@ -128,8 +131,14 @@ export default function CsvLessonImporter({ mode, chapterId, existingLessonCount
           {parsed.length > 0 && (
             <div className="space-y-3">
               <div className="text-sm text-foreground font-medium">
-                {validExercises.length} exerciții valide / {parsed.length} total
+                {importableExercises.length} exerciții importabile / {parsed.length} total
               </div>
+
+              {skippedExercises.length > 0 && (
+                <div className="text-xs text-amber-400 bg-amber-400/10 border border-amber-400/30 rounded p-2">
+                  ⚠ {skippedExercises.length} exerciții excluse (tipuri nepermise pentru lecții: {skippedExercises.map(e => typeLabels[e.type] || e.type).join(", ")})
+                </div>
+              )}
 
               <div className="space-y-1 max-h-48 overflow-y-auto">
                 {parsed.map((ex, i) => (
@@ -157,8 +166,8 @@ export default function CsvLessonImporter({ mode, chapterId, existingLessonCount
                 </div>
               )}
 
-              <Button onClick={handleImport} disabled={importing || !meta || validExercises.length === 0} className="w-full">
-                {importing ? "Se importă..." : `Creează lecția cu ${validExercises.length} exerciții`}
+              <Button onClick={handleImport} disabled={importing || !meta || importableExercises.length === 0} className="w-full">
+                {importing ? "Se importă..." : `Creează lecția cu ${importableExercises.length} exerciții`}
               </Button>
             </div>
           )}
@@ -166,7 +175,7 @@ export default function CsvLessonImporter({ mode, chapterId, existingLessonCount
           <div className="text-[10px] text-muted-foreground space-y-2 border-t border-border pt-3">
             <div className="flex items-center justify-between">
               <p className="font-medium">Format: [META] + [EXERCISES]</p>
-              <Button variant="link" size="sm" className="text-[10px] h-auto p-0" onClick={() => downloadCSV(getLessonTemplateCSV(), "template-lectie.csv")}>
+              <Button variant="link" size="sm" className="text-[10px] h-auto p-0" onClick={() => downloadCSV(mode === "content" ? getContentLessonTemplateCSV() : getLessonTemplateCSV(), "template-lectie.csv")}>
                 <Download className="h-3 w-3 mr-1" />Descarcă template
               </Button>
             </div>
