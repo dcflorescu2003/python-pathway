@@ -26,6 +26,8 @@ const TestResults = ({ testId, onBack }: TestResultsProps) => {
 
   // Enriched data: exercise/problem details keyed by source_id
   const [enrichedData, setEnrichedData] = useState<Record<string, any>>({});
+  // All answers for all submissions in the selected assignment (for badge computation)
+  const [allAssignmentAnswers, setAllAssignmentAnswers] = useState<any[]>([]);
 
   // Fetch exercise/problem details when testItems load
   useEffect(() => {
