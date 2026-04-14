@@ -82,6 +82,10 @@ const PredefinedTestEditor = () => {
 
 // --- Test Form ---
 function TestForm({ testId, onBack, mutations }: { testId: string | null; onBack: () => void; mutations: ReturnType<typeof usePredefinedTestMutations> }) {
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
   const { data: existingTest } = usePredefinedTests();
   const test = testId ? existingTest?.find(t => t.id === testId) : null;
   const { data: existingItems = [] } = usePredefinedTestItems(testId);
