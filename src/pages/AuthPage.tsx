@@ -101,6 +101,7 @@ const AccountView = () => {
   const [joinCode, setJoinCode] = useState("");
   const [joinLoading, setJoinLoading] = useState(false);
   const [showVerificationForm, setShowVerificationForm] = useState(false);
+  const [showDeactivateDialog, setShowDeactivateDialog] = useState(false);
   const [portalLoading, setPortalLoading] = useState(false);
   const [showNameDialog, setShowNameDialog] = useState(false);
   const [fullName, setFullName] = useState("");
