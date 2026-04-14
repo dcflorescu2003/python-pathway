@@ -1,28 +1,40 @@
 
 
-## Plan: Separarea ordinii pe variante + mesaj shuffle
+## Analiză: Cod nefolosit în proiect
 
-### Modificări în `src/components/teacher/TestBuilder.tsx`
+### Fișiere complet nefolosite (pot fi șterse)
 
-### 1. Shuffle mode — eliminare preview Nr.1/Nr.2
-Secțiunea "Side-by-side variant preview" (liniile 928-983) se afișează doar dacă `variantMode === "manual"`. Dacă `variantMode === "shuffle"`, afișăm în loc un mesaj informativ: *"Elevii vor primi același test cu întrebările în ordine aleatorie."*
+| Fișier | Motiv |
+|--------|-------|
+| `src/data/problems.ts` | Nu este importat nicăieri. Problemele se încarcă din baza de date via `useProblems` hook. |
+| `src/components/NavLink.tsx` | Nu este importat de niciun alt fișier. |
+| `src/components/admin/MarkdownEditor.tsx` | Folosit doar de `ExerciseEditor` — **de fapt ESTE folosit**, rămâne. |
 
-### 2. Variante manuale — ordine separată per variantă
-Problema curentă: `reorderVariantItems` (linia 477) mută itemul în array-ul principal `items`, ceea ce afectează ambele variante dacă itemul are `variant === "both"`.
+### Hook-uri cu utilizare minimă / parțială
 
-Soluția: Introducem un state separat pentru ordinea per variantă:
-- `variantOrder`: `{ A: string[], B: string[] }` — arrays de chei unice (index sau id) care definesc ordinea de afișare în fiecare variantă
-- La prima construire și la adăugare/ștergere de itemi, se sincronizează automat
-- Drag-and-drop în Nr.1 mută doar în `variantOrder.A`, fără a afecta `variantOrder.B`
-- Itemii cu `variant === "both"` apar în ambele liste dar cu ordine independentă
+| Hook | Observații |
+|------|-----------|
+| `useExerciseStore.ts` | Hook-ul `useExerciseStore()` nu este apelat nicăieri. Doar funcția exportată `getStoredChapters()` este folosită în `ChapterTheoryPage`. Totuși, `getStoredChapters` citește din localStorage capitolele din `courses.ts` — posibil legacy, dar e folosit. Putem curăța hook-ul eliminând funcționalitățile neapelate. |
 
-Concret:
-- Adăugăm `variantOrderA` și `variantOrderB` ca state arrays de indici
-- Recalculăm aceste arrays când `items` se schimbă (useEffect)
-- `variant1Items` și `variant2Items` se derivă din aceste arrays în loc de filtrare directă
-- Drag în preview Nr.1 reordonează doar `variantOrderA`; drag în Nr.2 doar `variantOrderB`
-- La salvare, `sort_order` din `items` rămâne pentru lista principală; ordinea variantelor se salvează separat (sau se encodează în items)
+### Fișiere de date potențial redundante
 
-### Fișier modificat
-- `src/components/teacher/TestBuilder.tsx`
+| Fișier | Observații |
+|--------|-----------|
+| `src/data/problems.ts` | ~2000+ linii, neimportat. Datele sunt în DB. **Poate fi șters.** |
+| `src/data/courses.ts` | Încă folosit ca fallback offline de `useChapters` și `useExerciseStore`. Rămâne. |
+
+### Fișiere de test/exemplu
+
+| Fișier | Observații |
+|--------|-----------|
+| `src/test/example.test.ts` | Test exemplu generic — poate fi eliminat dacă nu aduce valoare. |
+
+### Rezumat acțiuni propuse
+
+1. **Ștergem `src/data/problems.ts`** — ~2000 linii nefolosite, date duplicate din DB
+2. **Ștergem `src/components/NavLink.tsx`** — neimportat nicăieri
+3. **Curățăm `src/hooks/useExerciseStore.ts`** — eliminăm hook-ul `useExerciseStore()` propriu-zis (funcțiile de add/edit/delete chapter/lesson/exercise care nu sunt apelate), păstrăm doar `getStoredChapters` folosit de `ChapterTheoryPage`
+4. **Opțional: ștergem `src/test/example.test.ts`** dacă nu e necesar
+
+**Impact estimat**: ~2100+ linii de cod eliminate, bundle size mai mic, mentenanță mai ușoară.
 
