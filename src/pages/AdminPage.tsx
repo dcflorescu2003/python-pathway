@@ -8,9 +8,11 @@ import CouponManager from "@/components/admin/CouponManager";
 import AdminSettings from "@/components/admin/AdminSettings";
 import ManualEditor from "@/components/admin/ManualEditor";
 import TeacherApproval from "@/components/admin/TeacherApproval";
+import EvalBankEditor from "@/components/admin/EvalBankEditor";
+import PredefinedTestEditor from "@/components/admin/PredefinedTestEditor";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { BookOpen, Ticket, Code2, Settings, FileText, GraduationCap } from "lucide-react";
+import { BookOpen, Ticket, Code2, Settings, FileText, GraduationCap, Database, ClipboardList } from "lucide-react";
 
 const AdminPage = () => {
   const navigate = useNavigate();
@@ -58,6 +60,14 @@ const AdminPage = () => {
               <FileText className="h-4 w-4" />
               Manual
             </TabsTrigger>
+            <TabsTrigger value="eval-bank" className="flex-1 gap-2">
+              <Database className="h-4 w-4" />
+              Bancă
+            </TabsTrigger>
+            <TabsTrigger value="predefined-tests" className="flex-1 gap-2">
+              <ClipboardList className="h-4 w-4" />
+              Teste
+            </TabsTrigger>
             <TabsTrigger value="teachers" className="flex-1 gap-2">
               <GraduationCap className="h-4 w-4" />
               Profesori
@@ -82,6 +92,14 @@ const AdminPage = () => {
 
           <TabsContent value="manual">
             <ManualEditor />
+          </TabsContent>
+
+          <TabsContent value="eval-bank">
+            <EvalBankEditor />
+          </TabsContent>
+
+          <TabsContent value="predefined-tests">
+            <PredefinedTestEditor />
           </TabsContent>
 
           <TabsContent value="teachers">
