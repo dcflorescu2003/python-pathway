@@ -222,28 +222,14 @@ function TestForm({ testId, onBack, mutations }: { testId: string | null; onBack
           <h3 className="text-sm font-bold text-foreground">Itemi ({items.length}) — {totalPoints} puncte</h3>
         </div>
 
-        {items.map((item, idx) => {
-          const ex = item.source_type === "eval_exercise" ? allExercises.find(e => e.id === item.source_id) : null;
-          return (
-            <div key={idx} className="flex items-center gap-2 p-2 rounded border border-border/50 bg-secondary/20 text-xs">
-              {ex && <span className="px-1.5 py-0.5 rounded bg-primary/10 text-primary font-medium">{typeLabels[ex.type] || ex.type}</span>}
-              <span className="flex-1 truncate text-foreground">{getExerciseLabel(item)}</span>
-              <Input type="number" value={item.points} onChange={e => updatePoints(idx, Number(e.target.value))} className="w-16 h-7 text-xs text-center" min={1} />
-              <span className="text-muted-foreground text-[10px]">pct</span>
-              {variantMode === "manual" && (
-                <Select value={item.variant} onValueChange={v => updateVariant(idx, v)}>
-                  <SelectTrigger className="w-16 h-7 text-xs"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="both">A+B</SelectItem>
-                    <SelectItem value="A">A</SelectItem>
-                    <SelectItem value="B">B</SelectItem>
-                  </SelectContent>
-                </Select>
-              )}
-              <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => removeItem(idx)}><Trash2 className="h-3 w-3" /></Button>
-            </div>
-          );
-        })}
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleItemReorder}>
+          <SortableContext items={items.map((_, i) => i)} strategy={verticalListSortingStrategy}>
+            {items.map((item, idx) => {
+              const ex = item.source_type === "eval_exercise" ? allExercises.find(e => e.id === item.source_id) : null;
+              return <SortableTestItem key={idx} id={idx} item={item} idx={idx} ex={ex} typeLabels={typeLabels} getExerciseLabel={getExerciseLabel} updatePoints={updatePoints} updateVariant={updateVariant} removeItem={removeItem} variantMode={variantMode} />;
+            })}
+          </SortableContext>
+        </DndContext>
       </div>
 
       {/* Bank browser */}
