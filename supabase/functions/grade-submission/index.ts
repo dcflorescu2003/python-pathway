@@ -328,14 +328,22 @@ function gradeProblemBasic(
 }
 
 async function batchAIReview(
-  problems: { answerId: string; studentCode: string; solution: string; testCases: any; maxPoints: number; problemTitle: string }[]
+  items: { answerId: string; studentCode: string; solution: string; testCases: any; maxPoints: number; problemTitle: string; aiType: string; studentText?: string; questionText?: string }[]
 ): Promise<{ answerId: string; score: number; feedback: string }[] | null> {
   try {
     const apiKey = Deno.env.get("LOVABLE_API_KEY");
     if (!apiKey) return null;
 
-    // Build a single prompt for all problems
-    const problemDescriptions = problems.map((p, i) => {
+    // Build a single prompt for all items
+    const itemDescriptions = items.map((p, i) => {
+      if (p.aiType === "open_answer") {
+        return `### Întrebarea ${i + 1} (ID: ${p.answerId}, max ${p.maxPoints} puncte): "${p.problemTitle}"
+
+Întrebarea: ${p.questionText}
+
+Răspunsul elevului:
+${p.studentText}`;
+      }
       return `### Problema ${i + 1} (ID: ${p.answerId}, max ${p.maxPoints} puncte): "${p.problemTitle}"
 
 Soluția corectă:
@@ -351,14 +359,14 @@ ${p.studentCode}
 Test cases: ${JSON.stringify(p.testCases)}`;
     }).join("\n\n---\n\n");
 
-    const prompt = `Evaluează codurile a ${problems.length} elevi comparativ cu soluțiile corecte. Pentru fiecare problemă, acordă un scor și oferă feedback scurt în română.
+    const prompt = `Evaluează răspunsurile a ${items.length} elevi. Pentru fiecare item, acordă un scor și oferă feedback scurt în română. Itemii pot fi probleme de cod sau răspunsuri deschise la întrebări.
 
-${problemDescriptions}
+${itemDescriptions}
 
-Răspunde DOAR cu un JSON valid - un array cu ${problems.length} obiecte, câte unul pentru fiecare problemă, în ordine:
+Răspunde DOAR cu un JSON valid - un array cu ${items.length} obiecte, câte unul pentru fiecare item, în ordine:
 [{"id": "<answerId>", "score": <number>, "feedback": "<explicație scurtă în română>"}, ...]
 
-IMPORTANT: Folosește exact ID-urile furnizate. Scorul trebuie să fie între 0 și punctajul maxim al fiecărei probleme.`;
+IMPORTANT: Folosește exact ID-urile furnizate. Scorul trebuie să fie între 0 și punctajul maxim al fiecărui item.`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -369,7 +377,7 @@ IMPORTANT: Folosește exact ID-urile furnizate. Scorul trebuie să fie între 0 
       body: JSON.stringify({
         model: "google/gemini-2.5-flash",
         messages: [
-          { role: "system", content: "Ești un evaluator de cod Python. Răspunde doar cu JSON valid." },
+          { role: "system", content: "Ești un evaluator. Răspunde doar cu JSON valid." },
           { role: "user", content: prompt },
         ],
         temperature: 0.1,
@@ -391,8 +399,8 @@ IMPORTANT: Folosește exact ID-urile furnizate. Scorul trebuie să fie între 0 
     const results = JSON.parse(jsonMatch[0]) as { id: string; score: number; feedback: string }[];
 
     return results.map((r, i) => ({
-      answerId: r.id || problems[i].answerId,
-      score: Math.min(Math.max(0, Math.round(r.score)), problems[i].maxPoints),
+      answerId: r.id || items[i].answerId,
+      score: Math.min(Math.max(0, Math.round(r.score)), items[i].maxPoints),
       feedback: r.feedback || "Evaluat de AI",
     }));
   } catch (e) {
