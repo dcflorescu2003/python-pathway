@@ -25,8 +25,31 @@ export interface ParsedLessonMeta {
 
 const VALID_TYPES = ["quiz", "truefalse", "fill", "order", "card", "open_answer", "problem", "match"];
 
+function splitLogicalLines(text: string): string[] {
+  const lines: string[] = [];
+  let current = "";
+  let inQuotes = false;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (ch === '"') {
+      inQuotes = !inQuotes;
+      current += ch;
+    } else if (ch === '\r') {
+      // skip \r, handle \n next
+      continue;
+    } else if (ch === '\n' && !inQuotes) {
+      lines.push(current);
+      current = "";
+    } else {
+      current += ch;
+    }
+  }
+  if (current) lines.push(current);
+  return lines;
+}
+
 function detectSeparator(text: string): string {
-  const firstLine = text.split("\n")[0];
+  const firstLine = splitLogicalLines(text)[0] || "";
   const commaCount = (firstLine.match(/,/g) || []).length;
   const semiCount = (firstLine.match(/;/g) || []).length;
   return semiCount > commaCount ? ";" : ",";
@@ -58,7 +81,7 @@ function parseCSVLine(line: string, sep: string): string[] {
 
 function parseCSVRows(text: string): { headers: string[]; rows: Record<string, string>[] } {
   const sep = detectSeparator(text);
-  const lines = text.split(/\r?\n/).filter(l => l.trim());
+  const lines = splitLogicalLines(text).filter(l => l.trim());
   if (lines.length < 2) return { headers: [], rows: [] };
   const headers = parseCSVLine(lines[0], sep).map(h => h.toLowerCase().trim());
   const rows = lines.slice(1).map(line => {
@@ -157,7 +180,7 @@ export function parseExercisesCSV(text: string): { exercises: ParsedExercise[]; 
 }
 
 export function parseLessonCSV(text: string): { meta: ParsedLessonMeta | null; exercises: ParsedExercise[]; errors: string[] } {
-  const lines = text.split(/\r?\n/);
+  const lines = splitLogicalLines(text);
   const metaStart = lines.findIndex(l => l.trim().toUpperCase() === "[META]");
   const exStart = lines.findIndex(l => l.trim().toUpperCase() === "[EXERCISES]");
 
