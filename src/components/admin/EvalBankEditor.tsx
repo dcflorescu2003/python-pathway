@@ -318,6 +318,7 @@ function LessonBlock({ lesson, isExpanded, onToggle, isEditing, onStartEdit, onC
                 setEditingExercise={setEditingExercise}
                 mutations={mutations}
                 sensors={sensors}
+                invalidateAll={invalidateAll}
               />
             </div>
           </motion.div>
@@ -328,7 +329,7 @@ function LessonBlock({ lesson, isExpanded, onToggle, isEditing, onStartEdit, onC
 }
 
 // --- Exercises List ---
-function ExercisesList({ lessonId, editingExercise, setEditingExercise, mutations, sensors }: any) {
+function ExercisesList({ lessonId, editingExercise, setEditingExercise, mutations, sensors, invalidateAll }: any) {
   const { data: exercises = [] } = useEvalExercises(lessonId);
 
   const handleExerciseReorder = async (event: DragEndEvent) => {
@@ -340,7 +341,7 @@ function ExercisesList({ lessonId, editingExercise, setEditingExercise, mutation
     const reordered = arrayMove(exercises, oldIndex, newIndex);
     await Promise.all(reordered.map((e: any, i: number) => supabase.from("eval_exercises").update({ sort_order: i } as any).eq("id", e.id)));
     toast.success("Ordine exerciții actualizată!");
-    mutations.updateExercise.mutateAsync({ id: reordered[0].id, sort_order: 0 });
+    invalidateAll();
   };
 
   if (editingExercise?.lessonId === lessonId) {
