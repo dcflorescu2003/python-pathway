@@ -113,6 +113,7 @@ const EvalBankEditor = () => {
                 setEditingExercise={setEditingExercise}
                 mutations={mutations}
                 sensors={sensors}
+                invalidateAll={invalidateAll}
               />
             </SortableItem>
           ))}
