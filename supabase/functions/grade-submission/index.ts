@@ -107,11 +107,11 @@ Deno.serve(async (req) => {
       }
     }
 
-    // First pass: grade exercises and collect problems for batch AI
+    // First pass: grade exercises and collect problems/open_answers for batch AI
     let totalScore = 0;
     let maxScore = 0;
 
-    interface ProblemForAI {
+    interface ItemForAI {
       answerId: string;
       answerIdx: number;
       studentCode: string;
@@ -121,8 +121,11 @@ Deno.serve(async (req) => {
       basicScore: number;
       basicFeedback: string;
       problemTitle: string;
+      aiType: "problem" | "open_answer";
+      studentText?: string;
+      questionText?: string;
     }
-    const problemsForAI: ProblemForAI[] = [];
+    const itemsForAI: ItemForAI[] = [];
 
     for (let i = 0; i < answers.length; i++) {
       const answer = answers[i];
@@ -156,8 +159,8 @@ Deno.serve(async (req) => {
           feedback = result.feedback;
 
           // Collect for batch AI if teacher has Profesor AI and score < max
-          if (teacherHasAI && score < item.points && problemsForAI.length < MAX_AI_ITEMS_PER_TEST) {
-            problemsForAI.push({
+          if (teacherHasAI && score < item.points && itemsForAI.length < MAX_AI_ITEMS_PER_TEST) {
+            itemsForAI.push({
               answerId: answer.id,
               answerIdx: i,
               studentCode: answer.answer_data.code,
@@ -167,11 +170,34 @@ Deno.serve(async (req) => {
               basicScore: score,
               basicFeedback: feedback,
               problemTitle: problem.title || item.source_id,
+              aiType: "problem",
             });
           }
         }
       } else if (item.source_type === "custom" && item.custom_data) {
-        score = gradeExercise(item.custom_data, answer.answer_data, item.points);
+        if (item.custom_data.type === "open_answer") {
+          // Open answer: score 0 automatically, collect for AI
+          score = 0;
+          feedback = "Necesită evaluare manuală sau AI.";
+          if (teacherHasAI && answer.answer_data?.text && itemsForAI.length < MAX_AI_ITEMS_PER_TEST) {
+            itemsForAI.push({
+              answerId: answer.id,
+              answerIdx: i,
+              studentCode: "",
+              solution: "",
+              testCases: null,
+              maxPoints: item.points,
+              basicScore: 0,
+              basicFeedback: feedback,
+              problemTitle: item.custom_data.question || "Răspuns deschis",
+              aiType: "open_answer",
+              studentText: answer.answer_data.text,
+              questionText: item.custom_data.question,
+            });
+          }
+        } else {
+          score = gradeExercise(item.custom_data, answer.answer_data, item.points);
+        }
       }
 
       totalScore += score;
@@ -182,16 +208,16 @@ Deno.serve(async (req) => {
         .eq("id", answer.id);
     }
 
-    // Batch AI review for all collected problems in a single call
-    if (problemsForAI.length > 0) {
-      const aiResults = await batchAIReview(problemsForAI);
+    // Batch AI review for all collected items in a single call
+    if (itemsForAI.length > 0) {
+      const aiResults = await batchAIReview(itemsForAI);
       if (aiResults) {
         for (const result of aiResults) {
-          const problem = problemsForAI.find(p => p.answerId === result.answerId);
-          if (!problem) continue;
+          const item = itemsForAI.find(p => p.answerId === result.answerId);
+          if (!item) continue;
 
-          const finalScore = Math.max(problem.basicScore, result.score);
-          const scoreDelta = finalScore - problem.basicScore;
+          const finalScore = Math.max(item.basicScore, result.score);
+          const scoreDelta = finalScore - item.basicScore;
           totalScore += scoreDelta;
 
           await supabase
@@ -213,7 +239,7 @@ Deno.serve(async (req) => {
       .eq("id", submission_id);
 
     return new Response(
-      JSON.stringify({ total_score: totalScore, max_score: maxScore, ai_reviewed: problemsForAI.length > 0 }),
+      JSON.stringify({ total_score: totalScore, max_score: maxScore, ai_reviewed: itemsForAI.length > 0 }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
