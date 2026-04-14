@@ -63,9 +63,11 @@ Deno.serve(async (req) => {
     if (firstItem?.test_id) {
       const { data: test } = await supabase
         .from("tests")
-        .select("teacher_id")
+        .select("teacher_id, ai_grading_item_ids")
         .eq("id", firstItem.test_id)
         .single();
+
+      const aiGradingItemIds: string[] = (test as any)?.ai_grading_item_ids ?? [];
 
       if (test) {
         const { data: profile } = await supabase
