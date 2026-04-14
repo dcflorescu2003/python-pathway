@@ -53,6 +53,7 @@ const TestBuilder = ({ onBack, editTestId, teacherStatus }: TestBuilderProps) =>
   const [timeLimit, setTimeLimit] = useState(45);
   const [variantMode, setVariantMode] = useState<string>("shuffle");
   const [items, setItems] = useState<TestItem[]>([]);
+  const [allowRunTests, setAllowRunTests] = useState(false);
   const [editLoaded, setEditLoaded] = useState(false);
 
   // Browser state
@@ -262,6 +263,7 @@ const TestBuilder = ({ onBack, editTestId, teacherStatus }: TestBuilderProps) =>
       if (test) {
         setTitle(test.title);
         setVariantMode(test.variant_mode);
+        setAllowRunTests(test.allow_run_tests ?? false);
         if (test.time_limit_minutes) {
           setTimeLimitEnabled(true);
           setTimeLimit(test.time_limit_minutes);
