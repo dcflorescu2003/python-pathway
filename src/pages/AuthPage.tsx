@@ -1,117 +1,42 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { Capacitor } from "@capacitor/core";
 import logo from "@/assets/logo.png";
-import CouponRedemption from "@/components/CouponRedemption";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { useAuth } from "@/hooks/useAuth";
-import { useProgress } from "@/hooks/useProgress";
-import { useChapters } from "@/hooks/useChapters";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from "@/components/ui/alert-dialog";
-import { ArrowLeft, Mail, Lock, User, Eye, EyeOff, LogOut, BookOpen, XCircle, Code, Zap, Flame, Trophy, Shield, Trash2, Settings, GraduationCap, UserPlus, Crown, CreditCard, Clock, Pencil, Check, X, DoorOpen, MessageSquare, Sparkles } from "lucide-react";
-import PremiumDialog from "@/components/PremiumDialog";
-import TeacherPremiumDialog from "@/components/TeacherPremiumDialog";
-import TeacherVerificationForm from "@/components/teacher/TeacherVerificationForm";
-import VerificationChat from "@/components/teacher/VerificationChat";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ArrowLeft, Mail, Lock, User, Eye, EyeOff, LogOut, Shield, Trash2, Settings, GraduationCap, Pencil, Check, X, BookOpen, FileText } from "lucide-react";
 import { useAdminAccess } from "@/hooks/useAdminAccess";
 import { useSubscription } from "@/hooks/useSubscription";
-import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 
-// Pending teacher section with admin notes and messaging
-const PendingTeacherSection = ({ userId }: { userId?: string }) => {
-  const [showChat, setShowChat] = useState(false);
-
-  const { data: request } = useQuery({
-    queryKey: ["my-verification-request", userId],
-    queryFn: async () => {
-      if (!userId) return null;
-      const { data, error } = await supabase
-        .from("teacher_verification_requests")
-        .select("id, admin_notes, status, method, contact_email")
-        .eq("user_id", userId)
-        .eq("status", "pending")
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      if (error) throw error;
-      return data;
-    },
-    enabled: !!userId,
-  });
-
-  return (
-    <Card className="w-full max-w-sm mt-4 border-warning/30">
-      <CardContent className="p-4 space-y-3">
-        <div className="text-center">
-          <Clock className="h-5 w-5 text-warning mx-auto mb-2" />
-          <p className="text-sm font-medium text-foreground">Cerere profesor în așteptare</p>
-          <p className="text-xs text-muted-foreground mt-1">Vei fi notificat când contul tău este aprobat.</p>
-        </div>
-
-        {request?.admin_notes && (
-          <div className="bg-warning/10 border border-warning/30 rounded-lg p-3">
-            <p className="text-xs font-semibold text-foreground mb-1">📋 Observații administrator</p>
-            <p className="text-xs text-muted-foreground">{request.admin_notes}</p>
-          </div>
-        )}
-
-        {request && (
-          <>
-            <Button
-              variant="outline"
-              size="sm"
-              className="w-full gap-2"
-              onClick={() => setShowChat(!showChat)}
-            >
-              <MessageSquare className="h-4 w-4" />
-              {showChat ? "Ascunde conversația" : "Mesaje & documente"}
-            </Button>
-
-            {showChat && (
-              <VerificationChat
-                requestId={request.id}
-                adminNotes={request.admin_notes}
-              />
-            )}
-          </>
-        )}
-      </CardContent>
-    </Card>
-  );
-};
-
+import AccountProfileTab from "@/components/account/AccountProfileTab";
+import StudentTab from "@/components/account/StudentTab";
+import TeacherClassesTab from "@/components/account/TeacherClassesTab";
+import TeacherTestsTab from "@/components/account/TeacherTestsTab";
 
 const AccountView = () => {
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
-  const { progress } = useProgress();
-  const { data: chapters } = useChapters();
   const { isAdmin } = useAdminAccess();
-  const { subscribed, subscriptionEnd, source, openPortal, checkSubscription } = useSubscription();
+  const { checkSubscription } = useSubscription();
   const [teacherStatus, setTeacherStatus] = useState<string | null>(null);
   const [isClassMember, setIsClassMember] = useState(false);
   const [memberClassName, setMemberClassName] = useState<string | null>(null);
-  const [leavingClass, setLeavingClass] = useState(false);
-  const [joinCode, setJoinCode] = useState("");
+  const [displayName, setDisplayName] = useState<string | null>(null);
+  const [nickname, setNickname] = useState<string | null>(null);
   const [joinLoading, setJoinLoading] = useState(false);
-  const [showVerificationForm, setShowVerificationForm] = useState(false);
-  const [showDeactivateDialog, setShowDeactivateDialog] = useState(false);
-  const [portalLoading, setPortalLoading] = useState(false);
   const [showNameDialog, setShowNameDialog] = useState(false);
   const [fullName, setFullName] = useState("");
   const [pendingClassId, setPendingClassId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState(false);
   const [editName, setEditName] = useState("");
-  const [showPremiumDialog, setShowPremiumDialog] = useState(false);
-  const [showTeacherPremiumDialog, setShowTeacherPremiumDialog] = useState(false);
   const [savingName, setSavingName] = useState(false);
-  const [displayName, setDisplayName] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -120,7 +45,7 @@ const AccountView = () => {
       const [{ data: profile }, { data: memberships }] = await Promise.all([
         supabase
           .from("profiles")
-          .select("is_teacher, teacher_status, display_name")
+          .select("is_teacher, teacher_status, display_name, nickname")
           .eq("user_id", user.id)
           .single(),
         supabase
@@ -131,8 +56,6 @@ const AccountView = () => {
       ]);
 
       let resolvedStatus = profile?.teacher_status ?? null;
-      
-      // If status is unverified, check if there's a pending verification request
       if (resolvedStatus === "unverified") {
         const { data: pendingReq } = await supabase
           .from("teacher_verification_requests")
@@ -141,13 +64,12 @@ const AccountView = () => {
           .eq("status", "pending")
           .limit(1)
           .maybeSingle();
-        if (pendingReq) {
-          resolvedStatus = "pending";
-        }
+        if (pendingReq) resolvedStatus = "pending";
       }
-      
+
       setTeacherStatus(resolvedStatus);
       setDisplayName(profile?.display_name ?? null);
+      setNickname((profile as any)?.nickname ?? null);
       const isMember = (memberships?.length ?? 0) > 0;
       setIsClassMember(isMember);
 
@@ -166,67 +88,32 @@ const AccountView = () => {
     void loadAccountFlags();
     void checkSubscription(true);
 
-    const handleWindowFocus = () => {
-      void loadAccountFlags();
-      void checkSubscription(true);
-    };
-
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === "visible") {
-        void loadAccountFlags();
-        void checkSubscription(true);
-      }
-    };
-
-    window.addEventListener("focus", handleWindowFocus);
-    document.addEventListener("visibilitychange", handleVisibilityChange);
-
-    return () => {
-      window.removeEventListener("focus", handleWindowFocus);
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
-    };
+    const handleFocus = () => { void loadAccountFlags(); void checkSubscription(true); };
+    const handleVisibility = () => { if (document.visibilityState === "visible") handleFocus(); };
+    window.addEventListener("focus", handleFocus);
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => { window.removeEventListener("focus", handleFocus); document.removeEventListener("visibilitychange", handleVisibility); };
   }, [user, checkSubscription]);
 
-  const reloadTeacherStatus = async () => {
-    if (!user) return;
-    const { data } = await supabase
-      .from("profiles")
-      .select("teacher_status")
-      .eq("user_id", user.id)
-      .single();
-    const newStatus = data?.teacher_status ?? null;
-    // If still unverified after submission, force to pending (RPC may have updated it)
-    setTeacherStatus(newStatus === "unverified" ? "pending" : newStatus);
-    setShowVerificationForm(false);
-  };
-
-  const handleJoinClass = async () => {
-    if (!user || !joinCode.trim()) return;
+  const handleJoinClass = async (code: string) => {
+    if (!user || !code.trim()) return;
     setJoinLoading(true);
     try {
       const { data: cls } = await supabase
         .from("teacher_classes")
         .select("id")
-        .eq("join_code", joinCode.trim().toUpperCase())
+        .eq("join_code", code.trim().toUpperCase())
         .single();
-      if (!cls) {
-        toast.error("Cod invalid.");
-        return;
-      }
+      if (!cls) { toast.error("Cod invalid."); return; }
 
-      // Check if already a member
       const { data: existing } = await supabase
         .from("class_members")
         .select("id")
         .eq("class_id", cls.id)
         .eq("student_id", user.id)
         .maybeSingle();
-      if (existing) {
-        toast.error("Ești deja înscris în această clasă.");
-        return;
-      }
+      if (existing) { toast.error("Ești deja înscris în această clasă."); return; }
 
-      // Check if user has a proper display_name
       const { data: profile } = await supabase
         .from("profiles")
         .select("display_name")
@@ -242,8 +129,6 @@ const AccountView = () => {
         setShowNameDialog(true);
         return;
       }
-
-      // Name already set — join directly
       await joinClassDirect(cls.id);
     } finally {
       setJoinLoading(false);
@@ -260,8 +145,10 @@ const AccountView = () => {
       else toast.error("Eroare la înscriere.");
     } else {
       toast.success("Te-ai alăturat clasei! 🎉");
-      setJoinCode("");
       setIsClassMember(true);
+      // Reload class name
+      const { data: cls } = await supabase.from("teacher_classes").select("name").eq("id", classId).single();
+      setMemberClassName(cls?.name ?? null);
     }
   };
 
@@ -269,53 +156,16 @@ const AccountView = () => {
     if (!user || !pendingClassId || fullName.trim().length < 3) return;
     setJoinLoading(true);
     try {
-      // Update display_name
-      await supabase
-        .from("profiles")
-        .update({ display_name: fullName.trim() })
-        .eq("user_id", user.id);
-
-      // Join class
+      await supabase.from("profiles").update({ display_name: fullName.trim() }).eq("user_id", user.id);
       await joinClassDirect(pendingClassId);
       setShowNameDialog(false);
       setPendingClassId(null);
       setFullName("");
+      setDisplayName(fullName.trim());
     } finally {
       setJoinLoading(false);
     }
   };
-
-  const handleLeaveClass = async () => {
-    if (!user) return;
-    setLeavingClass(true);
-    try {
-      const { error } = await supabase
-        .from("class_members")
-        .delete()
-        .eq("student_id", user.id);
-      if (error) {
-        toast.error("Eroare la părăsirea clasei.");
-      } else {
-        toast.success("Ai părăsit clasa.");
-        setIsClassMember(false);
-        setMemberClassName(null);
-      }
-    } finally {
-      setLeavingClass(false);
-    }
-  };
-
-  const totalLessons = (chapters || []).reduce((sum, ch) => sum + ch.lessons.length, 0);
-  const completedCount = Object.values(progress.completedLessons).filter(l => l.completed).length;
-  
-  // Calculate total mistakes (lessons where score < 100)
-  const totalMistakes = Object.values(progress.completedLessons)
-    .filter(l => l.completed)
-    .reduce((sum, l) => sum + Math.max(0, 100 - l.score), 0);
-
-  // Problems solved (from problems page — count completed problem lessons starting with "problem-")
-  const problemsSolved = Object.keys(progress.completedLessons)
-    .filter(id => id.startsWith("problem-") && progress.completedLessons[id]?.completed).length;
 
   const handleSignOut = async () => {
     await signOut();
@@ -323,13 +173,8 @@ const AccountView = () => {
     navigate("/auth");
   };
 
-  const stats = [
-    { icon: BookOpen, label: "Lecții completate", value: `${completedCount}/${totalLessons}`, color: "text-primary" },
-    { icon: XCircle, label: "Puncte pierdute", value: totalMistakes, color: "text-destructive" },
-    { icon: Code, label: "Probleme rezolvate", value: problemsSolved, color: "text-accent-foreground" },
-    { icon: Zap, label: "XP total", value: progress.xp, color: "text-xp" },
-    { icon: Flame, label: "Serie zilnică", value: `${progress.streak} zile`, color: "text-warning" },
-  ];
+  const isTeacher = !!teacherStatus;
+  const showStudentTab = isClassMember && !isTeacher;
 
   return (
     <motion.div
@@ -348,372 +193,151 @@ const AccountView = () => {
         </div>
       </header>
 
-      <div className="flex-1 flex flex-col items-center px-6 pt-8 pb-12">
-        <img src={logo} alt="PyRo" className="h-20 w-20 rounded-2xl mb-4" />
-        {editingName ? (
-          <div className="flex items-center gap-2 mb-1">
-            <Input
-              value={editName}
-              onChange={(e) => setEditName(e.target.value)}
-              className="h-8 w-48 text-center text-sm"
-              placeholder="Numele tău complet"
-              autoFocus
-            />
-            <button
-              disabled={savingName || editName.trim().length < 3}
-              onClick={async () => {
-                setSavingName(true);
-                const { error } = await supabase
-                  .from("profiles")
-                  .update({ display_name: editName.trim() })
-                  .eq("user_id", user!.id);
-                setSavingName(false);
-                if (error) {
-                  toast.error("Nu am putut salva numele.");
-                } else {
-                  setDisplayName(editName.trim());
-                  setEditingName(false);
-                  toast.success("Numele a fost actualizat!");
-                }
-              }}
-              className="text-primary hover:text-primary/80 disabled:opacity-40"
-            >
-              <Check className="h-4 w-4" />
-            </button>
-            <button onClick={() => setEditingName(false)} className="text-muted-foreground hover:text-foreground">
-              <X className="h-4 w-4" />
-            </button>
-          </div>
-        ) : (
-          <div className="flex items-center gap-2 mb-1">
-            <h1 className="text-xl font-bold text-foreground">
-              {displayName || user?.user_metadata?.full_name || user?.email?.split("@")[0] || "Pythonist"}
-            </h1>
-            <button onClick={() => { setEditName(displayName || ""); setEditingName(true); }} className="text-muted-foreground hover:text-foreground">
-              <Pencil className="h-3.5 w-3.5" />
-            </button>
-          </div>
-        )}
-        <p className="text-sm text-muted-foreground mb-1">{user?.email}</p>
-        {(progress.isPremium || subscribed) && (
-          <div className="flex flex-col items-center gap-2">
-            <span className="text-xs font-medium text-yellow-500 flex items-center gap-1">
-              <Trophy className="h-3.5 w-3.5" /> Premium activ
-              {subscriptionEnd && (
-                <span className="text-muted-foreground ml-1">
-                  — până la {new Date(subscriptionEnd).toLocaleDateString("ro-RO")}
-                </span>
-              )}
-            </span>
-            {source === "coupon" && (
-              <span className="text-[10px] text-muted-foreground">Activat prin cupon</span>
-            )}
-            {source === "stripe" && (
-              <Button
-                variant="outline"
-                size="sm"
-                className="mt-1 gap-2"
-                disabled={portalLoading}
-                onClick={async () => {
-                  setPortalLoading(true);
-                  try {
-                    await openPortal();
-                  } catch (err) {
-                    console.error("Portal error:", err);
-                    toast.error("Nu am putut deschide portalul de gestionare.");
-                  } finally {
-                    setPortalLoading(false);
-                  }
-                }}
-              >
-                <CreditCard className="h-4 w-4" />
-                {portalLoading ? "Se deschide..." : "Gestionează abonamentul"}
-              </Button>
-            )}
-          </div>
-        )}
-
-        {!(progress.isPremium || subscribed) && (
-          teacherStatus === "verified" ? (
-            <Button
-              className="w-full max-w-sm mt-6 gap-2 bg-gradient-to-r from-violet-500 to-purple-600 hover:from-violet-600 hover:to-purple-700 text-white font-bold shadow-lg"
-              onClick={() => setShowTeacherPremiumDialog(true)}
-            >
-              <Crown className="h-5 w-5" />
-              Upgrade la Profesor AI
-              <Sparkles className="h-4 w-4" />
-            </Button>
-          ) : (
-            <Button
-              className="w-full max-w-sm mt-6 gap-2 bg-gradient-to-r from-yellow-500 to-amber-500 hover:from-yellow-600 hover:to-amber-600 text-white font-bold shadow-lg"
-              onClick={() => setShowPremiumDialog(true)}
-            >
-              <Crown className="h-5 w-5" />
-              Pyro Premium
-              <Sparkles className="h-4 w-4" />
-            </Button>
-          )
-        )}
-
-        {!teacherStatus && (
-          <Card className="w-full max-w-sm mt-4 border-border">
-            <CardContent className="p-4 space-y-3">
-              {stats.map((stat) => {
-                const Icon = stat.icon;
-                return (
-                  <div key={stat.label} className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <Icon className={`h-5 w-5 ${stat.color}`} />
-                      <span className="text-sm text-foreground">{stat.label}</span>
-                    </div>
-                    <span className="text-sm font-bold text-foreground">{stat.value}</span>
-                  </div>
-                );
-              })}
-            </CardContent>
-          </Card>
-        )}
-
-        <CouponRedemption />
-
-        {/* Class membership info */}
-        {isClassMember && (
-          <Card className="w-full max-w-sm mt-4 border-border">
-            <CardContent className="p-4">
-              <p className="text-sm font-medium text-foreground mb-2 flex items-center gap-2">
-                <BookOpen className="h-4 w-4 text-primary" /> Clasa ta
-              </p>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">{memberClassName ?? "Clasă"}</span>
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  className="gap-1"
-                  disabled={leavingClass}
-                  onClick={handleLeaveClass}
-                >
-                  <DoorOpen className="h-4 w-4" />
-                  {leavingClass ? "..." : "Părăsește"}
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Teacher section */}
-        {(teacherStatus === "verified" || teacherStatus === "pending" || teacherStatus === "unverified") ? (
-          <div className="w-full max-w-sm mt-4 space-y-2">
-            {teacherStatus === "verified" && (
-              <p className="text-center text-sm font-medium text-green-600">✓ Verificat</p>
-            )}
-            <Button
-              variant="outline"
-              className="w-full gap-2"
-              onClick={() => navigate("/teacher")}
-            >
-              <GraduationCap className="h-4 w-4" />
-              Panou Profesor
-            </Button>
-
-            <Button
-              variant="ghost"
-              size="sm"
-              className="w-full gap-2 text-muted-foreground hover:text-destructive"
-              onClick={() => setShowDeactivateDialog(true)}
-            >
-              <XCircle className="h-4 w-4" />
-              Dezactivează modul profesor
-            </Button>
-
-            <AlertDialog open={showDeactivateDialog} onOpenChange={setShowDeactivateDialog}>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Dezactivează modul profesor</AlertDialogTitle>
-                  <AlertDialogDescription asChild>
-                    <div className="space-y-2 text-sm text-muted-foreground">
-                      <p>Ești pe cale să treci pe contul de elev. Această acțiune este <strong className="text-destructive">ireversibilă</strong> și va șterge permanent:</p>
-                      <ul className="list-disc pl-5 space-y-1">
-                        <li>Toate clasele create și elevii înscriși</li>
-                        <li>Toate testele create și rezultatele elevilor</li>
-                        <li>Toate provocările trimise</li>
-                        <li>Progresul de verificare — va trebui reluat de la zero</li>
-                      </ul>
-                    </div>
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Renunță</AlertDialogCancel>
-                  <AlertDialogAction
-                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                    onClick={async () => {
-                      try {
-                        const { error } = await supabase.rpc("deactivate_teacher_mode");
-                        if (error) throw error;
-                        const { data: profile } = await supabase
-                          .from("profiles")
-                          .select("is_teacher, teacher_status")
-                          .eq("user_id", user!.id)
-                          .single();
-                        if (profile?.is_teacher === false) {
-                          setTeacherStatus(null);
-                          toast.success("Modul profesor a fost dezactivat.");
-                        } else {
-                          toast.error("Dezactivarea nu a fost confirmată. Încearcă din nou.");
-                        }
-                      } catch (err: any) {
-                        toast.error(err.message || "Eroare la dezactivare.");
-                      }
-                    }}
-                  >
-                    Sunt de acord
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-
-            {/* Unverified: show verification button or form */}
-            {teacherStatus === "unverified" && (
-              showVerificationForm ? (
-                <Card>
-                  <CardContent className="p-4">
-                    <TeacherVerificationForm
-                      onSuccess={reloadTeacherStatus}
-                      onCancel={() => setShowVerificationForm(false)}
-                    />
-                  </CardContent>
-                </Card>
-              ) : (
-                <Button
-                  variant="secondary"
-                  className="w-full gap-2"
-                  onClick={() => setShowVerificationForm(true)}
-                >
-                  <Shield className="h-4 w-4" />
-                  Începe verificarea contului de profesor
-                </Button>
-              )
-            )}
-
-            {/* Pending: show status + chat */}
-            {teacherStatus === "pending" && (
-              <PendingTeacherSection userId={user?.id} />
-            )}
-          </div>
-        ) : !isClassMember && (
-          <Button
-            variant="outline"
-            className="w-full max-w-sm mt-4 gap-2"
-            onClick={async () => {
-              try {
-                await supabase.rpc("request_teacher_status");
-                setTeacherStatus("unverified");
-                toast.success("Ești acum profesor! Accesează panoul pentru a crea clase și teste.");
-              } catch (err: any) {
-                toast.error(err.message || "Eroare");
-              }
-            }}
-          >
-            <GraduationCap className="h-4 w-4" />
-            Devino Profesor
-          </Button>
-        )}
-
-        {/* Join class - hidden if user is a teacher or already in a class */}
-        {!teacherStatus && !isClassMember && (
-          <Card className="w-full max-w-sm mt-4 border-border">
-            <CardContent className="p-4">
-              <p className="text-sm font-medium text-foreground mb-2 flex items-center gap-2">
-                <UserPlus className="h-4 w-4 text-primary" /> Alătură-te unei clase
-              </p>
-              <div className="flex gap-2">
-                <Input
-                  placeholder="Cod clasă (ex: ABC123)"
-                  value={joinCode}
-                  onChange={(e) => setJoinCode(e.target.value)}
-                  className="flex-1"
-                />
-                <Button onClick={handleJoinClass} disabled={!joinCode.trim() || joinLoading} size="sm">
-                  {joinLoading ? "..." : "Intră"}
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Name dialog for class join */}
-        <Dialog open={showNameDialog} onOpenChange={setShowNameDialog}>
-          <DialogContent className="max-w-sm mx-auto">
-            <DialogHeader>
-              <DialogTitle className="text-center flex items-center justify-center gap-2">
-                <User className="h-5 w-5 text-primary" />
-                Numele tău complet
-              </DialogTitle>
-              <DialogDescription className="text-center text-foreground/70">
-                Profesorul trebuie să te identifice. Scrie-ți numele real complet (prenume și nume de familie).
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4 py-2">
+      <div className="flex-1 flex flex-col px-4 pt-6 pb-12 max-w-lg mx-auto w-full">
+        {/* Header: Avatar, name, email */}
+        <div className="flex flex-col items-center mb-6">
+          <img src={logo} alt="PyRo" className="h-16 w-16 rounded-2xl mb-3" />
+          {editingName ? (
+            <div className="flex items-center gap-2 mb-1">
               <Input
-                placeholder="Ex: Andrei Popescu"
-                value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
-                className="text-center"
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+                className="h-8 w-48 text-center text-sm"
+                placeholder="Numele tău complet"
                 autoFocus
               />
-              {fullName.trim().length > 0 && fullName.trim().length < 3 && (
-                <p className="text-xs text-destructive text-center">Numele trebuie să aibă minim 3 caractere.</p>
-              )}
-              <Button
-                className="w-full"
-                onClick={handleNameConfirm}
-                disabled={fullName.trim().length < 3 || joinLoading}
+              <button
+                disabled={savingName || editName.trim().length < 3}
+                onClick={async () => {
+                  setSavingName(true);
+                  const { error } = await supabase.from("profiles").update({ display_name: editName.trim() }).eq("user_id", user!.id);
+                  setSavingName(false);
+                  if (error) { toast.error("Nu am putut salva numele."); }
+                  else { setDisplayName(editName.trim()); setEditingName(false); toast.success("Numele a fost actualizat!"); }
+                }}
+                className="text-primary hover:text-primary/80 disabled:opacity-40"
               >
-                {joinLoading ? "Se înscrie..." : "Confirmă și intră în clasă"}
-              </Button>
+                <Check className="h-4 w-4" />
+              </button>
+              <button onClick={() => setEditingName(false)} className="text-muted-foreground hover:text-foreground">
+                <X className="h-4 w-4" />
+              </button>
             </div>
-          </DialogContent>
-        </Dialog>
+          ) : (
+            <div className="flex items-center gap-2 mb-1">
+              <h2 className="text-lg font-bold text-foreground">
+                {nickname || displayName || user?.user_metadata?.full_name || user?.email?.split("@")[0] || "Pythonist"}
+              </h2>
+              <button onClick={() => { setEditName(displayName || ""); setEditingName(true); }} className="text-muted-foreground hover:text-foreground">
+                <Pencil className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          )}
+          <p className="text-sm text-muted-foreground">{user?.email}</p>
+        </div>
 
-        {isAdmin && (
-          <Button
-            variant="outline"
-            className="w-full max-w-sm mt-4 gap-2"
-            onClick={() => navigate("/admin")}
-          >
-            <Settings className="h-4 w-4" />
-            Panou Admin
+        {/* Tabs */}
+        <Tabs defaultValue="profile" className="w-full flex-1">
+          <TabsList className="w-full">
+            <TabsTrigger value="profile" className="flex-1">Profil</TabsTrigger>
+            {showStudentTab && (
+              <TabsTrigger value="student" className="flex-1 gap-1">
+                <BookOpen className="h-3.5 w-3.5" /> Elev
+              </TabsTrigger>
+            )}
+            {isTeacher && (
+              <>
+                <TabsTrigger value="classes" className="flex-1 gap-1">
+                  <GraduationCap className="h-3.5 w-3.5" /> Clase
+                </TabsTrigger>
+                <TabsTrigger value="tests" className="flex-1 gap-1">
+                  <FileText className="h-3.5 w-3.5" /> Teste
+                </TabsTrigger>
+              </>
+            )}
+          </TabsList>
+
+          <TabsContent value="profile" className="mt-4">
+            <AccountProfileTab
+              teacherStatus={teacherStatus}
+              isClassMember={isClassMember}
+              displayName={displayName}
+              nickname={nickname}
+              onTeacherStatusChange={setTeacherStatus}
+              onDisplayNameChange={setDisplayName}
+              onNicknameChange={setNickname}
+              onJoinClass={handleJoinClass}
+              joinLoading={joinLoading}
+            />
+          </TabsContent>
+
+          {showStudentTab && (
+            <TabsContent value="student" className="mt-4">
+              <StudentTab
+                memberClassName={memberClassName}
+                onLeaveClass={() => { setIsClassMember(false); setMemberClassName(null); }}
+              />
+            </TabsContent>
+          )}
+
+          {isTeacher && (
+            <>
+              <TabsContent value="classes" className="mt-4">
+                <TeacherClassesTab teacherStatus={teacherStatus} />
+              </TabsContent>
+              <TabsContent value="tests" className="mt-4">
+                <TeacherTestsTab teacherStatus={teacherStatus} />
+              </TabsContent>
+            </>
+          )}
+        </Tabs>
+
+        {/* Footer actions */}
+        <div className="mt-8 space-y-2">
+          {isAdmin && (
+            <Button variant="outline" className="w-full gap-2" onClick={() => navigate("/admin")}>
+              <Settings className="h-4 w-4" /> Panou Admin
+            </Button>
+          )}
+          <Button variant="outline" className="w-full gap-2" onClick={() => navigate("/privacy-policy")}>
+            <Shield className="h-4 w-4" /> Politica de confidențialitate
           </Button>
-        )}
-
-        <Button
-          variant="outline"
-          className="w-full max-w-sm mt-4 gap-2"
-          onClick={() => navigate("/privacy-policy")}
-        >
-          <Shield className="h-4 w-4" />
-          Politica de confidențialitate
-        </Button>
-
-        <Button
-          variant="destructive"
-          className="w-full max-w-sm mt-2 gap-2"
-          onClick={handleSignOut}
-        >
-          <LogOut className="h-4 w-4" />
-          Deconectează-te
-        </Button>
-
-        <button
-          onClick={() => navigate("/delete-account")}
-          className="mt-4 text-xs text-muted-foreground hover:text-destructive transition-colors flex items-center gap-1"
-        >
-          <Trash2 className="h-3 w-3" />
-          Șterge contul
-        </button>
+          <Button variant="destructive" className="w-full gap-2" onClick={handleSignOut}>
+            <LogOut className="h-4 w-4" /> Deconectează-te
+          </Button>
+          <div className="text-center">
+            <button
+              onClick={() => navigate("/delete-account")}
+              className="text-xs text-muted-foreground hover:text-destructive transition-colors inline-flex items-center gap-1"
+            >
+              <Trash2 className="h-3 w-3" /> Șterge contul
+            </button>
+          </div>
+        </div>
       </div>
 
-      <PremiumDialog open={showPremiumDialog} onOpenChange={setShowPremiumDialog} />
-      <TeacherPremiumDialog open={showTeacherPremiumDialog} onOpenChange={setShowTeacherPremiumDialog} />
+      {/* Name dialog for class join */}
+      <Dialog open={showNameDialog} onOpenChange={setShowNameDialog}>
+        <DialogContent className="max-w-sm mx-auto">
+          <DialogHeader>
+            <DialogTitle className="text-center flex items-center justify-center gap-2">
+              <User className="h-5 w-5 text-primary" /> Numele tău complet
+            </DialogTitle>
+            <DialogDescription className="text-center text-foreground/70">
+              Profesorul trebuie să te identifice. Scrie-ți numele real complet (prenume și nume de familie).
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <Input placeholder="Ex: Andrei Popescu" value={fullName} onChange={(e) => setFullName(e.target.value)} className="text-center" autoFocus />
+            {fullName.trim().length > 0 && fullName.trim().length < 3 && (
+              <p className="text-xs text-destructive text-center">Numele trebuie să aibă minim 3 caractere.</p>
+            )}
+            <Button className="w-full" onClick={handleNameConfirm} disabled={fullName.trim().length < 3 || joinLoading}>
+              {joinLoading ? "Se înscrie..." : "Confirmă și intră în clasă"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </motion.div>
   );
 };
@@ -731,26 +355,20 @@ const AuthPage = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  // Track if user was already logged in when page first rendered
   const wasLoggedInOnMount = useState(() => !!user)[0];
 
-  // If user just authenticated (wasn't logged in on mount but now is), redirect to home
   useEffect(() => {
     if (user && !wasLoggedInOnMount) {
       navigate("/", { replace: true });
     }
   }, [user, wasLoggedInOnMount, navigate]);
 
-  // If logged in and was already logged in (intentional visit from bottom nav), show account
   if (user && wasLoggedInOnMount) return <AccountView />;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email.trim() || !password.trim()) return;
-    if (!isLogin && !displayName.trim()) {
-      toast.error("Introdu un nume de afișare.");
-      return;
-    }
+    if (!isLogin && !displayName.trim()) { toast.error("Introdu un nume de afișare."); return; }
 
     setLoading(true);
     try {
@@ -760,17 +378,13 @@ const AuthPage = () => {
           toast.error(error.message === "Invalid login credentials" ? "Email sau parolă greșită." : error.message);
         } else {
           toast.success("Bine ai revenit! 👋");
-          // Small delay to let onAuthStateChange propagate before navigating
           await new Promise(r => setTimeout(r, 300));
           navigate("/", { replace: true });
         }
       } else {
         const { error } = await signUp(email, password, displayName);
-        if (error) {
-          toast.error(error.message);
-        } else {
-          toast.success("Cont creat! Verifică-ți emailul pentru confirmare. 📬");
-        }
+        if (error) { toast.error(error.message); }
+        else { toast.success("Cont creat! Verifică-ți emailul pentru confirmare. 📬"); }
       }
     } finally {
       setLoading(false);
@@ -866,11 +480,7 @@ const AuthPage = () => {
                 {loading ? "Se procesează..." : isLogin ? "Conectează-te" : "Creează cont"}
               </Button>
               {isLogin && (
-                <button
-                  type="button"
-                  onClick={() => setShowForgot(true)}
-                  className="text-xs text-muted-foreground hover:text-primary hover:underline w-full text-right"
-                >
+                <button type="button" onClick={() => setShowForgot(true)} className="text-xs text-muted-foreground hover:text-primary hover:underline w-full text-right">
                   Ai uitat parola?
                 </button>
               )}
@@ -885,7 +495,7 @@ const AuthPage = () => {
           </CardContent>
         </Card>
       </div>
-      {/* Forgot password modal */}
+
       {showForgot && (
         <motion.div
           initial={{ opacity: 0 }}
@@ -903,9 +513,7 @@ const AuthPage = () => {
                 <div className="text-center">
                   <span className="text-3xl block mb-2">📧</span>
                   <h2 className="text-lg font-bold text-foreground">Recuperare parolă</h2>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Introdu emailul și vei primi un link de resetare.
-                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">Introdu emailul și vei primi un link de resetare.</p>
                 </div>
                 <form
                   onSubmit={async (e) => {
@@ -916,34 +524,20 @@ const AuthPage = () => {
                       redirectTo: `${window.location.origin}/reset-password`,
                     });
                     setForgotLoading(false);
-                    if (error) {
-                      toast.error(error.message);
-                    } else {
-                      toast.success("Email trimis! Verifică inbox-ul. 📬");
-                      setShowForgot(false);
-                    }
+                    if (error) { toast.error(error.message); }
+                    else { toast.success("Email trimis! Verifică inbox-ul. 📬"); setShowForgot(false); }
                   }}
                   className="space-y-3"
                 >
                   <div className="relative">
                     <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      type="email"
-                      placeholder="Email"
-                      value={forgotEmail}
-                      onChange={(e) => setForgotEmail(e.target.value)}
-                      className="pl-10"
-                      autoFocus
-                    />
+                    <Input type="email" placeholder="Email" value={forgotEmail} onChange={(e) => setForgotEmail(e.target.value)} className="pl-10" autoFocus />
                   </div>
                   <Button type="submit" className="w-full" disabled={forgotLoading}>
                     {forgotLoading ? "Se trimite..." : "Trimite linkul"}
                   </Button>
                 </form>
-                <button
-                  onClick={() => setShowForgot(false)}
-                  className="text-xs text-muted-foreground hover:underline w-full text-center"
-                >
+                <button onClick={() => setShowForgot(false)} className="text-xs text-muted-foreground hover:underline w-full text-center">
                   Înapoi
                 </button>
               </CardContent>
