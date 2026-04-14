@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useManualLessons, type ManualLesson } from "@/hooks/useManualLessons";
 import { useQueryClient } from "@tanstack/react-query";
 import ExerciseEditor from "./ExerciseEditor";
+import CsvImporter from "./CsvImporter";
 import { Exercise } from "@/hooks/useChapters";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -259,7 +260,10 @@ const ManualEditor = () => {
                           {editingExercise?.lessonId === lesson.id ? (
                             <ExerciseEditor exercise={editingExercise.exercise} onSave={handleSaveExercise} onCancel={() => setEditingExercise(null)} lessonId={lesson.id} nextIndex={lesson.exercises.length + 1} />
                           ) : (
-                            <Button variant="outline" size="sm" className="w-full" onClick={() => setEditingExercise({ lessonId: lesson.id })}><Plus className="h-4 w-4 mr-1" /> Adaugă exercițiu</Button>
+                            <div className="flex items-center gap-2">
+                              <Button variant="outline" size="sm" className="flex-1" onClick={() => setEditingExercise({ lessonId: lesson.id })}><Plus className="h-4 w-4 mr-1" /> Adaugă exercițiu</Button>
+                              <CsvImporter targetTable="manual_exercises" lessonId={lesson.id} existingCount={lesson.exercises.length} existingExercises={lesson.exercises} onSuccess={invalidate} />
+                            </div>
                           )}
                         </div>
                       </motion.div>
