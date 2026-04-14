@@ -7,7 +7,10 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { ArrowLeft, Plus, Trash2, Save, Edit2, ChevronDown, ChevronRight, BookOpen, GripVertical } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { ArrowLeft, Plus, Trash2, Save, Edit2, ChevronDown, ChevronRight, BookOpen, GripVertical, Eye, ChevronLeft, Clock } from "lucide-react";
 import {
   DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors,
   type DragEndEvent,
@@ -36,6 +39,7 @@ const PredefinedTestEditor = () => {
   const mutations = usePredefinedTestMutations();
   const [editingTest, setEditingTest] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
+  const [previewTestId, setPreviewTestId] = useState<string | null>(null);
 
   if (isLoading) return <p className="text-sm text-muted-foreground p-4">Se încarcă...</p>;
 
@@ -62,6 +66,7 @@ const PredefinedTestEditor = () => {
               <span className="text-[10px] px-1.5 py-0.5 rounded bg-secondary text-secondary-foreground">{test.variant_mode}</span>
             </div>
           </div>
+          <Button variant="ghost" size="icon" onClick={() => setPreviewTestId(test.id)} title="Previzualizare"><Eye className="h-4 w-4" /></Button>
           <Button variant="ghost" size="icon" onClick={() => setEditingTest(test.id)}><Edit2 className="h-4 w-4" /></Button>
           <AlertDialog>
             <AlertDialogTrigger asChild><Button variant="ghost" size="icon" className="text-destructive"><Trash2 className="h-4 w-4" /></Button></AlertDialogTrigger>
@@ -76,9 +81,243 @@ const PredefinedTestEditor = () => {
       <Button variant="outline" className="w-full" onClick={() => setCreating(true)}>
         <Plus className="h-4 w-4 mr-2" />Test predefinit nou
       </Button>
+
+      {previewTestId && (
+        <TestPreviewDialog
+          testId={previewTestId}
+          tests={tests}
+          onClose={() => setPreviewTestId(null)}
+        />
+      )}
     </div>
   );
 };
+
+// --- Test Preview Dialog (student view) ---
+function TestPreviewDialog({ testId, tests, onClose }: { testId: string; tests: PredefinedTest[]; onClose: () => void }) {
+  const test = tests.find(t => t.id === testId);
+  const { data: testItems = [] } = usePredefinedTestItems(testId);
+  const { data: allExercises = [] } = useAllEvalExercises();
+  const [currentIdx, setCurrentIdx] = useState(0);
+  const [answers, setAnswers] = useState<Record<number, any>>({});
+
+  if (!test) return null;
+
+  const items = testItems.sort((a, b) => a.sort_order - b.sort_order);
+  const currentItem = items[currentIdx];
+  const totalPoints = items.reduce((s, i) => s + i.points, 0);
+
+  const getExerciseData = (item: typeof testItems[0]) => {
+    if (item.source_type === "eval_exercise" && item.source_id) {
+      return allExercises.find(e => e.id === item.source_id) || null;
+    }
+    if (item.custom_data) return item.custom_data;
+    return null;
+  };
+
+  const formatTime = (mins: number) => `${mins}:00`;
+
+  return (
+    <Dialog open onOpenChange={() => onClose()}>
+      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto p-0">
+        {/* Student-style header */}
+        <div className="sticky top-0 z-10 border-b border-border bg-background/95 backdrop-blur-md">
+          <div className="flex items-center gap-3 px-4 py-3">
+            <div className="flex-1">
+              <DialogHeader className="text-left space-y-0">
+                <DialogTitle className="text-sm font-bold truncate">{test.title}</DialogTitle>
+              </DialogHeader>
+              <p className="text-[10px] text-muted-foreground">{items.length > 0 ? `${currentIdx + 1}/${items.length}` : "0 itemi"} — {totalPoints} puncte total</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary font-medium">{test.difficulty}</span>
+              {test.time_limit_minutes && (
+                <span className="flex items-center gap-1 text-xs font-mono text-muted-foreground">
+                  <Clock className="h-3 w-3" /> {formatTime(test.time_limit_minutes)}
+                </span>
+              )}
+            </div>
+          </div>
+          {items.length > 0 && <Progress value={((currentIdx + 1) / items.length) * 100} className="h-1" />}
+        </div>
+
+        <div className="px-4 py-4 space-y-4">
+          {items.length === 0 && (
+            <p className="text-sm text-muted-foreground text-center py-8">Niciun item în acest test.</p>
+          )}
+
+          {currentItem && (() => {
+            const exData = getExerciseData(currentItem);
+            if (!exData) return <p className="text-sm text-muted-foreground">Item nedisponibil (sursă ștearsă?).</p>;
+            return (
+              <Card>
+                <CardContent className="p-4 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-medium bg-primary/10 text-primary px-2 py-0.5 rounded-full">
+                      {currentItem.points} puncte
+                    </span>
+                    <span className="text-[10px] text-muted-foreground capitalize">
+                      {exData.type === "quiz" ? "Quiz" : exData.type === "fill" ? "Completare" : exData.type === "order" ? "Ordonare" : exData.type === "truefalse" ? "Adevărat/Fals" : exData.type}
+                    </span>
+                  </div>
+                  <PreviewExerciseRenderer exercise={exData} answer={answers[currentIdx]} onAnswer={(d) => setAnswers(prev => ({ ...prev, [currentIdx]: d }))} />
+                </CardContent>
+              </Card>
+            );
+          })()}
+
+          {/* Navigation */}
+          {items.length > 1 && (
+            <>
+              <div className="flex items-center justify-between">
+                <Button variant="outline" size="sm" onClick={() => setCurrentIdx(Math.max(0, currentIdx - 1))} disabled={currentIdx === 0}>
+                  <ChevronLeft className="h-4 w-4" /> Anterior
+                </Button>
+                <Button size="sm" onClick={() => setCurrentIdx(Math.min(items.length - 1, currentIdx + 1))} disabled={currentIdx >= items.length - 1}>
+                  Următorul <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+              <div className="flex justify-center gap-1.5 flex-wrap">
+                {items.map((_, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => setCurrentIdx(idx)}
+                    className={`w-6 h-6 rounded-full text-[10px] font-medium transition-colors ${
+                      idx === currentIdx ? "bg-primary text-primary-foreground" : answers[idx] ? "bg-primary/20 text-primary" : "bg-muted text-muted-foreground"
+                    }`}
+                  >
+                    {idx + 1}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+
+          <p className="text-[10px] text-center text-muted-foreground italic">Previzualizare — aceasta este vizualizarea elevului</p>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// --- Preview Exercise Renderer (mirrors TakeTestPage renderers) ---
+function PreviewExerciseRenderer({ exercise, answer, onAnswer }: { exercise: any; answer: any; onAnswer: (d: any) => void }) {
+  const type = exercise.type;
+
+  if (type === "quiz") {
+    const options = (exercise.options || []) as { id: string; text: string }[];
+    return (
+      <div className="space-y-2">
+        <p className="text-sm font-medium text-foreground">{exercise.question}</p>
+        {options.map((opt) => (
+          <button
+            key={opt.id}
+            onClick={() => onAnswer({ selected: opt.id })}
+            className={`w-full text-left p-3 rounded-lg border text-sm transition-colors ${
+              answer?.selected === opt.id ? "border-primary bg-primary/10 text-foreground" : "border-border text-foreground hover:border-primary/50"
+            }`}
+          >
+            {opt.text}
+          </button>
+        ))}
+      </div>
+    );
+  }
+
+  if (type === "truefalse") {
+    return (
+      <div className="space-y-3">
+        <p className="text-sm font-medium text-foreground">{exercise.statement || exercise.question}</p>
+        <div className="flex gap-3">
+          {[true, false].map((val) => (
+            <button
+              key={String(val)}
+              onClick={() => onAnswer({ selected: val })}
+              className={`flex-1 p-3 rounded-lg border text-sm font-medium transition-colors ${
+                answer?.selected === val ? "border-primary bg-primary/10" : "border-border hover:border-primary/50"
+              }`}
+            >
+              {val ? "Adevărat" : "Fals"}
+            </button>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (type === "fill") {
+    const blanks = (exercise.blanks || []) as { id: string; answer: string }[];
+    const codeTemplate = exercise.code_template || exercise.codeTemplate || "";
+    const currentAnswers = answer?.blanks || {};
+
+    if (!codeTemplate) {
+      return (
+        <div className="space-y-2">
+          <p className="text-sm font-medium text-foreground">{exercise.question}</p>
+          {blanks.map((blank, idx) => (
+            <Input key={blank.id} placeholder={`Spațiu ${idx + 1}`} value={currentAnswers[blank.id] || ""} onChange={(e) => onAnswer({ blanks: { ...currentAnswers, [blank.id]: e.target.value } })} className="text-sm" />
+          ))}
+        </div>
+      );
+    }
+
+    const parts = codeTemplate.split("___");
+    return (
+      <div className="space-y-3">
+        <p className="text-sm font-medium text-foreground">{exercise.question}</p>
+        <pre className="bg-muted/50 border border-border rounded-lg p-3 whitespace-pre-wrap font-mono text-sm text-foreground">
+          {parts.map((part: string, i: number) => (
+            <span key={i}>
+              <span>{part}</span>
+              {i < parts.length - 1 && blanks[i] && (
+                <Input autoCapitalize="none" className="inline-block w-28 h-7 mx-1 font-mono text-sm bg-secondary border-primary/50 text-primary" value={currentAnswers[blanks[i].id] || ""} onChange={(e) => onAnswer({ blanks: { ...currentAnswers, [blanks[i].id]: e.target.value } })} placeholder={"_".repeat(blanks[i].answer.length)} />
+              )}
+            </span>
+          ))}
+        </pre>
+      </div>
+    );
+  }
+
+  if (type === "order") {
+    const lines = (exercise.lines || []) as { id: string; text: string }[];
+    const ordered: string[] = answer?.order || lines.map((l) => l.id);
+
+    const moveItem = (from: number, to: number) => {
+      const newOrder = [...ordered];
+      const [item] = newOrder.splice(from, 1);
+      newOrder.splice(to, 0, item);
+      onAnswer({ order: newOrder });
+    };
+
+    return (
+      <div className="space-y-2">
+        <p className="text-sm font-medium text-foreground">{exercise.question}</p>
+        {ordered.map((lineId: string, idx: number) => {
+          const line = lines.find((l) => l.id === lineId);
+          return (
+            <div key={lineId} className="flex items-center gap-2 p-3 rounded-lg border border-border bg-card text-sm font-mono">
+              <span className="text-muted-foreground shrink-0">≡</span>
+              <code className="text-foreground whitespace-pre-wrap break-words flex-1">{line?.text || lineId}</code>
+              <div className="ml-auto flex gap-1">
+                <button onClick={() => idx > 0 && moveItem(idx, idx - 1)} disabled={idx === 0} className="text-base text-muted-foreground hover:text-foreground disabled:opacity-30 px-1">▲</button>
+                <button onClick={() => idx < ordered.length - 1 && moveItem(idx, idx + 1)} disabled={idx === ordered.length - 1} className="text-base text-muted-foreground hover:text-foreground disabled:opacity-30 px-1">▼</button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
+
+  // Fallback
+  return (
+    <div className="space-y-2">
+      <p className="text-sm font-medium text-foreground">{exercise.question}</p>
+      <Textarea placeholder="Scrie răspunsul tău..." value={answer?.text || ""} onChange={(e) => onAnswer({ text: e.target.value })} />
+    </div>
+  );
+}
 
 // --- Sortable Test Item ---
 function SortableTestItem({ id, item, idx, ex, typeLabels, getExerciseLabel, updatePoints, updateVariant, removeItem, variantMode }: any) {
