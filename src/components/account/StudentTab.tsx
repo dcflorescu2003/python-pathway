@@ -62,14 +62,14 @@ const StudentTab = ({ memberClassName, onLeaveClass }: StudentTabProps) => {
     enabled: !!user,
   });
 
-  // Get completed lessons for this user
+  // Get completed lessons for this user (with score)
   const { data: completedLessons = [] } = useQuery({
     queryKey: ["student-completed-lessons", user?.id],
     queryFn: async () => {
       if (!user) return [];
       const { data } = await supabase
         .from("completed_lessons")
-        .select("lesson_id")
+        .select("lesson_id, score")
         .eq("user_id", user.id);
       return data || [];
     },
@@ -125,6 +125,7 @@ const StudentTab = ({ memberClassName, onLeaveClass }: StudentTabProps) => {
   });
 
   const completedLessonIds = new Set(completedLessons.map((cl) => cl.lesson_id));
+  const completedLessonScores = new Map(completedLessons.map((cl) => [cl.lesson_id, cl.score]));
 
   // Split challenges into active vs completed
   const activeChallenges = challenges.filter((ch) => {
@@ -291,21 +292,25 @@ const StudentTab = ({ memberClassName, onLeaveClass }: StudentTabProps) => {
               Provocări completate ({completedChallenges.length})
             </p>
             <div className="space-y-1.5">
-              {completedChallenges.map((ch) => (
-                <Card key={ch.id} className="border-border">
-                  <CardContent className="p-3 flex items-center gap-3">
-                    <div className="w-7 h-7 rounded-lg bg-green-500/10 flex items-center justify-center">
-                      <CheckCircle className="h-3.5 w-3.5 text-green-600" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm text-foreground truncate">{ch.item_title}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {ch.item_type === "lesson" ? "Lecție" : "Problemă"} — completată
-                      </p>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+              {completedChallenges.map((ch) => {
+                const score = completedLessonScores.get(ch.item_id);
+                return (
+                  <Card key={ch.id} className="border-border">
+                    <CardContent className="p-3 flex items-center gap-3">
+                      <div className="w-7 h-7 rounded-lg bg-green-500/10 flex items-center justify-center">
+                        <CheckCircle className="h-3.5 w-3.5 text-green-600" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm text-foreground truncate">{ch.item_title}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {ch.item_type === "lesson" ? "Lecție" : "Problemă"} — completată
+                          {score !== undefined && score !== null && ` • Scor: ${score}%`}
+                        </p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
             </div>
           </div>
         )}
