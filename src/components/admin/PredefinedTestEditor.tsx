@@ -126,6 +126,14 @@ function TestForm({ testId, onBack, mutations }: { testId: string | null; onBack
   const updatePoints = (idx: number, points: number) => { const n = [...items]; n[idx] = { ...n[idx], points }; setItems(n); };
   const updateVariant = (idx: number, variant: string) => { const n = [...items]; n[idx] = { ...n[idx], variant }; setItems(n); };
 
+  const handleItemReorder = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const oldIndex = Number(active.id);
+    const newIndex = Number(over.id);
+    setItems(arrayMove(items, oldIndex, newIndex));
+  };
+
   const getExerciseLabel = (item: TestItemDraft) => {
     if (item.source_type === "eval_exercise" && item.source_id) {
       const ex = allExercises.find(e => e.id === item.source_id);
