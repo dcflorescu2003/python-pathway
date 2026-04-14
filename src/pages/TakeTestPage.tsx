@@ -7,7 +7,8 @@ import { Progress } from "@/components/ui/progress";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useStartSubmission, useSubmitTest } from "@/hooks/useTests";
-import { ArrowLeft, Clock, ChevronLeft, ChevronRight, Send } from "lucide-react";
+import { usePyodide, TestResult } from "@/hooks/usePyodide";
+import { ArrowLeft, Clock, ChevronLeft, ChevronRight, Send, Play, CheckCircle, XCircle, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -501,8 +502,24 @@ const ExerciseRenderer = ({ exercise, answer, onAnswer }: { exercise: any; answe
   );
 };
 
-// Problem renderer (code)
-const ProblemRenderer = ({ problem, answer, onAnswer }: { problem: any; answer: any; onAnswer: (d: any) => void }) => {
+// Problem renderer (code) — with optional Pyodide test runner
+const ProblemRenderer = ({ problem, answer, onAnswer, allowRunTests }: { problem: any; answer: any; onAnswer: (d: any) => void; allowRunTests: boolean }) => {
+  const { loading: pyLoading, running, runCode } = usePyodide();
+  const [testResults, setTestResults] = useState<TestResult[]>([]);
+
+  const visibleTests = (problem.test_cases || []).filter((tc: any) => !tc.hidden);
+
+  const handleRun = async () => {
+    const code = answer?.code || "";
+    if (!code.trim()) { toast.error("Scrie cod înainte de a rula."); return; }
+    const results = await runCode(code, visibleTests.map((tc: any) => ({
+      input: tc.input,
+      expectedOutput: tc.expectedOutput || tc.expected_output || tc.expected,
+      hidden: false,
+    })));
+    setTestResults(results);
+  };
+
   return (
     <div className="space-y-3">
       <h3 className="text-sm font-bold text-foreground">{problem.title}</h3>
@@ -516,6 +533,34 @@ const ProblemRenderer = ({ problem, answer, onAnswer }: { problem: any; answer: 
         onChange={(e) => onAnswer({ code: e.target.value })}
         className="font-mono text-xs min-h-[200px]"
       />
+      {allowRunTests && visibleTests.length > 0 && (
+        <div className="space-y-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleRun}
+            disabled={running || pyLoading}
+            className="gap-1.5"
+          >
+            {running || pyLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Play className="h-3.5 w-3.5" />}
+            {pyLoading ? "Se încarcă..." : running ? "Rulează..." : "Rulează teste"}
+          </Button>
+          {testResults.length > 0 && (
+            <div className="space-y-1.5">
+              {testResults.map((r, i) => (
+                <div key={i} className={`flex items-start gap-2 p-2 rounded-lg border text-xs ${r.passed ? "border-green-500/30 bg-green-500/5" : "border-destructive/30 bg-destructive/5"}`}>
+                  {r.passed ? <CheckCircle className="h-3.5 w-3.5 text-green-500 shrink-0 mt-0.5" /> : <XCircle className="h-3.5 w-3.5 text-destructive shrink-0 mt-0.5" />}
+                  <div className="min-w-0">
+                    <p className="font-mono text-muted-foreground">Input: {r.input}</p>
+                    <p className="font-mono text-muted-foreground">Așteptat: {r.expectedOutput}</p>
+                    {!r.passed && <p className="font-mono text-foreground">Primit: {r.error || r.actualOutput}</p>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 };
