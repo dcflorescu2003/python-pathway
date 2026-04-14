@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import { parseExercisesCSV, exerciseToDbRow, generateExportCSV, type ParsedExercise } from "./csvParser";
 
 interface CsvImporterProps {
-  targetTable: "exercises" | "eval_exercises";
+  targetTable: "exercises" | "eval_exercises" | "manual_exercises";
   lessonId: string;
   existingCount: number;
   existingExercises?: any[];
@@ -50,11 +50,14 @@ export default function CsvImporter({ targetTable, lessonId, existingCount, exis
         exerciseToDbRow(ex, lessonId, existingCount + i, prefix)
       );
 
-      // Remove fields not in target table
+      // Remove/add fields based on target table
       const cleaned = rows.map(r => {
         if (targetTable === "exercises") {
           const { solution, test_cases, ...rest } = r;
           return { ...rest, pairs: null };
+        }
+        if (targetTable === "manual_exercises") {
+          return { ...r, pairs: null, hint: null, solution: r.solution || "", test_cases: r.test_cases || [] };
         }
         return r;
       });
