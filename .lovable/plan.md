@@ -1,33 +1,38 @@
 
-## Analiză: Edge functions + componente nefolosite sau duplicate
 
-### Edge Functions
+## Plan: Dialog de avertizare la dezactivarea modului profesor + ștergerea datelor
 
-| Funcție | Folosită? | Observații |
-|---------|-----------|-----------|
-| `check-subscription` | Da | Apelată din `useSubscription` |
-| `create-checkout` | Da | Apelată din `useSubscription` |
-| `customer-portal` | Da | Apelată din `useSubscription` |
-| `delete-account` | Da | Apelată din `DeleteAccountPage` |
-| `grade-submission` | Da | Apelată din `useTests` |
-| `redeem-coupon` | Da | Apelată din `CouponRedemption` |
-| `send-push` | Da | Apelată din `ChallengeAssigner` |
-| `send-streak-reminder` | Da* | Nu este apelată din client, dar este o funcție de tip cron/scheduler — rămâne |
+### Ce se schimbă
 
-Toate edge functions sunt utilizate. Nu avem nimic de șters aici.
+**1. UI — Dialog de confirmare (AuthPage.tsx)**
 
-### Componente nefolosite
+Înlocuim `confirm()` nativ cu un `AlertDialog` styled care afișează:
+- Titlu: "Dezactivează modul profesor"
+- Mesaj de avertizare cu lista consecințelor:
+  - Toate clasele și elevii din clase vor fi șterse
+  - Toate testele create vor fi șterse  
+  - Procesul de verificare va trebui reluat de la zero
+- Buton "Renunță" și buton roșu "Sunt de acord"
 
-| Fișier | Motiv |
-|--------|-------|
-| `src/components/InstallDialog.tsx` | Nu este importată nicăieri. `Index.tsx` folosește `useInstallPrompt` direct, dar componenta `InstallDialog` nu este referită în niciun fișier. |
+Adăugăm un state `showDeactivateDialog` pentru controlul dialogului.
 
-### Cod duplicat sau redundant
+**2. Backend — RPC `deactivate_teacher_mode` (migrare SQL)**
 
-Nu am identificat duplicări semnificative în componente. `renderExercisePreview` și `renderProblemPreview` sunt definite o singură dată în `TestBuilder.tsx` și refolosite intern.
+Modificăm funcția existentă să șteargă toate datele de profesor înainte de a reseta profilul:
+- `DELETE FROM test_items WHERE test_id IN (SELECT id FROM tests WHERE teacher_id = uid)`
+- `DELETE FROM test_assignments WHERE test_id IN (SELECT id FROM tests WHERE teacher_id = uid)`
+- `DELETE FROM tests WHERE teacher_id = uid`
+- `DELETE FROM challenges WHERE class_id IN (SELECT id FROM teacher_classes WHERE teacher_id = uid)`
+- `DELETE FROM class_members WHERE class_id IN (SELECT id FROM teacher_classes WHERE teacher_id = uid)`
+- `DELETE FROM teacher_classes WHERE teacher_id = uid`
+- `DELETE FROM teacher_referral_codes WHERE teacher_id = uid`
+- `DELETE FROM teacher_verification_requests WHERE user_id = uid`
+- `DELETE FROM teacher_verification_messages WHERE request_id IN (SELECT id FROM teacher_verification_requests WHERE user_id = uid)`
+- Reset profil: `teacher_status = NULL, is_teacher = false, verification_method = NULL`
 
-### Rezumat acțiuni propuse
+Ordinea operațiilor respectă dependințele (items/assignments înaintea tests, members/challenges înaintea classes, messages înaintea requests).
 
-1. **Ștergem `src/components/InstallDialog.tsx`** — componentă neimportată, funcționalitatea de install prompt este gestionată direct în `Index.tsx`
+### Fișiere modificate
+- `src/pages/AuthPage.tsx` — AlertDialog în loc de `confirm()`
+- Migrare SQL — `deactivate_teacher_mode` cu cascade delete
 
-Impact: Minor (~90 linii), dar menține coerența codului.
