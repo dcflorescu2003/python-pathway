@@ -921,6 +921,27 @@ const TestBuilder = ({ onBack, editTestId, teacherStatus }: TestBuilderProps) =>
                         </SelectContent>
                       </Select>
                     )}
+                    {/* AI checkbox for problem/open_answer items when >3 AI items and teacher is premium */}
+                    {isTeacherPremium && aiItemCount > MAX_AI_ITEMS_PER_TEST && (
+                      item.source_type === "problem" || (item.source_type === "custom" && item.custom_data?.type === "open_answer")
+                    ) && (
+                      <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                        <Checkbox
+                          checked={aiGradingItemIds.includes(itemKey)}
+                          onCheckedChange={(checked) => {
+                            if (checked && aiGradingItemIds.length >= MAX_AI_ITEMS_PER_TEST) {
+                              toast.error(`Maxim ${MAX_AI_ITEMS_PER_TEST} itemi pot fi corectați cu AI.`);
+                              return;
+                            }
+                            setAiGradingItemIds(prev =>
+                              checked ? [...prev, itemKey] : prev.filter(id => id !== itemKey)
+                            );
+                          }}
+                          disabled={!aiGradingItemIds.includes(itemKey) && aiGradingItemIds.length >= MAX_AI_ITEMS_PER_TEST}
+                        />
+                        <Sparkles className="h-3 w-3 text-primary" />
+                      </div>
+                    )}
                     <button onClick={() => removeItem(idx)} className="p-1 text-muted-foreground hover:text-destructive">
                       <Trash2 className="h-3 w-3" />
                     </button>
