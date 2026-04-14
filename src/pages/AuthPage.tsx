@@ -114,22 +114,17 @@ const AccountView = () => {
         .maybeSingle();
       if (existing) { toast.error("Ești deja înscris în această clasă."); return; }
 
+      // Always require catalog name when joining
       const { data: profile } = await supabase
         .from("profiles")
         .select("display_name")
         .eq("user_id", user.id)
         .single();
 
+      setPendingClassId(cls.id);
       const name = profile?.display_name?.trim();
-      const isNameMissing = !name || name === user.email || name.length < 3;
-
-      if (isNameMissing) {
-        setPendingClassId(cls.id);
-        setFullName(name && name !== user.email ? name : "");
-        setShowNameDialog(true);
-        return;
-      }
-      await joinClassDirect(cls.id);
+      setFullName(name && name !== user.email && name.length >= 3 ? name : "");
+      setShowNameDialog(true);
     } finally {
       setJoinLoading(false);
     }
@@ -321,14 +316,15 @@ const AccountView = () => {
         <DialogContent className="max-w-sm mx-auto">
           <DialogHeader>
             <DialogTitle className="text-center flex items-center justify-center gap-2">
-              <User className="h-5 w-5 text-primary" /> Numele tău complet
+              <User className="h-5 w-5 text-primary" /> Numele din catalog
             </DialogTitle>
             <DialogDescription className="text-center text-foreground/70">
-              Profesorul trebuie să te identifice. Scrie-ți numele real complet (prenume și nume de familie).
+              Scrie-ți numele complet (prenume și nume de familie) așa cum apare în catalogul clasei.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <Input placeholder="Ex: Andrei Popescu" value={fullName} onChange={(e) => setFullName(e.target.value)} className="text-center" autoFocus />
+            <p className="text-xs text-muted-foreground text-center">🔒 Acest nume va fi vizibil doar profesorului tău.</p>
             {fullName.trim().length > 0 && fullName.trim().length < 3 && (
               <p className="text-xs text-destructive text-center">Numele trebuie să aibă minim 3 caractere.</p>
             )}

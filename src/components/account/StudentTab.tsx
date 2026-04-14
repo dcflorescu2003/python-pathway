@@ -1,10 +1,18 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
+import { useChallenges } from "@/hooks/useChallenges";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { BookOpen, DoorOpen, Trophy, Clock, CheckCircle, FileText } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import {
+  BookOpen, DoorOpen, Trophy, Clock, CheckCircle, FileText,
+  Play, History, Pencil, Check, X, ChevronDown, ChevronRight,
+  AlertCircle
+} from "lucide-react";
 import { toast } from "sonner";
 
 interface StudentTabProps {
@@ -14,7 +22,29 @@ interface StudentTabProps {
 
 const StudentTab = ({ memberClassName, onLeaveClass }: StudentTabProps) => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [leavingClass, setLeavingClass] = useState(false);
+  const [editingCatalogName, setEditingCatalogName] = useState(false);
+  const [catalogName, setCatalogName] = useState("");
+  const [savingName, setSavingName] = useState(false);
+  const [expandedTestId, setExpandedTestId] = useState<string | null>(null);
+
+  const { challenges } = useChallenges();
+
+  // Get profile display_name
+  const { data: profile, refetch: refetchProfile } = useQuery({
+    queryKey: ["student-profile-name", user?.id],
+    queryFn: async () => {
+      if (!user) return null;
+      const { data } = await supabase
+        .from("profiles")
+        .select("display_name")
+        .eq("user_id", user.id)
+        .single();
+      return data;
+    },
+    enabled: !!user,
+  });
 
   // Get student's class membership
   const { data: membership } = useQuery({
@@ -32,20 +62,18 @@ const StudentTab = ({ memberClassName, onLeaveClass }: StudentTabProps) => {
     enabled: !!user,
   });
 
-  // Get challenges for the student's class
-  const { data: challenges = [] } = useQuery({
-    queryKey: ["student-challenges", membership?.class_id],
+  // Get completed lessons for this user
+  const { data: completedLessons = [] } = useQuery({
+    queryKey: ["student-completed-lessons", user?.id],
     queryFn: async () => {
-      if (!membership?.class_id) return [];
-      const { data, error } = await supabase
-        .from("challenges")
-        .select("*")
-        .eq("class_id", membership.class_id)
-        .order("created_at", { ascending: false });
-      if (error) throw error;
-      return data;
+      if (!user) return [];
+      const { data } = await supabase
+        .from("completed_lessons")
+        .select("lesson_id")
+        .eq("user_id", user.id);
+      return data || [];
     },
-    enabled: !!membership?.class_id,
+    enabled: !!user,
   });
 
   // Get test assignments for the student's class
@@ -79,6 +107,39 @@ const StudentTab = ({ memberClassName, onLeaveClass }: StudentTabProps) => {
     enabled: !!user,
   });
 
+  // Get test answers for expanded test
+  const { data: testAnswers = [] } = useQuery({
+    queryKey: ["student-test-answers", expandedTestId],
+    queryFn: async () => {
+      if (!expandedTestId) return [];
+      const submission = submissions.find((s) => s.assignment_id === expandedTestId && s.submitted_at);
+      if (!submission) return [];
+      const { data, error } = await supabase
+        .from("test_answers")
+        .select("*, test_items:test_item_id(sort_order, points, source_type, custom_data)")
+        .eq("submission_id", submission.id);
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!expandedTestId && submissions.length > 0,
+  });
+
+  const completedLessonIds = new Set(completedLessons.map((cl) => cl.lesson_id));
+
+  // Split challenges into active vs completed
+  const activeChallenges = challenges.filter((ch) => {
+    if (ch.item_type === "lesson") return !completedLessonIds.has(ch.item_id);
+    // For problems, also check completed_lessons (same mechanism used in app)
+    if (ch.item_type === "problem") return !completedLessonIds.has(ch.item_id);
+    return true;
+  });
+
+  const completedChallenges = challenges.filter((ch) => {
+    if (ch.item_type === "lesson") return completedLessonIds.has(ch.item_id);
+    if (ch.item_type === "problem") return completedLessonIds.has(ch.item_id);
+    return false;
+  });
+
   const handleLeave = async () => {
     if (!user) return;
     setLeavingClass(true);
@@ -98,11 +159,37 @@ const StudentTab = ({ memberClassName, onLeaveClass }: StudentTabProps) => {
     }
   };
 
+  const handleSaveCatalogName = async () => {
+    if (!user || catalogName.trim().length < 3) return;
+    setSavingName(true);
+    const { error } = await supabase
+      .from("profiles")
+      .update({ display_name: catalogName.trim() })
+      .eq("user_id", user.id);
+    setSavingName(false);
+    if (error) {
+      toast.error("Nu am putut salva numele.");
+    } else {
+      toast.success("Numele din catalog a fost actualizat!");
+      setEditingCatalogName(false);
+      refetchProfile();
+    }
+  };
+
+  const handleStartChallenge = (ch: typeof challenges[0]) => {
+    if (ch.item_type === "lesson") {
+      // Find the chapter for this lesson to build correct route
+      navigate(`/lesson/${ch.item_id}`);
+    } else if (ch.item_type === "problem") {
+      navigate(`/problem/${ch.item_id}`);
+    }
+  };
+
   return (
-    <div className="space-y-4">
-      {/* Class info */}
+    <div className="space-y-5">
+      {/* Class info + catalog name */}
       <Card className="border-border">
-        <CardContent className="p-4">
+        <CardContent className="p-4 space-y-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <BookOpen className="h-4 w-4 text-primary" />
@@ -119,28 +206,71 @@ const StudentTab = ({ memberClassName, onLeaveClass }: StudentTabProps) => {
               {leavingClass ? "..." : "Părăsește"}
             </Button>
           </div>
+
+          {/* Editable catalog name */}
+          <div className="flex items-center gap-2 text-sm">
+            <span className="text-muted-foreground">Nume catalog:</span>
+            {editingCatalogName ? (
+              <div className="flex items-center gap-1.5 flex-1">
+                <Input
+                  value={catalogName}
+                  onChange={(e) => setCatalogName(e.target.value)}
+                  className="h-7 text-sm flex-1"
+                  placeholder="Prenume Nume"
+                  autoFocus
+                />
+                <button
+                  disabled={savingName || catalogName.trim().length < 3}
+                  onClick={handleSaveCatalogName}
+                  className="text-primary hover:text-primary/80 disabled:opacity-40"
+                >
+                  <Check className="h-4 w-4" />
+                </button>
+                <button onClick={() => setEditingCatalogName(false)} className="text-muted-foreground hover:text-foreground">
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-1.5">
+                <span className="font-medium text-foreground">{profile?.display_name || "—"}</span>
+                <button
+                  onClick={() => {
+                    setCatalogName(profile?.display_name || "");
+                    setEditingCatalogName(true);
+                  }}
+                  className="text-muted-foreground hover:text-foreground"
+                >
+                  <Pencil className="h-3 w-3" />
+                </button>
+              </div>
+            )}
+          </div>
+          <p className="text-xs text-muted-foreground">🔒 Vizibil doar profesorului tău</p>
         </CardContent>
       </Card>
 
-      {/* Challenges */}
-      {challenges.length > 0 && (
+      {/* Active Challenges */}
+      {activeChallenges.length > 0 && (
         <div>
           <h3 className="text-sm font-semibold text-foreground mb-2 flex items-center gap-2">
-            <Trophy className="h-4 w-4 text-primary" /> Provocări ({challenges.length})
+            <Trophy className="h-4 w-4 text-primary" /> Provocări active ({activeChallenges.length})
           </h3>
           <div className="space-y-2">
-            {challenges.map((ch) => (
+            {activeChallenges.map((ch) => (
               <Card key={ch.id} className="border-border">
                 <CardContent className="p-3 flex items-center gap-3">
                   <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
                     <Trophy className="h-4 w-4 text-primary" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-foreground truncate">
+                    <p className="text-sm font-medium text-foreground truncate">{ch.item_title}</p>
+                    <p className="text-xs text-muted-foreground">
                       {ch.item_type === "lesson" ? "Lecție" : ch.item_type === "problem" ? "Problemă" : ch.item_type}
                     </p>
-                    <p className="text-xs text-muted-foreground">{ch.item_id}</p>
                   </div>
+                  <Button size="sm" className="gap-1" onClick={() => handleStartChallenge(ch)}>
+                    <Play className="h-3.5 w-3.5" /> Începe
+                  </Button>
                 </CardContent>
               </Card>
             ))}
@@ -148,55 +278,163 @@ const StudentTab = ({ memberClassName, onLeaveClass }: StudentTabProps) => {
         </div>
       )}
 
-      {/* Test assignments */}
-      {assignments.length > 0 && (
-        <div>
-          <h3 className="text-sm font-semibold text-foreground mb-2 flex items-center gap-2">
-            <FileText className="h-4 w-4 text-primary" /> Teste ({assignments.length})
-          </h3>
-          <div className="space-y-2">
-            {assignments.map((a: any) => {
-              const submission = submissions.find((s) => s.assignment_id === a.id);
-              const isCompleted = !!submission?.submitted_at;
-              const isExpired = a.due_date && new Date(a.due_date) < new Date();
+      {/* History section */}
+      <div>
+        <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+          <History className="h-4 w-4 text-primary" /> Istoric
+        </h3>
 
-              return (
-                <Card key={a.id} className="border-border">
-                  <CardContent className="p-3 flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
-                        isCompleted ? "bg-green-500/10" : isExpired ? "bg-destructive/10" : "bg-primary/10"
-                      }`}>
-                        {isCompleted ? (
-                          <CheckCircle className="h-4 w-4 text-green-600" />
-                        ) : isExpired ? (
-                          <Clock className="h-4 w-4 text-destructive" />
-                        ) : (
-                          <FileText className="h-4 w-4 text-primary" />
-                        )}
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium text-foreground">{a.tests?.title || "Test"}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {isCompleted ? `Scor: ${submission?.total_score ?? 0}/${submission?.max_score ?? 0}` :
-                           isExpired ? "Expirat" : "Activ"}
-                        </p>
-                      </div>
+        {/* Completed challenges */}
+        {completedChallenges.length > 0 && (
+          <div className="mb-4">
+            <p className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wide">
+              Provocări completate ({completedChallenges.length})
+            </p>
+            <div className="space-y-1.5">
+              {completedChallenges.map((ch) => (
+                <Card key={ch.id} className="border-border">
+                  <CardContent className="p-3 flex items-center gap-3">
+                    <div className="w-7 h-7 rounded-lg bg-green-500/10 flex items-center justify-center">
+                      <CheckCircle className="h-3.5 w-3.5 text-green-600" />
                     </div>
-                    {a.tests?.time_limit_minutes && (
-                      <span className="text-xs text-muted-foreground flex items-center gap-1">
-                        <Clock className="h-3 w-3" /> {a.tests.time_limit_minutes}min
-                      </span>
-                    )}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm text-foreground truncate">{ch.item_title}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {ch.item_type === "lesson" ? "Lecție" : "Problemă"} — completată
+                      </p>
+                    </div>
                   </CardContent>
                 </Card>
-              );
-            })}
+              ))}
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {challenges.length === 0 && assignments.length === 0 && (
+        {/* Tests history */}
+        {assignments.length > 0 && (
+          <div>
+            <p className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wide">
+              Teste ({assignments.length})
+            </p>
+            <div className="space-y-2">
+              {assignments.map((a: any) => {
+                const submission = submissions.find((s) => s.assignment_id === a.id);
+                const isCompleted = !!submission?.submitted_at;
+                const isExpired = a.due_date && new Date(a.due_date) < new Date() && !isCompleted;
+                const isExpanded = expandedTestId === a.id;
+
+                return (
+                  <Card key={a.id} className="border-border">
+                    <CardContent className="p-0">
+                      <button
+                        className="w-full p-3 flex items-center justify-between text-left"
+                        onClick={() => {
+                          if (isCompleted) {
+                            setExpandedTestId(isExpanded ? null : a.id);
+                          } else if (!isExpired) {
+                            navigate(`/test/${a.id}`);
+                          }
+                        }}
+                        disabled={isExpired && !isCompleted}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
+                            isCompleted ? "bg-green-500/10" : isExpired ? "bg-destructive/10" : "bg-primary/10"
+                          }`}>
+                            {isCompleted ? (
+                              <CheckCircle className="h-4 w-4 text-green-600" />
+                            ) : isExpired ? (
+                              <AlertCircle className="h-4 w-4 text-destructive" />
+                            ) : (
+                              <FileText className="h-4 w-4 text-primary" />
+                            )}
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-foreground">{a.tests?.title || "Test"}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {isCompleted
+                                ? `Scor: ${submission?.total_score ?? 0}/${submission?.max_score ?? 0}`
+                                : isExpired
+                                  ? "Expirat"
+                                  : "Activ — începe testul"}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {a.tests?.time_limit_minutes && (
+                            <span className="text-xs text-muted-foreground flex items-center gap-1">
+                              <Clock className="h-3 w-3" /> {a.tests.time_limit_minutes}min
+                            </span>
+                          )}
+                          {isCompleted && (
+                            isExpanded
+                              ? <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                              : <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                          )}
+                        </div>
+                      </button>
+
+                      {/* Expanded test details */}
+                      {isCompleted && isExpanded && (
+                        <div className="border-t border-border px-3 pb-3 pt-2 space-y-2">
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="text-muted-foreground">Scor total</span>
+                            <span className="font-semibold text-foreground">
+                              {submission?.total_score ?? 0} / {submission?.max_score ?? 0}
+                            </span>
+                          </div>
+
+                          {testAnswers.length > 0 && (
+                            <div className="space-y-1.5">
+                              {testAnswers
+                                .sort((a: any, b: any) => (a.test_items?.sort_order ?? 0) - (b.test_items?.sort_order ?? 0))
+                                .map((answer: any, idx: number) => (
+                                  <div key={answer.id} className="rounded-md bg-muted/50 p-2">
+                                    <div className="flex items-center justify-between text-xs">
+                                      <span className="text-foreground font-medium">
+                                        Exercițiul {idx + 1}
+                                      </span>
+                                      <span className={`font-semibold ${
+                                        Number(answer.score) >= Number(answer.max_points)
+                                          ? "text-green-600"
+                                          : Number(answer.score) > 0
+                                            ? "text-yellow-600"
+                                            : "text-destructive"
+                                      }`}>
+                                        {answer.score ?? 0}/{answer.max_points ?? 0}p
+                                      </span>
+                                    </div>
+                                    {answer.feedback && (
+                                      <p className="text-xs text-muted-foreground mt-1 italic">
+                                        💬 {answer.feedback}
+                                      </p>
+                                    )}
+                                  </div>
+                                ))}
+                            </div>
+                          )}
+
+                          {testAnswers.length === 0 && (
+                            <p className="text-xs text-muted-foreground">Se încarcă detaliile...</p>
+                          )}
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {completedChallenges.length === 0 && assignments.length === 0 && (
+          <div className="text-center py-6">
+            <p className="text-sm text-muted-foreground">Niciun istoric încă.</p>
+          </div>
+        )}
+      </div>
+
+      {activeChallenges.length === 0 && completedChallenges.length === 0 && assignments.length === 0 && (
         <div className="text-center py-8">
           <p className="text-sm text-muted-foreground">Nicio provocare sau test primit încă.</p>
         </div>
