@@ -92,8 +92,11 @@ const TestBuilder = ({ onBack, editTestId, teacherStatus }: TestBuilderProps) =>
     });
   };
 
-  // Count problem items (AI-graded) in current test
-  const problemItemCount = items.filter(i => i.source_type === "problem").length;
+  // Count AI-graded items (problems + open_answer) in current test
+  const aiItemCount = items.filter(i => 
+    i.source_type === "problem" || 
+    (i.source_type === "custom" && i.custom_data?.type === "open_answer")
+  ).length;
 
   // Count tests created this month
   const testsThisMonth = allTests.filter(t => {
