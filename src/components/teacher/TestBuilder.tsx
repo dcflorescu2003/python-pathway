@@ -522,6 +522,7 @@ const TestBuilder = ({ onBack, editTestId, teacherStatus }: TestBuilderProps) =>
             <Label htmlFor="allow-run-tests" className="text-sm">Permite rularea testelor la probleme</Label>
           </div>
         </CardContent>
+      </Card>
 
       {/* Item source tabs */}
       <Tabs defaultValue={teacherStatus === "verified" ? "templates" : "exercises"} className="w-full">
