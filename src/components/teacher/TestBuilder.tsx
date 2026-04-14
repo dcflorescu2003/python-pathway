@@ -692,6 +692,7 @@ const TestBuilder = ({ onBack, editTestId, teacherStatus }: TestBuilderProps) =>
                       <SelectItem value="truefalse">Adevărat / Fals</SelectItem>
                       <SelectItem value="fill">Completare spații</SelectItem>
                       <SelectItem value="order">Ordonare linii</SelectItem>
+                      <SelectItem value="open_answer">💬 Răspuns deschis</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
