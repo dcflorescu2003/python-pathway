@@ -17,6 +17,7 @@ type Tab = "national" | "school" | "city";
 interface LeaderboardEntry {
   user_id: string;
   display_name: string | null;
+  nickname: string | null;
   xp: number;
   streak: number;
   avatar_url: string | null;
@@ -33,7 +34,7 @@ const LeaderboardPage = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("profiles")
-        .select("user_id, display_name, xp, streak, avatar_url, school_id")
+        .select("user_id, display_name, nickname, xp, streak, avatar_url, school_id")
         .order("xp", { ascending: false })
         .limit(50);
       if (error) throw error;
@@ -112,7 +113,7 @@ const LeaderboardPage = () => {
           <div className="space-y-2">
             {filteredEntries.map((entry, idx) => {
               const isUser = entry.user_id === user?.id;
-              const displayName = entry.display_name || "Anonim";
+              const displayName = entry.nickname || entry.display_name || "Anonim";
               return (
                 <motion.div
                   key={entry.user_id}
