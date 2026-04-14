@@ -59,13 +59,16 @@ Deno.serve(async (req) => {
 
     // Determine teacher and check Profesor AI subscription
     let teacherHasAI = false;
+    let aiGradingItemIds: string[] = [];
     const firstItem = answers[0]?.test_items;
     if (firstItem?.test_id) {
       const { data: test } = await supabase
         .from("tests")
-        .select("teacher_id")
+        .select("teacher_id, ai_grading_item_ids")
         .eq("id", firstItem.test_id)
         .single();
+
+      aiGradingItemIds = (test as any)?.ai_grading_item_ids ?? [];
 
       if (test) {
         const { data: profile } = await supabase
@@ -159,7 +162,10 @@ Deno.serve(async (req) => {
           feedback = result.feedback;
 
           // Collect for batch AI if teacher has Profesor AI and score < max
-          if (teacherHasAI && score < item.points && itemsForAI.length < MAX_AI_ITEMS_PER_TEST) {
+          const shouldAIGrade = aiGradingItemIds.length > 0
+            ? aiGradingItemIds.includes(item.id)
+            : itemsForAI.length < MAX_AI_ITEMS_PER_TEST;
+          if (teacherHasAI && score < item.points && shouldAIGrade) {
             itemsForAI.push({
               answerId: answer.id,
               answerIdx: i,
@@ -179,7 +185,10 @@ Deno.serve(async (req) => {
           // Open answer: score 0 automatically, collect for AI
           score = 0;
           feedback = "Necesită evaluare manuală sau AI.";
-          if (teacherHasAI && answer.answer_data?.text && itemsForAI.length < MAX_AI_ITEMS_PER_TEST) {
+          const shouldAIGrade = aiGradingItemIds.length > 0
+            ? aiGradingItemIds.includes(item.id)
+            : itemsForAI.length < MAX_AI_ITEMS_PER_TEST;
+          if (teacherHasAI && answer.answer_data?.text && shouldAIGrade) {
             itemsForAI.push({
               answerId: answer.id,
               answerIdx: i,

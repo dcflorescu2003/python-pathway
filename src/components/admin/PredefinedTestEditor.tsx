@@ -409,7 +409,7 @@ function TestForm({ testId, onBack, mutations }: { testId: string | null; onBack
     return item.source_id || "Custom";
   };
 
-  const typeLabels: Record<string, string> = { quiz: "Quiz", fill: "Completare", order: "Ordonare", truefalse: "A/F" };
+  const typeLabels: Record<string, string> = { quiz: "Quiz", fill: "Completare", order: "Ordonare", truefalse: "A/F", problem: "Problemă", open_answer: "Răspuns deschis" };
 
   const handleSave = async () => {
     if (!title.trim()) { toast.error("Adaugă un titlu."); return; }

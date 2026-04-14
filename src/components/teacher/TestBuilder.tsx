@@ -13,7 +13,8 @@ import { useProblems } from "@/hooks/useProblems";
 import { useCreateTest, useUpdateTest, useTestItems, useTeacherTests, TestItem } from "@/hooks/useTests";
 import { useSubscription } from "@/hooks/useSubscription";
 import { usePredefinedTests, usePredefinedTestItems } from "@/hooks/usePredefinedTests";
-import { ArrowLeft, Plus, Trash2, BookOpen, Code, GripVertical, PenLine, FileCheck, Copy, ChevronDown, ChevronRight, Eye, AlertTriangle } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, BookOpen, Code, GripVertical, PenLine, FileCheck, Copy, ChevronDown, ChevronRight, Eye, AlertTriangle, Sparkles } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 
 const MAX_AI_ITEMS_PER_TEST = 3;
@@ -55,6 +56,7 @@ const TestBuilder = ({ onBack, editTestId, teacherStatus }: TestBuilderProps) =>
   const [items, setItems] = useState<TestItem[]>([]);
   const [allowRunTests, setAllowRunTests] = useState(false);
   const [editLoaded, setEditLoaded] = useState(false);
+  const [aiGradingItemIds, setAiGradingItemIds] = useState<string[]>([]);
 
   // Browser state
   const [selectedChapterId, setSelectedChapterId] = useState<string>("");
@@ -112,9 +114,9 @@ const TestBuilder = ({ onBack, editTestId, teacherStatus }: TestBuilderProps) =>
       toast.info("Itemul este deja adăugat.");
       return;
     }
-    // Check AI item limit for problems and open_answer
+    // Check AI item limit for problems and open_answer — only block non-premium teachers
     const isAIItem = sourceType === "problem" || (sourceType === "custom" && customData?.type === "open_answer");
-    if (isAIItem && isTeacherPremium && aiItemCount >= MAX_AI_ITEMS_PER_TEST) {
+    if (isAIItem && !isTeacherPremium && aiItemCount >= MAX_AI_ITEMS_PER_TEST) {
       toast.error(`Limita de ${MAX_AI_ITEMS_PER_TEST} itemi AI/test a fost atinsă.`);
       return;
     }
@@ -268,6 +270,7 @@ const TestBuilder = ({ onBack, editTestId, teacherStatus }: TestBuilderProps) =>
         setTitle(test.title);
         setVariantMode(test.variant_mode);
         setAllowRunTests(test.allow_run_tests ?? false);
+        setAiGradingItemIds((test as any).ai_grading_item_ids ?? []);
         if (test.time_limit_minutes) {
           setTimeLimitEnabled(true);
           setTimeLimit(test.time_limit_minutes);
@@ -309,6 +312,7 @@ const TestBuilder = ({ onBack, editTestId, teacherStatus }: TestBuilderProps) =>
           variant_mode: variantMode,
           items,
           allow_run_tests: allowRunTests,
+          ai_grading_item_ids: aiGradingItemIds,
         });
         toast.success("Test actualizat!");
       } else {
@@ -318,6 +322,7 @@ const TestBuilder = ({ onBack, editTestId, teacherStatus }: TestBuilderProps) =>
           variant_mode: variantMode,
           items,
           allow_run_tests: allowRunTests,
+          ai_grading_item_ids: aiGradingItemIds,
         });
         toast.success("Test creat cu succes!");
       }
@@ -485,14 +490,21 @@ const TestBuilder = ({ onBack, editTestId, teacherStatus }: TestBuilderProps) =>
 
       {/* Limits info for Profesor AI */}
       {isTeacherPremium && (
-        <div className="flex flex-wrap gap-2">
-          <div className={`text-xs px-2 py-1 rounded-full border ${testsThisMonth >= MAX_TESTS_PER_MONTH ? 'border-destructive/50 bg-destructive/10 text-destructive' : 'border-border bg-muted text-muted-foreground'}`}>
-            Teste luna aceasta: {testsThisMonth}/{MAX_TESTS_PER_MONTH}
+        <>
+          <div className="flex flex-wrap gap-2">
+            <div className={`text-xs px-2 py-1 rounded-full border ${testsThisMonth >= MAX_TESTS_PER_MONTH ? 'border-destructive/50 bg-destructive/10 text-destructive' : 'border-border bg-muted text-muted-foreground'}`}>
+              Teste luna aceasta: {testsThisMonth}/{MAX_TESTS_PER_MONTH}
+            </div>
+            <div className={`text-xs px-2 py-1 rounded-full border ${aiItemCount > MAX_AI_ITEMS_PER_TEST ? 'border-warning/50 bg-warning/10 text-warning' : 'border-border bg-muted text-muted-foreground'}`}>
+              Itemi AI: {aiItemCount} {aiItemCount > MAX_AI_ITEMS_PER_TEST && `(selectează ${MAX_AI_ITEMS_PER_TEST} cu ✨)`}
+            </div>
           </div>
-          <div className={`text-xs px-2 py-1 rounded-full border ${aiItemCount >= MAX_AI_ITEMS_PER_TEST ? 'border-destructive/50 bg-destructive/10 text-destructive' : 'border-border bg-muted text-muted-foreground'}`}>
-            Itemi AI: {aiItemCount}/{MAX_AI_ITEMS_PER_TEST}
-          </div>
-        </div>
+          {aiItemCount > MAX_AI_ITEMS_PER_TEST && (
+            <p className="text-[10px] text-muted-foreground">
+              Ai {aiItemCount} itemi evaluabili cu AI dar limita e {MAX_AI_ITEMS_PER_TEST}. Bifează ✨ pe itemii doriți ({aiGradingItemIds.length}/{MAX_AI_ITEMS_PER_TEST} selectați).
+            </p>
+          )}
+        </>
       )}
 
       {/* Config */}
@@ -915,6 +927,27 @@ const TestBuilder = ({ onBack, editTestId, teacherStatus }: TestBuilderProps) =>
                           <SelectItem value="B">Nr. 2</SelectItem>
                         </SelectContent>
                       </Select>
+                    )}
+                    {/* AI checkbox for problem/open_answer items when >3 AI items and teacher is premium */}
+                    {isTeacherPremium && aiItemCount > MAX_AI_ITEMS_PER_TEST && (
+                      item.source_type === "problem" || (item.source_type === "custom" && item.custom_data?.type === "open_answer")
+                    ) && (
+                      <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                        <Checkbox
+                          checked={aiGradingItemIds.includes(itemKey)}
+                          onCheckedChange={(checked) => {
+                            if (checked && aiGradingItemIds.length >= MAX_AI_ITEMS_PER_TEST) {
+                              toast.error(`Maxim ${MAX_AI_ITEMS_PER_TEST} itemi pot fi corectați cu AI.`);
+                              return;
+                            }
+                            setAiGradingItemIds(prev =>
+                              checked ? [...prev, itemKey] : prev.filter(id => id !== itemKey)
+                            );
+                          }}
+                          disabled={!aiGradingItemIds.includes(itemKey) && aiGradingItemIds.length >= MAX_AI_ITEMS_PER_TEST}
+                        />
+                        <Sparkles className="h-3 w-3 text-primary" />
+                      </div>
                     )}
                     <button onClick={() => removeItem(idx)} className="p-1 text-muted-foreground hover:text-destructive">
                       <Trash2 className="h-3 w-3" />

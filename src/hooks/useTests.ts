@@ -58,6 +58,7 @@ export function useCreateTest() {
       variant_mode: string;
       items: TestItem[];
       allow_run_tests?: boolean;
+      ai_grading_item_ids?: string[];
     }) => {
       if (!user) throw new Error("Not authenticated");
       const { data: test, error } = await supabase
@@ -68,6 +69,7 @@ export function useCreateTest() {
           time_limit_minutes: params.time_limit_minutes,
           variant_mode: params.variant_mode,
           allow_run_tests: params.allow_run_tests ?? false,
+          ai_grading_item_ids: params.ai_grading_item_ids ?? [],
         })
         .select()
         .single();
@@ -102,6 +104,7 @@ export function useUpdateTest() {
       variant_mode: string;
       items: TestItem[];
       allow_run_tests?: boolean;
+      ai_grading_item_ids?: string[];
     }) => {
       // Update test metadata
       const { error: testError } = await supabase
@@ -111,6 +114,7 @@ export function useUpdateTest() {
           time_limit_minutes: params.time_limit_minutes,
           variant_mode: params.variant_mode,
           allow_run_tests: params.allow_run_tests ?? false,
+          ai_grading_item_ids: params.ai_grading_item_ids ?? [],
         })
         .eq("id", params.id);
       if (testError) throw testError;
@@ -375,6 +379,23 @@ export function useUpdateAnswerScore() {
     onSuccess: (_, vars) => {
       qc.invalidateQueries({ queryKey: ["test-answers"] });
       qc.invalidateQueries({ queryKey: ["test-submissions"] });
+    },
+  });
+}
+
+export function useToggleScoresReleased() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (params: { assignmentId: string; released: boolean }) => {
+      const { error } = await supabase
+        .from("test_assignments")
+        .update({ scores_released: params.released })
+        .eq("id", params.assignmentId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["test-assignments"] });
+      qc.invalidateQueries({ queryKey: ["student-test-assignments"] });
     },
   });
 }

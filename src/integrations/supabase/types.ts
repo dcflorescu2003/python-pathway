@@ -994,6 +994,7 @@ export type Database = {
           due_date: string | null
           id: string
           is_active: boolean
+          scores_released: boolean
           test_id: string
         }
         Insert: {
@@ -1002,6 +1003,7 @@ export type Database = {
           due_date?: string | null
           id?: string
           is_active?: boolean
+          scores_released?: boolean
           test_id: string
         }
         Update: {
@@ -1010,6 +1012,7 @@ export type Database = {
           due_date?: string | null
           id?: string
           is_active?: boolean
+          scores_released?: boolean
           test_id?: string
         }
         Relationships: [
@@ -1116,6 +1119,7 @@ export type Database = {
       }
       tests: {
         Row: {
+          ai_grading_item_ids: string[]
           allow_run_tests: boolean
           created_at: string
           id: string
@@ -1126,6 +1130,7 @@ export type Database = {
           variant_mode: string
         }
         Insert: {
+          ai_grading_item_ids?: string[]
           allow_run_tests?: boolean
           created_at?: string
           id?: string
@@ -1136,6 +1141,7 @@ export type Database = {
           variant_mode?: string
         }
         Update: {
+          ai_grading_item_ids?: string[]
           allow_run_tests?: boolean
           created_at?: string
           id?: string

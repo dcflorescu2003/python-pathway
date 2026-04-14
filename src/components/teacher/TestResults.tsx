@@ -4,8 +4,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
-import { useTestAssignments, useTestSubmissions, useTestAnswers, useTestItems, useUpdateAnswerScore } from "@/hooks/useTests";
-import { ArrowLeft, ChevronDown, ChevronUp, CheckCircle, XCircle, Save, FileSpreadsheet, FileText } from "lucide-react";
+import { useTestAssignments, useTestSubmissions, useTestAnswers, useTestItems, useUpdateAnswerScore, useToggleScoresReleased } from "@/hooks/useTests";
+import { ArrowLeft, ChevronDown, ChevronUp, CheckCircle, XCircle, Save, FileSpreadsheet, FileText, Eye, EyeOff } from "lucide-react";
 import { toast } from "sonner";
 
 interface TestResultsProps {
@@ -22,6 +22,7 @@ const TestResults = ({ testId, onBack }: TestResultsProps) => {
   const { data: submissions = [] } = useTestSubmissions(selectedAssignmentId);
   const { data: answers = [] } = useTestAnswers(expandedSubmissionId);
   const updateScore = useUpdateAnswerScore();
+  const toggleScores = useToggleScoresReleased();
 
   // Enriched data: exercise/problem details keyed by source_id
   const [enrichedData, setEnrichedData] = useState<Record<string, any>>({});
@@ -273,17 +274,34 @@ const TestResults = ({ testId, onBack }: TestResultsProps) => {
       ) : (
         <div className="space-y-2">
           <p className="text-xs font-medium text-muted-foreground">Selectează clasa:</p>
-          {assignments.map((a: any) => (
-            <Button
-              key={a.id}
-              variant={selectedAssignmentId === a.id ? "default" : "outline"}
-              size="sm"
-              onClick={() => setSelectedAssignmentId(a.id)}
-              className="mr-2"
-            >
-              {a.teacher_classes?.name || "Clasă"}
-            </Button>
-          ))}
+           {assignments.map((a: any) => {
+              const isSelected = selectedAssignmentId === a.id;
+              return (
+                <div key={a.id} className="flex items-center gap-2">
+                  <Button
+                    variant={isSelected ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setSelectedAssignmentId(a.id)}
+                  >
+                    {a.teacher_classes?.name || "Clasă"}
+                  </Button>
+                  {isSelected && (
+                    <Button
+                      variant={a.scores_released ? "default" : "outline"}
+                      size="sm"
+                      className="gap-1 text-xs"
+                      onClick={() => {
+                        toggleScores.mutate({ assignmentId: a.id, released: !a.scores_released });
+                      }}
+                      disabled={toggleScores.isPending}
+                    >
+                      {a.scores_released ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
+                      {a.scores_released ? "Note publicate" : "Publică notele"}
+                    </Button>
+                  )}
+                </div>
+              );
+            })}
         </div>
       )}
 
@@ -377,7 +395,7 @@ const typeLabel = (t: string) => {
   const map: Record<string, string> = {
     quiz: "Quiz", truefalse: "A/F", fill: "Completare",
     order: "Ordonare", match: "Potrivire", problem: "Problemă",
-    exercise: "Exercițiu", custom: "Custom",
+    exercise: "Exercițiu", custom: "Custom", open_answer: "Răspuns deschis",
   };
   return map[t] || t;
 };

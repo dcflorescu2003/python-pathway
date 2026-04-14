@@ -465,10 +465,14 @@ const Index = (): JSX.Element => {
                         </span>
                       )}
                     </div>
-                    {done && a.submission?.total_score != null && (
-                      <p className="text-[10px] text-primary font-medium">
-                        Scor: {a.submission.total_score}/{a.submission.max_score}
-                      </p>
+                    {done && (
+                      a.scores_released && a.submission?.total_score != null ? (
+                        <p className="text-[10px] text-primary font-medium">
+                          Scor: {a.submission.total_score}/{a.submission.max_score}
+                        </p>
+                      ) : (
+                        <p className="text-[10px] text-muted-foreground italic">Rezultat în așteptare</p>
+                      )
                     )}
                   </div>
                   {!done && <ChevronDown className="h-4 w-4 text-muted-foreground -rotate-90" />}
