@@ -62,14 +62,14 @@ const StudentTab = ({ memberClassName, onLeaveClass }: StudentTabProps) => {
     enabled: !!user,
   });
 
-  // Get completed lessons for this user
+  // Get completed lessons for this user (with score)
   const { data: completedLessons = [] } = useQuery({
     queryKey: ["student-completed-lessons", user?.id],
     queryFn: async () => {
       if (!user) return [];
       const { data } = await supabase
         .from("completed_lessons")
-        .select("lesson_id")
+        .select("lesson_id, score")
         .eq("user_id", user.id);
       return data || [];
     },
@@ -125,6 +125,7 @@ const StudentTab = ({ memberClassName, onLeaveClass }: StudentTabProps) => {
   });
 
   const completedLessonIds = new Set(completedLessons.map((cl) => cl.lesson_id));
+  const completedLessonScores = new Map(completedLessons.map((cl) => [cl.lesson_id, cl.score]));
 
   // Split challenges into active vs completed
   const activeChallenges = challenges.filter((ch) => {
@@ -291,21 +292,25 @@ const StudentTab = ({ memberClassName, onLeaveClass }: StudentTabProps) => {
               Provocări completate ({completedChallenges.length})
             </p>
             <div className="space-y-1.5">
-              {completedChallenges.map((ch) => (
-                <Card key={ch.id} className="border-border">
-                  <CardContent className="p-3 flex items-center gap-3">
-                    <div className="w-7 h-7 rounded-lg bg-green-500/10 flex items-center justify-center">
-                      <CheckCircle className="h-3.5 w-3.5 text-green-600" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm text-foreground truncate">{ch.item_title}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {ch.item_type === "lesson" ? "Lecție" : "Problemă"} — completată
-                      </p>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+              {completedChallenges.map((ch) => {
+                const score = completedLessonScores.get(ch.item_id);
+                return (
+                  <Card key={ch.id} className="border-border">
+                    <CardContent className="p-3 flex items-center gap-3">
+                      <div className="w-7 h-7 rounded-lg bg-green-500/10 flex items-center justify-center">
+                        <CheckCircle className="h-3.5 w-3.5 text-green-600" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm text-foreground truncate">{ch.item_title}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {ch.item_type === "lesson" ? "Lecție" : "Problemă"} — completată
+                          {score !== undefined && score !== null && ` • Scor: ${score}%`}
+                        </p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
             </div>
           </div>
         )}
@@ -388,29 +393,64 @@ const StudentTab = ({ memberClassName, onLeaveClass }: StudentTabProps) => {
                             <div className="space-y-1.5">
                               {testAnswers
                                 .sort((a: any, b: any) => (a.test_items?.sort_order ?? 0) - (b.test_items?.sort_order ?? 0))
-                                .map((answer: any, idx: number) => (
-                                  <div key={answer.id} className="rounded-md bg-muted/50 p-2">
-                                    <div className="flex items-center justify-between text-xs">
-                                      <span className="text-foreground font-medium">
-                                        Exercițiul {idx + 1}
-                                      </span>
-                                      <span className={`font-semibold ${
-                                        Number(answer.score) >= Number(answer.max_points)
-                                          ? "text-green-600"
-                                          : Number(answer.score) > 0
-                                            ? "text-yellow-600"
-                                            : "text-destructive"
-                                      }`}>
-                                        {answer.score ?? 0}/{answer.max_points ?? 0}p
-                                      </span>
+                                .map((answer: any, idx: number) => {
+                                  const customData = answer.test_items?.custom_data;
+                                  const sourceType = answer.test_items?.source_type;
+                                  const isAutoGraded = sourceType === 'custom' && customData;
+                                  const question = customData?.question || `Exercițiul ${idx + 1}`;
+                                  const answerData = answer.answer_data;
+
+                                  return (
+                                    <div key={answer.id} className="rounded-md bg-muted/50 p-2.5 space-y-1.5">
+                                      <div className="flex items-center justify-between text-xs">
+                                        <span className="text-foreground font-medium truncate max-w-[70%]">
+                                          {idx + 1}. {question}
+                                        </span>
+                                        <span className={`font-semibold whitespace-nowrap ${
+                                          Number(answer.score) >= Number(answer.max_points)
+                                            ? "text-green-600"
+                                            : Number(answer.score) > 0
+                                              ? "text-yellow-600"
+                                              : "text-destructive"
+                                        }`}>
+                                          {answer.score ?? 0}/{answer.max_points ?? 0}p
+                                        </span>
+                                      </div>
+
+                                      {/* Student answer */}
+                                      {answerData && (
+                                        <div className="text-xs">
+                                          <span className="text-muted-foreground">Răspunsul tău: </span>
+                                          <span className="text-foreground">
+                                            {typeof answerData === 'string'
+                                              ? answerData
+                                              : answerData.selected_option_text || answerData.answer || answerData.code || JSON.stringify(answerData)}
+                                          </span>
+                                        </div>
+                                      )}
+
+                                      {/* Correct answer for auto-graded OR feedback for manual */}
+                                      {isAutoGraded && Number(answer.score) < Number(answer.max_points) && (
+                                        <div className="text-xs">
+                                          <span className="text-muted-foreground">Răspuns corect: </span>
+                                          <span className="text-green-600 font-medium">
+                                            {customData.correct_option_text
+                                              || (customData.options?.find((o: any) => o.id === customData.correct_option_id)?.text)
+                                              || customData.correct_answer
+                                              || (customData.blanks ? customData.blanks.map((b: any) => b.answer).join(', ') : null)
+                                              || "—"}
+                                          </span>
+                                        </div>
+                                      )}
+
+                                      {answer.feedback && (
+                                        <p className="text-xs text-muted-foreground italic">
+                                          💬 {answer.feedback}
+                                        </p>
+                                      )}
                                     </div>
-                                    {answer.feedback && (
-                                      <p className="text-xs text-muted-foreground mt-1 italic">
-                                        💬 {answer.feedback}
-                                      </p>
-                                    )}
-                                  </div>
-                                ))}
+                                  );
+                                })}
                             </div>
                           )}
 
