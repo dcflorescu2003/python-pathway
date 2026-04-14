@@ -207,7 +207,7 @@ const TakeTestPage = () => {
           <CardContent className="p-6 text-center space-y-4">
             <div className="text-4xl">✅</div>
             <h2 className="text-lg font-bold text-foreground">Test trimis!</h2>
-            <p className="text-sm text-muted-foreground">Nota ta va fi calculată automat.</p>
+            <p className="text-sm text-muted-foreground">Vei vedea nota după ce profesorul o publică.</p>
             <Button onClick={() => navigate("/")} className="w-full">Înapoi acasă</Button>
           </CardContent>
         </Card>
