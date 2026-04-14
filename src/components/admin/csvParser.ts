@@ -180,7 +180,7 @@ export function parseExercisesCSV(text: string): { exercises: ParsedExercise[]; 
 }
 
 export function parseLessonCSV(text: string): { meta: ParsedLessonMeta | null; exercises: ParsedExercise[]; errors: string[] } {
-  const lines = text.split(/\r?\n/);
+  const lines = splitLogicalLines(text);
   const metaStart = lines.findIndex(l => l.trim().toUpperCase() === "[META]");
   const exStart = lines.findIndex(l => l.trim().toUpperCase() === "[EXERCISES]");
 
