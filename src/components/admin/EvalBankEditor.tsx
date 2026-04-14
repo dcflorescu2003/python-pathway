@@ -198,6 +198,7 @@ function ChapterBlock({ chapter, isExpanded, onToggle, isEditing, onStartEdit, o
                 setEditingExercise={setEditingExercise}
                 mutations={mutations}
                 sensors={sensors}
+                invalidateAll={invalidateAll}
               />
             </div>
           </motion.div>
