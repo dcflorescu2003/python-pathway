@@ -48,7 +48,7 @@ const TakeTestPage = () => {
         // Get assignment + test info
         const { data: assignment } = await supabase
           .from("test_assignments")
-          .select("*, tests(id, title, time_limit_minutes, variant_mode)")
+          .select("*, tests(id, title, time_limit_minutes, variant_mode, allow_run_tests)")
           .eq("id", assignmentId)
           .single();
 
@@ -265,6 +265,7 @@ const TakeTestPage = () => {
                   problem={currentItem.problem_data}
                   answer={answers[currentItem.id]}
                   onAnswer={(data) => setAnswer(currentItem.id, data)}
+                  allowRunTests={testInfo?.tests?.allow_run_tests ?? false}
                 />
               )}
             </CardContent>
