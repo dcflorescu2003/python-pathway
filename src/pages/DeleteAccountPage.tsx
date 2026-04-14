@@ -18,7 +18,21 @@ const DeleteAccountPage = () => {
   const [confirmText, setConfirmText] = useState("");
   const [loading, setLoading] = useState(false);
   const [step, setStep] = useState<"subscription-warning" | "warning" | "confirm">("warning");
+  const [showFinalDialog, setShowFinalDialog] = useState(false);
+  const [isTeacher, setIsTeacher] = useState(false);
 
+  // Check if user is a teacher
+  useEffect(() => {
+    if (!user) return;
+    supabase
+      .from("profiles")
+      .select("is_teacher")
+      .eq("user_id", user.id)
+      .single()
+      .then(({ data }) => {
+        if (data?.is_teacher) setIsTeacher(true);
+      });
+  }, [user]);
   // If user has active subscription, show subscription warning first
   useEffect(() => {
     if (!subLoading && subscribed) {
