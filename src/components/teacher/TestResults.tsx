@@ -378,6 +378,7 @@ const TestResults = ({ testId, onBack }: TestResultsProps) => {
             submissions.map((sub: any) => {
               const isExpanded = expandedSubmissionId === sub.id;
               const percentage = sub.max_score > 0 ? Math.round((sub.total_score / sub.max_score) * 100) : 0;
+              const ungradedCount = ungradedCountBySubmission[sub.id] || 0;
               return (
                 <Card key={sub.id}>
                   <CardContent className="p-0">
@@ -398,6 +399,11 @@ const TestResults = ({ testId, onBack }: TestResultsProps) => {
                         </p>
                       </div>
                       <div className="flex items-center gap-2">
+                        {ungradedCount > 0 && (
+                          <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-warning/10 border border-warning/30 text-warning font-medium">
+                            {ungradedCount} ✏️
+                          </span>
+                        )}
                         {sub.submitted_at && (
                           <span className={`text-sm font-bold ${percentage >= 50 ? "text-primary" : "text-destructive"}`}>
                             {percentage}%
