@@ -490,19 +490,21 @@ const TestBuilder = ({ onBack, editTestId, teacherStatus }: TestBuilderProps) =>
 
       {/* Limits info for Profesor AI */}
       {isTeacherPremium && (
-        <div className="flex flex-wrap gap-2">
-          <div className={`text-xs px-2 py-1 rounded-full border ${testsThisMonth >= MAX_TESTS_PER_MONTH ? 'border-destructive/50 bg-destructive/10 text-destructive' : 'border-border bg-muted text-muted-foreground'}`}>
-            Teste luna aceasta: {testsThisMonth}/{MAX_TESTS_PER_MONTH}
+        <>
+          <div className="flex flex-wrap gap-2">
+            <div className={`text-xs px-2 py-1 rounded-full border ${testsThisMonth >= MAX_TESTS_PER_MONTH ? 'border-destructive/50 bg-destructive/10 text-destructive' : 'border-border bg-muted text-muted-foreground'}`}>
+              Teste luna aceasta: {testsThisMonth}/{MAX_TESTS_PER_MONTH}
+            </div>
+            <div className={`text-xs px-2 py-1 rounded-full border ${aiItemCount > MAX_AI_ITEMS_PER_TEST ? 'border-warning/50 bg-warning/10 text-warning' : 'border-border bg-muted text-muted-foreground'}`}>
+              Itemi AI: {aiItemCount} {aiItemCount > MAX_AI_ITEMS_PER_TEST && `(selectează ${MAX_AI_ITEMS_PER_TEST} cu ✨)`}
+            </div>
           </div>
-          <div className={`text-xs px-2 py-1 rounded-full border ${aiItemCount > MAX_AI_ITEMS_PER_TEST ? 'border-warning/50 bg-warning/10 text-warning' : 'border-border bg-muted text-muted-foreground'}`}>
-            Itemi AI: {aiItemCount} {aiItemCount > MAX_AI_ITEMS_PER_TEST && `(selectează ${MAX_AI_ITEMS_PER_TEST} cu ✨)`}
-          </div>
-        </div>
-        {isTeacherPremium && aiItemCount > MAX_AI_ITEMS_PER_TEST && (
-          <p className="text-[10px] text-muted-foreground">
-            Ai {aiItemCount} itemi evaluabili cu AI dar limita e {MAX_AI_ITEMS_PER_TEST}. Bifează ✨ pe itemii doriți ({aiGradingItemIds.length}/{MAX_AI_ITEMS_PER_TEST} selectați).
-          </p>
-        )}
+          {aiItemCount > MAX_AI_ITEMS_PER_TEST && (
+            <p className="text-[10px] text-muted-foreground">
+              Ai {aiItemCount} itemi evaluabili cu AI dar limita e {MAX_AI_ITEMS_PER_TEST}. Bifează ✨ pe itemii doriți ({aiGradingItemIds.length}/{MAX_AI_ITEMS_PER_TEST} selectați).
+            </p>
+          )}
+        </>
       )}
 
       {/* Config */}
