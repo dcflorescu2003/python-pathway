@@ -517,8 +517,11 @@ const TestBuilder = ({ onBack, editTestId, teacherStatus }: TestBuilderProps) =>
               </SelectContent>
             </Select>
           </div>
+          <div className="flex items-center gap-2">
+            <Switch id="allow-run-tests" checked={allowRunTests} onCheckedChange={setAllowRunTests} />
+            <Label htmlFor="allow-run-tests" className="text-sm">Permite rularea testelor la probleme</Label>
+          </div>
         </CardContent>
-      </Card>
 
       {/* Item source tabs */}
       <Tabs defaultValue={teacherStatus === "verified" ? "templates" : "exercises"} className="w-full">
