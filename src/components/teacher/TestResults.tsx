@@ -51,6 +51,46 @@ const TestResults = ({ testId, onBack }: TestResultsProps) => {
     fetchDetails();
   }, [testItems]);
 
+  // Fetch all answers for all submissions to compute ungraded badges
+  useEffect(() => {
+    if (submissions.length === 0) { setAllAssignmentAnswers([]); return; }
+    const fetchAll = async () => {
+      const subIds = submissions.map((s: any) => s.id);
+      const { data } = await supabase.from("test_answers").select("*").in("submission_id", subIds);
+      setAllAssignmentAnswers(data || []);
+    };
+    fetchAll();
+  }, [submissions]);
+
+  // Identify which test_item IDs need manual grading (problem/open_answer)
+  const manualGradingItemIds = useMemo(() => {
+    return new Set(
+      testItems
+        .filter((ti: any) =>
+          ti.source_type === "problem" ||
+          (ti.source_type === "custom" && ti.custom_data?.type === "open_answer")
+        )
+        .map((ti: any) => ti.id)
+    );
+  }, [testItems]);
+
+  // Count ungraded manual items per submission
+  const ungradedCountBySubmission = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const sub of submissions) {
+      const subAnswers = allAssignmentAnswers.filter((a: any) => a.submission_id === sub.id);
+      const ungraded = subAnswers.filter(
+        (a: any) => manualGradingItemIds.has(a.test_item_id) && (a.score === null || a.score === 0) && !a.ai_reviewed
+      ).length;
+      counts[sub.id] = ungraded;
+    }
+    return counts;
+  }, [submissions, allAssignmentAnswers, manualGradingItemIds]);
+
+  const totalUngradedCount = useMemo(() => {
+    return Object.values(ungradedCountBySubmission).reduce((sum, c) => sum + c, 0);
+  }, [ungradedCountBySubmission]);
+
   const [scoreEdits, setScoreEdits] = useState<Record<string, string>>({});
   const [feedbackEdits, setFeedbackEdits] = useState<Record<string, string>>({});
 
