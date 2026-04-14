@@ -1,95 +1,45 @@
 
 
-## Plan: Import CSV pentru exerciții și lecții
+## Plan: Fix CSV parser pentru câmpuri multiline și compatibilitate Excel
 
-### Funcționalitate
+### Probleme identificate
 
-Se adaugă import CSV în două locuri din panoul de administrare:
+Fișierul CSV are **două probleme principale**:
 
-1. **ContentEditor (Lecții)** — buton „Importă CSV" pe fiecare lecție existentă → adaugă exerciții la lecția respectivă (fără a le înlocui pe cele existente)
-2. **ContentEditor (Capitol)** — buton „Importă lecție din CSV" pe fiecare capitol → creează o lecție nouă cu titlu + exerciții din CSV
-3. **EvalBankEditor (Bancă Evaluare)** — același mecanism pe lecțiile din bancă
+1. **Câmpuri multiline** — Exercițiul de tip `card` (rândul 7-14) conține text cu newline-uri în interior (markdown cu bullet points). Parserul actual face `text.split(/\r?\n/)` la nivel de fișier, ceea ce sparge un câmp multiline în mai multe rânduri invalide. Fiecare linie din interiorul câmpului card apare ca un rând separat cu tip invalid.
 
-### Format CSV propus
+2. **`#NAME?` din Excel** — Textul original conținea probabil markdown cu `#` (headere), iar Excel le-a interpretat ca formule invalide, înlocuindu-le cu `#NAME?`. Aceasta e o problemă din Excel, nu din parser — dar parserul ar trebui să le accepte ca text valid.
 
-**CSV exerciții** (import pe lecție existentă):
-```
-type,question,option_a,option_b,option_c,option_d,correct,explanation,code_template,blanks,lines,statement,is_true,groups
-quiz,Ce returnează len([1 2 3])?,1,2,3,4,c,len() returnează nr de elemente,,,,,,
-truefalse,,,,,,,Python e compilat,,,,False,,
-fill,Completează codul:,,,,,,,x = ___,answer1|answer2,,,,
-order,Ordonează liniile:,,,,,,,,,"for i in range(3)|  print(i)|print('gata')",,,"1|1|2"
-card,**Teoria:**\nListele sunt mutabile,,,,,,,,,,,,
-open_answer,Explică diferența dintre liste și tupluri,,,,,,,,,,,,
-```
+### Soluție
 
-Reguli:
-- Separator: virgulă (CSV standard), cu ghilimele pentru valori cu virgulă
-- **quiz**: `option_a..d` + `correct` (a/b/c/d)
-- **truefalse**: `statement` + `is_true` (True/False)
-- **fill**: `code_template` (cu `___` pentru spații) + `blanks` (variante separate prin `|`, blank-uri separate prin `;`)
-- **order**: `lines` separate prin `|` + `groups` opțional (numere separate prin `|`)
-- **card**: doar `question` (suport Markdown)
-- **open_answer**: doar `question`
-- **problem**: `question` + `code_template` + `solution` (în coloane adiționale)
-- `explanation` opțional pe toate tipurile
-- XP implicit: 5
+**Modificare `csvParser.ts`** — funcția `parseCSVRows`:
 
-**CSV lecție completă** (creează lecție + exerciții):
-```
-[META]
-title,Introducere în liste
-description,Lecțiile despre liste în Python
-xp_reward,20
-[EXERCISES]
-type,question,option_a,...
-quiz,Ce este o listă?,...
+- Înlocuiesc logica de split simplu pe `\n` cu un **parser care respectă quoted fields multiline**
+- Algoritmul: parcurg caracter cu caracter, țin un flag `inQuotes`. Când sunt în ghilimele, newline-urile nu separă rândurile — le adaug la câmpul curent
+- După ce am liniile logice corecte, le parsez cu `parseCSVLine` existent
+
+Același fix se aplică și în `parseLessonCSV` unde se face split pe `[META]` / `[EXERCISES]`.
+
+### Detalii tehnice
+
+```text
+Flux actual:
+  text.split(\n) → linii fizice → parseCSVLine per linie
+  ❌ Câmp multiline = rânduri sparte
+
+Flux nou:
+  splitCSVLogicalLines(text) → linii logice (respectă ghilimele)
+  → parseCSVLine per linie logică
+  ✅ Câmpurile cu newline rămân întregi
 ```
 
-Prima secțiune `[META]` conține titlul și descrierea lecției, apoi `[EXERCISES]` cu exercițiile în formatul de mai sus.
-
-### Modificări
-
-**1. Componenta nouă `CsvImporter.tsx`** (src/components/admin/)
-
-- Componenta primește props: `targetTable` ("exercises" | "eval_exercises"), `lessonId`, `onSuccess`
-- Buton care deschide un dialog cu:
-  - Input file `.csv`
-  - Preview tabel cu exercițiile parsate
-  - Buton „Importă X exerciții"
-- Parser CSV cu validare pe tipuri
-- La import: calculează `sort_order` pornind de la max-ul existent + 1
-- Generează ID-uri unice per exercițiu
-
-**2. Componenta `CsvLessonImporter.tsx`** (src/components/admin/)
-
-- Primește props: `targetTables` (lessons/exercises sau manual), `chapterId`, `onSuccess`
-- Parsează formatul cu `[META]` + `[EXERCISES]`
-- Creează lecția, apoi inserează exercițiile
-
-**3. `ContentEditor.tsx`**
-
-- Adaugă buton „📥 Importă CSV" pe fiecare lecție (lângă butonul + Exercițiu)
-- Adaugă buton „📥 Importă lecție din CSV" pe fiecare capitol (lângă + Lecție)
-
-**4. `EvalBankEditor.tsx`**
-
-- Adaugă buton „📥 Importă CSV" pe fiecare lecție din bancă
-
-### Îmbunătățiri propuse
-
-- **Preview înainte de import** — afișează un tabel cu exercițiile parsate, evidențiind erorile de validare
-- **Export CSV** — buton mic de export pe fiecare lecție, generează CSV-ul în formatul corect (util ca template)
-- **Detecție automată separator** — suport și pentru `;` ca separator (comun în Europa cu Excel)
-
-### Fișiere
+### Fișiere modificate
 
 | Fișier | Ce |
 |--------|----|
-| `src/components/admin/CsvImporter.tsx` | Componenta de import exerciții pe lecție |
-| `src/components/admin/CsvLessonImporter.tsx` | Componenta de import lecție completă |
-| `src/components/admin/ContentEditor.tsx` | Integrare butoane import |
-| `src/components/admin/EvalBankEditor.tsx` | Integrare buton import |
+| `src/components/admin/csvParser.ts` | Funcție nouă `splitLogicalLines()`, update `parseCSVRows` și `parseLessonCSV` |
 
-Fără migrări SQL necesare — se folosesc tabelele existente.
+### Recomandare pentru utilizator
+
+Problema cu `#NAME?` vine din Excel. Recomand editarea CSV-urilor într-un **editor text** (Notepad++, VS Code) sau **Google Sheets** (care nu interpretează `#` ca formulă). Parserul va accepta `#NAME?` ca text, dar conținutul original se pierde odată ce Excel l-a alterat.
 
