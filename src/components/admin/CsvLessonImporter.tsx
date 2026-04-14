@@ -2,7 +2,7 @@ import { useState, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { Upload, FileText, AlertCircle, Check } from "lucide-react";
+import { Upload, FileText, AlertCircle, Check, Download } from "lucide-react";
 import { toast } from "sonner";
 import { parseLessonCSV, exerciseToDbRow, getLessonTemplateCSV, downloadCSV, type ParsedExercise } from "./csvParser";
 
@@ -163,9 +163,15 @@ export default function CsvLessonImporter({ mode, chapterId, existingLessonCount
             </div>
           )}
 
-          <div className="text-[10px] text-muted-foreground space-y-1 border-t border-border pt-3">
-            <p className="font-medium">Format:</p>
-            <pre className="bg-secondary/30 p-2 rounded text-[10px]">{`[META]\ntitle,Numele lecției\ndescription,Descriere opțională\nxp_reward,20\n[EXERCISES]\ntype,question,option_a,...\nquiz,Ce e Python?,limbaj,framework,c,...`}</pre>
+          <div className="text-[10px] text-muted-foreground space-y-2 border-t border-border pt-3">
+            <div className="flex items-center justify-between">
+              <p className="font-medium">Format: [META] + [EXERCISES]</p>
+              <Button variant="link" size="sm" className="text-[10px] h-auto p-0" onClick={() => downloadCSV(getLessonTemplateCSV(), "template-lectie.csv")}>
+                <Download className="h-3 w-3 mr-1" />Descarcă template
+              </Button>
+            </div>
+            <p>[META] conține: title, description, xp_reward</p>
+            <p>[EXERCISES] conține exercițiile (quiz, truefalse, fill, order, card, open_answer, problem)</p>
           </div>
         </DialogContent>
       </Dialog>
