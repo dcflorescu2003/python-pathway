@@ -209,7 +209,7 @@ function ChapterBlock({ chapter, isExpanded, onToggle, isEditing, onStartEdit, o
 }
 
 // --- Lessons List ---
-function LessonsList({ chapterId, expandedLesson, setExpandedLesson, creatingLesson, setCreatingLesson, lessonForm, setLessonForm, editingLesson, setEditingLesson, editingExercise, setEditingExercise, mutations, sensors }: any) {
+function LessonsList({ chapterId, expandedLesson, setExpandedLesson, creatingLesson, setCreatingLesson, lessonForm, setLessonForm, editingLesson, setEditingLesson, editingExercise, setEditingExercise, mutations, sensors, invalidateAll }: any) {
   const { data: lessons = [] } = useEvalLessons(chapterId);
 
   const handleLessonReorder = async (event: DragEndEvent) => {
@@ -221,7 +221,7 @@ function LessonsList({ chapterId, expandedLesson, setExpandedLesson, creatingLes
     const reordered = arrayMove(lessons, oldIndex, newIndex);
     await Promise.all(reordered.map((l: any, i: number) => supabase.from("eval_lessons").update({ sort_order: i } as any).eq("id", l.id)));
     toast.success("Ordine lecții actualizată!");
-    mutations.updateLesson.mutateAsync({ id: reordered[0].id, sort_order: 0 });
+    invalidateAll();
   };
 
   return (
@@ -248,6 +248,7 @@ function LessonsList({ chapterId, expandedLesson, setExpandedLesson, creatingLes
                 setEditingExercise={setEditingExercise}
                 mutations={mutations}
                 sensors={sensors}
+                invalidateAll={invalidateAll}
               />
             </SortableItem>
           ))}
@@ -277,7 +278,7 @@ function LessonsList({ chapterId, expandedLesson, setExpandedLesson, creatingLes
 }
 
 // --- Lesson Block ---
-function LessonBlock({ lesson, isExpanded, onToggle, isEditing, onStartEdit, onCancelEdit, editForm, setEditForm, onSaveEdit, onDelete, editingExercise, setEditingExercise, mutations, sensors }: any) {
+function LessonBlock({ lesson, isExpanded, onToggle, isEditing, onStartEdit, onCancelEdit, editForm, setEditForm, onSaveEdit, onDelete, editingExercise, setEditingExercise, mutations, sensors, invalidateAll }: any) {
   return (
     <div className="rounded-lg border border-border bg-secondary/30">
       <div className="flex items-center gap-2 p-3">
