@@ -1,64 +1,74 @@
 
 
-## Plan: Completare bancă evaluare + Răspuns deschis (fără indiciu la probleme)
+## Plan: Tipuri noi vizibile + Control publicare note + Selectare itemi AI
 
-### Rezumat
+### Probleme identificate
 
-Se adaugă 3 îmbunătățiri la Banca de Evaluare (EvalBank):
-1. **Fill (Completare)** — interfață cu `codeTemplate` și variante separate prin virgulă
-2. **Order (Ordonare)** — câmp „Grup" pe fiecare linie (linii cu același grup sunt interschimbabile)
-3. **Problem (Problemă)** — tip nou, fără indiciu, cu cod template, soluție și cazuri de test
-4. **Open Answer (Răspuns deschis)** — tip nou, profesorul pune o întrebare, elevul răspunde liber; evaluabil cu AI
+1. **Tipuri noi lipsă din PredefinedTestEditor** — `typeLabels` în `PredefinedTestEditor.tsx` (linia 412) conține doar `quiz/fill/order/truefalse`. Lipsesc `problem` și `open_answer`. Exercițiile de tip problemă/răspuns deschis din bancă nu au label corect și nu se recunosc vizual.
+
+2. **Elevii văd nota imediat** — Nu există un mecanism de control al vizibilității notelor. Elevii văd `total_score/max_score` imediat după trimitere (pe pagina Index, linia 468-471 și pe TakeTestPage mesajul de confirmare).
+
+3. **Profesorul trebuie să confirme notarea** — Profesorul trebuie să noteze manual răspunsurile deschise/probleme înainte de a publica. Profesorii cu Profesor AI pot avea notare automată fără confirmare.
+
+4. **Selecție manuală a itemilor AI** — Dacă sunt >3 itemi problem/open_answer, profesorul trebuie să poată bifa care 3 să fie corectate cu AI.
 
 ### Modificări
 
 **1. Migrare SQL**
 
-- Actualizare trigger `validate_eval_exercise_type` → permite `'problem'` și `'open_answer'`
-- Coloane noi pe `eval_exercises`:
-  - `code_template text` — șablon cod (fill, problem)
-  - `test_cases jsonb DEFAULT '[]'` — cazuri de test (problem)
-  - `solution text DEFAULT ''` — rezolvare (problem)
+- Adaugă coloana `scores_released boolean NOT NULL DEFAULT false` pe `test_assignments`
+- Adaugă coloana `ai_grading_item_ids text[] DEFAULT '{}'` pe `tests` (lista de test_item IDs pe care profesorul le alege pentru AI grading)
 
-**2. `src/hooks/useEvalBank.ts`**
+**2. `PredefinedTestEditor.tsx`**
 
-- Extindere interfață `EvalExercise` cu `code_template`, `test_cases`, `solution`
+- Adaugă `problem: "Problemă"`, `open_answer: "Răspuns deschis"` la `typeLabels` (linia 412)
 
-**3. `src/components/admin/EvalBankEditor.tsx`**
+**3. `TestResults.tsx` — Buton „Publică notele"**
 
-- `typeLabels`: adaugă `problem: "Problemă"`, `open_answer: "Răspuns deschis"`
-- **Fill**: adaugă câmp `codeTemplate` (Textarea mono, placeholder „Folosește ___ pentru spații goale"), la blanks se menționează „variante separate prin virgulă"
-- **Order**: adaugă Input „Grup" pe fiecare linie (number, opțional)
-- **Problem** (nou): editor cu `codeTemplate`, `solution`, `testCases` (input/output/hidden toggle) — fără indiciu
-- **Open Answer** (nou): doar `question` + `explanation` opțional, fără alte câmpuri speciale
-- `handleSave`: include `code_template`, `test_cases`, `solution` pentru problem
+- Afișează un buton „Publică notele" per assignment (toggle `scores_released`)
+- Când `scores_released = false`, elevii NU văd scorul
+- Profesorul poate vedea itemii open_answer/problem neevaluate, le notează manual, apoi publică
+- Badge vizual care arată câte itemi open_answer/problem nu au fost notate manual
 
-**4. `src/components/teacher/TestBuilder.tsx`**
+**4. `Index.tsx` — Ascunde scorul**
 
-- Adaugă `"open_answer"` la `CustomQuestionType`
-- Editor custom simplu: Textarea pentru întrebare, fără opțiuni/răspuns corect
-- `custom_data.type = "open_answer"` salvat pe item
+- La afișarea testelor completate, verifică `scores_released` din assignment
+- Dacă `false`: afișează „Rezultat în așteptare" în loc de scor
 
-**5. `src/pages/TakeTestPage.tsx`**
+**5. `TakeTestPage.tsx` — Mesaj actualizat**
 
-- Render `open_answer`: afișează întrebarea + Textarea pentru răspuns liber
-- Salvează `answer_data = { text: "..." }`
+- După trimitere: „Testul a fost trimis! Vei vedea nota după ce profesorul o publică."
 
-**6. `supabase/functions/grade-submission/index.ts`**
+**6. `useTests.ts`**
 
-- `open_answer` → scor 0 la evaluare automată, feedback „Necesită evaluare manuală sau AI"
-- Dacă profesorul are AI: include open_answer items (limita de 3 rămâne aceeași, include atât probleme cât și răspunsuri deschise) în batch-ul AI cu prompt adaptat: „Evaluează răspunsul elevului la întrebarea X"
+- `useStudentAssignments`: include `scores_released` în select (e deja `*` dar trebuie să existe coloana)
+- `useTestAssignments`: includ `scores_released`
+- Adaugă hook `useToggleScoresReleased` — toggle `scores_released` pe assignment
 
-**7. RPC `get_test_items_for_student`** — nu necesită modificări (datele vin deja din `custom_data`)
+**7. `TestBuilder.tsx` — Selectare itemi AI**
+
+- Când profesorul are Profesor AI și sunt >3 itemi problem/open_answer:
+  - Afișează checkbox pe fiecare item problem/open_answer
+  - Maxim 3 bifate, cu label „Corectează cu AI"
+  - Salvează selecția în `ai_grading_item_ids` pe test
+- Când sunt ≤3, se selectează automat toate (comportament actual)
+
+**8. `grade-submission/index.ts`**
+
+- Citește `ai_grading_item_ids` din test
+- Dacă lista nu e goală, doar itemii din listă sunt trimiși la AI (nu primii 3 găsiți)
+- Dacă lista e goală, comportament actual (primii 3)
 
 ### Fișiere modificate
 
 | Fișier | Ce |
 |--------|----|
-| Migrare SQL | Coloane noi + trigger actualizat |
-| `src/hooks/useEvalBank.ts` | Interfață extinsă |
-| `src/components/admin/EvalBankEditor.tsx` | Fill cu cod template, Order cu grup, Problem + Open Answer |
-| `src/components/teacher/TestBuilder.tsx` | Open Answer în custom editor |
-| `src/pages/TakeTestPage.tsx` | Render open_answer |
-| `supabase/functions/grade-submission/index.ts` | Evaluare open_answer (0 automat / AI) |
+| Migrare SQL | `scores_released`, `ai_grading_item_ids` |
+| `PredefinedTestEditor.tsx` | typeLabels actualizat |
+| `TestResults.tsx` | Buton publică note, badge itemi nenotați |
+| `Index.tsx` | Condiționare afișare scor |
+| `TakeTestPage.tsx` | Mesaj actualizat post-trimitere |
+| `useTests.ts` | Hook toggle scores_released |
+| `TestBuilder.tsx` | Selectare itemi AI cu checkbox |
+| `grade-submission/index.ts` | Respectă ai_grading_item_ids |
 
