@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Upload, FileText, AlertCircle, Check } from "lucide-react";
 import { toast } from "sonner";
-import { parseLessonCSV, exerciseToDbRow, type ParsedExercise } from "./csvParser";
+import { parseLessonCSV, exerciseToDbRow, getLessonTemplateCSV, downloadCSV, type ParsedExercise } from "./csvParser";
 
 interface CsvLessonImporterProps {
   /** "content" for lessons+exercises tables, "eval" for eval_lessons+eval_exercises */

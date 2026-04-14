@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Upload, FileText, AlertCircle, Check, Download } from "lucide-react";
 import { toast } from "sonner";
-import { parseExercisesCSV, exerciseToDbRow, generateExportCSV, type ParsedExercise } from "./csvParser";
+import { parseExercisesCSV, exerciseToDbRow, generateExportCSV, getExercisesTemplateCSV, downloadCSV, type ParsedExercise } from "./csvParser";
 
 interface CsvImporterProps {
   targetTable: "exercises" | "eval_exercises" | "manual_exercises";
@@ -156,11 +156,15 @@ export default function CsvImporter({ targetTable, lessonId, existingCount, exis
             </div>
           )}
 
-          <div className="text-[10px] text-muted-foreground space-y-1 border-t border-border pt-3">
-            <p className="font-medium">Format CSV:</p>
-            <p>Coloane: type, question, option_a, option_b, option_c, option_d, correct, explanation, code_template, blanks, lines, statement, is_true, groups, solution, test_cases</p>
+          <div className="text-[10px] text-muted-foreground space-y-2 border-t border-border pt-3">
+            <div className="flex items-center justify-between">
+              <p className="font-medium">Format CSV:</p>
+              <Button variant="link" size="sm" className="text-[10px] h-auto p-0" onClick={() => downloadCSV(getExercisesTemplateCSV(), "template-exercitii.csv")}>
+                <Download className="h-3 w-3 mr-1" />Descarcă template
+              </Button>
+            </div>
             <p>Tipuri: quiz, truefalse, fill, order, card, open_answer, problem</p>
-            <p>Blanks: variante separate prin „;" (mai multe blank-uri) și răspunsuri prin „,"</p>
+            <p>Blanks: variante separate prin „;" (mai multe blank-uri)</p>
             <p>Lines/Groups: separate prin „|"</p>
           </div>
         </DialogContent>
