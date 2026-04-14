@@ -52,6 +52,7 @@ const LessonPage = () => {
   const [isFinished, setIsFinished] = useState(false);
   const [feedback, setFeedback] = useState<"correct" | "wrong" | null>(null);
   const [lastExplanation, setLastExplanation] = useState<string | null>(null);
+  const [wasFirstTime] = useState(() => !progress.completedLessons[lessonId || ""]?.completed);
 
   const handleAnswer = useCallback(
     (isCorrect: boolean) => {
@@ -59,10 +60,11 @@ const LessonPage = () => {
       if (exercise?.type === "card") {
         setFeedback(null);
         setLastExplanation(null);
+        setCorrectCount((c) => c + 1);
         if (!lesson) return;
         if (currentIndex + 1 >= lesson.exercises.length) {
           setIsFinished(true);
-          completeLesson(lesson.id, lesson.xpReward, correctCount);
+          completeLesson(lesson.id, lesson.xpReward, correctCount + 1);
         } else {
           setCurrentIndex((i) => i + 1);
         }
@@ -101,8 +103,7 @@ const LessonPage = () => {
   if (!lesson || !chapter) return <div className="p-8 text-center text-foreground">Lecție negăsită</div>;
 
   if (isFinished) {
-    const wasAlreadyCompleted = !!progress.completedLessons[lesson.id]?.completed;
-    const xpEarned = lives > 0 ? (wasAlreadyCompleted ? 3 : lesson.xpReward) : 0;
+    const xpEarned = lives > 0 ? (wasFirstTime ? lesson.xpReward : 3) : 0;
     return (
       <div className="fixed inset-0 flex items-center justify-center bg-background p-6 safe-top safe-bottom">
         <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="w-full max-w-sm rounded-xl border border-border bg-card p-6 text-center">
