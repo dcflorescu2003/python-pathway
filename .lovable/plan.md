@@ -1,60 +1,103 @@
 
 
-## Plan: Îmbunătățiri tab Elev — pas obligatoriu nume catalog, provocări active, istoric cu detalii
+## Plan: Bancă de itemi pentru evaluare + Teste predefinite (Admin)
 
-### Ce se schimbă
+### Ideea
 
-**1. Dialog îmbunătățit la înscrierea în clasă (`AuthPage.tsx`)**
+Două tab-uri noi în panoul Admin:
 
-Dialogul existent de nume (`showNameDialog`) devine obligatoriu întotdeauna — nu doar când `display_name` lipsește. Fluxul:
-- Elevul introduce codul clasei → se deschide dialogul cu numele din catalog
-- Sub câmpul de nume complet, apare o notă: „Acest nume va fi vizibil doar profesorului tău"
-- Numele se salvează ca `display_name` pe profil
-- Abia după confirmare se face insert-ul în `class_members`
+1. **Bancă de itemi** — structură Capitole → Lecții → Exerciții (similar cu ContentEditor, dar dedicat evaluărilor). Adminul definește capitole tematice, creează lecții în fiecare capitol, apoi adaugă exerciții (quiz, fill, order, truefalse) la fiecare lecție. Acestea formează banca din care se asamblează testele.
 
-**2. Refactorizare completă `StudentTab.tsx`**
+2. **Teste predefinite** — adminul asamblează teste complete selectând itemi din bancă, setând punctaje, timp, nivel de dificultate și mod variante (shuffle/manual). Aceste teste înlocuiesc array-ul hardcodat `TEMPLATES` din TestBuilder și devin accesibile profesorilor verificați.
 
-Structura nouă a tab-ului Elev:
+### Îmbunătățiri propuse
 
-```text
-┌─ Clasa ta ─ [Părăsește] ──────────┐
-│ Nume catalog: Andrei Popescu [✏️]  │
-├────────────────────────────────────┤
-│ 🔥 Provocări active (2)           │
-│  ┌ Lecție: Variabile  [Începe →] ┐│
-│  └ Problemă: FizzBuzz [Începe →] ┘│
-├────────────────────────────────────┤
-│ 📜 Istoric                        │
-│  ── Provocări (3) ──              │
-│  ✅ Lecție: Bucle (completată)     │
-│  ✅ Problemă: Suma (completată)    │
-│  ── Teste (2) ──                  │
-│  📝 Test Variabile: 85/100 [→]    │
-│  ❌ Test Bucle: Expirat            │
-└────────────────────────────────────┘
+- **Nivel de dificultate pe test** (ușor/mediu/avansat) — ajută profesorii să filtreze rapid
+- **Taguri pe itemi** (opțional) — pentru căutare/filtrare în bancă
+- **Duplicare test predefint** — profesorul verificat poate duplica un test predefinit în propriile teste și apoi îl poate personaliza
+- **Previzualizare completă** — adminul poate previzualiza testul exact cum îl va vedea elevul
+
+### Tabele noi (migrare SQL)
+
+```sql
+-- Capitole din banca de evaluare
+CREATE TABLE public.eval_chapters (
+  id text PRIMARY KEY,
+  title text NOT NULL,
+  icon text NOT NULL DEFAULT '📝',
+  sort_order integer NOT NULL DEFAULT 0
+);
+
+-- Lecții din banca de evaluare  
+CREATE TABLE public.eval_lessons (
+  id text PRIMARY KEY,
+  chapter_id text NOT NULL REFERENCES eval_chapters(id) ON DELETE CASCADE,
+  title text NOT NULL,
+  sort_order integer NOT NULL DEFAULT 0
+);
+
+-- Exerciții din banca de evaluare
+CREATE TABLE public.eval_exercises (
+  id text PRIMARY KEY,
+  lesson_id text NOT NULL REFERENCES eval_lessons(id) ON DELETE CASCADE,
+  type text NOT NULL CHECK (type IN ('quiz','fill','order','truefalse')),
+  question text NOT NULL,
+  options jsonb,
+  correct_option_id text,
+  blanks jsonb,
+  lines jsonb,
+  statement text,
+  is_true boolean,
+  explanation text,
+  sort_order integer NOT NULL DEFAULT 0
+);
+
+-- Teste predefinite (template-uri)
+CREATE TABLE public.predefined_tests (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  title text NOT NULL,
+  description text NOT NULL DEFAULT '',
+  difficulty text NOT NULL DEFAULT 'mediu',
+  time_limit_minutes integer,
+  variant_mode text NOT NULL DEFAULT 'shuffle',
+  sort_order integer NOT NULL DEFAULT 0,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+
+-- Itemii unui test predefinit
+CREATE TABLE public.predefined_test_items (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  test_id uuid NOT NULL REFERENCES predefined_tests(id) ON DELETE CASCADE,
+  variant text NOT NULL DEFAULT 'both',
+  sort_order integer NOT NULL DEFAULT 0,
+  source_type text NOT NULL, -- 'eval_exercise', 'exercise', 'problem'
+  source_id text,
+  custom_data jsonb,
+  points integer NOT NULL DEFAULT 10
+);
 ```
 
-- **Nume catalog editabil**: sub numele clasei, afișează `display_name` cu buton de editare inline
-- **Provocări active**: provocările pe care elevul NU le-a completat încă. Buton „Începe" care navighează la `/lesson/{id}` sau `/problem/{id}`
-- **Determinarea completării**: pentru lecții — verificăm în `completed_lessons`; pentru probleme — verificăm tot în `completed_lessons` (sau alt mecanism existent)
-- **Istoric provocări**: provocările completate, cu indicatorul ✅
-- **Istoric teste**: testele cu submisie completată. Click pe un test completat deschide un dialog/expandable cu:
-  - Scorul total
-  - Feedbackul profesorului (din `test_answers.feedback`)
-  - Lista itemilor cu punctajul obținut vs maxim
+RLS: toate tabelele — CRUD doar admin, SELECT pentru authenticated (profesorii verificați filtrează client-side, deja implementat).
 
-**3. Queries noi în `StudentTab.tsx`**
+### Componente noi
 
-- Query `completed_lessons` pentru user → determină care provocări de tip lecție sunt completate
-- Query `test_answers` cu join pe `test_items` pentru submisiile completate → afișare detalii greșeli și feedback
-- Reutilizăm hook-ul `useChallenges` existent care aduce deja titlurile provocărilor
+| Fișier | Descriere |
+|--------|-----------|
+| `src/components/admin/EvalBankEditor.tsx` | Editor capitole → lecții → exerciții (reutilizează pattern-ul din ContentEditor cu DnD, CRUD inline) |
+| `src/components/admin/PredefinedTestEditor.tsx` | Asamblare teste: selectare itemi din bancă, setare punctaje/timp/dificultate/variante |
+| `src/hooks/useEvalBank.ts` | Hook-uri pentru query/mutații pe eval_chapters, eval_lessons, eval_exercises |
+| `src/hooks/usePredefinedTests.ts` | Hook-uri pentru query/mutații pe predefined_tests și predefined_test_items |
 
-### Fișiere modificate
+### Modificări existente
 
 | Fișier | Ce se schimbă |
 |--------|---------------|
-| `src/pages/AuthPage.tsx` | Dialogul de nume devine obligatoriu la fiecare înscriere în clasă |
-| `src/components/account/StudentTab.tsx` | Refactorizare completă: secțiuni active/istoric, navigare, detalii teste |
+| `src/pages/AdminPage.tsx` | +2 tab-uri: „Bancă Evaluare" și „Teste Predefinite" |
+| `src/components/teacher/TestBuilder.tsx` | Înlocuire array TEMPLATES cu date din `predefined_tests`. Profesorul verificat poate selecta un test predefinit → se copiază itemii în testul propriu |
 
-Nu sunt necesare migrări SQL — toate datele există deja în tabelele `completed_lessons`, `test_submissions`, `test_answers`.
+### Flux
+
+1. **Admin**: creează capitole și lecții în Banca de Evaluare → adaugă exerciții
+2. **Admin**: în tab-ul Teste Predefinite → creează test → selectează itemi din bancă (sau din lecțiile/problemele existente) → setează punctaje, timp, dificultate, variante
+3. **Profesor verificat**: în TestBuilder vede lista testelor predefinite (în loc de TEMPLATES hardcodate) → selectează unul → itemii se copiază automat în testul nou → poate personaliza punctaje/timp/itemi suplimentari
 
