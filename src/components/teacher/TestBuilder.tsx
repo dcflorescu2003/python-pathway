@@ -490,7 +490,7 @@ const TestBuilder = ({ onBack, editTestId, teacherStatus }: TestBuilderProps) =>
             Teste luna aceasta: {testsThisMonth}/{MAX_TESTS_PER_MONTH}
           </div>
           <div className={`text-xs px-2 py-1 rounded-full border ${aiItemCount >= MAX_AI_ITEMS_PER_TEST ? 'border-destructive/50 bg-destructive/10 text-destructive' : 'border-border bg-muted text-muted-foreground'}`}>
-            Probleme AI: {aiItemCount}/{MAX_AI_ITEMS_PER_TEST}
+            Itemi AI: {aiItemCount}/{MAX_AI_ITEMS_PER_TEST}
           </div>
         </div>
       )}
