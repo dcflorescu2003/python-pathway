@@ -382,3 +382,20 @@ export function useUpdateAnswerScore() {
     },
   });
 }
+
+export function useToggleScoresReleased() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (params: { assignmentId: string; released: boolean }) => {
+      const { error } = await supabase
+        .from("test_assignments")
+        .update({ scores_released: params.released })
+        .eq("id", params.assignmentId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["test-assignments"] });
+      qc.invalidateQueries({ queryKey: ["student-test-assignments"] });
+    },
+  });
+}
