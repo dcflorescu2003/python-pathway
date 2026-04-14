@@ -1,74 +1,95 @@
 
 
-## Plan: Tipuri noi vizibile + Control publicare note + Selectare itemi AI
+## Plan: Import CSV pentru exerciții și lecții
 
-### Probleme identificate
+### Funcționalitate
 
-1. **Tipuri noi lipsă din PredefinedTestEditor** — `typeLabels` în `PredefinedTestEditor.tsx` (linia 412) conține doar `quiz/fill/order/truefalse`. Lipsesc `problem` și `open_answer`. Exercițiile de tip problemă/răspuns deschis din bancă nu au label corect și nu se recunosc vizual.
+Se adaugă import CSV în două locuri din panoul de administrare:
 
-2. **Elevii văd nota imediat** — Nu există un mecanism de control al vizibilității notelor. Elevii văd `total_score/max_score` imediat după trimitere (pe pagina Index, linia 468-471 și pe TakeTestPage mesajul de confirmare).
+1. **ContentEditor (Lecții)** — buton „Importă CSV" pe fiecare lecție existentă → adaugă exerciții la lecția respectivă (fără a le înlocui pe cele existente)
+2. **ContentEditor (Capitol)** — buton „Importă lecție din CSV" pe fiecare capitol → creează o lecție nouă cu titlu + exerciții din CSV
+3. **EvalBankEditor (Bancă Evaluare)** — același mecanism pe lecțiile din bancă
 
-3. **Profesorul trebuie să confirme notarea** — Profesorul trebuie să noteze manual răspunsurile deschise/probleme înainte de a publica. Profesorii cu Profesor AI pot avea notare automată fără confirmare.
+### Format CSV propus
 
-4. **Selecție manuală a itemilor AI** — Dacă sunt >3 itemi problem/open_answer, profesorul trebuie să poată bifa care 3 să fie corectate cu AI.
+**CSV exerciții** (import pe lecție existentă):
+```
+type,question,option_a,option_b,option_c,option_d,correct,explanation,code_template,blanks,lines,statement,is_true,groups
+quiz,Ce returnează len([1 2 3])?,1,2,3,4,c,len() returnează nr de elemente,,,,,,
+truefalse,,,,,,,Python e compilat,,,,False,,
+fill,Completează codul:,,,,,,,x = ___,answer1|answer2,,,,
+order,Ordonează liniile:,,,,,,,,,"for i in range(3)|  print(i)|print('gata')",,,"1|1|2"
+card,**Teoria:**\nListele sunt mutabile,,,,,,,,,,,,
+open_answer,Explică diferența dintre liste și tupluri,,,,,,,,,,,,
+```
+
+Reguli:
+- Separator: virgulă (CSV standard), cu ghilimele pentru valori cu virgulă
+- **quiz**: `option_a..d` + `correct` (a/b/c/d)
+- **truefalse**: `statement` + `is_true` (True/False)
+- **fill**: `code_template` (cu `___` pentru spații) + `blanks` (variante separate prin `|`, blank-uri separate prin `;`)
+- **order**: `lines` separate prin `|` + `groups` opțional (numere separate prin `|`)
+- **card**: doar `question` (suport Markdown)
+- **open_answer**: doar `question`
+- **problem**: `question` + `code_template` + `solution` (în coloane adiționale)
+- `explanation` opțional pe toate tipurile
+- XP implicit: 5
+
+**CSV lecție completă** (creează lecție + exerciții):
+```
+[META]
+title,Introducere în liste
+description,Lecțiile despre liste în Python
+xp_reward,20
+[EXERCISES]
+type,question,option_a,...
+quiz,Ce este o listă?,...
+```
+
+Prima secțiune `[META]` conține titlul și descrierea lecției, apoi `[EXERCISES]` cu exercițiile în formatul de mai sus.
 
 ### Modificări
 
-**1. Migrare SQL**
+**1. Componenta nouă `CsvImporter.tsx`** (src/components/admin/)
 
-- Adaugă coloana `scores_released boolean NOT NULL DEFAULT false` pe `test_assignments`
-- Adaugă coloana `ai_grading_item_ids text[] DEFAULT '{}'` pe `tests` (lista de test_item IDs pe care profesorul le alege pentru AI grading)
+- Componenta primește props: `targetTable` ("exercises" | "eval_exercises"), `lessonId`, `onSuccess`
+- Buton care deschide un dialog cu:
+  - Input file `.csv`
+  - Preview tabel cu exercițiile parsate
+  - Buton „Importă X exerciții"
+- Parser CSV cu validare pe tipuri
+- La import: calculează `sort_order` pornind de la max-ul existent + 1
+- Generează ID-uri unice per exercițiu
 
-**2. `PredefinedTestEditor.tsx`**
+**2. Componenta `CsvLessonImporter.tsx`** (src/components/admin/)
 
-- Adaugă `problem: "Problemă"`, `open_answer: "Răspuns deschis"` la `typeLabels` (linia 412)
+- Primește props: `targetTables` (lessons/exercises sau manual), `chapterId`, `onSuccess`
+- Parsează formatul cu `[META]` + `[EXERCISES]`
+- Creează lecția, apoi inserează exercițiile
 
-**3. `TestResults.tsx` — Buton „Publică notele"**
+**3. `ContentEditor.tsx`**
 
-- Afișează un buton „Publică notele" per assignment (toggle `scores_released`)
-- Când `scores_released = false`, elevii NU văd scorul
-- Profesorul poate vedea itemii open_answer/problem neevaluate, le notează manual, apoi publică
-- Badge vizual care arată câte itemi open_answer/problem nu au fost notate manual
+- Adaugă buton „📥 Importă CSV" pe fiecare lecție (lângă butonul + Exercițiu)
+- Adaugă buton „📥 Importă lecție din CSV" pe fiecare capitol (lângă + Lecție)
 
-**4. `Index.tsx` — Ascunde scorul**
+**4. `EvalBankEditor.tsx`**
 
-- La afișarea testelor completate, verifică `scores_released` din assignment
-- Dacă `false`: afișează „Rezultat în așteptare" în loc de scor
+- Adaugă buton „📥 Importă CSV" pe fiecare lecție din bancă
 
-**5. `TakeTestPage.tsx` — Mesaj actualizat**
+### Îmbunătățiri propuse
 
-- După trimitere: „Testul a fost trimis! Vei vedea nota după ce profesorul o publică."
+- **Preview înainte de import** — afișează un tabel cu exercițiile parsate, evidențiind erorile de validare
+- **Export CSV** — buton mic de export pe fiecare lecție, generează CSV-ul în formatul corect (util ca template)
+- **Detecție automată separator** — suport și pentru `;` ca separator (comun în Europa cu Excel)
 
-**6. `useTests.ts`**
-
-- `useStudentAssignments`: include `scores_released` în select (e deja `*` dar trebuie să existe coloana)
-- `useTestAssignments`: includ `scores_released`
-- Adaugă hook `useToggleScoresReleased` — toggle `scores_released` pe assignment
-
-**7. `TestBuilder.tsx` — Selectare itemi AI**
-
-- Când profesorul are Profesor AI și sunt >3 itemi problem/open_answer:
-  - Afișează checkbox pe fiecare item problem/open_answer
-  - Maxim 3 bifate, cu label „Corectează cu AI"
-  - Salvează selecția în `ai_grading_item_ids` pe test
-- Când sunt ≤3, se selectează automat toate (comportament actual)
-
-**8. `grade-submission/index.ts`**
-
-- Citește `ai_grading_item_ids` din test
-- Dacă lista nu e goală, doar itemii din listă sunt trimiși la AI (nu primii 3 găsiți)
-- Dacă lista e goală, comportament actual (primii 3)
-
-### Fișiere modificate
+### Fișiere
 
 | Fișier | Ce |
 |--------|----|
-| Migrare SQL | `scores_released`, `ai_grading_item_ids` |
-| `PredefinedTestEditor.tsx` | typeLabels actualizat |
-| `TestResults.tsx` | Buton publică note, badge itemi nenotați |
-| `Index.tsx` | Condiționare afișare scor |
-| `TakeTestPage.tsx` | Mesaj actualizat post-trimitere |
-| `useTests.ts` | Hook toggle scores_released |
-| `TestBuilder.tsx` | Selectare itemi AI cu checkbox |
-| `grade-submission/index.ts` | Respectă ai_grading_item_ids |
+| `src/components/admin/CsvImporter.tsx` | Componenta de import exerciții pe lecție |
+| `src/components/admin/CsvLessonImporter.tsx` | Componenta de import lecție completă |
+| `src/components/admin/ContentEditor.tsx` | Integrare butoane import |
+| `src/components/admin/EvalBankEditor.tsx` | Integrare buton import |
+
+Fără migrări SQL necesare — se folosesc tabelele existente.
 
