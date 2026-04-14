@@ -547,6 +547,7 @@ export type Database = {
           last_activity_date: string
           lives: number
           lives_updated_at: string | null
+          nickname: string | null
           school_id: string | null
           streak: number
           teacher_status: string | null
@@ -566,6 +567,7 @@ export type Database = {
           last_activity_date?: string
           lives?: number
           lives_updated_at?: string | null
+          nickname?: string | null
           school_id?: string | null
           streak?: number
           teacher_status?: string | null
@@ -585,6 +587,7 @@ export type Database = {
           last_activity_date?: string
           lives?: number
           lives_updated_at?: string | null
+          nickname?: string | null
           school_id?: string | null
           streak?: number
           teacher_status?: string | null
