@@ -306,12 +306,12 @@ export function generateExportCSV(exercises: any[]): string {
 export function getExercisesTemplateCSV(): string {
   const headers = "type,question,option_a,option_b,option_c,option_d,correct,explanation,code_template,blanks,lines,statement,is_true,groups,solution,test_cases";
   const rows = [
-    'quiz,Ce tip de date este 3.14?,int,float,str,bool,b,3.14 este un număr zecimal deci float,,,,,,,,',
-    'truefalse,,,,,,,Python este un limbaj interpretat,,,,"Python este un limbaj interpretat",True,,,',
-    'fill,Completează codul pentru a afișa mesajul:,,,,,,Se folosește funcția print(),"print(___)",...print(\'Salut\')...;...print(\"Bună\")...,,,,,',
-    'order,Ordonează pașii pentru a citi un fișier:,,,,,,,"f = open(\'date.txt\')|continut = f.read()|print(continut)|f.close()",,,,,1|2|3|4,',
+    'quiz,"Ce tip de date este 3.14?",int,float,str,bool,b,"3.14 este un număr zecimal, deci float",,,,,,,,',
+    'truefalse,,,,,,,"Python este un limbaj interpretat",,,,"Python este un limbaj interpretat",True,,,',
+    'fill,"Completează codul pentru a afișa mesajul:",,,,,,,"Se folosește funcția print()","print(___)",...print(\'Salut\')...;...print(\"Bună\")...,,,,,',
+    'order,"Ordonează pașii pentru a citi un fișier:",,,,,,,"f = open(\'date.txt\')|continut = f.read()|print(continut)|f.close()",,,,,1|2|3|4,',
     'card,"**Liste în Python**\n\nListele sunt colecții ordonate de elemente.\n\n```python\nfructe = [\'măr\', \'pară\', \'banană\']\n```",,,,,,,,,,,,,,',
-    'open_answer,Explică diferența dintre o listă și un tuplu în Python.,,,,,,Răspunsul trebuie să menționeze mutabilitatea,,,,,,,,',
+    'open_answer,"Explică diferența dintre o listă și un tuplu în Python.",,,,,,"Răspunsul trebuie să menționeze mutabilitatea",,,,,,,,',
     'problem,"Scrie o funcție care returnează suma numerelor pare dintr-o listă.",,,,,,,,"def suma_pare(lista):\n    return sum(x for x in lista if x % 2 == 0)",,,,,"[1,2,3,4]:6|[2,4,6]:12|[1,3,5]:0"',
   ];
   return [headers, ...rows].join("\n");
@@ -324,12 +324,12 @@ description,Lecție introductivă despre bazele limbajului Python
 xp_reward,25
 [EXERCISES]
 type,question,option_a,option_b,option_c,option_d,correct,explanation,code_template,blanks,lines,statement,is_true,groups,solution,test_cases
-quiz,Care este extensia fișierelor Python?,.java,.py,.js,.cpp,b,Fișierele Python au extensia .py,,,,,,,,
-truefalse,,,,,,,Python folosește indentarea pentru blocuri de cod,,,,Python folosește indentarea pentru a delimita blocurile de cod,True,,,
-fill,Completează pentru a defini o variabilă:,,,,,,Variabilele se definesc prin atribuire,"___ = 10",x;numar;n,,,,,
-order,Ordonează pașii unui program simplu:,,,,,,,,,"x = 5|y = 3|suma = x + y|print(suma)",,,1|2|3|4,
+quiz,"Care este extensia fișierelor Python?",.java,.py,.js,.cpp,b,"Fișierele Python au extensia .py",,,,,,,,
+truefalse,,,,,,,"Python folosește indentarea pentru blocuri de cod",,,,Python folosește indentarea pentru a delimita blocurile de cod,True,,,
+fill,"Completează pentru a defini o variabilă:",,,,,,"Variabilele se definesc prin atribuire","___ = 10",x;numar;n,,,,,
+order,"Ordonează pașii unui program simplu:",,,,,,,,"x = 5|y = 3|suma = x + y|print(suma)",,,1|2|3|4,
 card,"**Tipuri de date de bază**\n\n- **int** – numere întregi\n- **float** – numere zecimale\n- **str** – șiruri de caractere\n- **bool** – True / False",,,,,,,,,,,,,,
-open_answer,De ce crezi că Python este popular printre începători?,,,,,,,,,,,,,,`;
+open_answer,"De ce crezi că Python este popular printre începători?",,,,,,,,,,,,,,`;
 }
 
 export function downloadCSV(content: string, filename: string) {
