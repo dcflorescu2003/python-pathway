@@ -161,7 +161,10 @@ Deno.serve(async (req) => {
           feedback = result.feedback;
 
           // Collect for batch AI if teacher has Profesor AI and score < max
-          if (teacherHasAI && score < item.points && itemsForAI.length < MAX_AI_ITEMS_PER_TEST) {
+          const shouldAIGrade = aiGradingItemIds.length > 0
+            ? aiGradingItemIds.includes(item.id)
+            : itemsForAI.length < MAX_AI_ITEMS_PER_TEST;
+          if (teacherHasAI && score < item.points && shouldAIGrade) {
             itemsForAI.push({
               answerId: answer.id,
               answerIdx: i,
@@ -181,7 +184,10 @@ Deno.serve(async (req) => {
           // Open answer: score 0 automatically, collect for AI
           score = 0;
           feedback = "Necesită evaluare manuală sau AI.";
-          if (teacherHasAI && answer.answer_data?.text && itemsForAI.length < MAX_AI_ITEMS_PER_TEST) {
+          const shouldAIGrade = aiGradingItemIds.length > 0
+            ? aiGradingItemIds.includes(item.id)
+            : itemsForAI.length < MAX_AI_ITEMS_PER_TEST;
+          if (teacherHasAI && answer.answer_data?.text && shouldAIGrade) {
             itemsForAI.push({
               answerId: answer.id,
               answerIdx: i,
