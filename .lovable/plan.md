@@ -1,38 +1,97 @@
 
 
-## Plan: Reparare logică streak — creștere +1 la prima activitate zilnică
+## Plan: Reorganizare pagina Cont cu taburi și wizard profesor/elev
 
-### Bug-ul identificat
+### Arhitectura nouă
 
-Cauza principală: în `createDefaultProgress()`, `lastActivityDate` este setat la **data de azi**. Când utilizatorul deschide aplicația pe un device/browser unde nu are date locale salvate (sau localStorage a fost șters):
+Pagina de Cont (`AuthPage.tsx` → `AccountView`) devine un layout cu **taburi** care se adaptează dinamic la tipul de utilizator:
 
-1. Cloud: `streak=6`, `last_activity_date=2026-04-13` (ieri)
-2. Local (default): `streak=0`, `lastActivityDate=2026-04-14` (azi — din `createDefaultProgress`)
-3. `mergeProgress()`: ia `lastActivityDate = max(azi, ieri) = azi`, `streak = max(0, 6) = 6`
-4. Rezultat: sistemul crede că activitatea de azi a fost deja înregistrată → streak rămâne 6
-5. Când `completeLesson` rulează: `prev.lastActivityDate === today` → true → streak nu se incrementează
+```text
+┌──────────────────────────────────┐
+│  ← Contul meu                    │
+├──────────────────────────────────┤
+│  Logo + Nickname (editabil)      │
+│  email                           │
+│  Premium / Free badge            │
+├──────────────────────────────────┤
+│  [Profil]  [Elev*]  [Clase**]  [Teste**] │
+├──────────────────────────────────┤
+│  Conținut tab activ              │
+│                                  │
+│                                  │
+├──────────────────────────────────┤
+│  Politică | Deconectare | Ștergere│
+└──────────────────────────────────┘
 
-Practic, progresul local "gol" cu data de azi otrăvește merge-ul și blochează incrementarea streak-ului.
+* Tab "Elev" apare doar dacă e înscris într-o clasă
+** Taburile "Clase" și "Teste" apar doar pentru profesori
+```
 
-### Soluția
+### Tab-uri per rol
 
-**Fișier: `src/hooks/useProgress.ts`**
+**Toți utilizatorii — Tab „Profil":**
+- Statistici (lecții, XP, streak, probleme)
+- Abonament (Premium / Free + buton upgrade)
+- Cupon de activare
+- Buton „Devino Profesor" (wizard) SAU „Dezactivează modul profesor"
+- Alătură-te unei clase (dacă nu e profesor și nu e deja în clasă)
 
-1. **`createDefaultProgress()`** — schimb `lastActivityDate` din `getTodayDate()` în `""` (string gol). Un progress default nu ar trebui să pretindă că a existat activitate azi.
+**Elev înscris într-o clasă — Tab „Elev":**
+- Numele clasei + buton „Părăsește"
+- Lista provocărilor primite de la profesor
+- Testele atribuite cu statusul (activ / completat / expirat) și scorul obținut
 
-2. **`checkStreakExpiry()`** — adaug o verificare: dacă `lastActivityDate` este gol, returnează streak 0 fără eroare.
+**Profesor — Tab „Clase":**
+- Conținutul actual din `TeacherPage` → secțiunea Clase (`ClassManager` + `ClassDetail`)
+- Coduri referral (pentru verificați)
+- Banner verificare / pending
 
-3. **`mergeProgress()`** — logica de `lastActivityDate` trebuie să ignore valorile goale: dacă una din cele două este goală, o ia pe cealaltă.
+**Profesor — Tab „Teste":**
+- Conținutul actual din `TeacherPage` → secțiunea Teste (`TestManager` + `TestBuilder`)
 
-4. **`completeLesson()` și `recordActivity()`** — logica de streak devine mai clară:
-   - Dacă `lastActivityDate === today` → streak rămâne (deja activitate azi)
-   - Dacă `lastActivityDate === yesterday` → streak + 1
-   - Altfel (mai vechi de ieri SAU gol) → streak = 1
+**Footer (sub taburi, pentru toți):**
+- Politica de confidențialitate
+- Deconectare
+- Ștergere cont
+- Panou Admin (doar admini)
 
-5. **Cleanup la `loadCloud`**: când nu există date locale reale (xp=0, 0 lecții), nu mai facem merge cu default-ul — folosim direct datele din cloud. Apoi verificăm dacă trebuie incrementat streak-ul dacă `last_activity_date` din cloud e ieri.
+### Wizard „Devino Profesor"
 
-### Rezumat schimbări
-- Un singur fișier: `src/hooks/useProgress.ts`
-- ~30 linii modificate
-- Fără migrări SQL necesare — logica streak-ului este exclusiv client-side
+Înlocuiește apelul direct la `request_teacher_status()` cu un wizard în 3 pași (modal/inline):
+
+1. **Selectează liceul** — reutilizăm componenta de căutare din `SchoolOnboarding`
+2. **Numele complet** — câmp obligatoriu (nume din catalog, vizibil doar admin-ului la verificare)
+3. **Confirmare** — mesaj: „Pentru a beneficia de toate avantajele contului de profesor, trebuie să treci prin procesul de verificare. Poți începe oricând din pagina de cont." → buton „Devino Profesor"
+
+La confirmare: apelăm `request_teacher_status()` + salvăm `school_id` și `display_name` pe profil.
+
+### Nickname vs Nume complet
+
+- Câmpul existent `display_name` devine **numele complet** (vizibil profesorului și la verificare)
+- Adăugăm coloana `nickname` pe `profiles` — afișat public (în clasament, interfață)
+- La înscrierea în clasă: se cere numele complet (cum e acum), dar în rest se folosește nickname-ul
+- Dacă nickname nu e setat, se afișează display_name ca fallback
+
+### Eliminarea paginii `/teacher`
+
+Conținutul din `TeacherPage.tsx` se mută integral în taburile „Clase" și „Teste" din pagina Cont. Ruta `/teacher` poate fi eliminată sau redirecționată la `/auth`.
+
+### Fișiere modificate
+
+| Fișier | Ce se schimbă |
+|--------|---------------|
+| `src/pages/AuthPage.tsx` | Refactorizare completă `AccountView` — layout cu taburi, wizard profesor |
+| `src/pages/TeacherPage.tsx` | Se elimină (conținut mutat în AuthPage) |
+| `src/App.tsx` | Se elimină ruta `/teacher` |
+| `src/components/layout/BottomNav.tsx` | Fără schimbări (tab-ul Cont rămâne) |
+| Migrare SQL | Adăugare coloană `nickname` pe `profiles` |
+| `src/hooks/useProgress.ts` | Eventual expunem nickname pentru afișare |
+| `src/pages/LeaderboardPage.tsx` | Afișare nickname în loc de display_name |
+
+### Îmbunătățiri propuse de mine
+
+1. **Nickname obligatoriu la signup** — câmpul „Numele tău" din formularul de înregistrare devine nickname-ul, nu display_name. Așa, din prima zi utilizatorul are un alias public.
+2. **Tab „Elev" cu rezultate** — afișăm testele completate cu scorul obținut + provocările rezolvate / nerezolvate, oferind elevului o imagine clară a performanței în clasă.
+3. **Wizard profesor reversibil** — dacă dă „Renunță" în wizard, nu se întâmplă nimic; nu se creează statut „unverified" până la confirmarea finală.
+4. **Tranziție animată între taburi** — păstrăm stilul existent cu `framer-motion` pentru a menține coerența vizuală.
 
