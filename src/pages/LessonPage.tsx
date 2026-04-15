@@ -14,6 +14,7 @@ import MatchExercise from "@/components/exercises/MatchExercise";
 import CardExercise from "@/components/exercises/CardExercise";
 import ProblemExercise from "@/components/exercises/ProblemExercise";
 import LoadingScreen from "@/components/states/LoadingScreen";
+import StreakCelebrationDialog from "@/components/StreakCelebrationDialog";
 
 import React from "react";
 
@@ -40,7 +41,7 @@ class ExerciseErrorBoundary extends React.Component<
 const LessonPage = () => {
   const { lessonId } = useParams();
   const navigate = useNavigate();
-  const { progress, completeLesson, loseLife } = useProgress();
+  const { progress, completeLesson, loseLife, streakJustIncreased, newStreakCount, dismissStreakCelebration } = useProgress();
   const { data: chapters, isLoading } = useChapters();
 
   const lesson = chapters?.flatMap((c) => c.lessons).find((l) => l.id === lessonId);
@@ -123,8 +124,9 @@ const LessonPage = () => {
           )}
           <div className="flex gap-3">
             <Button variant="outline" className="flex-1 touch-target" onClick={() => navigate(`/chapter/${chapter.id}`)}>Înapoi</Button>
-            {lives > 0 && <Button className="flex-1 touch-target" onClick={() => navigate(`/chapter/${chapter.id}`)}>Continuă</Button>}
-          </div>
+              {lives > 0 && <Button className="flex-1 touch-target" onClick={() => navigate(`/chapter/${chapter.id}`)}>Continuă</Button>}
+            </div>
+            <StreakCelebrationDialog open={streakJustIncreased} streakCount={newStreakCount} onClose={dismissStreakCelebration} />
         </motion.div>
       </div>
     );
