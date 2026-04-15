@@ -110,6 +110,8 @@ function saveLocalProgress(p: UserProgress, userId?: string) {
 export function useProgress() {
   const { user } = useAuth();
   const [progress, setProgress] = useState<UserProgress>(() => createDefaultProgress());
+  const [streakJustIncreased, setStreakJustIncreased] = useState(false);
+  const [newStreakCount, setNewStreakCount] = useState(0);
   const prevUserId = useRef<string | null>(null);
 
   useEffect(() => {
