@@ -29,38 +29,61 @@ const LeaderboardPage = () => {
   const [tab, setTab] = useState<Tab>("national");
   const userSchool = getSelectedSchool();
 
-  const { data: entries = [], isLoading } = useQuery({
-    queryKey: ["leaderboard"],
+  const userCity = userSchool ? schools.find(s => s.id === userSchool)?.city : null;
+  const citySchoolIds = userCity ? schools.filter(s => s.city === userCity).map(s => s.id) : [];
+
+  // Query 1: Top 15 filtered by tab
+  const { data: top15 = [], isLoading } = useQuery({
+    queryKey: ["leaderboard-top", tab, userSchool],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from("profiles")
         .select("user_id, display_name, nickname, xp, streak, avatar_url, school_id")
         .order("xp", { ascending: false })
-        .limit(200);
+        .limit(15);
+
+      if (tab === "school" && userSchool) {
+        query = query.eq("school_id", userSchool);
+      } else if (tab === "city" && citySchoolIds.length > 0) {
+        query = query.in("school_id", citySchoolIds);
+      }
+
+      const { data, error } = await query;
       if (error) throw error;
       return (data || []) as LeaderboardEntry[];
     },
   });
 
-  const userCity = userSchool ? schools.find(s => s.id === userSchool)?.city : null;
-  const citySchoolIds = userCity ? schools.filter(s => s.city === userCity).map(s => s.id) : [];
+  // Query 2: Current user's profile + rank
+  const { data: userRankData } = useQuery({
+    queryKey: ["leaderboard-user-rank", tab, userSchool, user?.id],
+    enabled: !!user,
+    queryFn: async () => {
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("user_id, display_name, nickname, xp, streak, avatar_url, school_id")
+        .eq("user_id", user!.id)
+        .single();
+      if (!profile) return null;
 
-  const getFullFiltered = () => {
-    if (tab === "school" && userSchool) {
-      return entries.filter((e) => e.school_id === userSchool);
-    }
-    if (tab === "city" && citySchoolIds.length > 0) {
-      return entries.filter((e) => e.school_id && citySchoolIds.includes(e.school_id));
-    }
-    return entries;
-  };
+      let countQuery = supabase
+        .from("profiles")
+        .select("user_id", { count: "exact", head: true })
+        .gt("xp", profile.xp);
 
-  const fullFiltered = getFullFiltered();
-  const top15 = fullFiltered.slice(0, 15);
+      if (tab === "school" && userSchool) {
+        countQuery = countQuery.eq("school_id", userSchool);
+      } else if (tab === "city" && citySchoolIds.length > 0) {
+        countQuery = countQuery.in("school_id", citySchoolIds);
+      }
 
-  const userIndexInFull = user ? fullFiltered.findIndex(e => e.user_id === user.id) : -1;
-  const userNotInTop15 = userIndexInFull >= 15;
-  const userEntry = userNotInTop15 ? fullFiltered[userIndexInFull] : null;
+      const { count } = await countQuery;
+      return { ...profile, rank: (count || 0) + 1 } as LeaderboardEntry & { rank: number };
+    },
+  });
+
+  const userInTop15 = user ? top15.some(e => e.user_id === user.id) : false;
+  const showUserBelow = !!userRankData && !userInTop15;
 
   const renderRow = (entry: LeaderboardEntry, idx: number, animDelay: number) => {
     const isUser = entry.user_id === user?.id;
@@ -170,12 +193,12 @@ const LeaderboardPage = () => {
           <div className="space-y-2">
             {top15.map((entry, idx) => renderRow(entry, idx, idx))}
 
-            {userNotInTop15 && userEntry && (
+            {showUserBelow && (
               <>
                 <div className="flex items-center justify-center py-2 gap-2">
                   <span className="text-muted-foreground text-lg tracking-[0.3em]">• • •</span>
                 </div>
-                {renderRow(userEntry, userIndexInFull, 16)}
+                {renderRow(userRankData, userRankData.rank - 1, 16)}
               </>
             )}
 
