@@ -13,6 +13,7 @@ import { useSubscription } from "@/hooks/useSubscription";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import LoadingScreen from "@/components/states/LoadingScreen";
+import StreakCelebrationDialog from "@/components/StreakCelebrationDialog";
 
 const ProblemSolvePage = () => {
   const { problemId } = useParams();
@@ -20,7 +21,7 @@ const ProblemSolvePage = () => {
   const { data, isLoading: problemsLoading } = useProblems();
   const problem = data?.problems.find((p) => p.id === problemId);
   const { loading, running, runCode } = usePyodide();
-  const { progress, completeLesson, recordActivity } = useProgress();
+  const { progress, completeLesson, recordActivity, streakJustIncreased, newStreakCount, dismissStreakCelebration } = useProgress();
   const { subscribed } = useSubscription();
 
   const [code, setCode] = useState("");
@@ -196,6 +197,7 @@ const ProblemSolvePage = () => {
             )}
           </div>
         )}
+        <StreakCelebrationDialog open={streakJustIncreased} streakCount={newStreakCount} onClose={dismissStreakCelebration} />
       </div>
     </motion.div>
   );

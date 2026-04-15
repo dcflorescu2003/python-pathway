@@ -110,6 +110,8 @@ function saveLocalProgress(p: UserProgress, userId?: string) {
 export function useProgress() {
   const { user } = useAuth();
   const [progress, setProgress] = useState<UserProgress>(() => createDefaultProgress());
+  const [streakJustIncreased, setStreakJustIncreased] = useState(false);
+  const [newStreakCount, setNewStreakCount] = useState(0);
   const prevUserId = useRef<string | null>(null);
 
   useEffect(() => {
@@ -222,10 +224,18 @@ export function useProgress() {
         const finalXP = Math.round((alreadyCompleted ? 3 : xpEarned) * bonusMultiplier);
 
         const today = getTodayDate();
+        const isFirstActivityToday = prev.lastActivityDate !== today;
+        const newStreak = computeNewStreak(prev.streak, prev.lastActivityDate);
+
+        if (isFirstActivityToday) {
+          setStreakJustIncreased(true);
+          setNewStreakCount(newStreak);
+        }
+
         const newProgress: UserProgress = {
           ...prev,
           xp: prev.xp + finalXP,
-          streak: computeNewStreak(prev.streak, prev.lastActivityDate),
+          streak: newStreak,
           lastActivityDate: today,
           completedLessons: {
             ...prev.completedLessons,
@@ -305,9 +315,13 @@ export function useProgress() {
       const today = getTodayDate();
       if (prev.lastActivityDate === today) return prev;
 
+      const newStreak = computeNewStreak(prev.streak, prev.lastActivityDate);
+      setStreakJustIncreased(true);
+      setNewStreakCount(newStreak);
+
       const newProgress: UserProgress = {
         ...prev,
-        streak: computeNewStreak(prev.streak, prev.lastActivityDate),
+        streak: newStreak,
         lastActivityDate: today,
       };
 
@@ -319,7 +333,9 @@ export function useProgress() {
     });
   }, [user]);
 
-  return { progress, completeLesson, loseLife, resetLives, setPremium, recordActivity };
+  const dismissStreakCelebration = useCallback(() => setStreakJustIncreased(false), []);
+
+  return { progress, completeLesson, loseLife, resetLives, setPremium, recordActivity, streakJustIncreased, newStreakCount, dismissStreakCelebration };
 }
 
 function mergeProgress(a: UserProgress, b: UserProgress): UserProgress {
