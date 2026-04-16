@@ -386,12 +386,44 @@ export function useUpdateAnswerScore() {
 export function useToggleScoresReleased() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (params: { assignmentId: string; released: boolean }) => {
+    mutationFn: async (params: { assignmentId: string; released: boolean; testTitle?: string }) => {
       const { error } = await supabase
         .from("test_assignments")
         .update({ scores_released: params.released })
         .eq("id", params.assignmentId);
       if (error) throw error;
+
+      // Send notifications to students when scores are released
+      if (params.released) {
+        try {
+          // Get class_id from the assignment
+          const { data: assignment } = await supabase
+            .from("test_assignments")
+            .select("class_id")
+            .eq("id", params.assignmentId)
+            .single();
+
+          if (assignment?.class_id) {
+            // Get all students in the class
+            const { data: members } = await supabase
+              .from("class_members")
+              .select("student_id")
+              .eq("class_id", assignment.class_id);
+
+            if (members && members.length > 0) {
+              const title = params.testTitle || "Test";
+              const notifications = members.map((m) => ({
+                user_id: m.student_id,
+                title: "Rezultate publicate",
+                body: `Notele pentru testul «${title}» au fost publicate.`,
+              }));
+              await supabase.from("notifications").insert(notifications);
+            }
+          }
+        } catch (e) {
+          console.error("Failed to send score notifications:", e);
+        }
+      }
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["test-assignments"] });
