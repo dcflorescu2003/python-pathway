@@ -89,16 +89,9 @@ const ClassDetail = ({ classId, className: clsName, joinCode, onBack }: ClassDet
     itemType === "problem" ? `problem-${itemId}` : itemId;
 
   // Helper: get display percentage
-  const getDisplayPercent = (itemType: string, itemId: string, rawScore: number): number => {
-    if (itemType === "problem") return rawScore; // already 100
-    // For lessons, rawScore = correct count, need total exercises
-    for (const ch of chapters) {
-      const lesson = ch.lessons.find((l) => l.id === itemId);
-      if (lesson && lesson.exercises.length > 0) {
-        return Math.round((rawScore / lesson.exercises.length) * 100);
-      }
-    }
-    return rawScore;
+  // Scores are stored directly as percentages (0-100).
+  const getDisplayPercent = (_itemType: string, _itemId: string, rawScore: number): number => {
+    return Math.min(100, Math.max(0, rawScore));
   };
 
   const existingChallengeIds = challenges.map((c) => c.item_id);

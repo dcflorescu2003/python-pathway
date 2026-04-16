@@ -307,13 +307,9 @@ const ClassAnalytics = ({ classId, className: clsName }: Props) => {
     return map;
   }, [chapters]);
 
-  // Normalize raw score to percentage
-  const normalizeScore = (lessonId: string, rawScore: number): number => {
-    // Problems are stored as "problem-xxx" with score=100
-    if (lessonId.startsWith("problem-")) return rawScore;
-    const total = exerciseCountMap[lessonId];
-    if (total && total > 0) return Math.round((rawScore / total) * 100);
-    return rawScore;
+  // Scores are stored directly as percentages (0-100) for both lessons and problems.
+  const normalizeScore = (_lessonId: string, rawScore: number): number => {
+    return Math.min(100, Math.max(0, rawScore));
   };
 
   const studentStats = useMemo(() => {
