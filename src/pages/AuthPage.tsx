@@ -171,6 +171,19 @@ const AccountView = () => {
   const isTeacher = !!teacherStatus;
   const showStudentTab = isClassMember && !isTeacher;
 
+  const [activeTab, setActiveTab] = useState<string>("profile");
+  const [tabInitialized, setTabInitialized] = useState(false);
+  useEffect(() => {
+    if (tabInitialized) return;
+    if (isTeacher) {
+      setActiveTab("classes");
+      setTabInitialized(true);
+    } else if (isClassMember) {
+      setActiveTab("student");
+      setTabInitialized(true);
+    }
+  }, [isTeacher, isClassMember, tabInitialized]);
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -232,7 +245,7 @@ const AccountView = () => {
         </div>
 
         {/* Tabs */}
-        <Tabs defaultValue="profile" className="w-full flex-1">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full flex-1">
           <TabsList className="w-full">
             <TabsTrigger value="profile" className="flex-1">Profil</TabsTrigger>
             {showStudentTab && (
