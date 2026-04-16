@@ -73,7 +73,8 @@ const ClassDetail = ({ classId, className: clsName, joinCode, onBack }: ClassDet
     }
   };
 
-  // Build a map: lessonId -> { userId -> { score, completed } }
+  // Build a map: lessonId -> { userId -> { score } }
+  // Note: problems are stored with key "problem-${id}" in completed_lessons
   const completionMap = useMemo(() => {
     const map: Record<string, Record<string, { score: number }>> = {};
     for (const cl of allCompletedLessons) {
@@ -83,10 +84,28 @@ const ClassDetail = ({ classId, className: clsName, joinCode, onBack }: ClassDet
     return map;
   }, [allCompletedLessons]);
 
+  // Helper: resolve lookup key for challenges
+  const getChallengeProgressKey = (itemType: string, itemId: string) =>
+    itemType === "problem" ? `problem-${itemId}` : itemId;
+
+  // Helper: get display percentage
+  const getDisplayPercent = (itemType: string, itemId: string, rawScore: number): number => {
+    if (itemType === "problem") return rawScore; // already 100
+    // For lessons, rawScore = correct count, need total exercises
+    for (const ch of chapters) {
+      const lesson = ch.lessons.find((l) => l.id === itemId);
+      if (lesson && lesson.exercises.length > 0) {
+        return Math.round((rawScore / lesson.exercises.length) * 100);
+      }
+    }
+    return rawScore;
+  };
+
   const existingChallengeIds = challenges.map((c) => c.item_id);
 
-  const getStudentStatus = (itemId: string, studentId: string) => {
-    return completionMap[itemId]?.[studentId] || null;
+  const getStudentStatus = (itemType: string, itemId: string, studentId: string) => {
+    const key = getChallengeProgressKey(itemType, itemId);
+    return completionMap[key]?.[studentId] || null;
   };
 
   return (
