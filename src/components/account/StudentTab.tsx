@@ -134,18 +134,11 @@ const StudentTab = ({ memberClassName, onLeaveClass }: StudentTabProps) => {
     ch.item_type === "problem" ? `problem-${ch.item_id}` : ch.item_id;
 
   // Helper: get display percentage for a challenge
+  // Scores are stored directly as percentages (0-100) for both lessons and problems.
   const getDisplayScore = (ch: typeof challenges[0]): number | null => {
-    const rawScore = completedLessonScores.get(getProgressKey(ch));
-    if (rawScore === undefined || rawScore === null) return null;
-    if (ch.item_type === "problem") return rawScore; // already 100
-    // For lessons, rawScore is correct count — find total exercises
-    for (const chapter of chapters) {
-      const lesson = chapter.lessons.find((l) => l.id === ch.item_id);
-      if (lesson && lesson.exercises.length > 0) {
-        return Math.round((rawScore / lesson.exercises.length) * 100);
-      }
-    }
-    return rawScore; // fallback
+    const score = completedLessonScores.get(getProgressKey(ch));
+    if (score === undefined || score === null) return null;
+    return Math.min(100, Math.max(0, score));
   };
 
   // Split challenges into active vs completed

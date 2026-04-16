@@ -65,7 +65,9 @@ const LessonPage = () => {
         if (!lesson) return;
         if (currentIndex + 1 >= lesson.exercises.length) {
           setIsFinished(true);
-          completeLesson(lesson.id, lesson.xpReward, correctCount + 1);
+          const total = lesson.exercises.length || 1;
+          const percent = Math.round(((correctCount + 1) / total) * 100);
+          completeLesson(lesson.id, lesson.xpReward, percent);
         } else {
           setCurrentIndex((i) => i + 1);
         }
@@ -93,7 +95,9 @@ const LessonPage = () => {
     if (currentIndex + 1 >= lesson.exercises.length || (!wasCorrect && lives <= 0)) {
       setIsFinished(true);
       if (wasCorrect || lives > 0) {
-        completeLesson(lesson.id, lesson.xpReward, correctCount);
+        const total = lesson.exercises.length || 1;
+        const percent = Math.round((correctCount / total) * 100);
+        completeLesson(lesson.id, lesson.xpReward, percent);
       }
     } else {
       setCurrentIndex((i) => i + 1);

@@ -400,8 +400,21 @@ async function syncToCloud(userId: string, p: UserProgress) {
     }));
 
   if (lessonEntries.length > 0) {
+    // Fetch existing cloud scores to avoid lowering a previously achieved best
+    const lessonIds = lessonEntries.map((e) => e.lesson_id);
+    const { data: existing } = await supabase
+      .from("completed_lessons")
+      .select("lesson_id, score")
+      .eq("user_id", userId)
+      .in("lesson_id", lessonIds);
+
+    const existingMap = new Map((existing ?? []).map((r) => [r.lesson_id, r.score ?? 0]));
+
     for (const entry of lessonEntries) {
-      await supabase.from("completed_lessons").upsert(entry, { onConflict: "user_id,lesson_id" });
+      const cloudScore = existingMap.get(entry.lesson_id) ?? -1;
+      if (entry.score >= cloudScore) {
+        await supabase.from("completed_lessons").upsert(entry, { onConflict: "user_id,lesson_id" });
+      }
     }
   }
 }
