@@ -313,10 +313,19 @@ const StudentTab = ({ memberClassName, onLeaveClass }: StudentTabProps) => {
                         <CheckCircle className="h-3.5 w-3.5 text-green-600" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm text-foreground truncate">{ch.item_title}</p>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className="text-sm text-foreground truncate">{ch.item_title}</p>
+                          {score !== null && (
+                            <span
+                              className="inline-flex items-center gap-1 rounded-full bg-primary/10 text-primary border border-primary/20 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide shrink-0"
+                              title="Cel mai bun scor obținut la această provocare"
+                            >
+                              <Trophy className="h-3 w-3" /> Best: {score}%
+                            </span>
+                          )}
+                        </div>
                         <p className="text-xs text-muted-foreground">
                           {ch.item_type === "lesson" ? "Lecție" : "Problemă"} — completată
-                          {score !== null && ` • Scor: ${score}%`}
                         </p>
                       </div>
                       <Button variant="outline" size="sm" className="gap-1 shrink-0" onClick={() => handleStartChallenge(ch)}>
