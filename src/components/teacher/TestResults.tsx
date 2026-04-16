@@ -10,10 +10,11 @@ import { toast } from "sonner";
 
 interface TestResultsProps {
   testId: string;
+  testTitle?: string;
   onBack: () => void;
 }
 
-const TestResults = ({ testId, onBack }: TestResultsProps) => {
+const TestResults = ({ testId, testTitle, onBack }: TestResultsProps) => {
   const { data: assignments = [] } = useTestAssignments(testId);
   const { data: testItems = [] } = useTestItems(testId);
   const [selectedAssignmentId, setSelectedAssignmentId] = useState<string | null>(null);
