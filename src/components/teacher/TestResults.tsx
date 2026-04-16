@@ -333,7 +333,7 @@ const TestResults = ({ testId, onBack }: TestResultsProps) => {
                       size="sm"
                       className="gap-1 text-xs"
                       onClick={() => {
-                        toggleScores.mutate({ assignmentId: a.id, released: !a.scores_released });
+                        toggleScores.mutate({ assignmentId: a.id, released: !a.scores_released, testTitle: testTitle });
                       }}
                       disabled={toggleScores.isPending}
                     >
