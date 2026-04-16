@@ -73,12 +73,13 @@ const ProblemSolvePage = () => {
     const passed = testResults.filter((r) => r.passed).length;
     const total = testResults.length;
 
-    if (passed === total && !solved) {
+    if (passed === total) {
       completeLesson(`problem-${problem.id}`, problem.xpReward, 100);
-      toast.success(`Felicitări! Ai câștigat ${problem.xpReward} XP! 🎉`);
-    } else if (passed === total) {
-      recordActivity();
-      toast.success("Toate testele au trecut! ✅");
+      if (solved) {
+        toast.success("Toate testele au trecut! ✅");
+      } else {
+        toast.success(`Felicitări! Ai câștigat ${problem.xpReward} XP! 🎉`);
+      }
     } else {
       toast.error(`${passed}/${total} teste trecute`);
     }
