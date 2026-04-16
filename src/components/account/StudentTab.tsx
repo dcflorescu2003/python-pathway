@@ -11,7 +11,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import {
   BookOpen, DoorOpen, Trophy, Clock, CheckCircle, FileText,
   Play, History, Pencil, Check, X, ChevronDown, ChevronRight,
-  AlertCircle
+  AlertCircle, RotateCcw
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -307,6 +307,9 @@ const StudentTab = ({ memberClassName, onLeaveClass }: StudentTabProps) => {
                           {score !== undefined && score !== null && ` • Scor: ${score}%`}
                         </p>
                       </div>
+                      <Button variant="outline" size="sm" className="gap-1 shrink-0" onClick={() => handleStartChallenge(ch)}>
+                        <RotateCcw className="h-3.5 w-3.5" /> Reia
+                      </Button>
                     </CardContent>
                   </Card>
                 );
