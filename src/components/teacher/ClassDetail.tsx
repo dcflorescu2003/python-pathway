@@ -270,7 +270,7 @@ const ClassDetail = ({ classId, className: clsName, joinCode, onBack }: ClassDet
                                   <div className="text-xs">
                                     {completed ? (
                                       <span className={hasMistakes ? "text-warning font-medium" : "text-primary font-medium"}>
-                                        {status.score}% {hasMistakes && `· ${mistakePoints} pct. pierdute`}
+                                        {displayScore}% {hasMistakes && `· ${mistakePoints} pct. pierdute`}
                                       </span>
                                     ) : (
                                       <span className="text-muted-foreground">Necompletat</span>
