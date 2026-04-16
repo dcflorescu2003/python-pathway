@@ -11,7 +11,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import {
   BookOpen, DoorOpen, Trophy, Clock, CheckCircle, FileText,
   Play, History, Pencil, Check, X, ChevronDown, ChevronRight,
-  AlertCircle
+  AlertCircle, RotateCcw
 } from "lucide-react";
 import { toast } from "sonner";
 
