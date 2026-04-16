@@ -28,11 +28,31 @@ interface LeaderboardEntry {
 
 const LeaderboardPage = () => {
   const { user } = useAuth();
-  const [tab, setTab] = useState<Tab>("national");
-  const userSchool = getSelectedSchool();
+  const queryClient = useQueryClient();
+  const [tab, setTab] = useState<Tab>("school");
+  const [userSchool, setUserSchool] = useState<string | null>(getSelectedSchool());
+  const [schoolSearch, setSchoolSearch] = useState("");
 
   const userCity = userSchool ? schools.find(s => s.id === userSchool)?.city : null;
   const citySchoolIds = userCity ? schools.filter(s => s.city === userCity).map(s => s.id) : [];
+
+  const filteredSchools = useMemo(() => {
+    if (!schoolSearch.trim()) return [];
+    const q = schoolSearch.toLowerCase();
+    return schools.filter(s => s.name.toLowerCase().includes(q) || s.city.toLowerCase().includes(q)).slice(0, 8);
+  }, [schoolSearch]);
+
+  const handleSelectSchool = useCallback(async (schoolId: string) => {
+    setSelectedSchool(schoolId);
+    setUserSchool(schoolId);
+    setSchoolSearch("");
+    if (user) {
+      await supabase.from("profiles").update({ school_id: schoolId }).eq("user_id", user.id);
+    }
+    queryClient.invalidateQueries({ queryKey: ["leaderboard-top"] });
+    queryClient.invalidateQueries({ queryKey: ["leaderboard-user-rank"] });
+    toast.success("Liceu selectat!");
+  }, [user, queryClient]);
 
   // Query 1: Top 15 filtered by tab
   const { data: top15 = [], isLoading } = useQuery({
