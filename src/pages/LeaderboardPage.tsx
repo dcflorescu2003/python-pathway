@@ -1,10 +1,12 @@
-import { useState } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
-import { useQuery } from "@tanstack/react-query";
-import { getSelectedSchool, schools } from "@/data/schools";
-import { Flame, Zap, Medal, Loader2 } from "lucide-react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { getSelectedSchool, setSelectedSchool, schools } from "@/data/schools";
+import { Flame, Zap, Medal, Loader2, Search } from "lucide-react";
 import { motion } from "framer-motion";
+import { Input } from "@/components/ui/input";
+import { toast } from "sonner";
 
 const medalColors = [
   "text-yellow-400",
