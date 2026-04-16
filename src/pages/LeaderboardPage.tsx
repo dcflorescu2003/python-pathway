@@ -166,14 +166,14 @@ const LeaderboardPage = () => {
         </div>
         <div className="flex px-4 pb-2 gap-2">
           <button
-            onClick={() => setTab("national")}
+            onClick={() => setTab("school")}
             className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all ${
-              tab === "national"
+              tab === "school"
                 ? "bg-primary text-primary-foreground"
                 : "bg-secondary text-muted-foreground"
             }`}
           >
-            🌍 Național
+            🏫 Liceu
           </button>
           <button
             onClick={() => setTab("city")}
@@ -186,24 +186,47 @@ const LeaderboardPage = () => {
             🏙️ Oraș
           </button>
           <button
-            onClick={() => setTab("school")}
+            onClick={() => setTab("national")}
             className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all ${
-              tab === "school"
+              tab === "national"
                 ? "bg-primary text-primary-foreground"
                 : "bg-secondary text-muted-foreground"
             }`}
           >
-            🏫 Liceu
+            🌍 Național
           </button>
         </div>
       </header>
 
       <main className="px-4 py-4">
         {(tab === "school" || tab === "city") && !userSchool && (
-          <div className="rounded-xl border border-border bg-card p-4 text-center mb-4">
-            <p className="text-sm text-foreground/70">
-              Alege liceul tău de pe pagina principală pentru a vedea clasamentul pe {tab === "city" ? "oraș" : "liceu"}.
+          <div className="rounded-xl border border-border bg-card p-4 mb-4">
+            <p className="text-sm text-foreground/70 text-center mb-3">
+              Alege liceul tău pentru a vedea clasamentul pe {tab === "city" ? "oraș" : "liceu"}.
             </p>
+            <div className="relative mb-2">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Caută liceul..."
+                value={schoolSearch}
+                onChange={e => setSchoolSearch(e.target.value)}
+                className="pl-9"
+              />
+            </div>
+            {filteredSchools.length > 0 && (
+              <div className="space-y-1 max-h-60 overflow-y-auto">
+                {filteredSchools.map(s => (
+                  <button
+                    key={s.id}
+                    onClick={() => handleSelectSchool(s.id)}
+                    className="w-full text-left px-3 py-2.5 rounded-lg text-sm bg-secondary/50 hover:bg-primary/20 transition-colors"
+                  >
+                    <span className="font-medium text-foreground">{s.name}</span>
+                    <span className="text-xs text-muted-foreground ml-2">{s.city}</span>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
