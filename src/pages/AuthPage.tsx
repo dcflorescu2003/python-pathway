@@ -245,7 +245,7 @@ const AccountView = () => {
         </div>
 
         {/* Tabs */}
-        <Tabs defaultValue="profile" className="w-full flex-1">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full flex-1">
           <TabsList className="w-full">
             <TabsTrigger value="profile" className="flex-1">Profil</TabsTrigger>
             {showStudentTab && (
