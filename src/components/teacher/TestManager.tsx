@@ -53,6 +53,7 @@ const TestManager = ({ onCreateTest, onEditTest }: TestManagerProps) => {
     return (
       <TestResults
         testId={viewingResultsTestId}
+        testTitle={tests?.find((t: any) => t.id === viewingResultsTestId)?.title}
         onBack={() => setViewingResultsTestId(null)}
       />
     );

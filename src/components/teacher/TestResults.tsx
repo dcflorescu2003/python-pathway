@@ -10,10 +10,11 @@ import { toast } from "sonner";
 
 interface TestResultsProps {
   testId: string;
+  testTitle?: string;
   onBack: () => void;
 }
 
-const TestResults = ({ testId, onBack }: TestResultsProps) => {
+const TestResults = ({ testId, testTitle, onBack }: TestResultsProps) => {
   const { data: assignments = [] } = useTestAssignments(testId);
   const { data: testItems = [] } = useTestItems(testId);
   const [selectedAssignmentId, setSelectedAssignmentId] = useState<string | null>(null);
@@ -333,7 +334,7 @@ const TestResults = ({ testId, onBack }: TestResultsProps) => {
                       size="sm"
                       className="gap-1 text-xs"
                       onClick={() => {
-                        toggleScores.mutate({ assignmentId: a.id, released: !a.scores_released });
+                        toggleScores.mutate({ assignmentId: a.id, released: !a.scores_released, testTitle: testTitle });
                       }}
                       disabled={toggleScores.isPending}
                     >
