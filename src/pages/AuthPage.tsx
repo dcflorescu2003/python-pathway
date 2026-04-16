@@ -171,6 +171,19 @@ const AccountView = () => {
   const isTeacher = !!teacherStatus;
   const showStudentTab = isClassMember && !isTeacher;
 
+  const [activeTab, setActiveTab] = useState<string>("profile");
+  const [tabInitialized, setTabInitialized] = useState(false);
+  useEffect(() => {
+    if (tabInitialized) return;
+    if (isTeacher) {
+      setActiveTab("classes");
+      setTabInitialized(true);
+    } else if (isClassMember) {
+      setActiveTab("student");
+      setTabInitialized(true);
+    }
+  }, [isTeacher, isClassMember, tabInitialized]);
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
