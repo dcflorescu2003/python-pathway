@@ -127,19 +127,14 @@ const StudentTab = ({ memberClassName, onLeaveClass }: StudentTabProps) => {
   const completedLessonIds = new Set(completedLessons.map((cl) => cl.lesson_id));
   const completedLessonScores = new Map(completedLessons.map((cl) => [cl.lesson_id, cl.score]));
 
-  // Split challenges into active vs completed
-  const activeChallenges = challenges.filter((ch) => {
-    if (ch.item_type === "lesson") return !completedLessonIds.has(ch.item_id);
-    // For problems, also check completed_lessons (same mechanism used in app)
-    if (ch.item_type === "problem") return !completedLessonIds.has(ch.item_id);
-    return true;
-  });
+  // Helper: resolve the completed_lessons key for a challenge
+  const getProgressKey = (ch: typeof challenges[0]) =>
+    ch.item_type === "problem" ? `problem-${ch.item_id}` : ch.item_id;
 
-  const completedChallenges = challenges.filter((ch) => {
-    if (ch.item_type === "lesson") return completedLessonIds.has(ch.item_id);
-    if (ch.item_type === "problem") return completedLessonIds.has(ch.item_id);
-    return false;
-  });
+  // Split challenges into active vs completed
+  const activeChallenges = challenges.filter((ch) => !completedLessonIds.has(getProgressKey(ch)));
+
+  const completedChallenges = challenges.filter((ch) => completedLessonIds.has(getProgressKey(ch)));
 
   const handleLeave = async () => {
     if (!user) return;
@@ -293,7 +288,9 @@ const StudentTab = ({ memberClassName, onLeaveClass }: StudentTabProps) => {
             </p>
             <div className="space-y-1.5">
               {completedChallenges.map((ch) => {
-                const score = completedLessonScores.get(ch.item_id);
+                const rawScore = completedLessonScores.get(getProgressKey(ch));
+                // For problems score is already 100; for lessons it's raw correct count
+                const score = ch.item_type === "problem" ? rawScore : rawScore;
                 return (
                   <Card key={ch.id} className="border-border">
                     <CardContent className="p-3 flex items-center gap-3">
@@ -304,7 +301,7 @@ const StudentTab = ({ memberClassName, onLeaveClass }: StudentTabProps) => {
                         <p className="text-sm text-foreground truncate">{ch.item_title}</p>
                         <p className="text-xs text-muted-foreground">
                           {ch.item_type === "lesson" ? "Lecție" : "Problemă"} — completată
-                          {score !== undefined && score !== null && ` • Scor: ${score}%`}
+                          {score !== undefined && score !== null && ` • Scor: ${ch.item_type === "problem" ? score : score}%`}
                         </p>
                       </div>
                       <Button variant="outline" size="sm" className="gap-1 shrink-0" onClick={() => handleStartChallenge(ch)}>
