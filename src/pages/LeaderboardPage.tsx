@@ -1,10 +1,12 @@
-import { useState } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
-import { useQuery } from "@tanstack/react-query";
-import { getSelectedSchool, schools } from "@/data/schools";
-import { Flame, Zap, Medal, Loader2 } from "lucide-react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { getSelectedSchool, setSelectedSchool, schools } from "@/data/schools";
+import { Flame, Zap, Medal, Loader2, Search } from "lucide-react";
 import { motion } from "framer-motion";
+import { Input } from "@/components/ui/input";
+import { toast } from "sonner";
 
 const medalColors = [
   "text-yellow-400",
@@ -26,11 +28,31 @@ interface LeaderboardEntry {
 
 const LeaderboardPage = () => {
   const { user } = useAuth();
-  const [tab, setTab] = useState<Tab>("national");
-  const userSchool = getSelectedSchool();
+  const queryClient = useQueryClient();
+  const [tab, setTab] = useState<Tab>("school");
+  const [userSchool, setUserSchool] = useState<string | null>(getSelectedSchool());
+  const [schoolSearch, setSchoolSearch] = useState("");
 
   const userCity = userSchool ? schools.find(s => s.id === userSchool)?.city : null;
   const citySchoolIds = userCity ? schools.filter(s => s.city === userCity).map(s => s.id) : [];
+
+  const filteredSchools = useMemo(() => {
+    if (!schoolSearch.trim()) return [];
+    const q = schoolSearch.toLowerCase();
+    return schools.filter(s => s.name.toLowerCase().includes(q) || s.city.toLowerCase().includes(q)).slice(0, 8);
+  }, [schoolSearch]);
+
+  const handleSelectSchool = useCallback(async (schoolId: string) => {
+    setSelectedSchool(schoolId);
+    setUserSchool(schoolId);
+    setSchoolSearch("");
+    if (user) {
+      await supabase.from("profiles").update({ school_id: schoolId }).eq("user_id", user.id);
+    }
+    queryClient.invalidateQueries({ queryKey: ["leaderboard-top"] });
+    queryClient.invalidateQueries({ queryKey: ["leaderboard-user-rank"] });
+    toast.success("Liceu selectat!");
+  }, [user, queryClient]);
 
   // Query 1: Top 15 filtered by tab
   const { data: top15 = [], isLoading } = useQuery({
@@ -144,14 +166,14 @@ const LeaderboardPage = () => {
         </div>
         <div className="flex px-4 pb-2 gap-2">
           <button
-            onClick={() => setTab("national")}
+            onClick={() => setTab("school")}
             className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all ${
-              tab === "national"
+              tab === "school"
                 ? "bg-primary text-primary-foreground"
                 : "bg-secondary text-muted-foreground"
             }`}
           >
-            🌍 Național
+            🏫 Liceu
           </button>
           <button
             onClick={() => setTab("city")}
@@ -164,24 +186,47 @@ const LeaderboardPage = () => {
             🏙️ Oraș
           </button>
           <button
-            onClick={() => setTab("school")}
+            onClick={() => setTab("national")}
             className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all ${
-              tab === "school"
+              tab === "national"
                 ? "bg-primary text-primary-foreground"
                 : "bg-secondary text-muted-foreground"
             }`}
           >
-            🏫 Liceu
+            🌍 Național
           </button>
         </div>
       </header>
 
       <main className="px-4 py-4">
         {(tab === "school" || tab === "city") && !userSchool && (
-          <div className="rounded-xl border border-border bg-card p-4 text-center mb-4">
-            <p className="text-sm text-foreground/70">
-              Alege liceul tău de pe pagina principală pentru a vedea clasamentul pe {tab === "city" ? "oraș" : "liceu"}.
+          <div className="rounded-xl border border-border bg-card p-4 mb-4">
+            <p className="text-sm text-foreground/70 text-center mb-3">
+              Alege liceul tău pentru a vedea clasamentul pe {tab === "city" ? "oraș" : "liceu"}.
             </p>
+            <div className="relative mb-2">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Caută liceul..."
+                value={schoolSearch}
+                onChange={e => setSchoolSearch(e.target.value)}
+                className="pl-9"
+              />
+            </div>
+            {filteredSchools.length > 0 && (
+              <div className="space-y-1 max-h-60 overflow-y-auto">
+                {filteredSchools.map(s => (
+                  <button
+                    key={s.id}
+                    onClick={() => handleSelectSchool(s.id)}
+                    className="w-full text-left px-3 py-2.5 rounded-lg text-sm bg-secondary/50 hover:bg-primary/20 transition-colors"
+                  >
+                    <span className="font-medium text-foreground">{s.name}</span>
+                    <span className="text-xs text-muted-foreground ml-2">{s.city}</span>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
