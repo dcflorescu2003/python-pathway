@@ -1,29 +1,59 @@
 
+Problema vine din două surse separate, ambele în fluxul de provocări:
 
-## Plan: Fix XP dublu la reluarea lecțiilor
+1. Pentru lecții, în `completed_lessons.score` se salvează numărul de exerciții corecte, dar în UI acel număr este afișat ca procent.
+   - Exemplu: dacă lecția are 8 exerciții și elevul a făcut 6 corecte, acum se vede `6%` în loc de `75%`.
+   - Afectează:
+     - `src/components/account/StudentTab.tsx`
+     - `src/components/teacher/ClassDetail.tsx`
+     - și probabil și analytics-ul profesorului din `src/components/teacher/ClassAnalytics.tsx`
 
-### Problema
+2. Pentru probleme, există un mismatch de identificator:
+   - provocarea salvată are `item_id = problem.id`
+   - progresul/completarea se salvează cu cheia `lesson_id = problem-${problem.id}`
+   - deci la profesor/elev se citește uneori scorul de pe cheia greșită și statusul/afișarea devin inconsistente la reluări.
 
-Două bug-uri în `LessonPage.tsx` și `useProgress.ts`:
+### Ce voi modifica
 
-1. **`LessonPage.tsx` linia 56**: `wasFirstTime` se calculează din `progress.completedLessons` la mount, dar `progress` pornește ca `createDefaultProgress()` (cu `completedLessons` gol). Efectul care încarcă datele locale/cloud rulează **după** primul render, deci `wasFirstTime` este mereu `true`. Afișarea arată XP complet (20) în loc de 3.
+#### 1. Normalizez citirea scorului pentru provocări
+În componentele elev/profesor nu voi mai afișa direct `score%`.
+Voi introduce logică de transformare:
+- pentru `lesson`: procent = `Math.round((score / totalExercises) * 100)`
+- pentru `problem`: procent = `score` (deja este 100 la completare reușită)
 
-2. **`useProgress.ts` linia 113**: Starea inițială este `createDefaultProgress()` în loc de `loadLocalProgress(user.id)`. Dacă elevul termină lecția rapid, `prev.completedLessons` este gol și se acordă XP complet.
+Asta se aplică în:
+- `src/components/account/StudentTab.tsx`
+- `src/components/teacher/ClassDetail.tsx`
 
-### Modificări
+#### 2. Corectez maparea pentru provocările de tip problemă
+Voi folosi cheia corectă pentru lookup:
+- lesson challenge: `item_id`
+- problem challenge: `problem-${item_id}`
 
-**`src/hooks/useProgress.ts`** — Inițializare sincronă din localStorage:
-- Schimb `useState<UserProgress>(() => createDefaultProgress())` în `useState<UserProgress>(() => loadLocalProgress())` (fără userId, care nu e disponibil încă — dar funcția gestionează deja cazul)
-- Alternativ, păstrez default dar mut inițializarea locală din useEffect într-un al doilea useState lazy init
+Asta trebuie făcut atât la elev, cât și la profesor, ca să citească din `completed_lessons` aceeași cheie pe care o scrie `useProgress`.
 
-**`src/pages/LessonPage.tsx`** — Fix `wasFirstTime`:
-- Schimb `wasFirstTime` din `useState(() => ...)` într-un `useMemo` sau calcul derivat din `progress.completedLessons` curent, nu din snapshot-ul inițial
-- Astfel, odată ce datele locale/cloud se încarcă, `wasFirstTime` se actualizează corect
+#### 3. Corectez și analytics-ul profesorului
+În `src/components/teacher/ClassAnalytics.tsx`, scorurile agregate pentru lecții sunt acum tratate ca procente deși sunt brute.
+Voi normaliza și acolo valorile, altfel rapoartele profesorului rămân greșite chiar dacă lista provocărilor e corectă.
 
-### Fișiere modificate
+### Fișiere vizate
 
-| Fișier | Ce |
-|--------|-----|
-| `src/hooks/useProgress.ts` | Inițializare sincronă a stării din localStorage |
-| `src/pages/LessonPage.tsx` | `wasFirstTime` derivat din starea curentă, nu snapshot inițial |
+| Fișier | Schimbare |
+|--------|-----------|
+| `src/components/account/StudentTab.tsx` | Afișare procent real + lookup corect pentru problems |
+| `src/components/teacher/ClassDetail.tsx` | Afișare procent real pe elev + lookup corect pentru problems |
+| `src/components/teacher/ClassAnalytics.tsx` | Normalizare scoruri lecții/probleme pentru statistici |
 
+### Detalii tehnice
+- Voi adăuga un helper de tip:
+  - rezolvă cheia de progres pentru challenge (`item_id` vs `problem-${item_id}`)
+  - calculează procentul real în funcție de tipul provocării
+- Pentru lecții, totalul exercițiilor îl iau din `chapters -> lessons -> exercises.length`
+- Pentru probleme, procentul rămâne scorul stocat
+- Pagina Home rămâne neschimbată
+
+### Rezultat așteptat după implementare
+- Când elevul reia o provocare, procentul afișat în tabul elev va fi corect
+- Profesorul va vedea procentul corect pentru acel elev în clasa lui
+- Problemele reluate vor continua să apară corect ca status și scor
+- Statisticile profesorului nu vor mai fi distorsionate de scorurile brute ale lecțiilor
