@@ -32,6 +32,7 @@ const LeaderboardPage = () => {
   const [tab, setTab] = useState<Tab>("school");
   const [userSchool, setUserSchool] = useState<string | null>(getSelectedSchool());
   const [schoolSearch, setSchoolSearch] = useState("");
+  const [changingSchool, setChangingSchool] = useState(false);
 
   const userCity = userSchool ? schools.find(s => s.id === userSchool)?.city : null;
   const citySchoolIds = userCity ? schools.filter(s => s.city === userCity).map(s => s.id) : [];
