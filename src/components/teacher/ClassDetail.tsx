@@ -269,8 +269,11 @@ const ClassDetail = ({ classId, className: clsName, joinCode, onBack }: ClassDet
                                   </div>
                                   <div className="text-xs">
                                     {completed ? (
-                                      <span className={hasMistakes ? "text-warning font-medium" : "text-primary font-medium"}>
-                                        {displayScore}% {hasMistakes && `· ${mistakePoints} pct. pierdute`}
+                                      <span
+                                        className={hasMistakes ? "text-warning font-medium" : "text-primary font-medium"}
+                                        title="Cel mai bun scor obținut de elev la această provocare"
+                                      >
+                                        Best: {displayScore}% {hasMistakes && `· ${mistakePoints} pct. pierdute`}
                                       </span>
                                     ) : (
                                       <span className="text-muted-foreground">Necompletat</span>
