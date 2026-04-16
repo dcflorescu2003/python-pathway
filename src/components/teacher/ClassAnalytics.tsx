@@ -362,7 +362,7 @@ const ClassAnalytics = ({ classId, className: clsName }: Props) => {
       if (!lessonScores[cl.lesson_id]) {
         lessonScores[cl.lesson_id] = { total: 0, count: 0, id: cl.lesson_id };
       }
-      lessonScores[cl.lesson_id].total += cl.score;
+      lessonScores[cl.lesson_id].total += normalizeScore(cl.lesson_id, cl.score);
       lessonScores[cl.lesson_id].count++;
     });
 
