@@ -230,6 +230,61 @@ const LeaderboardPage = () => {
           </div>
         )}
 
+        {(tab === "school" || tab === "city") && userSchool && (
+          <div className="flex items-center justify-between rounded-xl border border-border bg-card px-4 py-2.5 mb-4">
+            <div className="min-w-0 flex-1">
+              <p className="text-xs text-muted-foreground">Liceul tău</p>
+              <p className="text-sm font-medium text-foreground truncate">
+                {schools.find(s => s.id === userSchool)?.name}
+              </p>
+            </div>
+            {!changingSchool ? (
+              <button
+                onClick={() => setChangingSchool(true)}
+                className="shrink-0 ml-3 text-xs font-bold text-primary hover:underline"
+              >
+                Schimbă
+              </button>
+            ) : (
+              <button
+                onClick={() => { setChangingSchool(false); setSchoolSearch(""); }}
+                className="shrink-0 ml-3 text-xs font-bold text-muted-foreground hover:underline"
+              >
+                Anulează
+              </button>
+            )}
+          </div>
+        )}
+
+        {(tab === "school" || tab === "city") && userSchool && changingSchool && (
+          <div className="rounded-xl border border-border bg-card p-4 mb-4">
+            <div className="relative mb-2">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Caută alt liceu..."
+                value={schoolSearch}
+                onChange={e => setSchoolSearch(e.target.value)}
+                className="pl-9"
+                autoFocus
+              />
+            </div>
+            {filteredSchools.length > 0 && (
+              <div className="space-y-1 max-h-60 overflow-y-auto">
+                {filteredSchools.map(s => (
+                  <button
+                    key={s.id}
+                    onClick={() => { handleSelectSchool(s.id); setChangingSchool(false); }}
+                    className="w-full text-left px-3 py-2.5 rounded-lg text-sm bg-secondary/50 hover:bg-primary/20 transition-colors"
+                  >
+                    <span className="font-medium text-foreground">{s.name}</span>
+                    <span className="text-xs text-muted-foreground ml-2">{s.city}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
         {isLoading ? (
           <div className="flex justify-center py-12">
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
