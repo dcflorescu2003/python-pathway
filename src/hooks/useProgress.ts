@@ -220,7 +220,8 @@ export function useProgress() {
       }
 
       setProgress((prev) => {
-        const alreadyCompleted = !!prev.completedLessons[lessonId]?.completed;
+        const previousEntry = prev.completedLessons[lessonId];
+        const alreadyCompleted = !!previousEntry?.completed;
         const finalXP = Math.round((alreadyCompleted ? 3 : xpEarned) * bonusMultiplier);
 
         const today = getTodayDate();
@@ -232,6 +233,9 @@ export function useProgress() {
           setNewStreakCount(newStreak);
         }
 
+        // Keep best score across redos — never lower a previously achieved score
+        const bestScore = Math.max(previousEntry?.score ?? 0, score);
+
         const newProgress: UserProgress = {
           ...prev,
           xp: prev.xp + finalXP,
@@ -239,7 +243,7 @@ export function useProgress() {
           lastActivityDate: today,
           completedLessons: {
             ...prev.completedLessons,
-            [lessonId]: { score, completed: true },
+            [lessonId]: { score: bestScore, completed: true },
           },
         };
 
