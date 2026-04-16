@@ -1,24 +1,34 @@
 
 
-## Plan: Buton „Reia provocarea" pentru provocări deja completate
+## Plan: Actualizare scor și streak la reluarea provocărilor
 
-### Ce se schimbă
+### Problema identificată
 
-**`src/components/account/StudentTab.tsx`** — secțiunea „Provocări completate" din Istoric:
+**Pentru probleme (`ProblemSolvePage.tsx`)**: La linia 76, condiția `if (passed === total && !solved)` face ca `completeLesson` să fie apelat **doar la prima rezolvare**. La redo, se apelează doar `recordActivity()` — care actualizează streak-ul dar **nu actualizează scorul**.
 
-1. Adaug un buton **„Reia"** pe fiecare provocare completată, care navighează elevul la lecția/problema respectivă (folosind aceeași logică ca `handleStartChallenge`)
-2. Butonul va fi stilizat ca `variant="outline" size="sm"` cu iconița `RotateCcw` pentru a sugera reluarea
-3. Scorul curent rămâne afișat lângă textul „completată"
+### Modificări
+
+**`src/pages/ProblemSolvePage.tsx`** — Schimb logica de la linia 76-84:
+- Când toate testele trec și problema e deja rezolvată, apelez `completeLesson` cu scorul 100 (în loc de doar `recordActivity`), astfel încât scorul se actualizează în DB
+- `completeLesson` deja gestionează intern streak-ul și dă doar 3 XP la redo, deci nu se pierde nimic
+
+Cod nou:
+```typescript
+if (passed === total) {
+  completeLesson(`problem-${problem.id}`, problem.xpReward, 100);
+  if (solved) {
+    toast.success("Toate testele au trecut! ✅");
+  } else {
+    toast.success(`Felicitări! Ai câștigat ${problem.xpReward} XP! 🎉`);
+  }
+} else {
+  toast.error(`${passed}/${total} teste trecute`);
+}
+```
 
 ### Fișier modificat
 
 | Fișier | Ce |
 |--------|-----|
-| `src/components/account/StudentTab.tsx` | Adaug buton „Reia" pe fiecare provocare completată din secțiunea Istoric |
-
-### Detalii tehnice
-
-- Import `RotateCcw` din lucide-react
-- Pe click, folosesc `handleStartChallenge(ch)` existent — navighează la `/lesson/{id}` sau `/problem/{id}`
-- Pagina de acasă (Index) nu se modifică
+| `src/pages/ProblemSolvePage.tsx` | `completeLesson` apelat și la redo pentru a actualiza scorul și streak-ul |
 
