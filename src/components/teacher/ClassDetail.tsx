@@ -193,7 +193,7 @@ const ClassDetail = ({ classId, className: clsName, joinCode, onBack }: ClassDet
                 {challenges.map((ch) => {
                   const isExpanded = expandedChallenge === ch.id;
                   const completedCount = members.filter(
-                    (m) => getStudentStatus(ch.item_id, m.student_id) !== null
+                    (m) => getStudentStatus(ch.item_type, ch.item_id, m.student_id) !== null
                   ).length;
 
                   return (
@@ -236,10 +236,11 @@ const ClassDetail = ({ classId, className: clsName, joinCode, onBack }: ClassDet
                         {isExpanded && members.length > 0 && (
                           <div className="border-t border-border px-3 pb-3 pt-2 space-y-1.5">
                             {members.map((m) => {
-                              const status = getStudentStatus(ch.item_id, m.student_id);
+                              const status = getStudentStatus(ch.item_type, ch.item_id, m.student_id);
                               const completed = status !== null;
-                              const hasMistakes = completed && status.score < 100;
-                              const mistakePoints = completed ? Math.max(0, 100 - status.score) : 0;
+                              const displayScore = completed ? getDisplayPercent(ch.item_type, ch.item_id, status.score) : 0;
+                              const hasMistakes = completed && displayScore < 100;
+                              const mistakePoints = completed ? Math.max(0, 100 - displayScore) : 0;
 
                               return (
                                 <div
