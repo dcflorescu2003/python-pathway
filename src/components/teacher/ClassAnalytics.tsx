@@ -296,11 +296,31 @@ const ClassAnalytics = ({ classId, className: clsName }: Props) => {
   const submissions = testData?.submissions || [];
   const answers = testData?.answers || [];
 
+  // Build a map of lesson_id -> exercise count for score normalization
+  const exerciseCountMap = useMemo(() => {
+    const map: Record<string, number> = {};
+    for (const ch of chapters) {
+      for (const lesson of ch.lessons) {
+        map[lesson.id] = lesson.exercises.length;
+      }
+    }
+    return map;
+  }, [chapters]);
+
+  // Normalize raw score to percentage
+  const normalizeScore = (lessonId: string, rawScore: number): number => {
+    // Problems are stored as "problem-xxx" with score=100
+    if (lessonId.startsWith("problem-")) return rawScore;
+    const total = exerciseCountMap[lessonId];
+    if (total && total > 0) return Math.round((rawScore / total) * 100);
+    return rawScore;
+  };
+
   const studentStats = useMemo(() => {
     return members.map((m) => {
       const lessons = completedLessons.filter((cl) => cl.user_id === m.student_id);
       const avgScore = lessons.length > 0
-        ? Math.round(lessons.reduce((s, l) => s + l.score, 0) / lessons.length)
+        ? Math.round(lessons.reduce((s, l) => s + normalizeScore(l.lesson_id, l.score), 0) / lessons.length)
         : 0;
       const testSubs = submissions.filter((s: any) => s.student_id === m.student_id);
       const avgTestScore = testSubs.length > 0
@@ -317,7 +337,7 @@ const ClassAnalytics = ({ classId, className: clsName }: Props) => {
         streak: m.profile?.streak || 0,
       };
     }).sort((a, b) => b.avgScore - a.avgScore);
-  }, [members, completedLessons, submissions]);
+  }, [members, completedLessons, submissions, exerciseCountMap]);
 
   const scoreDistribution = useMemo(() => {
     const buckets = [
@@ -327,13 +347,14 @@ const ClassAnalytics = ({ classId, className: clsName }: Props) => {
       { range: "90-100%", count: 0, fill: "hsl(142 76% 36%)" },
     ];
     completedLessons.forEach((cl) => {
-      if (cl.score < 50) buckets[0].count++;
-      else if (cl.score < 70) buckets[1].count++;
-      else if (cl.score < 90) buckets[2].count++;
+      const pct = normalizeScore(cl.lesson_id, cl.score);
+      if (pct < 50) buckets[0].count++;
+      else if (pct < 70) buckets[1].count++;
+      else if (pct < 90) buckets[2].count++;
       else buckets[3].count++;
     });
     return buckets;
-  }, [completedLessons]);
+  }, [completedLessons, exerciseCountMap]);
 
   const weakestLessons = useMemo(() => {
     const lessonScores: Record<string, { total: number; count: number; id: string }> = {};
@@ -341,7 +362,7 @@ const ClassAnalytics = ({ classId, className: clsName }: Props) => {
       if (!lessonScores[cl.lesson_id]) {
         lessonScores[cl.lesson_id] = { total: 0, count: 0, id: cl.lesson_id };
       }
-      lessonScores[cl.lesson_id].total += cl.score;
+      lessonScores[cl.lesson_id].total += normalizeScore(cl.lesson_id, cl.score);
       lessonScores[cl.lesson_id].count++;
     });
 

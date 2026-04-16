@@ -4,6 +4,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 import { useChallenges } from "@/hooks/useChallenges";
+import { useChapters } from "@/hooks/useChapters";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,6 +31,7 @@ const StudentTab = ({ memberClassName, onLeaveClass }: StudentTabProps) => {
   const [expandedTestId, setExpandedTestId] = useState<string | null>(null);
 
   const { challenges } = useChallenges();
+  const { data: chapters = [] } = useChapters();
 
   // Get profile display_name
   const { data: profile, refetch: refetchProfile } = useQuery({
@@ -127,19 +129,29 @@ const StudentTab = ({ memberClassName, onLeaveClass }: StudentTabProps) => {
   const completedLessonIds = new Set(completedLessons.map((cl) => cl.lesson_id));
   const completedLessonScores = new Map(completedLessons.map((cl) => [cl.lesson_id, cl.score]));
 
-  // Split challenges into active vs completed
-  const activeChallenges = challenges.filter((ch) => {
-    if (ch.item_type === "lesson") return !completedLessonIds.has(ch.item_id);
-    // For problems, also check completed_lessons (same mechanism used in app)
-    if (ch.item_type === "problem") return !completedLessonIds.has(ch.item_id);
-    return true;
-  });
+  // Helper: resolve the completed_lessons key for a challenge
+  const getProgressKey = (ch: typeof challenges[0]) =>
+    ch.item_type === "problem" ? `problem-${ch.item_id}` : ch.item_id;
 
-  const completedChallenges = challenges.filter((ch) => {
-    if (ch.item_type === "lesson") return completedLessonIds.has(ch.item_id);
-    if (ch.item_type === "problem") return completedLessonIds.has(ch.item_id);
-    return false;
-  });
+  // Helper: get display percentage for a challenge
+  const getDisplayScore = (ch: typeof challenges[0]): number | null => {
+    const rawScore = completedLessonScores.get(getProgressKey(ch));
+    if (rawScore === undefined || rawScore === null) return null;
+    if (ch.item_type === "problem") return rawScore; // already 100
+    // For lessons, rawScore is correct count — find total exercises
+    for (const chapter of chapters) {
+      const lesson = chapter.lessons.find((l) => l.id === ch.item_id);
+      if (lesson && lesson.exercises.length > 0) {
+        return Math.round((rawScore / lesson.exercises.length) * 100);
+      }
+    }
+    return rawScore; // fallback
+  };
+
+  // Split challenges into active vs completed
+  const activeChallenges = challenges.filter((ch) => !completedLessonIds.has(getProgressKey(ch)));
+
+  const completedChallenges = challenges.filter((ch) => completedLessonIds.has(getProgressKey(ch)));
 
   const handleLeave = async () => {
     if (!user) return;
@@ -293,7 +305,7 @@ const StudentTab = ({ memberClassName, onLeaveClass }: StudentTabProps) => {
             </p>
             <div className="space-y-1.5">
               {completedChallenges.map((ch) => {
-                const score = completedLessonScores.get(ch.item_id);
+                const score = getDisplayScore(ch);
                 return (
                   <Card key={ch.id} className="border-border">
                     <CardContent className="p-3 flex items-center gap-3">
@@ -304,7 +316,7 @@ const StudentTab = ({ memberClassName, onLeaveClass }: StudentTabProps) => {
                         <p className="text-sm text-foreground truncate">{ch.item_title}</p>
                         <p className="text-xs text-muted-foreground">
                           {ch.item_type === "lesson" ? "Lecție" : "Problemă"} — completată
-                          {score !== undefined && score !== null && ` • Scor: ${score}%`}
+                          {score !== null && ` • Scor: ${score}%`}
                         </p>
                       </div>
                       <Button variant="outline" size="sm" className="gap-1 shrink-0" onClick={() => handleStartChallenge(ch)}>

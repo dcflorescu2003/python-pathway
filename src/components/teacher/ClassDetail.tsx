@@ -73,7 +73,8 @@ const ClassDetail = ({ classId, className: clsName, joinCode, onBack }: ClassDet
     }
   };
 
-  // Build a map: lessonId -> { userId -> { score, completed } }
+  // Build a map: lessonId -> { userId -> { score } }
+  // Note: problems are stored with key "problem-${id}" in completed_lessons
   const completionMap = useMemo(() => {
     const map: Record<string, Record<string, { score: number }>> = {};
     for (const cl of allCompletedLessons) {
@@ -83,10 +84,28 @@ const ClassDetail = ({ classId, className: clsName, joinCode, onBack }: ClassDet
     return map;
   }, [allCompletedLessons]);
 
+  // Helper: resolve lookup key for challenges
+  const getChallengeProgressKey = (itemType: string, itemId: string) =>
+    itemType === "problem" ? `problem-${itemId}` : itemId;
+
+  // Helper: get display percentage
+  const getDisplayPercent = (itemType: string, itemId: string, rawScore: number): number => {
+    if (itemType === "problem") return rawScore; // already 100
+    // For lessons, rawScore = correct count, need total exercises
+    for (const ch of chapters) {
+      const lesson = ch.lessons.find((l) => l.id === itemId);
+      if (lesson && lesson.exercises.length > 0) {
+        return Math.round((rawScore / lesson.exercises.length) * 100);
+      }
+    }
+    return rawScore;
+  };
+
   const existingChallengeIds = challenges.map((c) => c.item_id);
 
-  const getStudentStatus = (itemId: string, studentId: string) => {
-    return completionMap[itemId]?.[studentId] || null;
+  const getStudentStatus = (itemType: string, itemId: string, studentId: string) => {
+    const key = getChallengeProgressKey(itemType, itemId);
+    return completionMap[key]?.[studentId] || null;
   };
 
   return (
@@ -174,7 +193,7 @@ const ClassDetail = ({ classId, className: clsName, joinCode, onBack }: ClassDet
                 {challenges.map((ch) => {
                   const isExpanded = expandedChallenge === ch.id;
                   const completedCount = members.filter(
-                    (m) => getStudentStatus(ch.item_id, m.student_id) !== null
+                    (m) => getStudentStatus(ch.item_type, ch.item_id, m.student_id) !== null
                   ).length;
 
                   return (
@@ -217,10 +236,11 @@ const ClassDetail = ({ classId, className: clsName, joinCode, onBack }: ClassDet
                         {isExpanded && members.length > 0 && (
                           <div className="border-t border-border px-3 pb-3 pt-2 space-y-1.5">
                             {members.map((m) => {
-                              const status = getStudentStatus(ch.item_id, m.student_id);
+                              const status = getStudentStatus(ch.item_type, ch.item_id, m.student_id);
                               const completed = status !== null;
-                              const hasMistakes = completed && status.score < 100;
-                              const mistakePoints = completed ? Math.max(0, 100 - status.score) : 0;
+                              const displayScore = completed ? getDisplayPercent(ch.item_type, ch.item_id, status.score) : 0;
+                              const hasMistakes = completed && displayScore < 100;
+                              const mistakePoints = completed ? Math.max(0, 100 - displayScore) : 0;
 
                               return (
                                 <div
@@ -250,7 +270,7 @@ const ClassDetail = ({ classId, className: clsName, joinCode, onBack }: ClassDet
                                   <div className="text-xs">
                                     {completed ? (
                                       <span className={hasMistakes ? "text-warning font-medium" : "text-primary font-medium"}>
-                                        {status.score}% {hasMistakes && `· ${mistakePoints} pct. pierdute`}
+                                        {displayScore}% {hasMistakes && `· ${mistakePoints} pct. pierdute`}
                                       </span>
                                     ) : (
                                       <span className="text-muted-foreground">Necompletat</span>
