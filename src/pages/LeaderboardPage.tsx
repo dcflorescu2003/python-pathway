@@ -152,7 +152,7 @@ const LeaderboardPage = () => {
   });
 
   const userInTop15 = user ? top15.some(e => e.user_id === user.id) : false;
-  const showUserBelow = !!userRankData && !userInTop15;
+  const showUserBelow = tab !== "class" && !!userRankData && !userInTop15;
 
   const renderRow = (entry: LeaderboardEntry, idx: number, animDelay: number) => {
     const isUser = entry.user_id === user?.id;
