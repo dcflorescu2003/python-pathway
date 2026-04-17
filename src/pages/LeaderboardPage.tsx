@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -14,7 +14,7 @@ const medalColors = [
   "text-amber-600",
 ];
 
-type Tab = "national" | "school" | "city";
+type Tab = "class" | "school" | "city" | "national";
 
 interface LeaderboardEntry {
   user_id: string;
@@ -30,6 +30,7 @@ const LeaderboardPage = () => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [tab, setTab] = useState<Tab>("school");
+  const [tabInitialized, setTabInitialized] = useState(false);
   const [userSchool, setUserSchool] = useState<string | null>(getSelectedSchool());
   const [schoolSearch, setSchoolSearch] = useState("");
   const [changingSchool, setChangingSchool] = useState(false);
@@ -55,9 +56,47 @@ const LeaderboardPage = () => {
     toast.success("Liceu selectat!");
   }, [user, queryClient]);
 
+  // Query: Active class membership + classmates
+  const { data: classData } = useQuery({
+    queryKey: ["leaderboard-class", user?.id],
+    enabled: !!user,
+    queryFn: async () => {
+      const { data: membership } = await supabase
+        .from("class_members")
+        .select("class_id")
+        .eq("student_id", user!.id)
+        .order("joined_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (!membership) return null;
+
+      const [{ data: classInfo }, { data: members }] = await Promise.all([
+        supabase.from("teacher_classes").select("id, name").eq("id", membership.class_id).maybeSingle(),
+        supabase.from("class_members").select("student_id").eq("class_id", membership.class_id),
+      ]);
+
+      return {
+        classId: membership.class_id,
+        className: classInfo?.name ?? "Clasa ta",
+        memberIds: (members || []).map(m => m.student_id),
+      };
+    },
+  });
+
+  const isClassMember = !!classData;
+
+  // Default to "class" tab if member of a class (only on first load)
+  useEffect(() => {
+    if (tabInitialized || classData === undefined) return;
+    if (isClassMember) setTab("class");
+    setTabInitialized(true);
+  }, [classData, isClassMember, tabInitialized]);
+
   // Query 1: Top 15 filtered by tab
   const { data: top15 = [], isLoading } = useQuery({
-    queryKey: ["leaderboard-top", tab, userSchool],
+    queryKey: ["leaderboard-top", tab, userSchool, classData?.classId],
+    enabled: tab !== "class" || !!classData,
     queryFn: async () => {
       let query = supabase
         .from("profiles")
@@ -65,7 +104,9 @@ const LeaderboardPage = () => {
         .order("xp", { ascending: false })
         .limit(15);
 
-      if (tab === "school" && userSchool) {
+      if (tab === "class" && classData) {
+        query = query.in("user_id", classData.memberIds);
+      } else if (tab === "school" && userSchool) {
         query = query.eq("school_id", userSchool);
       } else if (tab === "city" && citySchoolIds.length > 0) {
         query = query.in("school_id", citySchoolIds);
@@ -79,8 +120,8 @@ const LeaderboardPage = () => {
 
   // Query 2: Current user's profile + rank
   const { data: userRankData } = useQuery({
-    queryKey: ["leaderboard-user-rank", tab, userSchool, user?.id],
-    enabled: !!user,
+    queryKey: ["leaderboard-user-rank", tab, userSchool, classData?.classId, user?.id],
+    enabled: !!user && (tab !== "class" || !!classData),
     queryFn: async () => {
       const { data: profile } = await supabase
         .from("profiles")
@@ -94,7 +135,9 @@ const LeaderboardPage = () => {
         .select("user_id", { count: "exact", head: true })
         .gt("xp", profile.xp);
 
-      if (tab === "school" && userSchool) {
+      if (tab === "class" && classData) {
+        countQuery = countQuery.in("user_id", classData.memberIds);
+      } else if (tab === "school" && userSchool) {
         countQuery = countQuery.eq("school_id", userSchool);
       } else if (tab === "city" && citySchoolIds.length > 0) {
         countQuery = countQuery.in("school_id", citySchoolIds);
@@ -158,6 +201,11 @@ const LeaderboardPage = () => {
     );
   };
 
+  const tabBtnClass = (active: boolean) =>
+    `flex-1 py-2 rounded-lg text-sm font-bold transition-all whitespace-nowrap px-2 ${
+      active ? "bg-primary text-primary-foreground" : "bg-secondary text-muted-foreground"
+    }`;
+
   return (
     <div className="min-h-screen bg-background">
       <header className="sticky top-0 z-40 border-b border-border bg-background/80 backdrop-blur-md pt-[env(safe-area-inset-top)]">
@@ -166,40 +214,31 @@ const LeaderboardPage = () => {
           <h1 className="text-lg font-bold text-foreground">Clasament</h1>
         </div>
         <div className="flex px-4 pb-2 gap-2">
-          <button
-            onClick={() => setTab("school")}
-            className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all ${
-              tab === "school"
-                ? "bg-primary text-primary-foreground"
-                : "bg-secondary text-muted-foreground"
-            }`}
-          >
+          {isClassMember && (
+            <button onClick={() => setTab("class")} className={tabBtnClass(tab === "class")}>
+              👥 Clasă
+            </button>
+          )}
+          <button onClick={() => setTab("school")} className={tabBtnClass(tab === "school")}>
             🏫 Liceu
           </button>
-          <button
-            onClick={() => setTab("city")}
-            className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all ${
-              tab === "city"
-                ? "bg-primary text-primary-foreground"
-                : "bg-secondary text-muted-foreground"
-            }`}
-          >
+          <button onClick={() => setTab("city")} className={tabBtnClass(tab === "city")}>
             🏙️ Oraș
           </button>
-          <button
-            onClick={() => setTab("national")}
-            className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all ${
-              tab === "national"
-                ? "bg-primary text-primary-foreground"
-                : "bg-secondary text-muted-foreground"
-            }`}
-          >
+          <button onClick={() => setTab("national")} className={tabBtnClass(tab === "national")}>
             🌍 Național
           </button>
         </div>
       </header>
 
       <main className="px-4 py-4">
+        {tab === "class" && classData && (
+          <div className="rounded-xl border border-border bg-card px-4 py-2.5 mb-4">
+            <p className="text-xs text-muted-foreground">Clasa ta</p>
+            <p className="text-sm font-medium text-foreground truncate">{classData.className}</p>
+          </div>
+        )}
+
         {(tab === "school" || tab === "city") && !userSchool && (
           <div className="rounded-xl border border-border bg-card p-4 mb-4">
             <p className="text-sm text-foreground/70 text-center mb-3">
