@@ -101,12 +101,15 @@ const LeaderboardPage = () => {
       let query = supabase
         .from("profiles")
         .select("user_id, display_name, nickname, xp, streak, avatar_url, school_id")
-        .order("xp", { ascending: false })
-        .limit(15);
+        .order("xp", { ascending: false });
 
       if (tab === "class" && classData) {
         query = query.in("user_id", classData.memberIds);
-      } else if (tab === "school" && userSchool) {
+      } else {
+        query = query.limit(15);
+      }
+
+      if (tab === "school" && userSchool) {
         query = query.eq("school_id", userSchool);
       } else if (tab === "city" && citySchoolIds.length > 0) {
         query = query.in("school_id", citySchoolIds);
