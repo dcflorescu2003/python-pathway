@@ -1,48 +1,39 @@
 
 
-## Plan: Push iOS + checklist App Store
+## Diagnostic
 
-### Modificări cod (le fac eu)
+Pagina `/probleme` afișează gol pentru conturi noi, dar conține date pentru conturi vechi. Verific din cod și RLS:
+
+**Cauza probabilă**: `useProblems.ts` interogheză `problems_public` (un view), dar în `<supabase-tables>` văd doar tabela `problems` cu policy SELECT pentru `{authenticated}`. Pentru conturi noi, sesiunea poate să nu fie încă propagată complet la primul fetch (race condition cu `useAuth`), iar React Query cache-uiește rezultatul gol cu `staleTime: 1h` → utilizatorul nu mai vede niciodată problemele decât după refresh manual sau o oră.
+
+În plus, view-ul `problems_public` nu apare în lista de tabele/RLS expusă, deci e posibil să fie un view fără `security_invoker` sau cu permisiuni implicite care eșuează silentios pentru utilizatori abia creați.
+
+## Verificări necesare (în mod default după aprobare)
+
+1. Confirm cu `supabase--read_query` că view-ul `problems_public` există și ce întoarce pentru un user authenticated.
+2. Verific dacă `problem_chapters` se încarcă corect (capitolele apar?) sau și ele lipsesc — îmi spune dacă e problemă RLS sau doar la `problems_public`.
+3. Verific dacă există vreo dependență de `is_premium` sau `school_id` care ar filtra rândurile.
+
+## Soluție propusă
+
+### A. Cache mai sigur în `useProblems.ts`
+- Reduc `staleTime` de la 1h la 5min pentru a evita blocarea unui rezultat gol cache-uit.
+- Adaug `enabled: !!user` ca query-ul să nu ruleze înainte ca sesiunea să fie disponibilă.
+- Adaug `retry: 2` pentru a recupera din race conditions tranzitorii.
+
+### B. Fallback pe tabela `problems` directă
+Dacă view-ul `problems_public` are probleme de permisiuni, schimb fetch-ul pe `problems` (care are RLS clar: `Authenticated users can read problems`). Selectez explicit toate coloanele necesare **fără `solution`** (rămâne pe RPC `get_problem_solution`).
+
+### C. Refetch la focus
+Adaug `refetchOnWindowFocus: true` și `refetchOnMount: "always"` pe pagina Probleme pentru conturi noi care intră imediat după signup.
+
+### Fișiere modificate
 
 | Fișier | Schimbare |
 |---|---|
-| `ios/App/App/Info.plist` | Adaug `UIBackgroundModes: [remote-notification]` + `ITSAppUsesNonExemptEncryption: false` |
-| `ios/App/App/AppDelegate.swift` | Handlere APNs (`didRegister...DeviceToken`, `didFailToRegister...`) ca să trimită tokenul către plugin-ul Capacitor |
-| `supabase/functions/send-push/index.ts` | Adaug bloc `apns` în payload-ul FCM (priority 10, sound default) pentru livrare iOS |
+| `src/hooks/useProblems.ts` | `enabled: !!user`, `staleTime: 5min`, `retry: 2`, fallback pe `problems` direct (fără coloana `solution`) |
 
-### Document checklist (îl generez în `/mnt/documents/`)
-
-Creez `PyRo-iOS-Push-AppStore-Checklist.md` (Markdown, lizibil în orice editor) cu următoarele secțiuni numerotate:
-
-1. **Apple Developer Portal**
-   - Activare Push Notifications pe App ID `ro.pythonpathway.app`
-   - Generare APNs Auth Key (.p8) → notare Key ID + Team ID
-
-2. **Firebase Console** (proiect `pyro-89b9f`)
-   - Adăugare app iOS cu bundle id `ro.pythonpathway.app`
-   - Descărcare `GoogleService-Info.plist` → plasare în `ios/App/App/`
-   - Upload .p8 + Key ID + Team ID în Cloud Messaging
-
-3. **Xcode (după `npx cap sync ios`)**
-   - Signing & Capabilities → Push Notifications + Background Modes (Remote notifications)
-   - Adăugare `GoogleService-Info.plist` la target App
-   - Setare `MARKETING_VERSION` și `CURRENT_PROJECT_VERSION`
-
-4. **App Store Connect**
-   - Creare aplicație nouă (bundle id, SKU, limbă RO)
-   - Privacy: declarare email + push token
-   - Privacy Policy URL: `https://pyroskill.info/privacy-policy`
-   - Cont demo pentru App Review (email + parolă elev)
-   - Screenshots iPhone 6.7" / 6.5" / 5.5" (minim 3 fiecare)
-   - Categorie Education, age rating, descriere, keywords
-
-5. **Build & Submit**
-   - Product → Archive → Distribute → App Store Connect
-   - TestFlight intern înainte de submit
-   - Submit for Review
-
-6. **Troubleshooting** — erori frecvente (token nu apare, FCM 404, missing entitlement)
-
-### Ce-mi trebuie de la tine pentru document
-- **Cont demo elev** (email + parolă) pe care să-l includ direct în checklist pentru secțiunea App Review? (Sau să las placeholder `[de completat]`)
+### Pași
+1. Rulez query SQL pentru a confirma cauza exactă (view vs tabel, RLS).
+2. Aplic fix-ul minim necesar bazat pe ce găsesc.
 
