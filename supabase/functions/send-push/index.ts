@@ -147,6 +147,18 @@ Deno.serve(async (req) => {
                 priority: "high",
                 notification: { sound: "default" },
               },
+              apns: {
+                headers: {
+                  "apns-priority": "10",
+                },
+                payload: {
+                  aps: {
+                    sound: "default",
+                    badge: 1,
+                    "content-available": 1,
+                  },
+                },
+              },
             },
           }),
         }
