@@ -27,6 +27,7 @@ const AdminPage = lazy(() => import("./pages/AdminPage"));
 const ResetPasswordPage = lazy(() => import("./pages/ResetPasswordPage"));
 const PrivacyPolicyPage = lazy(() => import("./pages/PrivacyPolicyPage"));
 const DeleteAccountPage = lazy(() => import("./pages/DeleteAccountPage"));
+const SupportPage = lazy(() => import("./pages/SupportPage"));
 
 const ManualLessonPage = lazy(() => import("./pages/ManualLessonPage"));
 const TakeTestPage = lazy(() => import("./pages/TakeTestPage"));
@@ -57,6 +58,7 @@ const AppRoutes = () => {
           <Route path="/reset-password" element={<ResetPasswordPage />} />
           <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
           <Route path="/delete-account" element={<DeleteAccountPage />} />
+          <Route path="/support" element={<SupportPage />} />
           
           <Route path="/test/:assignmentId" element={<TakeTestPage />} />
           <Route path="/manual/:lessonId" element={<ManualLessonPage />} />
