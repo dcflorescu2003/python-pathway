@@ -502,6 +502,15 @@ const AuthPage = () => {
             </p>
           </CardContent>
         </Card>
+
+        <div className="mt-4 text-center">
+          <button
+            onClick={() => navigate("/support")}
+            className="text-xs text-muted-foreground hover:text-primary hover:underline transition-colors"
+          >
+            Ai nevoie de ajutor? Contactează suportul
+          </button>
+        </div>
       </div>
 
       {showForgot && (
