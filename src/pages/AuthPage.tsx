@@ -27,6 +27,7 @@ const AccountView = () => {
   const { checkSubscription } = useSubscription();
   const [teacherStatus, setTeacherStatus] = useState<string | null>(null);
   const [isClassMember, setIsClassMember] = useState(false);
+  const [flagsLoaded, setFlagsLoaded] = useState(false);
   const [memberClassName, setMemberClassName] = useState<string | null>(null);
   const [displayName, setDisplayName] = useState<string | null>(null);
   const [nickname, setNickname] = useState<string | null>(null);
@@ -83,6 +84,7 @@ const AccountView = () => {
       } else {
         setMemberClassName(null);
       }
+      setFlagsLoaded(true);
     };
 
     void loadAccountFlags();
@@ -174,15 +176,12 @@ const AccountView = () => {
   const [activeTab, setActiveTab] = useState<string>("profile");
   const [tabInitialized, setTabInitialized] = useState(false);
   useEffect(() => {
-    if (tabInitialized) return;
-    if (isTeacher) {
-      setActiveTab("classes");
-      setTabInitialized(true);
-    } else if (isClassMember) {
-      setActiveTab("student");
-      setTabInitialized(true);
-    }
-  }, [isTeacher, isClassMember, tabInitialized]);
+    if (!flagsLoaded || tabInitialized) return;
+    if (isTeacher) setActiveTab("classes");
+    else if (isClassMember) setActiveTab("student");
+    else setActiveTab("profile");
+    setTabInitialized(true);
+  }, [flagsLoaded, isTeacher, isClassMember, tabInitialized]);
 
   return (
     <motion.div
@@ -245,7 +244,7 @@ const AccountView = () => {
         </div>
 
         {/* Tabs */}
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full flex-1">
+        <Tabs key={flagsLoaded ? "ready" : "loading"} value={activeTab} onValueChange={setActiveTab} className="w-full flex-1">
           <TabsList className="w-full">
             <TabsTrigger value="profile" className="flex-1">Profil</TabsTrigger>
             {showStudentTab && (
