@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 
 export interface TestCase {
   input: string;
@@ -36,14 +37,16 @@ async function fetchProblems(): Promise<{ problems: Problem[]; problemChapters: 
 
   if (chaptersError) throw chaptersError;
 
+  // Fetch direct from `problems` table (RLS allows authenticated SELECT).
+  // We exclude `solution` from the select — it's fetched on-demand via get_problem_solution RPC.
   const { data: problemsData, error: problemsError } = await supabase
-    .from("problems_public" as any)
+    .from("problems")
     .select("id, title, description, difficulty, xp_reward, test_cases, hint, chapter_id, sort_order, is_premium")
-    .order("sort_order", { ascending: true }) as { data: any[] | null; error: any };
+    .order("sort_order", { ascending: true });
 
   if (problemsError) throw problemsError;
 
-  const problemChapters: ProblemChapter[] = chaptersData.map(ch => ({
+  const problemChapters: ProblemChapter[] = (chaptersData || []).map((ch: any) => ({
     id: ch.id,
     title: ch.title,
     icon: ch.icon,
@@ -68,10 +71,15 @@ async function fetchProblems(): Promise<{ problems: Problem[]; problemChapters: 
 }
 
 export function useProblems() {
+  const { user } = useAuth();
   return useQuery({
-    queryKey: ["problems"],
+    queryKey: ["problems", user?.id],
     queryFn: fetchProblems,
-    staleTime: 60 * 60 * 1000,
-    gcTime: 2 * 60 * 60 * 1000,
+    enabled: !!user,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
+    retry: 2,
+    refetchOnWindowFocus: true,
+    refetchOnMount: "always",
   });
 }
