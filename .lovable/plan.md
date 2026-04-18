@@ -1,47 +1,48 @@
 
 
-## Diagnostic
+## Plan: Push iOS + checklist App Store
 
-Logica există în `src/pages/AuthPage.tsx` (liniile 174-185), dar nu funcționează din cauza unei race condition:
+### Modificări cod (le fac eu)
 
-1. La montare: `isTeacher=false`, `isClassMember=false`, `tabInitialized=false` → effect rulează, **niciun branch nu se execută** (ambele condiții false), `tabInitialized` rămâne `false`.
-2. Datele se încarcă async în `loadAccountFlags`. Setările `setTeacherStatus` / `setIsClassMember` declanșează re-render → effect rulează din nou → setează tab-ul corect.
-
-**Problema reală**: pentru elevii fără clasă, `isClassMember` rămâne `false` permanent, dar și pentru elevii cu clasă, există o fereastră în care `loadAccountFlags` nu a terminat încă, iar dacă vreun re-render intermediar setează `tabInitialized=true` dintr-o cursă cu `Tabs`-ul Radix care păstrează starea internă, tab-ul nu se mai actualizează vizual.
-
-În plus, `Tabs` din Radix poate ignora schimbarea `value` la prima sincronizare dacă `value` referențiază un `TabsTrigger` care nu era randat la momentul montării (ex: `"classes"` apare doar când `isTeacher=true`).
-
-## Soluție
-
-Înlocuiesc logica fragilă cu:
-
-1. **Flag de loading**: țin minte că datele profil/membership au fost încărcate (`flagsLoaded`).
-2. **Inițializare după încărcare completă**: setez `activeTab` o singură dată **după** ce flagurile sunt cunoscute, nu înainte.
-3. **Forțare remount Tabs** prin `key` care depinde de `flagsLoaded`, ca Radix să reia starea internă cu `value`-ul corect din prima.
-
-### Modificări în `src/pages/AuthPage.tsx`
-
-```tsx
-const [flagsLoaded, setFlagsLoaded] = useState(false);
-
-// în loadAccountFlags, la final:
-setFlagsLoaded(true);
-
-// effect inițializare tab:
-useEffect(() => {
-  if (!flagsLoaded || tabInitialized) return;
-  if (isTeacher) setActiveTab("classes");
-  else if (isClassMember) setActiveTab("student");
-  else setActiveTab("profile");
-  setTabInitialized(true);
-}, [flagsLoaded, isTeacher, isClassMember, tabInitialized]);
-
-// Tabs cu key care forțează montarea după ce avem datele
-<Tabs key={flagsLoaded ? "ready" : "loading"} value={activeTab} onValueChange={setActiveTab} ...>
-```
-
-### Fișier modificat
 | Fișier | Schimbare |
-|--------|-----------|
-| `src/pages/AuthPage.tsx` | Flag `flagsLoaded` + inițializare tab după încărcare + `key` pe `Tabs` pentru remount |
+|---|---|
+| `ios/App/App/Info.plist` | Adaug `UIBackgroundModes: [remote-notification]` + `ITSAppUsesNonExemptEncryption: false` |
+| `ios/App/App/AppDelegate.swift` | Handlere APNs (`didRegister...DeviceToken`, `didFailToRegister...`) ca să trimită tokenul către plugin-ul Capacitor |
+| `supabase/functions/send-push/index.ts` | Adaug bloc `apns` în payload-ul FCM (priority 10, sound default) pentru livrare iOS |
+
+### Document checklist (îl generez în `/mnt/documents/`)
+
+Creez `PyRo-iOS-Push-AppStore-Checklist.md` (Markdown, lizibil în orice editor) cu următoarele secțiuni numerotate:
+
+1. **Apple Developer Portal**
+   - Activare Push Notifications pe App ID `ro.pythonpathway.app`
+   - Generare APNs Auth Key (.p8) → notare Key ID + Team ID
+
+2. **Firebase Console** (proiect `pyro-89b9f`)
+   - Adăugare app iOS cu bundle id `ro.pythonpathway.app`
+   - Descărcare `GoogleService-Info.plist` → plasare în `ios/App/App/`
+   - Upload .p8 + Key ID + Team ID în Cloud Messaging
+
+3. **Xcode (după `npx cap sync ios`)**
+   - Signing & Capabilities → Push Notifications + Background Modes (Remote notifications)
+   - Adăugare `GoogleService-Info.plist` la target App
+   - Setare `MARKETING_VERSION` și `CURRENT_PROJECT_VERSION`
+
+4. **App Store Connect**
+   - Creare aplicație nouă (bundle id, SKU, limbă RO)
+   - Privacy: declarare email + push token
+   - Privacy Policy URL: `https://pyroskill.info/privacy-policy`
+   - Cont demo pentru App Review (email + parolă elev)
+   - Screenshots iPhone 6.7" / 6.5" / 5.5" (minim 3 fiecare)
+   - Categorie Education, age rating, descriere, keywords
+
+5. **Build & Submit**
+   - Product → Archive → Distribute → App Store Connect
+   - TestFlight intern înainte de submit
+   - Submit for Review
+
+6. **Troubleshooting** — erori frecvente (token nu apare, FCM 404, missing entitlement)
+
+### Ce-mi trebuie de la tine pentru document
+- **Cont demo elev** (email + parolă) pe care să-l includ direct în checklist pentru secțiunea App Review? (Sau să las placeholder `[de completat]`)
 
