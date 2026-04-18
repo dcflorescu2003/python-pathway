@@ -27,6 +27,7 @@ const AccountView = () => {
   const { checkSubscription } = useSubscription();
   const [teacherStatus, setTeacherStatus] = useState<string | null>(null);
   const [isClassMember, setIsClassMember] = useState(false);
+  const [flagsLoaded, setFlagsLoaded] = useState(false);
   const [memberClassName, setMemberClassName] = useState<string | null>(null);
   const [displayName, setDisplayName] = useState<string | null>(null);
   const [nickname, setNickname] = useState<string | null>(null);
@@ -83,6 +84,7 @@ const AccountView = () => {
       } else {
         setMemberClassName(null);
       }
+      setFlagsLoaded(true);
     };
 
     void loadAccountFlags();
@@ -242,7 +244,7 @@ const AccountView = () => {
         </div>
 
         {/* Tabs */}
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full flex-1">
+        <Tabs key={flagsLoaded ? "ready" : "loading"} value={activeTab} onValueChange={setActiveTab} className="w-full flex-1">
           <TabsList className="w-full">
             <TabsTrigger value="profile" className="flex-1">Profil</TabsTrigger>
             {showStudentTab && (
