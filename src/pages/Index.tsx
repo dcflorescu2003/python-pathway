@@ -466,6 +466,25 @@ const Index = (): JSX.Element => {
             );
           })}
         </div>
+
+        {/* Support footer link */}
+        <div className="mt-8 pt-6 border-t border-border flex flex-col items-center gap-2">
+          <button
+            onClick={() => navigate("/support")}
+            className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-4 transition-colors"
+          >
+            Ajutor & Suport
+          </button>
+          <div className="flex gap-3 text-[10px] text-muted-foreground">
+            <button onClick={() => navigate("/privacy-policy")} className="hover:text-foreground">
+              Confidențialitate
+            </button>
+            <span>·</span>
+            <button onClick={() => navigate("/delete-account")} className="hover:text-foreground">
+              Șterge cont
+            </button>
+          </div>
+        </div>
       </main>
 
       <PremiumDialog open={showPremium || showPremiumPopup} onOpenChange={(open) => { setShowPremium(open); setShowPremiumPopup(open); }} />
