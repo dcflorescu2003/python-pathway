@@ -1,40 +1,51 @@
 
 
-## Plan: Dialoguri scrollabile pe mobil + close button mereu vizibil
+## Diagnoză
 
-### Problemă
-Pe mobil în browser, `PremiumDialog` (și potențial alte dialoguri) depășesc înălțimea ecranului. Butonul X de închidere e poziționat absolut în interiorul `DialogContent`, deci când conținutul e mai mare decât viewport-ul, X-ul iese din ecran și utilizatorul nu poate închide modalul.
+Userul a editat conținut în admin (ex: cerințe lecții cu **bold**, culori), dar online (în lecții/probleme) nu vede modificările. În preview/dev funcționa.
 
-### Cauza
-În `src/components/ui/dialog.tsx` (baza shadcn folosită de toate dialogurile):
-- `DialogContent` nu are `max-height` și nici `overflow-y-auto` → conținutul iese în afara viewport-ului
-- `DialogClose` (X) e `absolute top-4 right-4` în interiorul Content → se mișcă cu conținutul când e prea mare
+### Cauze posibile (în ordine de probabilitate)
 
-### Soluție — fix global la baza UI (rezolvă peste tot dintr-o singură mișcare)
+**1. Cache React Query agresiv** — `useExerciseStore`, `useChapters`, `useProblems` etc. au probabil `staleTime` mare sau cache local (localStorage) care servește date vechi. Vezi `mem://technical/persistence-strategy`: „cache de 5 minute" — deci după edit în admin, online vede vechi până la expirare/refresh.
 
-**1. `src/components/ui/dialog.tsx`**
-- Adaug pe `DialogContent`: `max-h-[calc(100dvh-2rem)] overflow-hidden flex flex-col` (folosesc `100dvh` pentru a respecta corect bara mobilă a browserelor)
-- Wrap children într-un container intern scrollabil `<div className="overflow-y-auto -mx-6 px-6 -mb-6 pb-6">{children}</div>`, astfel încât butonul X să rămână ancorat la marginea ferestrei vizibile
-- Mențin `w-[calc(100%-2rem)]` (deja are `w-full max-w-lg`) — pe mobil se vede cu margini mici
-- Cresc zona de tap pe X: `h-8 w-8 flex items-center justify-center` în loc de doar 4×4 (touch target friendly, conform regulilor mobile-first)
+**2. Lipsă invalidare după mutație în admin** — `ExerciseEditor` / `ContentEditor` salvează în Supabase dar nu apelează `queryClient.invalidateQueries` pentru cheile folosite în paginile publice (`["exercises"]`, `["lessons"]`, `["problems"]`).
 
-**2. `src/components/ui/alert-dialog.tsx`**
-- Identic: `max-h-[calc(100dvh-2rem)] overflow-y-auto` pe `AlertDialogContent` (fără X, deci nu trebuie wrapper intern — doar scroll direct)
+**3. Snapshot local fallback** — `getStoredChapters()` (folosit în `ChapterTheoryPage`) și `useExerciseStore` citesc din `localStorage` când Supabase răspunde gol; dacă snapshot-ul e vechi, suprascrie datele proaspete.
 
-**3. `src/components/PremiumDialog.tsx` și `src/components/TeacherPremiumDialog.tsx`**
-- Schimb `max-w-sm mx-auto` → `max-w-sm` (mx-auto e redundant; primitive-ul deja centrează)
-- Reduc `space-y-4 py-4` → `space-y-3 py-2` ca să încapă mai bine fără scroll pe ecrane medii (375×667+)
+**4. NU e problemă de RLS** — `exercises`, `lessons`, `problems` au policy „Authenticated users can read" → admin logat citește OK.
 
-### Locuri verificate care beneficiază automat
-- `PremiumDialog`, `TeacherPremiumDialog`, `LevelUpDialog`, `StreakCelebrationDialog`, `CouponExpiredDialog`, `LevelRoadmap` (deja are `max-h-[80vh]`, dar va fi consistent), toate `AlertDialog` din admin/teacher
+**5. NU e problemă de realtime** — fix-ul cu `supabase_realtime` din stack-overflow NU e necesar; un simplu refetch la focus + invalidare la save rezolvă.
 
-### Nu modific
-- Logica dialogurilor / conținutul lor (text, butoane, prețuri)
-- `Drawer`, `Sheet` (componente separate, nu sunt afectate)
+### Investigare necesară (înainte să propun fix)
 
-### Fișiere modificate (4)
-1. `src/components/ui/dialog.tsx` — fix structural
-2. `src/components/ui/alert-dialog.tsx` — fix scroll
-3. `src/components/PremiumDialog.tsx` — micro-tuning spacing
-4. `src/components/TeacherPremiumDialog.tsx` — micro-tuning spacing
+Trebuie să verific:
+- `src/hooks/useExerciseStore.ts` — staleTime, structură cache, fallback localStorage
+- `src/hooks/useChapters.ts`, `useProblems.ts`, `useManualLessons.ts` — staleTime + refetch policy
+- `src/components/admin/ExerciseEditor.tsx` și `ContentEditor.tsx` — ce invalidări fac după save
+- `src/pages/ChapterPage.tsx` / `LessonPage.tsx` — cum consumă datele
+
+### Plan reparare (după inspecție)
+
+1. **Reduc `staleTime` pe queries publice de conținut** la `0` (sau max 30s), păstrez `gcTime` mare → afișare instant a editărilor
+2. **Activez `refetchOnWindowFocus: true`** pentru hook-urile de conținut (lessons/exercises/problems/chapters) → când admin revine din tab admin, datele se reîmprospătează
+3. **Invalidare explicită după save în admin** — în `ExerciseEditor`, `ContentEditor`, `ProblemsEditor`, `ManualEditor`: `queryClient.invalidateQueries({ queryKey: ["exercises"] })` etc.
+4. **Bust cache local snapshot** la save — `localStorage.removeItem("pyro-chapters-snapshot")` (sau echivalent) când admin modifică conținut, ca să nu se servească snapshot vechi
+5. **Buton „Reîmprospătează" în AdminPage** (opțional) — invalidează tot cache-ul de conținut manual
+
+### Ce voi face în următoarea fază (default mode)
+
+Inspectez fișierele de mai sus, identific cheile React Query exacte și cache-urile localStorage, apoi aplic fix-urile minime care păstrează performanța dar fac editările vizibile imediat (max 1-2 secunde de propagare).
+
+### Fișiere probabile de modificat (estimare)
+
+- `src/hooks/useExerciseStore.ts`
+- `src/hooks/useChapters.ts`
+- `src/hooks/useProblems.ts`
+- `src/hooks/useManualLessons.ts`
+- `src/components/admin/ExerciseEditor.tsx`
+- `src/components/admin/ContentEditor.tsx`
+- `src/components/admin/ProblemsEditor.tsx`
+- `src/components/admin/ManualEditor.tsx`
+
+Nu modific RLS, nu activez realtime (overkill).
 
