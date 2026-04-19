@@ -10,6 +10,7 @@ const PRODUCTION_URL = 'https://pyroskill.info';
 const OAUTH_BROKER_URL = `${PRODUCTION_URL}/~oauth/initiate`;
 const GOOGLE_WEB_CLIENT_ID = import.meta.env.VITE_GOOGLE_WEB_CLIENT_ID;
 const isNativeAndroid = Capacitor.isNativePlatform() && Capacitor.getPlatform() === "android";
+const isNativeIOS = Capacitor.isNativePlatform() && Capacitor.getPlatform() === "ios";
 
 const getRedirectUri = () => {
   if (Capacitor.isNativePlatform()) {
