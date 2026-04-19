@@ -437,9 +437,12 @@ const TakeTestPage = () => {
       <main className="px-4 py-6 max-w-lg mx-auto">
         <div className="mb-4 flex items-start gap-2 p-3 rounded-lg border border-destructive/30 bg-destructive/10">
           <AlertTriangle className="h-4 w-4 text-destructive shrink-0 mt-0.5" />
-          <p className="text-xs text-foreground">
-            Atenție: dacă părăsești aplicația sau schimbi fereastra mai mult de 1 secundă, testul va fi trimis automat.
-          </p>
+          <div className="text-xs text-foreground space-y-1">
+            <p>Atenție: dacă părăsești aplicația sau schimbi fereastra mai mult de 1 secundă, testul va fi trimis automat.</p>
+            {requireFullscreen && (
+              <p>🛑 Shortcut-urile (Esc, F11, Ctrl/Cmd+T/W/R/N, F12) sunt blocate. Orice tentativă de ieșire trimite testul automat.</p>
+            )}
+          </div>
         </div>
         {currentItem && (
           <Card>
