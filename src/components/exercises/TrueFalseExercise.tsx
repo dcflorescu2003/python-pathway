@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Exercise } from "@/data/courses";
 import { Button } from "@/components/ui/button";
+import RichContent from "@/components/RichContent";
 
 interface Props {
   exercise: Exercise;
@@ -31,9 +32,9 @@ const TrueFalseExercise = ({ exercise, onAnswer, feedback }: Props) => {
 
   return (
     <div>
-      <p className="text-foreground font-bold mb-2">{exercise.question}</p>
-      <div className="code-block mb-6">
-        <p className="text-foreground">{exercise.statement}</p>
+      <div className="text-foreground font-bold mb-2"><RichContent>{exercise.question}</RichContent></div>
+      <div className="code-block mb-6 text-foreground">
+        <RichContent>{exercise.statement}</RichContent>
       </div>
 
       <div className="grid grid-cols-2 gap-3 mb-6">
