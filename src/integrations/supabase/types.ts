@@ -1077,6 +1077,7 @@ export type Database = {
         Row: {
           assignment_id: string
           auto_graded: boolean
+          auto_submitted_reason: string | null
           id: string
           max_score: number | null
           started_at: string
@@ -1088,6 +1089,7 @@ export type Database = {
         Insert: {
           assignment_id: string
           auto_graded?: boolean
+          auto_submitted_reason?: string | null
           id?: string
           max_score?: number | null
           started_at?: string
@@ -1099,6 +1101,7 @@ export type Database = {
         Update: {
           assignment_id?: string
           auto_graded?: boolean
+          auto_submitted_reason?: string | null
           id?: string
           max_score?: number | null
           started_at?: string
