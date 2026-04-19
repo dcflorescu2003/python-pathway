@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent } from "@/components/ui/card";
@@ -70,6 +70,26 @@ const TeacherVerificationForm = ({ onSuccess, onCancel }: Props) => {
   const [publicLink, setPublicLink] = useState("");
   const [linkNote, setLinkNote] = useState("");
   const [docFile, setDocFile] = useState<File | null>(null);
+
+  // Pre-populate school from profile if already set
+  useEffect(() => {
+    if (!user) return;
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase
+        .from("profiles")
+        .select("school_id")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      if (cancelled) return;
+      const sid = data?.school_id;
+      if (sid) {
+        const s = schools.find((x) => x.id === sid);
+        if (s) setSelectedSchool(`${s.name}, ${s.city}`);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [user]);
 
   const filteredSchools = useMemo(() => {
     if (!schoolSearch.trim()) return [];
