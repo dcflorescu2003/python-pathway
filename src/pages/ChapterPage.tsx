@@ -1,7 +1,8 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useChapters } from "@/hooks/useChapters";
 import { useProgress } from "@/hooks/useProgress";
+import { useAuth } from "@/hooks/useAuth";
 import { motion } from "framer-motion";
 import { ArrowLeft, Check, Lock, Play, BookOpen, Crown, Zap, Trophy, ArrowRight, Map } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -9,25 +10,47 @@ import OfflineBanner from "@/components/states/OfflineBanner";
 import PremiumDialog from "@/components/PremiumDialog";
 import LoadingScreen from "@/components/states/LoadingScreen";
 import SkipChallengeDialog from "@/components/SkipChallengeDialog";
+import ConfettiCanvas from "@/components/ConfettiCanvas";
 
 const COOLDOWN_KEY_PREFIX = "pyro-skip-cooldown:";
+const CHAPTER_DONE_KEY_PREFIX = "pyro-chapter-done-celebrated:";
 
 const ChapterPage = () => {
   const { chapterId } = useParams();
   const navigate = useNavigate();
   const { progress } = useProgress();
+  const { user } = useAuth();
   const [showPremium, setShowPremium] = useState(false);
   const [skipDialog, setSkipDialog] = useState<{ lessonId: string; title: string; cooldownMs: number } | null>(null);
+  const [showConfetti, setShowConfetti] = useState(false);
   const currentLessonRef = useRef<HTMLDivElement>(null);
   const { data: chapters, isLoading } = useChapters();
 
   const chapter = chapters?.find((c) => c.id === chapterId);
+
+  const allDone = useMemo(
+    () => !!chapter && chapter.lessons.length > 0 && chapter.lessons.every(l => progress.completedLessons[l.id]?.completed),
+    [chapter, progress.completedLessons]
+  );
 
   useEffect(() => {
     if (currentLessonRef.current) {
       currentLessonRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
     }
   }, [chapterId]);
+
+  useEffect(() => {
+    if (!allDone || !chapter) return;
+    const userKey = user?.id ?? "guest";
+    const key = `${CHAPTER_DONE_KEY_PREFIX}${userKey}:${chapter.id}`;
+    try {
+      if (localStorage.getItem(key)) return;
+      localStorage.setItem(key, String(Date.now()));
+    } catch {}
+    setShowConfetti(true);
+    const t = setTimeout(() => setShowConfetti(false), 4500);
+    return () => clearTimeout(t);
+  }, [allDone, chapter, user?.id]);
 
   if (isLoading || !chapters) return <LoadingScreen />;
   if (!chapter) return <div className="p-8 text-center text-foreground">Capitol negăsit</div>;
