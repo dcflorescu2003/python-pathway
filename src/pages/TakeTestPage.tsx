@@ -305,6 +305,12 @@ const TakeTestPage = () => {
       </header>
 
       <main className="px-4 py-6 max-w-lg mx-auto">
+        <div className="mb-4 flex items-start gap-2 p-3 rounded-lg border border-destructive/30 bg-destructive/10">
+          <AlertTriangle className="h-4 w-4 text-destructive shrink-0 mt-0.5" />
+          <p className="text-xs text-foreground">
+            Atenție: dacă părăsești aplicația sau schimbi fereastra mai mult de 1 secundă, testul va fi trimis automat.
+          </p>
+        </div>
         {currentItem && (
           <Card>
             <CardContent className="p-4 space-y-4">
