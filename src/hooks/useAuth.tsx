@@ -10,6 +10,7 @@ const PRODUCTION_URL = 'https://pyroskill.info';
 const OAUTH_BROKER_URL = `${PRODUCTION_URL}/~oauth/initiate`;
 const GOOGLE_WEB_CLIENT_ID = import.meta.env.VITE_GOOGLE_WEB_CLIENT_ID;
 const isNativeAndroid = Capacitor.isNativePlatform() && Capacitor.getPlatform() === "android";
+const isNativeIOS = Capacitor.isNativePlatform() && Capacitor.getPlatform() === "ios";
 
 const getRedirectUri = () => {
   if (Capacitor.isNativePlatform()) {
@@ -66,11 +67,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!isNativeAndroid) return;
+    if (!isNativeAndroid && !isNativeIOS) return;
 
     const initPromises: Promise<void>[] = [];
 
-    if (GOOGLE_WEB_CLIENT_ID) {
+    if (isNativeAndroid && GOOGLE_WEB_CLIENT_ID) {
       initPromises.push(
         initializeNativeGoogleLogin().catch((error) => {
           console.error("Failed to initialize native Google login:", error);
@@ -78,7 +79,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       );
     }
 
-    // Apple doesn't need a webClientId
+    // Apple is available on both iOS and Android
     initPromises.push(
       SocialLogin.initialize({ apple: {} }).catch((error) => {
         console.error("Failed to initialize native Apple login:", error);
@@ -210,7 +211,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signInWithApple = async () => {
-    if (isNativeAndroid) {
+    if (isNativeAndroid || isNativeIOS) {
       return signInWithNativeApple();
     }
     if (Capacitor.isNativePlatform()) {
