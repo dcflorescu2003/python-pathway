@@ -50,7 +50,7 @@ const TakeTestPage = () => {
         // Get assignment + test info
         const { data: assignment } = await supabase
           .from("test_assignments")
-          .select("*, tests(id, title, time_limit_minutes, variant_mode, allow_run_tests)")
+          .select("*, tests(id, title, time_limit_minutes, variant_mode, allow_run_tests, require_fullscreen)")
           .eq("id", assignmentId)
           .single();
 
