@@ -186,7 +186,7 @@ const TakeTestPage = () => {
     const interval = setInterval(() => {
       setTimeLeft((prev) => {
         if (prev === null || prev <= 1) {
-          handleSubmit();
+          handleSubmit("time_expired");
           return 0;
         }
         return prev - 1;
