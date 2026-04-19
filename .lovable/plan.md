@@ -1,40 +1,68 @@
 
 
-## Plan: Blocare shortcut-uri suspecte în testele cu fullscreen obligatoriu
+## Plan: Skip Challenge — sări peste lecții cu o provocare de 20 de întrebări
 
-### Comportament
-Pe testele cu `require_fullscreen` activ, în timpul susținerii testului (după ce elevul a intrat în fullscreen), interceptez tastele/comenzile care ar putea ieși din fullscreen sau întrerupe testul. La fiecare tentativă, afișez un toast de avertisment în loc să las browserul/OS-ul să execute acțiunea.
+### Concept
+Click pe o lecție blocată din față → dialog explicativ → provocare cu 20 întrebări random din lecțiile anterioare. 3 vieți de challenge (separate) + greșelile scad și din cele 5 vieți reale. Succes = lecția țintă devine accesibilă, iar elevul poate continua normal de acolo înainte (lecția următoare se deblochează doar după ce o termină pe cea sărită).
 
-### Shortcut-uri blocate (best-effort în browser/PWA)
-- **Esc** — singurul mod browser de ieșire din Fullscreen API; preventDefault + warning
-- **F11** — toggle fullscreen nativ browser
-- **Ctrl/Cmd + T** — tab nou
-- **Ctrl/Cmd + W** — închide tab
-- **Ctrl/Cmd + N** — fereastră nouă
-- **Ctrl/Cmd + Tab** / **Ctrl + Tab** — schimbare tab
-- **Ctrl/Cmd + R**, **F5** — reload (ar pierde progresul)
-- **Ctrl/Cmd + Shift + I**, **F12** — DevTools
-- **Alt + Tab** — best-effort (OS-ul îl prinde de obicei; dacă nu reușim să blocăm, oricum auto-submit-ul existent se declanșează)
-- **Click dreapta** — dezactivez context menu pe pagina testului
+### Confirmare comportament „continuă de la lecția deblocată”
+Lecția țintă deblocată prin skip se comportă **identic** cu o lecție normal accesibilă: elevul intră, o face, primește XP, iar lecția următoare se deblochează prin completarea ei (ca de obicei). Lecțiile intermediare sărite rămân marcate ca nefăcute, dar pot fi accesate oricând (capătă acelaşi tratament — sunt „deblocate” de skip).
 
-### Limitări reale (transparență)
-Browserele și OS-urile **nu permit** blocarea garantată a Cmd+T, Cmd+W, Cmd+Q, Alt+Tab, Mission Control etc. dintr-o pagină web. `preventDefault` funcționează doar pentru taste pe care browserul nu le rezervă. Pentru cele rezervate, ne bazăm pe sistemul existent: ieșirea din fullscreen / pierderea focusului → auto-submit după 1s. Nu promit blocare 100%, ci „best-effort + auto-submit ca plasă de siguranță”.
+**Detaliu logic important**: când fac skip la lecția N, marchez ca „deblocate prin skip” lecțiile de la prima nefăcută până la N (toate cele intermediare + N), ca elevul să poată naviga liber printre ele. După aceea, progresul normal continuă: completarea lecției N deblochează N+1 prin mecanismul existent.
 
-### Implementare în `src/pages/TakeTestPage.tsx`
-1. `useEffect` activ doar când `requireFullscreen && submission && !hasSubmitted` și `document.fullscreenElement` există.
-2. `keydown` listener cu `preventDefault()` + `stopPropagation()` pentru combinațiile detectabile, urmat de `toast.warning("Shortcut interzis în timpul testului: <nume>")`.
-3. `contextmenu` listener cu `preventDefault()` + warning.
-4. `beforeunload` listener care cere confirmare la reload/close (warning standard browser).
-5. Throttle pe toast (max 1 warning / 1.5s) ca să nu spameze dacă elevul ține tasta apăsată.
-6. Cleanup complet la submit / unmount.
+### Modificare în `ChapterPage.tsx`
+```ts
+const isLocked = idx > 0 
+  && !progress.completedLessons[chapter.lessons[idx - 1].id]?.completed
+  && !progress.skipUnlockedLessons?.[lesson.id];
+```
+Click pe lecție blocată → deschide `SkipChallengeDialog` (nu mai e inert).
 
-### Avertisment vizual
-Extind banner-ul existent de avertizare cu o linie:
-> 🛑 Shortcut-urile (Esc, F11, Ctrl/Cmd+T/W/R, F12) sunt blocate. Orice tentativă de ieșire trimite testul automat.
+### Componente noi
 
-### Fișier modificat
+**`SkipChallengeDialog.tsx`** — dialog cu explicații + warning dacă vieți reale < 3 + CTA „Începe provocarea” → navighează la `/skip-challenge/:lessonId`.
+
+**`SkipChallengePage.tsx`**:
+- Header: progress bar (X/20) + 3 inimi galbene (challenge) + 5 inimi roșii (reale).
+- Pool: toate exercițiile din lecțiile cu `sort_order` strict mai mic decât lecția țintă (cross-chapter), filtrate `type !== "card"`.
+- 20 random (Fisher-Yates). Dacă pool < 20: folosesc câte sunt + repetări shuffled.
+- Reutilizează componentele existente (`QuizExercise`, `FillExercise`, `OrderExercise`, `TrueFalseExercise`, `MatchExercise`).
+- Greșeală: `challengeLives--` ȘI `loseLife()` (vieți reale).
+- 0 challenge lives → ecran „Eșuat” + cooldown 30 min (localStorage per lecție).
+- 0 vieți reale → același ecran lives-out ca în lecții.
+- Succes (toate 20 răspunse fără să consume cele 3) → `unlockLessonViaSkip(lessonId)` + ecran „Lecție deblocată!” cu buton „Mergi la lecție”.
+
+### Modificări în `useProgress.ts`
+- Câmp nou `skipUnlockedLessons: Record<string, true>`.
+- Funcție `unlockLessonViaSkip(targetLessonId, allLessonsToUnlock[])` care marchează toate lecțiile dintre prima nefăcută și țintă ca deblocate.
+- Persistență local + cloud.
+
+### Migrație DB
+```sql
+CREATE TABLE public.skip_unlocked_lessons (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL,
+  lesson_id text NOT NULL,
+  unlocked_at timestamptz NOT NULL DEFAULT now(),
+  UNIQUE(user_id, lesson_id)
+);
+ALTER TABLE public.skip_unlocked_lessons ENABLE ROW LEVEL SECURITY;
+-- SELECT/INSERT own only.
+```
+
+### Sugestii suplimentare INCLUSE (confirmate)
+- **Cooldown 30 min** la eșec (localStorage).
+- **Badge „⚡ Sărită”** pe lecțiile deblocate prin skip dar încă nefăcute.
+- **Warning** dacă vieți reale < 3 înainte de start.
+
+### Fișiere
 
 | Fișier | Schimbare |
 |---|---|
-| `src/pages/TakeTestPage.tsx` | useEffect cu keydown/contextmenu/beforeunload listeners + toast throttle + extindere banner avertisment |
+| `supabase/migrations/...` | Tabel `skip_unlocked_lessons` + RLS |
+| `src/hooks/useProgress.ts` | Câmp + funcție `unlockLessonViaSkip` + cloud sync |
+| `src/pages/ChapterPage.tsx` | Logică unlock + handler click pe lecție blocată + badge „Sărită” |
+| `src/components/SkipChallengeDialog.tsx` | NOU |
+| `src/pages/SkipChallengePage.tsx` | NOU |
+| `src/App.tsx` | Rută `/skip-challenge/:lessonId` |
 
