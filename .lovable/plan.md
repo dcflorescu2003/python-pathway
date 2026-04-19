@@ -1,53 +1,56 @@
 
 
-## Diagnoză
+## Diagnoză confirmată
 
-Memoria `re-trigger-protection` confirmă că Level Up are deja protecție prin `localStorage` ca să nu se re-declanșeze. Dar userul spune că totuși apare animația în alte momente decât la schimbarea efectivă a nivelului.
-<lov-tool-use id="toolu_vrtx_01UQjC2qKh9D82dzg1WhPmJ7" name="code--search_files" integration-id="code" data="{\"query\": \"LevelUpDialog\"}">
-</lov-tool-use>
+### Bug 1: Statusul de profesor se resetează la elev
 
-<lov-tool-use id="toolu_vrtx_018MsTCEEZtRYAffrDzHqeGN" name="code--search_files" integration-id="code" data="{\"query\": \"level-up|levelUp|setShowLevelUp|justLeveledUp\", \"include_patterns\": \"src/**/*.ts,src/**/*.tsx\"}">
-</lov-tool-use>
+**Cauză exactă (verificată în DB):** Niciun user nu a reușit să devină profesor în ultimele 24h, deși 4 useri au încercat. Toți au `teacher_status=NULL`, `is_teacher=false`. Cauza este trigger-ul `protect_profile_privileged_columns` care **blochează scrierea pe `teacher_status` și `is_teacher`** chiar și din funcțiile `SECURITY DEFINER` (pentru că `auth.uid()` este non-null și nu e admin).
 
-<lov-tool-use id="toolu_vrtx_017nNMd7zdJKXykm8Qbjmkf5" name="code--search_files" integration-id="code" data="{\"query\": \"LevelUpDialog\", \"include_patterns\": \"src/**/*.tsx,src/**/*.ts\"}">
-</lov-tool-use>
+Doar `deactivate_teacher_mode` setează corect flag-ul de bypass:
+```sql
+PERFORM set_config('app.bypass_profile_protection', 'true', true);
+```
 
-<lov-tool-use id="toolu_vrtx_01GWfdvy1cgN1ELoViywuwwF" name="code--search_files" integration-id="code" data="{\"query\": \"level-up|levelUp|justLeveledUp|showLevelUp\", \"include_patterns\": \"src/**/*.tsx,src/**/*.ts\"}">
-</lov-tool-use>
+Funcțiile **lipsite de bypass** (toate eșuează silent prin trigger):
+- `request_teacher_status` → utilizatorul rămâne elev după Wizard
+- `submit_teacher_verification` (în branch-urile `invite_code`, `referral` care fac auto-approve, și în `public_link`/`document` care setează `teacher_status='pending'`)
+- `approve_teacher_request` (admin nu poate aproba)
+- `reject_teacher_request`
+- `revoke_teacher_status`
 
-<lov-tool-use id="toolu_vrtx_01CvgGv2Gvwf5dXX1rN7k288" name="code--view" integration-id="code" data="{\"file_path\": \"src/pages/Index.tsx\", \"lines\": \"150-200\"}">
-</lov-tool-use>
-Am înțeles. Logica curentă folosește o cheie „pe zi" (`pyro-levelup-shown-date`), deci dialogul poate reapărea într-o zi nouă chiar dacă nivelul nu s-a mai schimbat. Userul vrea: doar **o singură dată per nivel atins**.
+Frontend-ul afișează mesajul de succes („Ești acum profesor!") fără să verifice că update-ul a avut efect → la primul `focus`/`visibilitychange`, `loadAccountFlags` recitește profilul din DB, găsește `teacher_status=NULL` → revine la UI de elev.
 
-<lov-plan>
+### Bug 2: Liceul nu apare pre-selectat în formularul de verificare
 
-## Plan: LevelUp doar la schimbarea reală a nivelului (o singură dată per nivel)
+În `TeacherVerificationForm`, state-ul local `selectedSchool` pornește gol. `TeacherWizard` salvează `school_id` în profil, dar formularul de verificare nu îl citește înapoi.
 
-### Problemă
-În `src/pages/Index.tsx` (liniile 156-188), dialogul `LevelUpDialog` se afișează dacă `level > lastSeenLevel`, **dar** este gardat suplimentar de o cheie „shown-date" pe zi (`pyro-levelup-shown-date-{userId}`). Asta cauzează re-trigger în condiții în care `lastSeenLevel` nu se actualizează corect (ex: localStorage curățat, alt device, race condition la load) — dialogul reapare în zile noi fără ca userul să fi urcat nivel.
+---
 
-### Soluție
-Elimin complet logica „pe zi" și mă bazez exclusiv pe nivelul maxim văzut vreodată, salvat per user:
+## Plan reparare
 
-- Cheie nouă: `pyro-max-level-celebrated-{userId}` (număr — cel mai mare nivel pentru care s-a afișat deja dialogul)
-- La fiecare schimbare:
-  - Dacă `level > maxCelebrated` ȘI `maxCelebrated > 0` (nu prima inițializare) → afișez dialog **o singură dată** și actualizez `maxCelebrated = level`
-  - Dacă e prima inițializare (`maxCelebrated === 0`) → doar seed, fără popup
-- Elimin `pyro-levelup-shown-date-{userId}` complet (fără date-gating)
-- Păstrez `levelInitialized` ref pentru a evita declanșări la primul mount
+### 1. Migrație SQL: bypass în toate funcțiile SECURITY DEFINER care mută `teacher_status`/`is_teacher`
 
-### Avantaj
-- Dialogul apare exact o dată per nivel atins (nivelul 5 → o singură dată în viața contului, niciodată din nou)
-- Nu mai depinde de date/timezone
-- Coerent cu memoria `re-trigger-protection`
+Adaug `PERFORM set_config('app.bypass_profile_protection', 'true', true);` înainte de UPDATE pe `profiles` în:
+- `request_teacher_status`
+- `submit_teacher_verification` (înainte de fiecare UPDATE pe profiles, în toate branch-urile)
+- `approve_teacher_request`
+- `reject_teacher_request`
+- `revoke_teacher_status`
 
-### Fișier modificat (1)
-- `src/pages/Index.tsx` — înlocuiesc blocul `useEffect` de la liniile 156-188
+### 2. `TeacherWizard.tsx` — verifică rezultatul RPC
 
-### Memory update
-Actualizez `mem://features/app-experience/re-trigger-protection` cu noua regulă: LevelUp se afișează o singură dată per nivel atins (nu per zi).
+După `request_teacher_status`, recitesc profilul și verific dacă `teacher_status='unverified'`. Dacă nu → arunc eroare și nu cheamă `onComplete()`. Asta previne mesaje false de succes pe viitor.
+
+### 3. `TeacherVerificationForm.tsx` — pre-populează liceul
+
+Pe mount, citesc `school_id` din `profiles` al userului curent. Dacă există, găsesc școala în `schools[]` și setez `selectedSchool = "${name}, ${city}"`. Dacă userul vrea altă școală, butonul „Schimbă" rămâne funcțional.
+
+### Fișiere modificate (3) + 1 migrație SQL
+- migrație SQL nouă (5 funcții actualizate)
+- `src/components/account/TeacherWizard.tsx`
+- `src/components/teacher/TeacherVerificationForm.tsx`
 
 ### Nu modific
-- `LevelUpDialog.tsx` (componenta în sine — animația rămâne aceeași când chiar se declanșează)
-- Logica de progres / XP / niveluri
+- Trigger-ul `protect_profile_privileged_columns` (e corect — blochează modificări neautorizate, doar funcțiile trusted trebuie să-l ocolească explicit)
+- RLS policies (nu sunt cauza)
 
