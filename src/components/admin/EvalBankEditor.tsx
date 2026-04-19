@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import RichTextEditor from "./RichTextEditor";
+import CodeBlockEditor from "./CodeBlockEditor";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ChevronDown, ChevronRight, Edit2, Trash2, Plus, Save, X, GripVertical } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -476,7 +478,7 @@ function EvalExerciseEditor({ exercise, lessonId, nextIndex, onSave, onCancel }:
       </div>
 
       {type !== "truefalse" && (
-        <div><Label className="text-xs text-foreground">Întrebare</Label><Textarea value={question} onChange={e => setQuestion(e.target.value)} rows={2} /></div>
+        <div><Label className="text-xs text-foreground">Întrebare</Label><RichTextEditor value={question} onChange={setQuestion} rows={3} /></div>
       )}
 
       {type === "quiz" && (
@@ -502,7 +504,7 @@ function EvalExerciseEditor({ exercise, lessonId, nextIndex, onSave, onCancel }:
         <div className="space-y-2">
           <div>
             <Label className="text-xs text-foreground">Șablon cod (folosește ___ pentru spații goale)</Label>
-            <Textarea value={codeTemplate} onChange={e => setCodeTemplate(e.target.value)} rows={4} className="font-mono text-sm" placeholder={'x = ___\nprint(___)'} />
+            <CodeBlockEditor value={codeTemplate} onChange={setCodeTemplate} rows={4} placeholder={'x = ___\nprint(___)'} />
           </div>
           <Label className="text-xs text-foreground">Răspunsuri (variante separate prin virgulă)</Label>
           {blanks.map((b: any, i: number) => (
@@ -540,7 +542,7 @@ function EvalExerciseEditor({ exercise, lessonId, nextIndex, onSave, onCancel }:
 
       {type === "truefalse" && (
         <div className="space-y-2">
-          <div><Label className="text-xs text-foreground">Afirmație</Label><Textarea value={statement} onChange={e => setStatement(e.target.value)} rows={2} /></div>
+          <div><Label className="text-xs text-foreground">Afirmație</Label><RichTextEditor value={statement} onChange={setStatement} rows={3} /></div>
           <div>
             <Label className="text-xs text-foreground">Răspuns corect</Label>
             <Select value={isTrue ? "true" : "false"} onValueChange={v => setIsTrue(v === "true")}>
@@ -555,7 +557,7 @@ function EvalExerciseEditor({ exercise, lessonId, nextIndex, onSave, onCancel }:
         <div className="space-y-3">
           <div>
             <Label className="text-xs text-foreground">Cod inițial (opțional)</Label>
-            <Textarea value={codeTemplate} onChange={e => setCodeTemplate(e.target.value)} rows={3} className="font-mono text-sm" placeholder="def rezolva(n):" />
+            <CodeBlockEditor value={codeTemplate} onChange={setCodeTemplate} rows={3} placeholder="def rezolva(n):" />
           </div>
           <div>
             <Label className="text-xs text-foreground">Soluție</Label>
@@ -580,7 +582,7 @@ function EvalExerciseEditor({ exercise, lessonId, nextIndex, onSave, onCancel }:
       )}
 
       {type !== "problem" && (
-        <div><Label className="text-xs text-foreground">Explicație (opțional)</Label><Textarea value={explanation} onChange={e => setExplanation(e.target.value)} rows={2} /></div>
+        <div><Label className="text-xs text-foreground">Explicație (opțional)</Label><RichTextEditor value={explanation} onChange={setExplanation} rows={3} /></div>
       )}
 
       <div className="flex gap-2">
