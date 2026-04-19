@@ -1,0 +1,1 @@
+ALTER TABLE public.test_submissions ADD COLUMN IF NOT EXISTS auto_submitted_reason text;

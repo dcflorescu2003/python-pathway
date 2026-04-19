@@ -14,6 +14,17 @@ interface TestResultsProps {
   onBack: () => void;
 }
 
+const autoReasonLabel = (reason: string | null | undefined): string => {
+  switch (reason) {
+    case "tab_hidden": return "A schimbat fereastra";
+    case "window_blur": return "A pierdut focus-ul";
+    case "fullscreen_exit": return "A ieșit din fullscreen";
+    case "app_background": return "A părăsit aplicația";
+    case "time_expired": return "Timp expirat";
+    default: return reason ? "Auto-trimis" : "";
+  }
+};
+
 const TestResults = ({ testId, testTitle, onBack }: TestResultsProps) => {
   const { data: assignments = [] } = useTestAssignments(testId);
   const { data: testItems = [] } = useTestItems(testId);
@@ -392,8 +403,16 @@ const TestResults = ({ testId, testTitle, onBack }: TestResultsProps) => {
                       className="w-full p-3 flex items-center justify-between text-left"
                     >
                       <div>
-                        <p className="text-sm font-medium text-foreground">
+                        <p className="text-sm font-medium text-foreground flex items-center gap-1.5 flex-wrap">
                           {sub.profile?.display_name || "Elev"}
+                          {sub.auto_submitted_reason && (
+                            <span
+                              title={autoReasonLabel(sub.auto_submitted_reason)}
+                              className="inline-flex items-center gap-1 text-[9px] px-1.5 py-0.5 rounded-full bg-destructive/10 border border-destructive/30 text-destructive font-medium"
+                            >
+                              ⚠️ {autoReasonLabel(sub.auto_submitted_reason)}
+                            </span>
+                          )}
                         </p>
                         <p className="text-[10px] text-muted-foreground">
                           Nr. {sub.variant === "A" ? "1" : "2"} · {sub.submitted_at ? new Date(sub.submitted_at).toLocaleDateString("ro-RO") : "În curs"}

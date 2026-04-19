@@ -314,6 +314,7 @@ export function useSubmitTest() {
     mutationFn: async (params: {
       submission_id: string;
       answers: { test_item_id: string; answer_data: any; max_points: number }[];
+      auto_submitted_reason?: string | null;
     }) => {
       // Insert answers
       const answersToInsert = params.answers.map((a) => ({
@@ -326,10 +327,14 @@ export function useSubmitTest() {
       const { error: ansError } = await supabase.from("test_answers").insert(answersToInsert);
       if (ansError) throw ansError;
 
-      // Mark as submitted
+      // Mark as submitted (with optional auto-submit reason)
+      const updatePayload: Record<string, any> = { submitted_at: new Date().toISOString() };
+      if (params.auto_submitted_reason) {
+        updatePayload.auto_submitted_reason = params.auto_submitted_reason;
+      }
       const { error: subError } = await supabase
         .from("test_submissions")
-        .update({ submitted_at: new Date().toISOString() })
+        .update(updatePayload)
         .eq("id", params.submission_id);
       if (subError) throw subError;
 

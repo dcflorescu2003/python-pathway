@@ -186,7 +186,7 @@ const TakeTestPage = () => {
     const interval = setInterval(() => {
       setTimeLeft((prev) => {
         if (prev === null || prev <= 1) {
-          handleSubmit();
+          handleSubmit("time_expired");
           return 0;
         }
         return prev - 1;
@@ -199,7 +199,7 @@ const TakeTestPage = () => {
     setAnswers((prev) => ({ ...prev, [itemId]: data }));
   };
 
-  const handleSubmit = useCallback(async () => {
+  const handleSubmit = useCallback(async (autoReason?: string) => {
     if (!submissionId || submitted) return;
     setSubmitted(true);
     // Exit fullscreen on submit so user is not stuck
@@ -212,7 +212,11 @@ const TakeTestPage = () => {
         answer_data: answers[item.id] || null,
         max_points: item.points,
       }));
-      await submitTest.mutateAsync({ submission_id: submissionId, answers: answersList });
+      await submitTest.mutateAsync({
+        submission_id: submissionId,
+        answers: answersList,
+        auto_submitted_reason: autoReason ?? null,
+      });
       toast.success("Test trimis! Notarea se face automat.");
     } catch {
       toast.error("Eroare la trimiterea testului.");
@@ -231,14 +235,14 @@ const TakeTestPage = () => {
     let leaveTimeout: ReturnType<typeof setTimeout> | null = null;
     const hasFiredRef = { current: false };
 
-    const triggerLeave = () => {
+    const triggerLeave = (reason: string) => {
       if (hasFiredRef.current) return;
       if (leaveTimeout) return;
       leaveTimeout = setTimeout(() => {
         if (hasFiredRef.current) return;
         hasFiredRef.current = true;
         toast.error("Test trimis automat — ai părăsit aplicația mai mult de 1 secundă.");
-        handleSubmitRef.current();
+        handleSubmitRef.current(reason);
       }, 1000);
     };
 
@@ -250,10 +254,10 @@ const TakeTestPage = () => {
     };
 
     const onVisibility = () => {
-      if (document.hidden) triggerLeave();
+      if (document.hidden) triggerLeave("tab_hidden");
       else cancelLeave();
     };
-    const onBlur = () => triggerLeave();
+    const onBlur = () => triggerLeave("window_blur");
     const onFocus = () => cancelLeave();
 
     document.addEventListener("visibilitychange", onVisibility);
@@ -263,7 +267,7 @@ const TakeTestPage = () => {
     // Fullscreen exit triggers leave (only if test requires fullscreen)
     const onFullscreenChange = () => {
       if (!requireFullscreen) return;
-      if (!document.fullscreenElement) triggerLeave();
+      if (!document.fullscreenElement) triggerLeave("fullscreen_exit");
       else cancelLeave();
     };
     if (requireFullscreen) {
@@ -276,7 +280,7 @@ const TakeTestPage = () => {
       try {
         const { App } = await import("@capacitor/app");
         const handle = await App.addListener("appStateChange", (state: { isActive: boolean }) => {
-          if (!state.isActive) triggerLeave();
+          if (!state.isActive) triggerLeave("app_background");
           else cancelLeave();
         });
         capListener = handle;
@@ -421,7 +425,7 @@ const TakeTestPage = () => {
               Următorul <ChevronRight className="h-4 w-4" />
             </Button>
           ) : (
-            <Button size="sm" onClick={handleSubmit} disabled={submitTest.isPending} className="gap-1">
+            <Button size="sm" onClick={() => handleSubmit()} disabled={submitTest.isPending} className="gap-1">
               <Send className="h-4 w-4" /> Trimite testul
             </Button>
           )}
