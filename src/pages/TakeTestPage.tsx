@@ -199,7 +199,7 @@ const TakeTestPage = () => {
     setAnswers((prev) => ({ ...prev, [itemId]: data }));
   };
 
-  const handleSubmit = useCallback(async () => {
+  const handleSubmit = useCallback(async (autoReason?: string) => {
     if (!submissionId || submitted) return;
     setSubmitted(true);
     // Exit fullscreen on submit so user is not stuck
@@ -212,7 +212,11 @@ const TakeTestPage = () => {
         answer_data: answers[item.id] || null,
         max_points: item.points,
       }));
-      await submitTest.mutateAsync({ submission_id: submissionId, answers: answersList });
+      await submitTest.mutateAsync({
+        submission_id: submissionId,
+        answers: answersList,
+        auto_submitted_reason: autoReason ?? null,
+      });
       toast.success("Test trimis! Notarea se face automat.");
     } catch {
       toast.error("Eroare la trimiterea testului.");
