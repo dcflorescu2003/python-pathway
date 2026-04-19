@@ -7,7 +7,8 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Trash2, Plus } from "lucide-react";
-import MarkdownEditor from "./MarkdownEditor";
+import RichTextEditor from "./RichTextEditor";
+import CodeBlockEditor from "./CodeBlockEditor";
 
 interface Props {
   exercise?: Exercise;
