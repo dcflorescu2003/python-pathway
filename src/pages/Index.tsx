@@ -256,7 +256,7 @@ const Index = (): JSX.Element => {
           <div className="flex items-center gap-3">
             <NotificationBell />
             {!progress.isPremium && (
-              <button onClick={() => setShowPremium(true)} className="text-yellow-500 active:scale-95 transition-transform">
+              <button onClick={() => teacherStatus === "verified" ? setShowTeacherPremium(true) : setShowPremium(true)} className="text-yellow-500 active:scale-95 transition-transform">
                 <Crown className="h-5 w-5" />
               </button>
             )}
