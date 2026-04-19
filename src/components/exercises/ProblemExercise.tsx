@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import CodeEditor from "@/components/CodeEditor";
+import RichContent from "@/components/RichContent";
 import { usePyodide, type TestResult } from "@/hooks/usePyodide";
 import { toast } from "sonner";
 
@@ -62,15 +63,15 @@ const ProblemExercise = ({ exercise, onAnswer, feedback }: ProblemExerciseProps)
 
   return (
     <div className="space-y-4">
-      <h2 className="text-lg font-bold text-foreground">{exercise.question}</h2>
+      <div className="text-lg font-bold text-foreground">
+        <RichContent inline>{exercise.question}</RichContent>
+      </div>
 
       {exercise.explanation && (
         <Card className="border-border">
           <CardContent className="p-4">
-            <div className="prose prose-invert prose-sm max-w-none">
-              {exercise.explanation.split("\n").map((line, i) => (
-                <p key={i} className="text-sm text-muted-foreground leading-relaxed">{line}</p>
-              ))}
+            <div className="text-sm text-muted-foreground">
+              <RichContent>{exercise.explanation}</RichContent>
             </div>
           </CardContent>
         </Card>
