@@ -235,14 +235,14 @@ const TakeTestPage = () => {
     let leaveTimeout: ReturnType<typeof setTimeout> | null = null;
     const hasFiredRef = { current: false };
 
-    const triggerLeave = () => {
+    const triggerLeave = (reason: string) => {
       if (hasFiredRef.current) return;
       if (leaveTimeout) return;
       leaveTimeout = setTimeout(() => {
         if (hasFiredRef.current) return;
         hasFiredRef.current = true;
         toast.error("Test trimis automat — ai părăsit aplicația mai mult de 1 secundă.");
-        handleSubmitRef.current();
+        handleSubmitRef.current(reason);
       }, 1000);
     };
 
@@ -254,10 +254,10 @@ const TakeTestPage = () => {
     };
 
     const onVisibility = () => {
-      if (document.hidden) triggerLeave();
+      if (document.hidden) triggerLeave("tab_hidden");
       else cancelLeave();
     };
-    const onBlur = () => triggerLeave();
+    const onBlur = () => triggerLeave("window_blur");
     const onFocus = () => cancelLeave();
 
     document.addEventListener("visibilitychange", onVisibility);
@@ -267,7 +267,7 @@ const TakeTestPage = () => {
     // Fullscreen exit triggers leave (only if test requires fullscreen)
     const onFullscreenChange = () => {
       if (!requireFullscreen) return;
-      if (!document.fullscreenElement) triggerLeave();
+      if (!document.fullscreenElement) triggerLeave("fullscreen_exit");
       else cancelLeave();
     };
     if (requireFullscreen) {
@@ -280,7 +280,7 @@ const TakeTestPage = () => {
       try {
         const { App } = await import("@capacitor/app");
         const handle = await App.addListener("appStateChange", (state: { isActive: boolean }) => {
-          if (!state.isActive) triggerLeave();
+          if (!state.isActive) triggerLeave("app_background");
           else cancelLeave();
         });
         capListener = handle;
