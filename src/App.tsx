@@ -63,6 +63,7 @@ const AppRoutes = () => {
           
           <Route path="/test/:assignmentId" element={<TakeTestPage />} />
           <Route path="/manual/:lessonId" element={<ManualLessonPage />} />
+          <Route path="/skip-challenge/:lessonId" element={<SkipChallengePage />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </AnimatePresence>
