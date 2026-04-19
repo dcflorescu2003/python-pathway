@@ -192,9 +192,10 @@ export function useChapters() {
     queryKey: ["chapters", user?.id ?? "anon"],
     queryFn: fetchChapters,
     enabled: !loading,
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: 30 * 1000, // 30s — content updates from admin propagate quickly
     gcTime: 30 * 60 * 1000,
     refetchOnWindowFocus: true,
+    refetchOnMount: "always",
   });
 }
 
