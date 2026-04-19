@@ -1,55 +1,86 @@
 
 
-## Plan: Uniformizare logo PyRo în toată aplicația
+## Plan: Rich text pentru întrebări, cartonașe, explicații + cod Python
 
-### Probleme identificate
+### Ce devine rich text și cum
 
-| Locație | Logo image | Wordmark | Inconsistență |
-|---|---|---|---|
-| `SplashScreen` | `splash-logo.png` h-32 rounded-2xl | text-3xl font-mono | folosește alt fișier (splash-logo) |
-| `AuthPage` (login) | `logo.png` h-16 rounded-2xl | — fără wordmark | lipsă wordmark |
-| `AuthPage` (profil) | `logo.png` h-16 rounded-2xl | — | lipsă wordmark |
-| `Index` (header home) | `logo.png` h-7 **rounded-md** | text-xl font-mono | rounded diferit, foarte mic |
-| `ManualLessonPage` (header) | `logo.png` h-10 rounded-xl | text-xl font-black font-mono | font-weight diferit |
-| `ManualLessonPage` (progress) | `logo.png` h-8 rounded-lg | — | doar icon |
-| `SchoolOnboarding` | — fără imagine | text-3xl | lipsă imagine logo |
+Convertesc câmpurile relevante din `<Textarea>` simplu în **editor rich-text bazat pe Markdown** (extind `MarkdownEditor` existent). Markdown e perfect pentru cazul tău: păstrează rândurile, are bold, culori (prin `<span>` HTML), iar pentru cod folosim ` ``` ` (block) sau `` ` `` (inline). În plus, pentru cod Python adaug suport special pentru paste din PyCharm: păstrează indentarea + syntax highlighting la randare.
 
-### Soluție: componentă unică `<PyroLogo />`
+### Câmpuri afectate
 
-Creez `src/components/brand/PyroLogo.tsx` cu API consistent:
+| Câmp | Înainte | După |
+|---|---|---|
+| **Întrebare** (toate tipurile) | Textarea | RichTextEditor |
+| **Cartonaș – titlu** (`question` la card) | Textarea | RichTextEditor (compact, 1 rând) |
+| **Cartonaș – conținut** (`explanation` la card) | MarkdownEditor (deja există) | RichTextEditor extins |
+| **Explicație post-răspuns** (toate celelalte tipuri) | Textarea | RichTextEditor |
+| **Afirmație** (truefalse `statement`) | Textarea | RichTextEditor |
+| **Cod Python** (`codeTemplate` la card / problem / fill) | Textarea simplă | **CodeBlockEditor** nou (păstrează indentare la paste, syntax highlighting în preview) |
 
-```tsx
-type Props = {
-  size?: "sm" | "md" | "lg" | "xl";   // h-7 / h-10 / h-16 / h-32
-  showWordmark?: boolean;              // default true
-  showTagline?: boolean;               // default false (doar splash)
-  premium?: boolean;                   // adaugă badge "PRO" galben
-  className?: string;
-};
-```
+Câmpuri care **rămân plain** (n-are sens rich text): opțiuni quiz (`option_a-d`), perechi match (`left/right`), linii order, blanks, test cases, hint, solution.
 
-Reguli vizuale unificate (sursă unică de adevăr):
-- **Imagine**: întotdeauna `logo.png` (elimin `splash-logo.png` din uz — rămâne în assets dar nu mai e referit; logo-ul principal e la rezoluție suficientă pentru toate dimensiunile)
-- **Border radius**: scalat cu mărimea — `sm: rounded-lg`, `md: rounded-xl`, `lg: rounded-2xl`, `xl: rounded-3xl` (consistent, raport ~1/6 din lățime)
-- **Wordmark**: mereu `font-mono font-bold`, gradient verde-cyan pe „Py” + tricolor pe „Ro”, mărime scalată cu icon-ul (`text-base/xl/2xl/4xl`)
-- **Tagline** (opțional): „Învață Python pas cu pas” `text-sm text-muted-foreground`
-- **Spațiere icon ↔ wordmark**: `gap-2` (sm/md), `gap-3` (lg/xl)
-- **PRO badge**: `text-xs text-yellow-500 font-bold ml-1` (pentru utilizatori Premium, doar pe header-ul Home)
+### Componente noi / extinse
 
-### Fișiere modificate
+#### 1. `RichTextEditor.tsx` (extins din `MarkdownEditor`)
+Toolbar îmbogățit:
+- **Bold** (`**text**`)
+- **Italic** (`*text*`)
+- **Listă** (`- item`)
+- **Linie nouă** / **Paragraf**
+- **Cod inline** (`` `cod` ``)
+- **Bloc cod Python** (` ```python ... ``` `)
+- **Culoare text** (5 culori, deja există)
+- **Preview** toggle
+
+**Paste smart din Word**: handler `onPaste` care detectează HTML din clipboard (Word pune `text/html`) și-l convertește la Markdown folosind `turndown` (lib mică, ~10kb). Astfel bold/italic/liste/culori se păstrează automat fără ca profesorul să apese butoane.
+
+#### 2. `CodeBlockEditor.tsx` (nou, pentru câmpurile cod)
+- Textarea cu `font-mono`, tab = 4 spații (deja avem pattern-ul în `CodeEditor.tsx`).
+- **Paste smart din PyCharm**: detectează dacă paste-ul vine cu indentare (tab-uri sau spații consistente) și o normalizează la 4 spații. Elimină prefixul comun de indentare dacă tot blocul e indentat.
+- Preview opțional cu **syntax highlighting Python** folosind `react-syntax-highlighter` (deja folosit indirect prin `prismjs` patterns sau adăugat ca dep nouă, ~30kb).
+
+### Randare în lecții (consum)
+
+Toate componentele de exerciții (`QuizExercise`, `FillExercise`, `OrderExercise`, `TrueFalseExercise`, `MatchExercise`, `ProblemExercise`, `CardExercise`) trebuie să randeze câmpurile rich-text **prin `<ReactMarkdown>`** în loc de text simplu, cu plugin `rehype-raw` ca să accepte `<span style="color">` din Word.
+
+Și feedback-ul „💡 explicație” din `LessonPage`, `ManualLessonPage`, `SkipChallengePage` la fel.
+
+Pentru blocurile de cod Python, ReactMarkdown va folosi `react-syntax-highlighter` ca renderer custom pentru ` ```python ``` `.
+
+### Compatibilitate cu conținutul existent
+
+Markdown pur text rămâne text — toate exercițiile vechi continuă să funcționeze identic. Schimbarea e aditivă: ce-i text simplu se afișează la fel, ce-i Markdown se randează frumos.
+
+### Dependențe noi
+- `turndown` (~10kb) — HTML → Markdown la paste din Word
+- `rehype-raw` (~5kb) — permite `<span style>` în ReactMarkdown
+- `react-syntax-highlighter` (~80kb gzipped, lazy-loaded doar unde e nevoie) — colorare Python
+
+### Fișiere
 
 | Fișier | Schimbare |
 |---|---|
-| `src/components/brand/PyroLogo.tsx` | **NOU** — componentă unificată |
-| `src/components/states/SplashScreen.tsx` | înlocuiesc cu `<PyroLogo size="xl" showTagline />` |
-| `src/pages/AuthPage.tsx` | 2 locuri → `<PyroLogo size="lg" />` (cu wordmark) |
-| `src/pages/Index.tsx` | header → `<PyroLogo size="sm" premium={progress.isPremium} />` |
-| `src/pages/ManualLessonPage.tsx` | 2 locuri → `<PyroLogo size="md" />` și `<PyroLogo size="sm" showWordmark={false} />`; șterg `PyRoLogo` local |
-| `src/components/onboarding/SchoolOnboarding.tsx` | adaug `<PyroLogo size="lg" />` deasupra titlului „Bine ai venit” |
+| `src/components/admin/RichTextEditor.tsx` | **NOU** — editor extins cu toolbar complet + paste-from-Word |
+| `src/components/admin/CodeBlockEditor.tsx` | **NOU** — editor cod cu paste-from-PyCharm + highlight |
+| `src/components/admin/MarkdownEditor.tsx` | Devine alias către `RichTextEditor` (back-compat) |
+| `src/components/admin/ExerciseEditor.tsx` | Înlocuiesc Textarea pe câmpurile: question, statement, explanation, codeTemplate (la card/problem/fill) |
+| `src/components/admin/EvalBankEditor.tsx` | Aceleași înlocuiri (dacă există câmpurile) |
+| `src/components/admin/PredefinedTestEditor.tsx` | Aceleași înlocuiri (dacă există câmpurile) |
+| `src/components/exercises/QuizExercise.tsx` | Randez `question` prin ReactMarkdown |
+| `src/components/exercises/FillExercise.tsx` | Idem `question` |
+| `src/components/exercises/OrderExercise.tsx` | Idem `question` |
+| `src/components/exercises/TrueFalseExercise.tsx` | Idem `question` + `statement` |
+| `src/components/exercises/MatchExercise.tsx` | Idem `question` |
+| `src/components/exercises/ProblemExercise.tsx` | Idem `question` + `explanation` (înlocuiesc split-ul manual pe `\n`) |
+| `src/components/exercises/CardExercise.tsx` | Titlul `question` și codul cu syntax highlighting |
+| `src/pages/LessonPage.tsx` | Feedback `lastExplanation` randat ca Markdown |
+| `src/pages/ManualLessonPage.tsx` | Idem |
+| `src/pages/SkipChallengePage.tsx` | Idem |
 
-### Beneficii
-- O singură sursă pentru identitatea vizuală — schimbare viitoare într-un singur loc
-- Border radius consistent (raport 1/6 indiferent de mărime)
-- Toate aparițiile au wordmark uniform (font, gradient, tricolor) sau doar icon-ul când spațiul e limitat
-- Splash și restul aplicației folosesc aceeași imagine (un singur logo „canonic”)
+### Ce funcționează după implementare
+- ✅ Copy-paste din Word: bold, italic, liste, culori, paragrafe — păstrate automat
+- ✅ Copy-paste din PyCharm: indentare păstrată, fără tab/space mixt, highlighting Python la afișare
+- ✅ Toolbar manual pentru când scrii direct (Bold, italic, listă, culoare, cod)
+- ✅ Preview live ca să vezi cum apare în lecție
+- ✅ Conținutul vechi (text simplu) continuă să funcționeze fără migrare
 
