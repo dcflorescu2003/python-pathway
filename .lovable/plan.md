@@ -1,36 +1,32 @@
 
 
-## Plan: Generez CSV-ul corect pentru importer-ul „Import CSV exerciții"
+## Plan: Aplic RichContent uniform pentru cerințe + fix truefalse parser
 
-### Diagnoză
-Există 2 importere în Admin:
-1. **`CsvImporter`** (cel din screenshot tău, "Import CSV exerciții") — așteaptă **doar header + rânduri exerciții**, fără `[META]`/`[EXERCISES]`. Tu l-ai folosit pe ăsta.
-2. **`CsvLessonImporter`** ("Import lecție") — așteaptă format cu `[META]` + `[EXERCISES]`. Pentru ăsta era CSV-ul meu anterior.
+### Diagnoză locuri unde apar `**` în loc de bold
 
-De aceea apare „Tip invalid: undefined" pe toate rândurile — parser-ul a citit `[META]` ca header și restul ca exerciții fără coloana `type`.
+| Locație | Problemă | Fix |
+|---|---|---|
+| `src/pages/ProblemSolvePage.tsx` (cerința problemei) | Folosește split manual `\n` și parsing `**` ad-hoc — nu randează corect Markdown din DB | Înlocuiesc cu `<RichContent>{problem.description}</RichContent>` |
+| `src/pages/ProblemSolvePage.tsx` (hint) | `<p>{problem.hint}</p>` plain | `<RichContent>{problem.hint}</RichContent>` |
+| `src/components/exercises/ProblemExercise.tsx` (hint) | `<p>{exercise.hint}</p>` plain | `<RichContent>{exercise.hint}</RichContent>` |
+| `src/components/admin/csvParser.ts` linia 165 | La `truefalse` suprascrie `ex.question = ex.statement`, ignorând „Adevărat sau fals?" din coloana `question` | Păstrez `ex.question = row.question?.trim() \|\| ex.statement` |
 
-### Ce voi livra
-Un singur **bloc CSV** (text plain, copy-paste într-un fișier `.csv`) cu **header standard** + 10 rânduri exerciții, gata de importat prin „Import CSV exerciții" din lecția 12 deja creată.
+### Locuri OK (deja folosesc RichContent)
+- Toate exercițiile elev (Quiz, Fill, Order, TrueFalse, Card, Match, Problem question)
+- Explicațiile feedback din `LessonPage`, `ManualLessonPage`, `SkipChallengePage`
+- `CardExercise` titlu + explicație
 
-### Format folosit (exact ce așteaptă `CsvImporter`)
-Header:
-```
-type,question,option_a,option_b,option_c,option_d,correct,explanation,code_template,blanks,lines,statement,is_true,groups,solution,test_cases
-```
+### Locuri intenționat plain-text (nu modific)
+- Listele admin (preview compact) — `truncate` rupe oricum HTML
+- `TakeTestPage` / `PredefinedTestEditor` (preview profesor) — sunt doar previzualizări scurte
 
-Conținut:
-- 1 × **card** (cartonaș teoretic intro)
-- 5 × **quiz** (cu opțiuni a-d și `correct`)
-- 2 × **truefalse** (cu `statement` + `is_true`)
-- 1 × **order** (cu `lines` separate prin `|` — ordinea din CSV = ordinea corectă)
-- Tipul **match** îl convertesc într-un quiz, deoarece `CONTENT_TYPES` îl acceptă DAR parser-ul nu generează `pairs` din CSV (am verificat — doar `quiz/truefalse/fill/order/card/open_answer/problem` au logică în `rowToExercise`)
+### Fișiere modificate (3)
+1. `src/pages/ProblemSolvePage.tsx` — înlocuiesc blocul de parsing manual + hint cu `RichContent`
+2. `src/components/exercises/ProblemExercise.tsx` — wrap hint în `RichContent`
+3. `src/components/admin/csvParser.ts` — la case `truefalse`, păstrez question din CSV dacă e completat
 
-### Reguli aplicate
-- Toate textele cu virgule → încadrate cu `"..."`
-- Markdown rich text (`**bold**`, liste) păstrat în `question` și `explanation` (le va randa noul `RichContent`)
-- Câmpurile irelevante → goale (separator-ele `,,` rămân)
-- Pentru `order`: liniile în coloana `lines` separate prin `|`, în ordinea CORECTĂ (parser-ul generează `order: i+1`)
-
-### Livrare
-Voi posta CSV-ul într-un bloc ` ```csv ` în chat, gata de copy-paste într-un fișier `.csv` și importat prin butonul „Import CSV" de pe lecția 12. Nu e nevoie de nicio modificare de cod.
+### Rezultat
+- Cerințele problemelor și hint-urile randează corect `**bold**`, liste, culori, cod
+- A/F importate via CSV vor afișa „Adevărat sau fals?" deasupra afirmației stilizate
+- Re-importarea CSV-ului lecției 12 va funcționa corect fără modificări manuale
 
