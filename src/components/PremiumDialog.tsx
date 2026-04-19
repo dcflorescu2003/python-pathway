@@ -55,7 +55,7 @@ const PremiumDialog = ({ open, onOpenChange }: PremiumDialogProps) => {
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4 py-4">
+        <div className="space-y-3 py-2">
           {loading ? (
             <div className="flex justify-center py-8">
               <Loader2 className="h-6 w-6 animate-spin text-primary" />
