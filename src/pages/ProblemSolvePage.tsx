@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import CodeEditor from "@/components/CodeEditor";
+import RichContent from "@/components/RichContent";
 import { useProblems } from "@/hooks/useProblems";
 import { usePyodide, type TestResult } from "@/hooks/usePyodide";
 import { useProgress } from "@/hooks/useProgress";
