@@ -1,11 +1,9 @@
 import { useState } from "react";
-import { useTeacherClasses, useTeacherReferralCodes } from "@/hooks/useTeacher";
+import { useTeacherClasses } from "@/hooks/useTeacher";
 import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Users, Copy, CheckCircle, AlertTriangle } from "lucide-react";
+import { AlertTriangle } from "lucide-react";
 import ClassManager from "@/components/teacher/ClassManager";
 import ClassDetail from "@/components/teacher/ClassDetail";
-import { toast } from "sonner";
 
 interface TeacherClassesTabProps {
   teacherStatus: string | null;
