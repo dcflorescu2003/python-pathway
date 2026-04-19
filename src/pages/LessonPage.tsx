@@ -95,8 +95,8 @@ const LessonPage = () => {
     if (currentIndex + 1 >= lesson.exercises.length || (!wasCorrect && lives <= 0)) {
       setIsFinished(true);
       if (wasCorrect || lives > 0) {
-        const total = lesson.exercises.length || 1;
-        const percent = Math.round((correctCount / total) * 100);
+        const total = lesson.exercises.filter((e) => e.type !== "card").length;
+        const percent = total === 0 ? 100 : Math.round((correctCount / total) * 100);
         completeLesson(lesson.id, lesson.xpReward, percent);
       }
     } else {
