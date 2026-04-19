@@ -11,7 +11,6 @@ interface TeacherClassesTabProps {
 
 const TeacherClassesTab = ({ teacherStatus }: TeacherClassesTabProps) => {
   const { data: classes = [] } = useTeacherClasses();
-  const { data: referralCodes = [] } = useTeacherReferralCodes();
   const [selectedClassId, setSelectedClassId] = useState<string | null>(null);
 
   const selectedClass = classes.find((c) => c.id === selectedClassId);
