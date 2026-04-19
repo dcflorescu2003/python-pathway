@@ -52,6 +52,9 @@ const Index = (): JSX.Element => {
   const [showLevelUp, setShowLevelUp] = useState(false);
   const [showStreak, setShowStreak] = useState(false);
   const [bestStreak, setBestStreak] = useState(0);
+  const [teacherStatus, setTeacherStatus] = useState<string | null>(null);
+  const [showTeacherPremium, setShowTeacherPremium] = useState(false);
+  const [showTeacherPremiumPopup, setShowTeacherPremiumPopup] = useState(false);
 
   useEffect(() => {
     if (authLoading) return;
