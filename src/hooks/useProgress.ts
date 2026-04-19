@@ -28,6 +28,7 @@ function createDefaultProgress(): UserProgress {
     streak: 0,
     lives: MAX_LIVES,
     completedLessons: {},
+    skipUnlockedLessons: {},
     lastActivityDate: "",
     isPremium: false,
     livesUpdatedAt: new Date().toISOString(),
