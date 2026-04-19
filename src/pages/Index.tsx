@@ -16,6 +16,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Flame, Heart, Zap, Trophy, Crown, School, ChevronDown, Plus, Target, BookOpen, Code } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import PremiumDialog from "@/components/PremiumDialog";
+import TeacherPremiumDialog from "@/components/TeacherPremiumDialog";
 import LevelRoadmap from "@/components/LevelRoadmap";
 import SchoolOnboarding from "@/components/onboarding/SchoolOnboarding";
 import { useInstallPrompt } from "@/hooks/useInstallPrompt";
