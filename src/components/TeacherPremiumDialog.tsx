@@ -1,6 +1,6 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Loader2, Settings, Sparkles, FileText, Brain, BarChart3, CheckCircle2, Crown } from "lucide-react";
+import { Loader2, Settings, Sparkles, FileText, Brain, BarChart3, CheckCircle2, Crown, Heart } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/useAuth";
 import { useSubscription, TEACHER_MONTHLY_PRICE, TEACHER_YEARLY_PRICE } from "@/hooks/useSubscription";
