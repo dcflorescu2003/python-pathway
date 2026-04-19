@@ -67,11 +67,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!isNativeAndroid) return;
+    if (!isNativeAndroid && !isNativeIOS) return;
 
     const initPromises: Promise<void>[] = [];
 
-    if (GOOGLE_WEB_CLIENT_ID) {
+    if (isNativeAndroid && GOOGLE_WEB_CLIENT_ID) {
       initPromises.push(
         initializeNativeGoogleLogin().catch((error) => {
           console.error("Failed to initialize native Google login:", error);
@@ -79,7 +79,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       );
     }
 
-    // Apple doesn't need a webClientId
+    // Apple is available on both iOS and Android
     initPromises.push(
       SocialLogin.initialize({ apple: {} }).catch((error) => {
         console.error("Failed to initialize native Apple login:", error);
