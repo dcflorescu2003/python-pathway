@@ -256,6 +256,16 @@ const TakeTestPage = () => {
     window.addEventListener("blur", onBlur);
     window.addEventListener("focus", onFocus);
 
+    // Fullscreen exit triggers leave (only if test requires fullscreen)
+    const onFullscreenChange = () => {
+      if (!requireFullscreen) return;
+      if (!document.fullscreenElement) triggerLeave();
+      else cancelLeave();
+    };
+    if (requireFullscreen) {
+      document.addEventListener("fullscreenchange", onFullscreenChange);
+    }
+
     // Capacitor app state (mobile background)
     let capListener: { remove: () => void } | null = null;
     (async () => {
@@ -276,9 +286,12 @@ const TakeTestPage = () => {
       document.removeEventListener("visibilitychange", onVisibility);
       window.removeEventListener("blur", onBlur);
       window.removeEventListener("focus", onFocus);
+      if (requireFullscreen) {
+        document.removeEventListener("fullscreenchange", onFullscreenChange);
+      }
       capListener?.remove();
     };
-  }, [submissionId, submitted]);
+  }, [submissionId, submitted, requireFullscreen]);
 
   if (loading) return <LoadingScreen />;
 
