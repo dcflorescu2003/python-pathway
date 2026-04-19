@@ -153,38 +153,29 @@ const Index = (): JSX.Element => {
     return () => clearTimeout(timer);
   }, [user, progress.isPremium, authLoading]);
 
-  // Level Up dialog: only show when level truly increases after cloud data loads
+  // Level Up dialog: show exactly once per level reached (lifetime, per user)
   const levelInitialized = useRef(false);
   useEffect(() => {
     if (!user) return;
     // Wait for real data — skip if XP is still 0 (default/loading state)
     if (progress.xp <= 0 && level <= 0) return;
 
-    const userKey = `pyro-last-seen-level-${user.id}`;
-    const lastSeenLevel = parseInt(localStorage.getItem(userKey) || "0", 10);
+    const celebratedKey = `pyro-max-level-celebrated-${user.id}`;
+    const maxCelebrated = parseInt(localStorage.getItem(celebratedKey) || "0", 10);
 
     if (!levelInitialized.current) {
-      // First load: seed with current level, don't show dialog
       levelInitialized.current = true;
-      if (lastSeenLevel === 0) {
-        // Brand new or never stored — just save, no popup
-        localStorage.setItem(userKey, String(level));
+      if (maxCelebrated === 0) {
+        // First-ever load for this user — seed without popup
+        localStorage.setItem(celebratedKey, String(level));
         return;
       }
     }
 
-    if (level > lastSeenLevel && lastSeenLevel > 0) {
-      // Real level change
-      const dateKey = `pyro-levelup-shown-date-${user.id}`;
-      const today = new Date().toDateString();
-      const lastShownDate = localStorage.getItem(dateKey) || "";
-      if (lastShownDate !== today) {
-        setShowLevelUp(true);
-        localStorage.setItem(dateKey, today);
-      }
+    if (level > maxCelebrated && maxCelebrated > 0) {
+      setShowLevelUp(true);
+      localStorage.setItem(celebratedKey, String(level));
     }
-    // Always update to latest
-    localStorage.setItem(userKey, String(level));
   }, [level, progress.xp, user]);
 
   if (needsOnboarding === true) {
