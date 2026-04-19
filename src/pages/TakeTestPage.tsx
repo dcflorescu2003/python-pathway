@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
+import { AlertTriangle } from "lucide-react";
 import { useParams, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
@@ -198,6 +199,70 @@ const TakeTestPage = () => {
     }
   }, [submissionId, submitted, items, answers, submitTest]);
 
+  // Keep latest handleSubmit in a ref for the visibility listeners
+  const handleSubmitRef = useRef(handleSubmit);
+  useEffect(() => { handleSubmitRef.current = handleSubmit; }, [handleSubmit]);
+
+  // Auto-submit when student leaves the app for >1s
+  useEffect(() => {
+    if (!submissionId || submitted) return;
+
+    let leaveTimeout: ReturnType<typeof setTimeout> | null = null;
+    const hasFiredRef = { current: false };
+
+    const triggerLeave = () => {
+      if (hasFiredRef.current) return;
+      if (leaveTimeout) return;
+      leaveTimeout = setTimeout(() => {
+        if (hasFiredRef.current) return;
+        hasFiredRef.current = true;
+        toast.error("Test trimis automat — ai părăsit aplicația mai mult de 1 secundă.");
+        handleSubmitRef.current();
+      }, 1000);
+    };
+
+    const cancelLeave = () => {
+      if (leaveTimeout) {
+        clearTimeout(leaveTimeout);
+        leaveTimeout = null;
+      }
+    };
+
+    const onVisibility = () => {
+      if (document.hidden) triggerLeave();
+      else cancelLeave();
+    };
+    const onBlur = () => triggerLeave();
+    const onFocus = () => cancelLeave();
+
+    document.addEventListener("visibilitychange", onVisibility);
+    window.addEventListener("blur", onBlur);
+    window.addEventListener("focus", onFocus);
+
+    // Capacitor app state (mobile background)
+    let capListener: { remove: () => void } | null = null;
+    (async () => {
+      try {
+        const { App } = await import("@capacitor/app");
+        const handle = await App.addListener("appStateChange", (state: { isActive: boolean }) => {
+          if (!state.isActive) triggerLeave();
+          else cancelLeave();
+        });
+        capListener = handle;
+      } catch {
+        // @capacitor/app not available (web) — ignore
+      }
+    })();
+
+    return () => {
+      cancelLeave();
+      document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("blur", onBlur);
+      window.removeEventListener("focus", onFocus);
+      capListener?.remove();
+    };
+  }, [submissionId, submitted]);
+
   if (loading) return <LoadingScreen />;
 
   if (submitted) {
@@ -240,6 +305,12 @@ const TakeTestPage = () => {
       </header>
 
       <main className="px-4 py-6 max-w-lg mx-auto">
+        <div className="mb-4 flex items-start gap-2 p-3 rounded-lg border border-destructive/30 bg-destructive/10">
+          <AlertTriangle className="h-4 w-4 text-destructive shrink-0 mt-0.5" />
+          <p className="text-xs text-foreground">
+            Atenție: dacă părăsești aplicația sau schimbi fereastra mai mult de 1 secundă, testul va fi trimis automat.
+          </p>
+        </div>
         {currentItem && (
           <Card>
             <CardContent className="p-4 space-y-4">
