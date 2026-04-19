@@ -13,6 +13,7 @@ import TrueFalseExercise from "@/components/exercises/TrueFalseExercise";
 import MatchExercise from "@/components/exercises/MatchExercise";
 import LoadingScreen from "@/components/states/LoadingScreen";
 import React from "react";
+import RichContent from "@/components/RichContent";
 
 const CHALLENGE_LIVES = 3;
 const TOTAL_QUESTIONS = 20;
@@ -278,7 +279,12 @@ const SkipChallengePage = () => {
               <p className={`font-bold text-center mb-1 ${feedback === "correct" ? "text-primary" : "text-destructive"}`}>
                 {feedback === "correct" ? "✅ Corect!" : "❌ Greșit!"}
               </p>
-              {lastExplanation && <p className="text-sm text-foreground/70 text-center mb-3">💡 {lastExplanation}</p>}
+              {lastExplanation && (
+                <div className="text-sm text-foreground/70 text-center mb-3 flex justify-center">
+                  <span className="mr-1">💡</span>
+                  <RichContent inline className="prose-p:inline">{lastExplanation}</RichContent>
+                </div>
+              )}
               <Button onClick={handleContinue} className="w-full h-14 text-lg font-bold" variant={feedback === "correct" ? "default" : "destructive"}>
                 Continuă
               </Button>
