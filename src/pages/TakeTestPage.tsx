@@ -297,9 +297,76 @@ const TakeTestPage = () => {
       if (requireFullscreen) {
         document.removeEventListener("fullscreenchange", onFullscreenChange);
       }
-      capListener?.remove();
+    capListener?.remove();
     };
   }, [submissionId, submitted, requireFullscreen]);
+
+  // Block suspicious shortcuts when fullscreen mode is enforced
+  useEffect(() => {
+    if (!requireFullscreen || !submissionId || submitted || needsFullscreenGate) return;
+
+    let lastWarn = 0;
+    const warn = (label: string) => {
+      const now = Date.now();
+      if (now - lastWarn < 1500) return;
+      lastWarn = now;
+      toast.warning(`Shortcut interzis în timpul testului: ${label}`);
+    };
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      const mod = e.ctrlKey || e.metaKey;
+      const k = e.key;
+      const lk = k.toLowerCase();
+
+      // Esc — exits fullscreen
+      if (k === "Escape") { e.preventDefault(); e.stopPropagation(); warn("Esc"); return; }
+      // F11 — toggles fullscreen
+      if (k === "F11") { e.preventDefault(); e.stopPropagation(); warn("F11"); return; }
+      // F12 — DevTools
+      if (k === "F12") { e.preventDefault(); e.stopPropagation(); warn("F12 (DevTools)"); return; }
+      // F5 — reload
+      if (k === "F5") { e.preventDefault(); e.stopPropagation(); warn("F5 (reload)"); return; }
+
+      if (mod) {
+        // Ctrl/Cmd + Shift + I/J/C — DevTools
+        if (e.shiftKey && (lk === "i" || lk === "j" || lk === "c")) {
+          e.preventDefault(); e.stopPropagation(); warn(`${e.metaKey ? "Cmd" : "Ctrl"}+Shift+${k.toUpperCase()} (DevTools)`); return;
+        }
+        // Ctrl/Cmd + T/W/N/R
+        if (["t", "w", "n", "r"].includes(lk)) {
+          e.preventDefault(); e.stopPropagation();
+          const map: Record<string, string> = { t: "tab nou", w: "închide tab", n: "fereastră nouă", r: "reload" };
+          warn(`${e.metaKey ? "Cmd" : "Ctrl"}+${k.toUpperCase()} (${map[lk]})`);
+          return;
+        }
+        // Ctrl/Cmd + Tab
+        if (k === "Tab") { e.preventDefault(); e.stopPropagation(); warn("Ctrl/Cmd+Tab"); return; }
+      }
+
+      // Alt+Tab (best-effort, OS usually wins)
+      if (e.altKey && k === "Tab") { e.preventDefault(); e.stopPropagation(); warn("Alt+Tab"); return; }
+    };
+
+    const onContextMenu = (e: MouseEvent) => {
+      e.preventDefault();
+      warn("click dreapta");
+    };
+
+    const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = "";
+    };
+
+    window.addEventListener("keydown", onKeyDown, { capture: true });
+    window.addEventListener("contextmenu", onContextMenu, { capture: true });
+    window.addEventListener("beforeunload", onBeforeUnload);
+
+    return () => {
+      window.removeEventListener("keydown", onKeyDown, { capture: true } as any);
+      window.removeEventListener("contextmenu", onContextMenu, { capture: true } as any);
+      window.removeEventListener("beforeunload", onBeforeUnload);
+    };
+  }, [requireFullscreen, submissionId, submitted, needsFullscreenGate]);
 
   if (loading) return <LoadingScreen />;
 
