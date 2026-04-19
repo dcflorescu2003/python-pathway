@@ -1,56 +1,28 @@
 
 
-## Diagnoză confirmată
+## Diagnoză
 
-### Bug 1: Statusul de profesor se resetează la elev
+Screenshot-ul arată **TeacherWizard.tsx** step 0 ("Pasul 1: Alege liceul"), nu `TeacherVerificationForm`. Fix-ul de pre-populare aplicat anterior s-a făcut doar în `TeacherVerificationForm`. În `TeacherWizard`:
 
-**Cauză exactă (verificată în DB):** Niciun user nu a reușit să devină profesor în ultimele 24h, deși 4 useri au încercat. Toți au `teacher_status=NULL`, `is_teacher=false`. Cauza este trigger-ul `protect_profile_privileged_columns` care **blochează scrierea pe `teacher_status` și `is_teacher`** chiar și din funcțiile `SECURITY DEFINER` (pentru că `auth.uid()` este non-null și nu e admin).
-
-Doar `deactivate_teacher_mode` setează corect flag-ul de bypass:
-```sql
-PERFORM set_config('app.bypass_profile_protection', 'true', true);
-```
-
-Funcțiile **lipsite de bypass** (toate eșuează silent prin trigger):
-- `request_teacher_status` → utilizatorul rămâne elev după Wizard
-- `submit_teacher_verification` (în branch-urile `invite_code`, `referral` care fac auto-approve, și în `public_link`/`document` care setează `teacher_status='pending'`)
-- `approve_teacher_request` (admin nu poate aproba)
-- `reject_teacher_request`
-- `revoke_teacher_status`
-
-Frontend-ul afișează mesajul de succes („Ești acum profesor!") fără să verifice că update-ul a avut efect → la primul `focus`/`visibilitychange`, `loadAccountFlags` recitește profilul din DB, găsește `teacher_status=NULL` → revine la UI de elev.
-
-### Bug 2: Liceul nu apare pre-selectat în formularul de verificare
-
-În `TeacherVerificationForm`, state-ul local `selectedSchool` pornește gol. `TeacherWizard` salvează `school_id` în profil, dar formularul de verificare nu îl citește înapoi.
-
----
+- `selectedSchoolId` (linia 21) pornește `null` — niciodată citit din profil.
+- Userul are deja `school_id` în profil (din onboarding), vizibil ca banner "COLEGIUL ALEXANDRU CEL BUN" pe pagina de cont.
+- Rezultat: trebuie să caute și să selecteze din nou liceul, deși îl avem deja salvat.
 
 ## Plan reparare
 
-### 1. Migrație SQL: bypass în toate funcțiile SECURITY DEFINER care mută `teacher_status`/`is_teacher`
+### `src/components/account/TeacherWizard.tsx`
 
-Adaug `PERFORM set_config('app.bypass_profile_protection', 'true', true);` înainte de UPDATE pe `profiles` în:
-- `request_teacher_status`
-- `submit_teacher_verification` (înainte de fiecare UPDATE pe profiles, în toate branch-urile)
-- `approve_teacher_request`
-- `reject_teacher_request`
-- `revoke_teacher_status`
+Adaug `useEffect` pe mount care:
+1. Citește `school_id` din `profiles` pentru `user.id`.
+2. Dacă există și se găsește în `schools[]` → setează `selectedSchoolId`.
+3. Userul poate oricând schimba selecția (click pe alt liceu sau search).
 
-### 2. `TeacherWizard.tsx` — verifică rezultatul RPC
+Bonus mic: dacă liceul e pre-selectat, scroll automat la el în listă (opțional, pot sări dacă complică). Voi păstra simplu doar pre-selectarea.
 
-După `request_teacher_status`, recitesc profilul și verific dacă `teacher_status='unverified'`. Dacă nu → arunc eroare și nu cheamă `onComplete()`. Asta previne mesaje false de succes pe viitor.
-
-### 3. `TeacherVerificationForm.tsx` — pre-populează liceul
-
-Pe mount, citesc `school_id` din `profiles` al userului curent. Dacă există, găsesc școala în `schools[]` și setez `selectedSchool = "${name}, ${city}"`. Dacă userul vrea altă școală, butonul „Schimbă" rămâne funcțional.
-
-### Fișiere modificate (3) + 1 migrație SQL
-- migrație SQL nouă (5 funcții actualizate)
-- `src/components/account/TeacherWizard.tsx`
-- `src/components/teacher/TeacherVerificationForm.tsx`
+### Fișiere modificate (1)
+- `src/components/account/TeacherWizard.tsx` — adaug `useEffect` import + hook pentru pre-populare
 
 ### Nu modific
-- Trigger-ul `protect_profile_privileged_columns` (e corect — blochează modificări neautorizate, doar funcțiile trusted trebuie să-l ocolească explicit)
-- RLS policies (nu sunt cauza)
+- `TeacherVerificationForm.tsx` (deja are pre-popularea corectă)
+- Logica de validare / submit / steps
 
