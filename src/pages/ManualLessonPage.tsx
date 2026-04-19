@@ -15,7 +15,6 @@ import CardExercise from "@/components/exercises/CardExercise";
 import ProblemExercise from "@/components/exercises/ProblemExercise";
 import LoadingScreen from "@/components/states/LoadingScreen";
 import PyroLogo from "@/components/brand/PyroLogo";
-import logo from "@/assets/logo.png";
 import React from "react";
 
 class ExerciseErrorBoundary extends React.Component<
