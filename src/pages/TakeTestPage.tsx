@@ -41,6 +41,23 @@ const TakeTestPage = () => {
   const [answers, setAnswers] = useState<Record<string, any>>({});
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
   const [submitted, setSubmitted] = useState(false);
+  const [fullscreenReady, setFullscreenReady] = useState(false);
+
+  const requireFullscreen: boolean = !!testInfo?.tests?.require_fullscreen;
+  // Mobile/Capacitor fallback: Fullscreen API doesn't exist reliably; treat as ready.
+  const isFullscreenSupported = typeof document !== "undefined" && !!(document.documentElement as any).requestFullscreen;
+  const needsFullscreenGate = requireFullscreen && isFullscreenSupported && !fullscreenReady;
+
+  const enterFullscreen = useCallback(async () => {
+    try {
+      if ((document.documentElement as any).requestFullscreen) {
+        await (document.documentElement as any).requestFullscreen();
+      }
+      setFullscreenReady(true);
+    } catch {
+      toast.error("Nu am putut activa modul fullscreen. Încearcă din nou.");
+    }
+  }, []);
 
   // Load test data
   useEffect(() => {
