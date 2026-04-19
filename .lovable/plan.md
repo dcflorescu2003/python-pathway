@@ -2,50 +2,52 @@
 
 ## Diagnoză
 
-Userul a editat conținut în admin (ex: cerințe lecții cu **bold**, culori), dar online (în lecții/probleme) nu vede modificările. În preview/dev funcționa.
+Memoria `re-trigger-protection` confirmă că Level Up are deja protecție prin `localStorage` ca să nu se re-declanșeze. Dar userul spune că totuși apare animația în alte momente decât la schimbarea efectivă a nivelului.
+<lov-tool-use id="toolu_vrtx_01UQjC2qKh9D82dzg1WhPmJ7" name="code--search_files" integration-id="code" data="{\"query\": \"LevelUpDialog\"}">
+</lov-tool-use>
 
-### Cauze posibile (în ordine de probabilitate)
+<lov-tool-use id="toolu_vrtx_018MsTCEEZtRYAffrDzHqeGN" name="code--search_files" integration-id="code" data="{\"query\": \"level-up|levelUp|setShowLevelUp|justLeveledUp\", \"include_patterns\": \"src/**/*.ts,src/**/*.tsx\"}">
+</lov-tool-use>
 
-**1. Cache React Query agresiv** — `useExerciseStore`, `useChapters`, `useProblems` etc. au probabil `staleTime` mare sau cache local (localStorage) care servește date vechi. Vezi `mem://technical/persistence-strategy`: „cache de 5 minute" — deci după edit în admin, online vede vechi până la expirare/refresh.
+<lov-tool-use id="toolu_vrtx_017nNMd7zdJKXykm8Qbjmkf5" name="code--search_files" integration-id="code" data="{\"query\": \"LevelUpDialog\", \"include_patterns\": \"src/**/*.tsx,src/**/*.ts\"}">
+</lov-tool-use>
 
-**2. Lipsă invalidare după mutație în admin** — `ExerciseEditor` / `ContentEditor` salvează în Supabase dar nu apelează `queryClient.invalidateQueries` pentru cheile folosite în paginile publice (`["exercises"]`, `["lessons"]`, `["problems"]`).
+<lov-tool-use id="toolu_vrtx_01GWfdvy1cgN1ELoViywuwwF" name="code--search_files" integration-id="code" data="{\"query\": \"level-up|levelUp|justLeveledUp|showLevelUp\", \"include_patterns\": \"src/**/*.tsx,src/**/*.ts\"}">
+</lov-tool-use>
 
-**3. Snapshot local fallback** — `getStoredChapters()` (folosit în `ChapterTheoryPage`) și `useExerciseStore` citesc din `localStorage` când Supabase răspunde gol; dacă snapshot-ul e vechi, suprascrie datele proaspete.
+<lov-tool-use id="toolu_vrtx_01CvgGv2Gvwf5dXX1rN7k288" name="code--view" integration-id="code" data="{\"file_path\": \"src/pages/Index.tsx\", \"lines\": \"150-200\"}">
+</lov-tool-use>
+Am înțeles. Logica curentă folosește o cheie „pe zi" (`pyro-levelup-shown-date`), deci dialogul poate reapărea într-o zi nouă chiar dacă nivelul nu s-a mai schimbat. Userul vrea: doar **o singură dată per nivel atins**.
 
-**4. NU e problemă de RLS** — `exercises`, `lessons`, `problems` au policy „Authenticated users can read" → admin logat citește OK.
+<lov-plan>
 
-**5. NU e problemă de realtime** — fix-ul cu `supabase_realtime` din stack-overflow NU e necesar; un simplu refetch la focus + invalidare la save rezolvă.
+## Plan: LevelUp doar la schimbarea reală a nivelului (o singură dată per nivel)
 
-### Investigare necesară (înainte să propun fix)
+### Problemă
+În `src/pages/Index.tsx` (liniile 156-188), dialogul `LevelUpDialog` se afișează dacă `level > lastSeenLevel`, **dar** este gardat suplimentar de o cheie „shown-date" pe zi (`pyro-levelup-shown-date-{userId}`). Asta cauzează re-trigger în condiții în care `lastSeenLevel` nu se actualizează corect (ex: localStorage curățat, alt device, race condition la load) — dialogul reapare în zile noi fără ca userul să fi urcat nivel.
 
-Trebuie să verific:
-- `src/hooks/useExerciseStore.ts` — staleTime, structură cache, fallback localStorage
-- `src/hooks/useChapters.ts`, `useProblems.ts`, `useManualLessons.ts` — staleTime + refetch policy
-- `src/components/admin/ExerciseEditor.tsx` și `ContentEditor.tsx` — ce invalidări fac după save
-- `src/pages/ChapterPage.tsx` / `LessonPage.tsx` — cum consumă datele
+### Soluție
+Elimin complet logica „pe zi" și mă bazez exclusiv pe nivelul maxim văzut vreodată, salvat per user:
 
-### Plan reparare (după inspecție)
+- Cheie nouă: `pyro-max-level-celebrated-{userId}` (număr — cel mai mare nivel pentru care s-a afișat deja dialogul)
+- La fiecare schimbare:
+  - Dacă `level > maxCelebrated` ȘI `maxCelebrated > 0` (nu prima inițializare) → afișez dialog **o singură dată** și actualizez `maxCelebrated = level`
+  - Dacă e prima inițializare (`maxCelebrated === 0`) → doar seed, fără popup
+- Elimin `pyro-levelup-shown-date-{userId}` complet (fără date-gating)
+- Păstrez `levelInitialized` ref pentru a evita declanșări la primul mount
 
-1. **Reduc `staleTime` pe queries publice de conținut** la `0` (sau max 30s), păstrez `gcTime` mare → afișare instant a editărilor
-2. **Activez `refetchOnWindowFocus: true`** pentru hook-urile de conținut (lessons/exercises/problems/chapters) → când admin revine din tab admin, datele se reîmprospătează
-3. **Invalidare explicită după save în admin** — în `ExerciseEditor`, `ContentEditor`, `ProblemsEditor`, `ManualEditor`: `queryClient.invalidateQueries({ queryKey: ["exercises"] })` etc.
-4. **Bust cache local snapshot** la save — `localStorage.removeItem("pyro-chapters-snapshot")` (sau echivalent) când admin modifică conținut, ca să nu se servească snapshot vechi
-5. **Buton „Reîmprospătează" în AdminPage** (opțional) — invalidează tot cache-ul de conținut manual
+### Avantaj
+- Dialogul apare exact o dată per nivel atins (nivelul 5 → o singură dată în viața contului, niciodată din nou)
+- Nu mai depinde de date/timezone
+- Coerent cu memoria `re-trigger-protection`
 
-### Ce voi face în următoarea fază (default mode)
+### Fișier modificat (1)
+- `src/pages/Index.tsx` — înlocuiesc blocul `useEffect` de la liniile 156-188
 
-Inspectez fișierele de mai sus, identific cheile React Query exacte și cache-urile localStorage, apoi aplic fix-urile minime care păstrează performanța dar fac editările vizibile imediat (max 1-2 secunde de propagare).
+### Memory update
+Actualizez `mem://features/app-experience/re-trigger-protection` cu noua regulă: LevelUp se afișează o singură dată per nivel atins (nu per zi).
 
-### Fișiere probabile de modificat (estimare)
-
-- `src/hooks/useExerciseStore.ts`
-- `src/hooks/useChapters.ts`
-- `src/hooks/useProblems.ts`
-- `src/hooks/useManualLessons.ts`
-- `src/components/admin/ExerciseEditor.tsx`
-- `src/components/admin/ContentEditor.tsx`
-- `src/components/admin/ProblemsEditor.tsx`
-- `src/components/admin/ManualEditor.tsx`
-
-Nu modific RLS, nu activez realtime (overkill).
+### Nu modific
+- `LevelUpDialog.tsx` (componenta în sine — animația rămâne aceeași când chiar se declanșează)
+- Logica de progres / XP / niveluri
 
