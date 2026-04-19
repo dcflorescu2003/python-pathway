@@ -337,9 +337,43 @@ const AccountProfileTab = ({
                 </CardContent>
               </Card>
             ) : (
-              <Button variant="secondary" className="w-full gap-2" onClick={() => setShowVerificationForm(true)}>
-                <Shield className="h-4 w-4" /> Începe verificarea contului de profesor
-              </Button>
+              <Card className="border-2 border-primary/40 bg-gradient-to-br from-primary/10 via-primary/5 to-transparent shadow-lg">
+                <CardContent className="p-5 space-y-4">
+                  <div className="flex items-start gap-3">
+                    <div className="rounded-full bg-primary/15 p-2.5 shrink-0">
+                      <Shield className="h-6 w-6 text-primary" />
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="text-base font-bold text-foreground">Verifică-ți contul de profesor</h3>
+                      <p className="text-xs text-muted-foreground mt-1">Deblochează toate funcțiile dedicate profesorilor.</p>
+                    </div>
+                  </div>
+                  <ul className="space-y-2 text-sm text-foreground">
+                    <li className="flex items-start gap-2">
+                      <Check className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+                      <span>Acces la <strong>biblioteca de teste predefinite</strong> ale platformei</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <Check className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+                      <span>Acces la <strong>banca de exerciții</strong> pentru construcția testelor</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <Check className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+                      <span>Insignă <strong>„Profesor Verificat"</strong> + 2 coduri invitație pentru colegi</span>
+                    </li>
+                  </ul>
+                  <Button
+                    className="w-full gap-2 bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 text-primary-foreground font-bold shadow-md"
+                    size="lg"
+                    onClick={() => setShowVerificationForm(true)}
+                  >
+                    <Shield className="h-5 w-5" /> Începe verificarea
+                  </Button>
+                  <p className="text-[11px] text-center text-muted-foreground">
+                    Durează 2 minute. 4 metode de verificare disponibile.
+                  </p>
+                </CardContent>
+              </Card>
             )
           )}
 
