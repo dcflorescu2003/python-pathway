@@ -88,7 +88,9 @@ const ProblemExercise = ({ exercise, onAnswer, feedback }: ProblemExerciseProps)
       {showHint && exercise.hint && (
         <Card className="border-warning/30 bg-warning/5">
           <CardContent className="p-3">
-            <p className="text-sm text-warning">{exercise.hint}</p>
+            <div className="text-sm text-warning">
+              <RichContent>{exercise.hint}</RichContent>
+            </div>
           </CardContent>
         </Card>
       )}

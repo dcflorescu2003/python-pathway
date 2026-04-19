@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import CodeEditor from "@/components/CodeEditor";
+import RichContent from "@/components/RichContent";
 import { useProblems } from "@/hooks/useProblems";
 import { usePyodide, type TestResult } from "@/hooks/usePyodide";
 import { useProgress } from "@/hooks/useProgress";
@@ -114,14 +115,8 @@ const ProblemSolvePage = () => {
       <div className="px-4 py-4 space-y-4">
         <Card className="border-border">
           <CardContent className="p-4">
-            <div className="prose prose-invert prose-sm max-w-none">
-              {problem.description.split("\n").map((line, i) => {
-                if (line.startsWith("```")) return null;
-                if (line.startsWith("**")) {
-                  return <p key={i} className="text-sm text-foreground"><strong dangerouslySetInnerHTML={{ __html: line.replace(/\*\*(.*?)\*\*/g, "<strong class='text-accent'>$1</strong>") }} /></p>;
-                }
-                return <p key={i} className="text-sm text-muted-foreground leading-relaxed">{line}</p>;
-              })}
+            <div className="text-sm text-foreground">
+              <RichContent>{problem.description}</RichContent>
             </div>
           </CardContent>
         </Card>
@@ -133,7 +128,11 @@ const ProblemSolvePage = () => {
         )}
         {showHint && problem.hint && (
           <Card className="border-warning/30 bg-warning/5">
-            <CardContent className="p-3"><p className="text-sm text-warning">{problem.hint}</p></CardContent>
+            <CardContent className="p-3">
+              <div className="text-sm text-warning">
+                <RichContent>{problem.hint}</RichContent>
+              </div>
+            </CardContent>
           </Card>
         )}
 
