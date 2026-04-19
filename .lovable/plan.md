@@ -1,53 +1,36 @@
+## Card Profesor AI pentru profesori verificați + „Inimi nelimitate" în ofertă
 
+### Context tehnic
 
-## UI alegere rol pentru conturi noi
+1. **Daily popup în `Index.tsx**` (liniile 142-154, 477) afișează `PremiumDialog` (Elev Premium) o dată pe zi pentru toți non-premium. Profesorii verificați primesc același cartonaș „Elev Premium", deși ar trebui să vadă „Profesor AI".
+2. **Status profesor** nu e încă în `Index.tsx` — trebuie citit din `profiles.teacher_status`.
+3. `**useSubscription**` expune deja `isTeacherPremium` (Stripe product match TEACHER_PRODUCT_IDS sau cupon `coupon_type='teacher'`).
+4. **Inimi nelimitate**: backend-ul setează `is_premium=true` și pentru abonați Stripe Teacher (vezi `check-subscription/index.ts` linia ~138 `isPremium = stripeActive || couponActive`). Deci inimile infinite **funcționează deja automat** pentru Profesor AI — doar trebuie adăugat în textul de marketing.
 
-În `AccountProfileTab.tsx` (linile 410-447), ramura când `!teacherStatus && !isClassMember` arată momentan: un buton outline „Devino Profesor" + un card simplu „Alătură-te unei clase". Lipsește contextul — utilizatorul nu înțelege că trebuie să aleagă între două roluri.
+### Modificări
 
-### Schimbarea propusă
+**1) `src/pages/Index.tsx**`
 
-Înlocuiesc cele 2 elemente cu o **secțiune „Alege-ți rolul"** — 2 carduri simetrice, side-by-side pe desktop / stacked pe mobil, fiecare cu iconiță, titlu, întrebare, beneficii scurte și CTA.
+- Adaug fetch ușor pentru `teacher_status` la mount (sau citesc din profile, alături de fetch-ul existent). Simplu: useEffect separat care interoghează `profiles.teacher_status` o singură dată când `user` e disponibil.
+- Stare nouă: `const [teacherStatus, setTeacherStatus] = useState<string | null>(null);`
+- Logica popup zilnic (liniile 142-154):
+  - Condiție de afișare existentă: non-premium → rămâne.
+  - Decid ce dialog să arăt: dacă `teacherStatus === 'verified'` ⇒ `showTeacherPremiumPopup=true`, altfel `showPremiumPopup=true`.
+- Buton coroniță (liniile 249-253): la click, dacă profesor verificat → deschide `TeacherPremiumDialog`, altfel `PremiumDialog` (logica existentă).
+- La final (linia 477): import + adaug `<TeacherPremiumDialog open={showTeacherPremium || showTeacherPremiumPopup} onOpenChange={...} />` în paralel cu cel existent.
+- Cheia localStorage rămâne `pyro-premium-popup-date` (un singur popup/zi indiferent de variantă).
 
-```text
-┌─────────────────────────────────────────┐
-│  Cum vrei să folosești PyRo?            │
-│  Alege una dintre cele 2 variante       │
-└─────────────────────────────────────────┘
+**2) `src/components/TeacherPremiumDialog.tsx**`
 
-┌─────────────────┐  ┌─────────────────┐
-│ 🎓 Profesor      │  │ 👥 Elev          │
-│                  │  │                  │
-│ Ești profesor    │  │ Ești elev?       │
-│ de informatică?  │  │ Profesorul tău   │
-│                  │  │ ți-a dat un cod? │
-│ ✓ Creează clase  │  │ ✓ Acces la teste │
-│ ✓ Teste & banca  │  │ ✓ Provocări      │
-│ ✓ Analytics      │  │ ✓ Clasament      │
-│                  │  │                  │
-│ [Devino Profesor]│  │ [Cod: ____ Intră]│
-└─────────────────┘  └─────────────────┘
-```
+- În secțiunea „AI tier benefits" (liniile 95-119), adaug încă un beneficiu la final:
+  - Iconiță `Heart` (lucide) + text bold „Inimi nelimitate" — „Exersează fără limite"
+- În secțiunea `isTeacherPremium` activ (liniile 63-79), adaug sub textul existent o linie cu: `❤️ Inimi nelimitate active` pentru consistență.
 
-**Card 1 — Profesor**
-- Border `border-primary/30`, subtle gradient `from-primary/5`
-- Iconiță `GraduationCap` în cerc colorat
-- Titlu: „Ești profesor?"
-- Sub-titlu: „Creează clase și evaluează-ți elevii"
-- 3 bullet-uri scurte cu ✓
-- Buton primar: „Devino Profesor" → `setShowTeacherWizard(true)`
+### Fișiere modificate (2)
 
-**Card 2 — Elev**
-- Border `border-accent/30`, subtle gradient `from-accent/5` (ton diferit ca să se distingă)
-- Iconiță `Users` (sau `UserPlus`) în cerc colorat
-- Titlu: „Ești elev?"
-- Sub-titlu: „Alătură-te clasei profesorului tău"
-- 3 bullet-uri scurte cu ✓
-- Input cod clasă + buton „Intră" (existing logic)
+- `src/pages/Index.tsx`
+- `src/components/TeacherPremiumDialog.tsx`
 
-**Layout**: `grid grid-cols-1 md:grid-cols-2 gap-3`. Pe mobile (target principal) cardurile rămân stacked, dar fiecare arată clar ca o "opțiune" datorită bordurilor colorate diferite și titlurilor sub formă de întrebare.
+### Notă importantă
 
-**Wizard activ**: când `showTeacherWizard === true`, ascund tot grid-ul și arăt doar wizard-ul (ca acum).
-
-### Fișier modificat (1)
-- `src/components/account/AccountProfileTab.tsx` — înlocuiesc blocul liniile 411-446
-
+Inimile nelimitate sunt deja active backend pentru orice utilizator cu `is_premium=true` (inclusiv Teacher AI prin Stripe sau cupon `PROF-`). Nu sunt necesare modificări DB sau în `useProgress`. Adăugarea e doar în UI/copy.  
