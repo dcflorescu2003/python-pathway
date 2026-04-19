@@ -1123,6 +1123,7 @@ export type Database = {
           allow_run_tests: boolean
           created_at: string
           id: string
+          require_fullscreen: boolean
           teacher_id: string
           time_limit_minutes: number | null
           title: string
@@ -1134,6 +1135,7 @@ export type Database = {
           allow_run_tests?: boolean
           created_at?: string
           id?: string
+          require_fullscreen?: boolean
           teacher_id: string
           time_limit_minutes?: number | null
           title: string
@@ -1145,6 +1147,7 @@ export type Database = {
           allow_run_tests?: boolean
           created_at?: string
           id?: string
+          require_fullscreen?: boolean
           teacher_id?: string
           time_limit_minutes?: number | null
           title?: string

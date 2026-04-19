@@ -58,6 +58,7 @@ export function useCreateTest() {
       variant_mode: string;
       items: TestItem[];
       allow_run_tests?: boolean;
+      require_fullscreen?: boolean;
       ai_grading_item_ids?: string[];
     }) => {
       if (!user) throw new Error("Not authenticated");
@@ -69,6 +70,7 @@ export function useCreateTest() {
           time_limit_minutes: params.time_limit_minutes,
           variant_mode: params.variant_mode,
           allow_run_tests: params.allow_run_tests ?? false,
+          require_fullscreen: params.require_fullscreen ?? false,
           ai_grading_item_ids: params.ai_grading_item_ids ?? [],
         })
         .select()
@@ -104,6 +106,7 @@ export function useUpdateTest() {
       variant_mode: string;
       items: TestItem[];
       allow_run_tests?: boolean;
+      require_fullscreen?: boolean;
       ai_grading_item_ids?: string[];
     }) => {
       // Update test metadata
@@ -114,6 +117,7 @@ export function useUpdateTest() {
           time_limit_minutes: params.time_limit_minutes,
           variant_mode: params.variant_mode,
           allow_run_tests: params.allow_run_tests ?? false,
+          require_fullscreen: params.require_fullscreen ?? false,
           ai_grading_item_ids: params.ai_grading_item_ids ?? [],
         })
         .eq("id", params.id);
