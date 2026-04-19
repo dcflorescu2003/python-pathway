@@ -157,19 +157,19 @@ const RichTextEditor = ({ value, onChange, placeholder, rows = 6 }: Props) => {
   return (
     <div className="space-y-2">
       <div className="flex items-center gap-1 flex-wrap">
-        <Button type="button" variant="outline" size="sm" onClick={() => insert("**", "**")} title="Bold">
+        <Button type="button" variant="outline" size="sm" onClick={() => insert("**", "**")} title="Bold (Ctrl+B)">
           <Bold className="h-4 w-4" />
         </Button>
-        <Button type="button" variant="outline" size="sm" onClick={() => insert("*", "*")} title="Italic">
+        <Button type="button" variant="outline" size="sm" onClick={() => insert("*", "*")} title="Italic (Ctrl+I)">
           <Italic className="h-4 w-4" />
         </Button>
-        <Button type="button" variant="outline" size="sm" onClick={() => insert("\n- ")} title="Listă">
+        <Button type="button" variant="outline" size="sm" onClick={() => insert("\n- ")} title="Listă (Ctrl+L)">
           <List className="h-4 w-4" />
         </Button>
-        <Button type="button" variant="outline" size="sm" onClick={() => insert("\n\n")} title="Rând liber">
+        <Button type="button" variant="outline" size="sm" onClick={() => insert("\n\n")} title="Rând liber (Ctrl+Enter)">
           <Pilcrow className="h-4 w-4" />
         </Button>
-        <Button type="button" variant="outline" size="sm" onClick={() => insert("`", "`")} title="Cod inline">
+        <Button type="button" variant="outline" size="sm" onClick={() => insert("`", "`")} title="Cod inline (Ctrl+K)">
           <Code className="h-4 w-4" />
         </Button>
         <Button
@@ -204,6 +204,15 @@ const RichTextEditor = ({ value, onChange, placeholder, rows = 6 }: Props) => {
         </Popover>
         <Button
           type="button"
+          variant="outline"
+          size="sm"
+          onClick={stripFormatting}
+          title="Curăță formatare (păstrează doar text)"
+        >
+          <Eraser className="h-4 w-4" />
+        </Button>
+        <Button
+          type="button"
           variant="ghost"
           size="sm"
           className="ml-auto text-xs"
@@ -218,6 +227,7 @@ const RichTextEditor = ({ value, onChange, placeholder, rows = 6 }: Props) => {
         value={value}
         onChange={(e) => onChange(e.target.value)}
         onPaste={handlePaste}
+        onKeyDown={handleKeyDown}
         placeholder={placeholder}
         rows={rows}
       />
