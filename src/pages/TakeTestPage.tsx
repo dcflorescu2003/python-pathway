@@ -41,6 +41,23 @@ const TakeTestPage = () => {
   const [answers, setAnswers] = useState<Record<string, any>>({});
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
   const [submitted, setSubmitted] = useState(false);
+  const [fullscreenReady, setFullscreenReady] = useState(false);
+
+  const requireFullscreen: boolean = !!testInfo?.tests?.require_fullscreen;
+  // Mobile/Capacitor fallback: Fullscreen API doesn't exist reliably; treat as ready.
+  const isFullscreenSupported = typeof document !== "undefined" && !!(document.documentElement as any).requestFullscreen;
+  const needsFullscreenGate = requireFullscreen && isFullscreenSupported && !fullscreenReady;
+
+  const enterFullscreen = useCallback(async () => {
+    try {
+      if ((document.documentElement as any).requestFullscreen) {
+        await (document.documentElement as any).requestFullscreen();
+      }
+      setFullscreenReady(true);
+    } catch {
+      toast.error("Nu am putut activa modul fullscreen. Încearcă din nou.");
+    }
+  }, []);
 
   // Load test data
   useEffect(() => {
@@ -50,7 +67,7 @@ const TakeTestPage = () => {
         // Get assignment + test info
         const { data: assignment } = await supabase
           .from("test_assignments")
-          .select("*, tests(id, title, time_limit_minutes, variant_mode, allow_run_tests)")
+          .select("*, tests(id, title, time_limit_minutes, variant_mode, allow_run_tests, require_fullscreen)")
           .eq("id", assignmentId)
           .single();
 
@@ -185,6 +202,10 @@ const TakeTestPage = () => {
   const handleSubmit = useCallback(async () => {
     if (!submissionId || submitted) return;
     setSubmitted(true);
+    // Exit fullscreen on submit so user is not stuck
+    if (document.fullscreenElement && document.exitFullscreen) {
+      document.exitFullscreen().catch(() => {});
+    }
     try {
       const answersList = items.map((item) => ({
         test_item_id: item.id,
@@ -239,6 +260,16 @@ const TakeTestPage = () => {
     window.addEventListener("blur", onBlur);
     window.addEventListener("focus", onFocus);
 
+    // Fullscreen exit triggers leave (only if test requires fullscreen)
+    const onFullscreenChange = () => {
+      if (!requireFullscreen) return;
+      if (!document.fullscreenElement) triggerLeave();
+      else cancelLeave();
+    };
+    if (requireFullscreen) {
+      document.addEventListener("fullscreenchange", onFullscreenChange);
+    }
+
     // Capacitor app state (mobile background)
     let capListener: { remove: () => void } | null = null;
     (async () => {
@@ -259,11 +290,39 @@ const TakeTestPage = () => {
       document.removeEventListener("visibilitychange", onVisibility);
       window.removeEventListener("blur", onBlur);
       window.removeEventListener("focus", onFocus);
+      if (requireFullscreen) {
+        document.removeEventListener("fullscreenchange", onFullscreenChange);
+      }
       capListener?.remove();
     };
-  }, [submissionId, submitted]);
+  }, [submissionId, submitted, requireFullscreen]);
 
   if (loading) return <LoadingScreen />;
+
+  // Fullscreen gate (only shown when teacher requires fullscreen and browser supports it)
+  if (needsFullscreenGate && !submitted) {
+    return (
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="min-h-screen bg-background flex items-center justify-center p-4">
+        <Card className="max-w-sm w-full">
+          <CardContent className="p-6 text-center space-y-4">
+            <div className="flex justify-center">
+              <AlertTriangle className="h-10 w-10 text-destructive" />
+            </div>
+            <h2 className="text-lg font-bold text-foreground">Mod fullscreen obligatoriu</h2>
+            <p className="text-sm text-muted-foreground">
+              Profesorul a setat acest test să fie dat în mod fullscreen. Dacă ieși din fullscreen, schimbi fereastra sau părăsești aplicația mai mult de 1 secundă, testul va fi trimis automat.
+            </p>
+            <Button onClick={enterFullscreen} className="w-full">
+              Începe testul în fullscreen
+            </Button>
+            <Button variant="ghost" onClick={() => navigate("/")} className="w-full">
+              Înapoi
+            </Button>
+          </CardContent>
+        </Card>
+      </motion.div>
+    );
+  }
 
   if (submitted) {
     return (

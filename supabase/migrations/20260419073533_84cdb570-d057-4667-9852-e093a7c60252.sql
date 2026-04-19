@@ -1,0 +1,1 @@
+ALTER TABLE public.tests ADD COLUMN IF NOT EXISTS require_fullscreen boolean NOT NULL DEFAULT false;
