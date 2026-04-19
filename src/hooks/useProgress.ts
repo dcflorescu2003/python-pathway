@@ -7,6 +7,7 @@ export interface UserProgress {
   streak: number;
   lives: number;
   completedLessons: Record<string, { score: number; completed: boolean }>;
+  skipUnlockedLessons: Record<string, true>;
   lastActivityDate: string;
   isPremium: boolean;
   livesUpdatedAt: string;
