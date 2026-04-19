@@ -784,6 +784,27 @@ export type Database = {
         }
         Relationships: []
       }
+      skip_unlocked_lessons: {
+        Row: {
+          id: string
+          lesson_id: string
+          unlocked_at: string
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          lesson_id: string
+          unlocked_at?: string
+          user_id: string
+        }
+        Update: {
+          id?: string
+          lesson_id?: string
+          unlocked_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       teacher_classes: {
         Row: {
           created_at: string

@@ -7,6 +7,7 @@ export interface UserProgress {
   streak: number;
   lives: number;
   completedLessons: Record<string, { score: number; completed: boolean }>;
+  skipUnlockedLessons: Record<string, true>;
   lastActivityDate: string;
   isPremium: boolean;
   livesUpdatedAt: string;
@@ -27,6 +28,7 @@ function createDefaultProgress(): UserProgress {
     streak: 0,
     lives: MAX_LIVES,
     completedLessons: {},
+    skipUnlockedLessons: {},
     lastActivityDate: "",
     isPremium: false,
     livesUpdatedAt: new Date().toISOString(),
@@ -160,9 +162,19 @@ export function useProgress() {
           .select("lesson_id, score")
           .eq("user_id", user.id);
 
+        const { data: skipUnlocks } = await supabase
+          .from("skip_unlocked_lessons")
+          .select("lesson_id")
+          .eq("user_id", user.id);
+
         const cloudCompleted: Record<string, { score: number; completed: boolean }> = {};
         lessons?.forEach((lesson) => {
           cloudCompleted[lesson.lesson_id] = { score: lesson.score, completed: true };
+        });
+
+        const cloudSkipUnlocks: Record<string, true> = {};
+        skipUnlocks?.forEach((row) => {
+          cloudSkipUnlocks[row.lesson_id] = true;
         });
 
         const cloudProgress: UserProgress = {
@@ -172,11 +184,12 @@ export function useProgress() {
           isPremium: profile?.is_premium ?? false,
           lastActivityDate: profile?.last_activity_date ?? getTodayDate(),
           completedLessons: cloudCompleted,
+          skipUnlockedLessons: cloudSkipUnlocks,
           livesUpdatedAt: profile?.lives_updated_at ?? new Date().toISOString(),
         };
 
         const localProgress = loadLocalProgress(user.id);
-        const hasCloudProgress = cloudProgress.xp > 0 || Object.keys(cloudCompleted).length > 0 || cloudProgress.isPremium;
+        const hasCloudProgress = cloudProgress.xp > 0 || Object.keys(cloudCompleted).length > 0 || cloudProgress.isPremium || Object.keys(cloudSkipUnlocks).length > 0;
         const finalProgress = hasCloudProgress
           ? checkStreakExpiry(mergeProgress(localProgress, cloudProgress))
           : checkStreakExpiry(cloudProgress);
@@ -339,7 +352,29 @@ export function useProgress() {
 
   const dismissStreakCelebration = useCallback(() => setStreakJustIncreased(false), []);
 
-  return { progress, completeLesson, loseLife, resetLives, setPremium, recordActivity, streakJustIncreased, newStreakCount, dismissStreakCelebration };
+  const unlockLessonViaSkip = useCallback(
+    (lessonIds: string[]) => {
+      setProgress((prev) => {
+        const newSkipUnlocks = { ...prev.skipUnlockedLessons };
+        for (const id of lessonIds) newSkipUnlocks[id] = true;
+        const newProgress = { ...prev, skipUnlockedLessons: newSkipUnlocks };
+        saveLocalProgress(newProgress, user?.id);
+        if (user) {
+          const rows = lessonIds.map((lesson_id) => ({ user_id: user.id, lesson_id }));
+          supabase
+            .from("skip_unlocked_lessons")
+            .upsert(rows, { onConflict: "user_id,lesson_id", ignoreDuplicates: true })
+            .then(({ error }) => {
+              if (error) console.error("Failed to sync skip unlocks:", error);
+            });
+        }
+        return newProgress;
+      });
+    },
+    [user]
+  );
+
+  return { progress, completeLesson, loseLife, resetLives, setPremium, recordActivity, unlockLessonViaSkip, streakJustIncreased, newStreakCount, dismissStreakCelebration };
 }
 
 function mergeProgress(a: UserProgress, b: UserProgress): UserProgress {
@@ -353,6 +388,11 @@ function mergeProgress(a: UserProgress, b: UserProgress): UserProgress {
     }
   }
 
+  const mergedSkipUnlocks: Record<string, true> = {
+    ...a.skipUnlockedLessons,
+    ...b.skipUnlockedLessons,
+  };
+
   const mergedDate = !a.lastActivityDate ? b.lastActivityDate
     : !b.lastActivityDate ? a.lastActivityDate
     : a.lastActivityDate > b.lastActivityDate ? a.lastActivityDate : b.lastActivityDate;
@@ -364,6 +404,7 @@ function mergeProgress(a: UserProgress, b: UserProgress): UserProgress {
     isPremium: a.isPremium || b.isPremium,
     lastActivityDate: mergedDate,
     completedLessons: mergedLessons,
+    skipUnlockedLessons: mergedSkipUnlocks,
     livesUpdatedAt: a.livesUpdatedAt > b.livesUpdatedAt ? a.livesUpdatedAt : b.livesUpdatedAt,
   };
 }

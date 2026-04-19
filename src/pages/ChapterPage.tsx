@@ -3,17 +3,21 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useChapters } from "@/hooks/useChapters";
 import { useProgress } from "@/hooks/useProgress";
 import { motion } from "framer-motion";
-import { ArrowLeft, Check, Lock, Play, BookOpen, Crown } from "lucide-react";
+import { ArrowLeft, Check, Lock, Play, BookOpen, Crown, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import OfflineBanner from "@/components/states/OfflineBanner";
 import PremiumDialog from "@/components/PremiumDialog";
 import LoadingScreen from "@/components/states/LoadingScreen";
+import SkipChallengeDialog from "@/components/SkipChallengeDialog";
+
+const COOLDOWN_KEY_PREFIX = "pyro-skip-cooldown:";
 
 const ChapterPage = () => {
   const { chapterId } = useParams();
   const navigate = useNavigate();
   const { progress } = useProgress();
   const [showPremium, setShowPremium] = useState(false);
+  const [skipDialog, setSkipDialog] = useState<{ lessonId: string; title: string; cooldownMs: number } | null>(null);
   const currentLessonRef = useRef<HTMLDivElement>(null);
   const { data: chapters, isLoading } = useChapters();
 
@@ -51,9 +55,24 @@ const ChapterPage = () => {
           {chapter.lessons.map((lesson, idx) => {
             const isCompleted = progress.completedLessons[lesson.id]?.completed;
             const score = progress.completedLessons[lesson.id]?.score ?? 0;
-            const isLocked = idx > 0 && !progress.completedLessons[chapter.lessons[idx - 1].id]?.completed;
+            const previousDone = idx === 0 || progress.completedLessons[chapter.lessons[idx - 1].id]?.completed;
+            const skipUnlocked = !!progress.skipUnlockedLessons?.[lesson.id];
+            const isLocked = !previousDone && !skipUnlocked;
             const isCurrent = !isCompleted && !isLocked;
             const isPremiumLocked = false;
+            const showSkipBadge = skipUnlocked && !isCompleted && !previousDone;
+
+            const handleClick = () => {
+              if (isPremiumLocked) { setShowPremium(true); return; }
+              if (!isLocked) { navigate(`/lesson/${lesson.id}`); return; }
+              // Locked → offer skip challenge
+              let cooldownMs = 0;
+              try {
+                const stored = localStorage.getItem(`${COOLDOWN_KEY_PREFIX}${lesson.id}`);
+                if (stored) cooldownMs = Math.max(0, parseInt(stored, 10) - Date.now());
+              } catch {}
+              setSkipDialog({ lessonId: lesson.id, title: lesson.title, cooldownMs });
+            };
 
             return (
               <div key={lesson.id} className="flex flex-col items-center" ref={isCurrent ? currentLessonRef : undefined}>
@@ -66,22 +85,30 @@ const ChapterPage = () => {
                   return (
                     <motion.button
                       initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: idx * 0.06 }}
-                      disabled={isLocked && !isPremiumLocked}
-                      onClick={() => {
-                        if (isPremiumLocked) { setShowPremium(true); }
-                        else if (!isLocked) { navigate(`/lesson/${lesson.id}`); }
-                      }}
+                      onClick={handleClick}
                       className={`relative flex h-[72px] w-[72px] items-center justify-center rounded-full border-4 transition-all active:scale-95 ${
-                        isLocked || isPremiumLocked ? "border-border bg-card text-muted-foreground opacity-50 cursor-not-allowed" : ""
-                      } ${isCurrent && !isPremiumLocked ? "animate-pulse-glow" : ""}`}
+                        isPremiumLocked ? "border-border bg-card text-muted-foreground opacity-50 cursor-not-allowed" : ""
+                      } ${isLocked && !isPremiumLocked ? "border-yellow-500/40 bg-card text-muted-foreground hover:border-yellow-500/70 hover:opacity-90 opacity-60 cursor-pointer" : ""} ${isCurrent && !isPremiumLocked ? "animate-pulse-glow" : ""}`}
                       style={!isLocked && !isPremiumLocked ? { borderColor: lessonColorBorder, backgroundColor: lessonColorBg, color: lessonColor } : undefined}
                     >
                       {isPremiumLocked ? <Crown className="h-6 w-6 text-yellow-500" /> : isCompleted ? <Check className="h-7 w-7" /> : isLocked ? <Lock className="h-6 w-6" /> : <Play className="h-7 w-7 ml-1" />}
+                      {isLocked && !isPremiumLocked && (
+                        <span className="absolute -top-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full bg-yellow-500 text-black shadow-md">
+                          <Zap className="h-3.5 w-3.5" />
+                        </span>
+                      )}
                     </motion.button>
                   );
                 })()}
                 <div className="mt-2 mb-2 text-center max-w-[200px]">
-                  <p className="text-base font-bold text-foreground flex items-center justify-center gap-1">{lesson.title}</p>
+                  <p className="text-base font-bold text-foreground flex items-center justify-center gap-1">
+                    {lesson.title}
+                    {showSkipBadge && (
+                      <span className="inline-flex items-center gap-0.5 rounded-full bg-yellow-500/15 border border-yellow-500/40 px-1.5 py-0.5 text-[10px] font-mono uppercase tracking-wider text-yellow-500">
+                        <Zap className="h-2.5 w-2.5" /> Sărită
+                      </span>
+                    )}
+                  </p>
                   <p className="text-sm text-muted-foreground line-clamp-1">{lesson.description}</p>
                   {isCompleted && <p className="text-xs text-primary font-mono mt-0.5">★ {score}/{lesson.exercises.length}</p>}
                 </div>
@@ -91,6 +118,16 @@ const ChapterPage = () => {
         </div>
       </main>
       <PremiumDialog open={showPremium} onOpenChange={setShowPremium} />
+      {skipDialog && (
+        <SkipChallengeDialog
+          open={!!skipDialog}
+          onOpenChange={(o) => { if (!o) setSkipDialog(null); }}
+          lessonId={skipDialog.lessonId}
+          lessonTitle={skipDialog.title}
+          realLives={progress.lives}
+          cooldownRemainingMs={skipDialog.cooldownMs}
+        />
+      )}
     </div>
   );
 };
