@@ -14,6 +14,17 @@ interface TestResultsProps {
   onBack: () => void;
 }
 
+const autoReasonLabel = (reason: string | null | undefined): string => {
+  switch (reason) {
+    case "tab_hidden": return "A schimbat fereastra";
+    case "window_blur": return "A pierdut focus-ul";
+    case "fullscreen_exit": return "A ieșit din fullscreen";
+    case "app_background": return "A părăsit aplicația";
+    case "time_expired": return "Timp expirat";
+    default: return reason ? "Auto-trimis" : "";
+  }
+};
+
 const TestResults = ({ testId, testTitle, onBack }: TestResultsProps) => {
   const { data: assignments = [] } = useTestAssignments(testId);
   const { data: testItems = [] } = useTestItems(testId);
