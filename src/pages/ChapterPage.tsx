@@ -3,17 +3,21 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useChapters } from "@/hooks/useChapters";
 import { useProgress } from "@/hooks/useProgress";
 import { motion } from "framer-motion";
-import { ArrowLeft, Check, Lock, Play, BookOpen, Crown } from "lucide-react";
+import { ArrowLeft, Check, Lock, Play, BookOpen, Crown, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import OfflineBanner from "@/components/states/OfflineBanner";
 import PremiumDialog from "@/components/PremiumDialog";
 import LoadingScreen from "@/components/states/LoadingScreen";
+import SkipChallengeDialog from "@/components/SkipChallengeDialog";
+
+const COOLDOWN_KEY_PREFIX = "pyro-skip-cooldown:";
 
 const ChapterPage = () => {
   const { chapterId } = useParams();
   const navigate = useNavigate();
   const { progress } = useProgress();
   const [showPremium, setShowPremium] = useState(false);
+  const [skipDialog, setSkipDialog] = useState<{ lessonId: string; title: string; cooldownMs: number } | null>(null);
   const currentLessonRef = useRef<HTMLDivElement>(null);
   const { data: chapters, isLoading } = useChapters();
 
