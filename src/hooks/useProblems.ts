@@ -76,7 +76,7 @@ export function useProblems() {
     queryKey: ["problems", user?.id],
     queryFn: fetchProblems,
     enabled: !!user,
-    staleTime: 5 * 60 * 1000,
+    staleTime: 30 * 1000, // 30s — content updates from admin propagate quickly
     gcTime: 30 * 60 * 1000,
     retry: 2,
     refetchOnWindowFocus: true,

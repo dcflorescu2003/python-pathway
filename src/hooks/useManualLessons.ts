@@ -63,7 +63,8 @@ export function useManualLessons() {
   return useQuery({
     queryKey: ["manual-lessons"],
     queryFn: fetchManualLessons,
-    staleTime: 2 * 60 * 1000,
+    staleTime: 30 * 1000, // 30s — content updates from admin propagate quickly
     refetchOnWindowFocus: true,
+    refetchOnMount: "always",
   });
 }
