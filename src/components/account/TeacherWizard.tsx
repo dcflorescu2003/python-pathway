@@ -39,7 +39,19 @@ const TeacherWizard = ({ onComplete, onCancel }: TeacherWizardProps) => {
       await supabase.from("profiles").update(updates).eq("user_id", user.id);
 
       // Activate teacher mode
-      await supabase.rpc("request_teacher_status");
+      const { error: rpcErr } = await supabase.rpc("request_teacher_status");
+      if (rpcErr) throw rpcErr;
+
+      // Verify the update actually persisted (guards against silent trigger blocks)
+      const { data: check } = await supabase
+        .from("profiles")
+        .select("teacher_status, is_teacher")
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      if (!check || check.teacher_status !== "unverified" || !check.is_teacher) {
+        throw new Error("Activarea nu s-a putut salva. Te rugăm să încerci din nou.");
+      }
 
       toast.success("Ești acum profesor! Poți crea clase și teste.");
       onComplete();
