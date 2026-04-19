@@ -2,7 +2,7 @@ import { useRef, useState, useCallback } from "react";
 import TurndownService from "turndown";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { Bold, Italic, List, Pilcrow, Palette, Code2, Code } from "lucide-react";
+import { Bold, Italic, List, Pilcrow, Palette, Code2, Code, Eraser } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import RichContent from "@/components/RichContent";
 
