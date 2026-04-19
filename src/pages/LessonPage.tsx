@@ -62,12 +62,11 @@ const LessonPage = () => {
       if (exercise?.type === "card") {
         setFeedback(null);
         setLastExplanation(null);
-        setCorrectCount((c) => c + 1);
         if (!lesson) return;
         if (currentIndex + 1 >= lesson.exercises.length) {
           setIsFinished(true);
-          const total = lesson.exercises.length || 1;
-          const percent = Math.round(((correctCount + 1) / total) * 100);
+          const total = lesson.exercises.filter((e) => e.type !== "card").length;
+          const percent = total === 0 ? 100 : Math.round((correctCount / total) * 100);
           completeLesson(lesson.id, lesson.xpReward, percent);
         } else {
           setCurrentIndex((i) => i + 1);
