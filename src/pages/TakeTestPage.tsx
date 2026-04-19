@@ -202,6 +202,10 @@ const TakeTestPage = () => {
   const handleSubmit = useCallback(async () => {
     if (!submissionId || submitted) return;
     setSubmitted(true);
+    // Exit fullscreen on submit so user is not stuck
+    if (document.fullscreenElement && document.exitFullscreen) {
+      document.exitFullscreen().catch(() => {});
+    }
     try {
       const answersList = items.map((item) => ({
         test_item_id: item.id,
