@@ -72,6 +72,9 @@ const TeacherPremiumDialog = ({ open, onOpenChange }: TeacherPremiumDialogProps)
                   Activ până la: {new Date(subscriptionEnd).toLocaleDateString("ro-RO")}
                 </p>
               )}
+              <p className="text-sm text-destructive flex items-center justify-center gap-1.5 font-medium">
+                <Heart className="h-4 w-4 fill-destructive" /> Inimi nelimitate active
+              </p>
               <Button variant="outline" onClick={handleManage} className="mt-2 gap-2">
                 <Settings className="h-4 w-4" />
                 Gestionează abonamentul
