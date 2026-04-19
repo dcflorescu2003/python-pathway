@@ -409,40 +409,75 @@ const AccountProfileTab = ({
         </div>
       ) : (
         <>
-          {/* Become teacher or join class */}
-          {!isClassMember && (
-            showTeacherWizard ? (
-              <TeacherWizard
-                onComplete={() => { setShowTeacherWizard(false); onTeacherStatusChange("unverified"); }}
-                onCancel={() => setShowTeacherWizard(false)}
-              />
-            ) : (
-              <Button variant="outline" className="w-full gap-2" onClick={() => setShowTeacherWizard(true)}>
-                <GraduationCap className="h-4 w-4" /> Devino Profesor
-              </Button>
-            )
-          )}
+          {!isClassMember && showTeacherWizard ? (
+            <TeacherWizard
+              onComplete={() => { setShowTeacherWizard(false); onTeacherStatusChange("unverified"); }}
+              onCancel={() => setShowTeacherWizard(false)}
+            />
+          ) : !isClassMember ? (
+            <div className="space-y-3">
+              <div className="text-center space-y-1">
+                <h3 className="text-base font-semibold text-foreground">Cum vrei să folosești PyRo?</h3>
+                <p className="text-xs text-muted-foreground">Alege una dintre cele 2 variante</p>
+              </div>
 
-          {!isClassMember && !showTeacherWizard && (
-            <Card className="border-border">
-              <CardContent className="p-4">
-                <p className="text-sm font-medium text-foreground mb-2 flex items-center gap-2">
-                  <UserPlus className="h-4 w-4 text-primary" /> Alătură-te unei clase
-                </p>
-                <div className="flex gap-2">
-                  <Input
-                    placeholder="Cod clasă (ex: ABC123)"
-                    value={joinCode}
-                    onChange={(e) => setJoinCode(e.target.value)}
-                    className="flex-1"
-                  />
-                  <Button onClick={() => { onJoinClass(joinCode); setJoinCode(""); }} disabled={!joinCode.trim() || joinLoading} size="sm">
-                    {joinLoading ? "..." : "Intră"}
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          )}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {/* Teacher card */}
+                <Card className="border-2 border-primary/30 bg-gradient-to-br from-primary/5 to-transparent">
+                  <CardContent className="p-4 space-y-3 flex flex-col h-full">
+                    <div className="flex items-center gap-3">
+                      <div className="h-10 w-10 rounded-full bg-primary/15 flex items-center justify-center shrink-0">
+                        <GraduationCap className="h-5 w-5 text-primary" />
+                      </div>
+                      <div>
+                        <p className="font-semibold text-foreground text-sm">Ești profesor?</p>
+                        <p className="text-xs text-muted-foreground">Creează clase și evaluează elevii</p>
+                      </div>
+                    </div>
+                    <ul className="text-xs text-muted-foreground space-y-1.5 flex-1">
+                      <li className="flex gap-2"><span className="text-primary">✓</span> Creează clase și gestionează elevii</li>
+                      <li className="flex gap-2"><span className="text-primary">✓</span> Construiește teste din banca de exerciții</li>
+                      <li className="flex gap-2"><span className="text-primary">✓</span> Vezi analytics și rezultate</li>
+                    </ul>
+                    <Button className="w-full gap-2" onClick={() => setShowTeacherWizard(true)}>
+                      <GraduationCap className="h-4 w-4" /> Devino Profesor
+                    </Button>
+                  </CardContent>
+                </Card>
+
+                {/* Student card */}
+                <Card className="border-2 border-accent/40 bg-gradient-to-br from-accent/10 to-transparent">
+                  <CardContent className="p-4 space-y-3 flex flex-col h-full">
+                    <div className="flex items-center gap-3">
+                      <div className="h-10 w-10 rounded-full bg-accent/20 flex items-center justify-center shrink-0">
+                        <UserPlus className="h-5 w-5 text-accent-foreground" />
+                      </div>
+                      <div>
+                        <p className="font-semibold text-foreground text-sm">Ești elev?</p>
+                        <p className="text-xs text-muted-foreground">Alătură-te clasei profesorului tău</p>
+                      </div>
+                    </div>
+                    <ul className="text-xs text-muted-foreground space-y-1.5 flex-1">
+                      <li className="flex gap-2"><span className="text-primary">✓</span> Acces la teste și provocări</li>
+                      <li className="flex gap-2"><span className="text-primary">✓</span> Urmărește-ți progresul</li>
+                      <li className="flex gap-2"><span className="text-primary">✓</span> Clasament în cadrul clasei</li>
+                    </ul>
+                    <div className="flex gap-2">
+                      <Input
+                        placeholder="Cod clasă (ex: ABC123)"
+                        value={joinCode}
+                        onChange={(e) => setJoinCode(e.target.value)}
+                        className="flex-1"
+                      />
+                      <Button onClick={() => { onJoinClass(joinCode); setJoinCode(""); }} disabled={!joinCode.trim() || joinLoading} size="sm">
+                        {joinLoading ? "..." : "Intră"}
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
+          ) : null}
         </>
       )}
 
