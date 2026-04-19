@@ -44,7 +44,7 @@ const PremiumDialog = ({ open, onOpenChange }: PremiumDialogProps) => {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-sm mx-auto">
+      <DialogContent className="max-w-sm">
         <DialogHeader>
           <DialogTitle className="text-center text-xl flex items-center justify-center gap-2">
             <Crown className="h-6 w-6 text-yellow-500" />
