@@ -152,11 +152,15 @@ const Index = (): JSX.Element => {
     const lastShown = localStorage.getItem("pyro-premium-popup-date");
     if (lastShown === today) return;
     const timer = setTimeout(() => {
-      setShowPremiumPopup(true);
+      if (teacherStatus === "verified") {
+        setShowTeacherPremiumPopup(true);
+      } else {
+        setShowPremiumPopup(true);
+      }
       localStorage.setItem("pyro-premium-popup-date", today);
     }, 1500);
     return () => clearTimeout(timer);
-  }, [user, progress.isPremium, authLoading]);
+  }, [user, progress.isPremium, authLoading, teacherStatus]);
 
   // Level Up dialog: show exactly once per level reached (lifetime, per user)
   const levelInitialized = useRef(false);
