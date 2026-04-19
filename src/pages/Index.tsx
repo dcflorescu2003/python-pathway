@@ -67,16 +67,17 @@ const Index = (): JSX.Element => {
     }
   }, [authLoading, user, navigate]);
 
-  // Fetch best_streak from profile
+  // Fetch best_streak + teacher_status from profile
   useEffect(() => {
     if (!user) return;
     supabase
       .from("profiles")
-      .select("best_streak")
+      .select("best_streak, teacher_status")
       .eq("user_id", user.id)
       .single()
       .then(({ data }) => {
         if (data?.best_streak != null) setBestStreak(data.best_streak);
+        if (data?.teacher_status != null) setTeacherStatus(data.teacher_status);
       });
   }, [user]);
 
