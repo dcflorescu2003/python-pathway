@@ -392,8 +392,16 @@ const TestResults = ({ testId, testTitle, onBack }: TestResultsProps) => {
                       className="w-full p-3 flex items-center justify-between text-left"
                     >
                       <div>
-                        <p className="text-sm font-medium text-foreground">
+                        <p className="text-sm font-medium text-foreground flex items-center gap-1.5 flex-wrap">
                           {sub.profile?.display_name || "Elev"}
+                          {sub.auto_submitted_reason && (
+                            <span
+                              title={autoReasonLabel(sub.auto_submitted_reason)}
+                              className="inline-flex items-center gap-1 text-[9px] px-1.5 py-0.5 rounded-full bg-destructive/10 border border-destructive/30 text-destructive font-medium"
+                            >
+                              ⚠️ {autoReasonLabel(sub.auto_submitted_reason)}
+                            </span>
+                          )}
                         </p>
                         <p className="text-[10px] text-muted-foreground">
                           Nr. {sub.variant === "A" ? "1" : "2"} · {sub.submitted_at ? new Date(sub.submitted_at).toLocaleDateString("ro-RO") : "În curs"}
