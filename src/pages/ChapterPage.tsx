@@ -76,22 +76,30 @@ const ChapterPage = () => {
 
             return (
               <div key={lesson.id} className="flex flex-col items-center" ref={isCurrent ? currentLessonRef : undefined}>
-                {idx > 0 && <div className={`h-8 w-0.5 ${isCompleted ? "bg-primary" : "bg-border"}`} />}
+                {idx > 0 && <div className={`h-8 w-0.5 ${isCompleted ? "bg-primary/40" : "bg-border"}`} />}
                 {(() => {
                   const hueShift = idx * 30;
-                  const lessonColor = `hsl(${parseInt(chapter.color) + hueShift}, 70%, 50%)`;
-                  const lessonColorBg = `hsl(${parseInt(chapter.color) + hueShift}, 70%, 50%, 0.15)`;
-                  const lessonColorBorder = `hsl(${parseInt(chapter.color) + hueShift}, 70%, 50%, 0.6)`;
+                  const baseHue = parseInt(chapter.color) + hueShift;
+                  const sat = isCompleted ? 35 : 70;
+                  const lightness = isCompleted ? 45 : 50;
+                  const lessonColor = `hsl(${baseHue}, ${sat}%, ${lightness}%)`;
+                  const lessonColorBg = `hsl(${baseHue}, ${sat}%, ${lightness}%, ${isCompleted ? 0.08 : 0.18})`;
+                  const lessonColorBorder = `hsl(${baseHue}, ${sat}%, ${lightness}%, ${isCompleted ? 0.35 : 0.7})`;
+                  const sizeClass = isCurrent && !isPremiumLocked ? "h-20 w-20" : "h-[72px] w-[72px]";
+                  const completedFade = isCompleted ? "opacity-60" : "";
+                  const currentGlow = isCurrent && !isPremiumLocked
+                    ? { boxShadow: `0 0 28px ${lessonColor}, 0 0 12px ${lessonColor}` }
+                    : {};
                   return (
                     <motion.button
                       initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: idx * 0.06 }}
                       onClick={handleClick}
-                      className={`relative flex h-[72px] w-[72px] items-center justify-center rounded-full border-4 transition-all active:scale-95 ${
+                      className={`relative flex ${sizeClass} items-center justify-center rounded-full border-4 transition-all active:scale-95 ${
                         isPremiumLocked ? "border-border bg-card text-muted-foreground opacity-50 cursor-not-allowed" : ""
-                      } ${isLocked && !isPremiumLocked ? "border-yellow-500/40 bg-card text-muted-foreground hover:border-yellow-500/70 hover:opacity-90 opacity-60 cursor-pointer" : ""} ${isCurrent && !isPremiumLocked ? "animate-pulse-glow" : ""}`}
-                      style={!isLocked && !isPremiumLocked ? { borderColor: lessonColorBorder, backgroundColor: lessonColorBg, color: lessonColor } : undefined}
+                      } ${isLocked && !isPremiumLocked ? "border-yellow-500/40 bg-card text-muted-foreground hover:border-yellow-500/70 hover:opacity-90 opacity-60 cursor-pointer" : ""} ${isCurrent && !isPremiumLocked ? "animate-pulse-glow" : ""} ${completedFade}`}
+                      style={!isLocked && !isPremiumLocked ? { borderColor: lessonColorBorder, backgroundColor: lessonColorBg, color: lessonColor, ...currentGlow } : undefined}
                     >
-                      {isPremiumLocked ? <Crown className="h-6 w-6 text-yellow-500" /> : isCompleted ? <Check className="h-7 w-7" /> : isLocked ? <Lock className="h-6 w-6" /> : <Play className="h-7 w-7 ml-1" />}
+                      {isPremiumLocked ? <Crown className="h-6 w-6 text-yellow-500" /> : isCompleted ? <Check className="h-7 w-7" /> : isLocked ? <Lock className="h-6 w-6" /> : <Play className={`${isCurrent ? "h-8 w-8" : "h-7 w-7"} ml-1`} />}
                       {isLocked && !isPremiumLocked && (
                         <span className="absolute -top-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full bg-yellow-500 text-black shadow-md">
                           <Zap className="h-3.5 w-3.5" />
@@ -101,7 +109,7 @@ const ChapterPage = () => {
                   );
                 })()}
                 <div className="mt-2 mb-2 text-center max-w-[200px]">
-                  <p className="text-base font-bold text-foreground flex items-center justify-center gap-1">
+                  <p className={`text-base font-bold flex items-center justify-center gap-1 ${isCompleted ? "text-muted-foreground" : "text-foreground"}`}>
                     {lesson.title}
                     {showSkipBadge && (
                       <span className="inline-flex items-center gap-0.5 rounded-full bg-yellow-500/15 border border-yellow-500/40 px-1.5 py-0.5 text-[10px] font-mono uppercase tracking-wider text-yellow-500">
@@ -110,11 +118,51 @@ const ChapterPage = () => {
                     )}
                   </p>
                   <p className="text-sm text-muted-foreground line-clamp-1">{lesson.description}</p>
-                  {isCompleted && <p className="text-xs text-primary font-mono mt-0.5">★ {score}/{lesson.exercises.length}</p>}
+                  {isCompleted && (
+                    <p className="text-xs text-primary font-mono mt-0.5">
+                      {score === 100 ? <>🏆 100%</> : <>★ {score}%</>}
+                    </p>
+                  )}
                 </div>
               </div>
             );
           })}
+          {(() => {
+            const allDone = chapter.lessons.length > 0 && chapter.lessons.every(l => progress.completedLessons[l.id]?.completed);
+            if (!allDone) return null;
+            const sorted = [...chapters].sort((a, b) => a.number - b.number);
+            const nextChapter = sorted.find(c => c.number > chapter.number);
+            return (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
+                className="mt-10 w-full max-w-md rounded-2xl border-2 border-primary/40 bg-gradient-to-br from-primary/10 to-accent/10 p-6 text-center shadow-[0_0_32px_hsl(var(--primary)/0.2)]"
+              >
+                <div className="mx-auto mb-3 flex h-16 w-16 items-center justify-center rounded-full bg-primary/15 border-2 border-primary/40">
+                  <Trophy className="h-8 w-8 text-primary" />
+                </div>
+                <h2 className="text-xl font-bold text-foreground mb-1">Capitol terminat! 🎉</h2>
+                {nextChapter ? (
+                  <>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      Felicitări! Ai parcurs cu succes toate lecțiile. Continuă aventura cu <span className="font-semibold text-foreground">{nextChapter.title}</span>!
+                    </p>
+                    <Button onClick={() => navigate(`/chapter/${nextChapter.id}`)} className="w-full gap-2 touch-target">
+                      Mergi la capitolul următor <ArrowRight className="h-4 w-4" />
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      Incredibil! Ai terminat toată programa. Ești un adevărat <span className="font-semibold text-foreground">Master of Python</span>! 🐍
+                    </p>
+                    <Button onClick={() => navigate("/")} variant="outline" className="w-full gap-2 touch-target">
+                      <Map className="h-4 w-4" /> Înapoi la harta
+                    </Button>
+                  </>
+                )}
+              </motion.div>
+            );
+          })()}
         </div>
       </main>
       <PremiumDialog open={showPremium} onOpenChange={setShowPremium} />
