@@ -425,7 +425,7 @@ const TakeTestPage = () => {
               Următorul <ChevronRight className="h-4 w-4" />
             </Button>
           ) : (
-            <Button size="sm" onClick={handleSubmit} disabled={submitTest.isPending} className="gap-1">
+            <Button size="sm" onClick={() => handleSubmit()} disabled={submitTest.isPending} className="gap-1">
               <Send className="h-4 w-4" /> Trimite testul
             </Button>
           )}
