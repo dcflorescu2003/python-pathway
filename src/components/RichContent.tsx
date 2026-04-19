@@ -35,20 +35,21 @@ const RichContent = ({ children, className, inline }: RichContentProps) => {
       <ReactMarkdown
         rehypePlugins={[rehypeRaw]}
         components={{
-          code({ inline: isInline, className: cls, children: codeChildren, ...props }: any) {
+          // react-markdown v9+: no `inline` prop. Detect block via language-* class or newline.
+          code({ className: cls, children: codeChildren, ...props }: any) {
             const match = /language-(\w+)/.exec(cls || "");
-            const codeText = String(codeChildren).replace(/\n$/, "");
-            if (!isInline && match) {
+            const codeText = String(codeChildren ?? "").replace(/\n$/, "");
+            const isBlock = !!match || codeText.includes("\n");
+            if (isBlock) {
               return (
                 <SyntaxHighlighter
-                  language={match[1]}
+                  language={match?.[1] || "text"}
                   style={vscDarkPlus}
                   PreTag="div"
                   customStyle={{
                     margin: 0,
                     borderRadius: "0.5rem",
                     fontSize: "0.85rem",
-                    background: "hsl(var(--muted) / 0.5)",
                   }}
                 >
                   {codeText}
@@ -66,6 +67,10 @@ const RichContent = ({ children, className, inline }: RichContentProps) => {
                 {codeChildren}
               </code>
             );
+          },
+          pre({ children }: any) {
+            // Avoid double <pre> wrapper since SyntaxHighlighter renders its own container.
+            return <>{children}</>;
           },
         }}
       >
