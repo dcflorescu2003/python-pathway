@@ -31,6 +31,7 @@ const SupportPage = lazy(() => import("./pages/SupportPage"));
 
 const ManualLessonPage = lazy(() => import("./pages/ManualLessonPage"));
 const TakeTestPage = lazy(() => import("./pages/TakeTestPage"));
+const SkipChallengePage = lazy(() => import("./pages/SkipChallengePage"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 const queryClient = new QueryClient();
