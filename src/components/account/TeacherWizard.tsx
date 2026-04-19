@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { GraduationCap, School, Search, User, ArrowRight, ArrowLeft, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -21,6 +21,21 @@ const TeacherWizard = ({ onComplete, onCancel }: TeacherWizardProps) => {
   const [selectedSchoolId, setSelectedSchoolId] = useState<string | null>(null);
   const [fullName, setFullName] = useState("");
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!user) return;
+    supabase
+      .from("profiles")
+      .select("school_id")
+      .eq("user_id", user.id)
+      .maybeSingle()
+      .then(({ data }) => {
+        const sid = data?.school_id;
+        if (sid && schools.some((s) => s.id === sid)) {
+          setSelectedSchoolId(sid);
+        }
+      });
+  }, [user]);
 
   const filtered = schoolSearch.trim()
     ? schools.filter((s) => `${s.name} ${s.city}`.toLowerCase().includes(schoolSearch.toLowerCase())).slice(0, 40)
