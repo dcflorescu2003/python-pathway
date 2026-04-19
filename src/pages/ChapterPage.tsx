@@ -57,6 +57,7 @@ const ChapterPage = () => {
 
   return (
     <div className="min-h-screen bg-background">
+      <ConfettiCanvas active={showConfetti} />
       <OfflineBanner />
       <header className="sticky top-0 z-40 border-b border-border bg-background/80 backdrop-blur-md pt-[calc(env(safe-area-inset-top)+8px)]">
         <div className="flex items-center gap-3 px-4 py-3">
