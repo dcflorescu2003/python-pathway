@@ -62,12 +62,11 @@ const LessonPage = () => {
       if (exercise?.type === "card") {
         setFeedback(null);
         setLastExplanation(null);
-        setCorrectCount((c) => c + 1);
         if (!lesson) return;
         if (currentIndex + 1 >= lesson.exercises.length) {
           setIsFinished(true);
-          const total = lesson.exercises.length || 1;
-          const percent = Math.round(((correctCount + 1) / total) * 100);
+          const total = lesson.exercises.filter((e) => e.type !== "card").length;
+          const percent = total === 0 ? 100 : Math.round((correctCount / total) * 100);
           completeLesson(lesson.id, lesson.xpReward, percent);
         } else {
           setCurrentIndex((i) => i + 1);
@@ -96,8 +95,8 @@ const LessonPage = () => {
     if (currentIndex + 1 >= lesson.exercises.length || (!wasCorrect && lives <= 0)) {
       setIsFinished(true);
       if (wasCorrect || lives > 0) {
-        const total = lesson.exercises.length || 1;
-        const percent = Math.round((correctCount / total) * 100);
+        const total = lesson.exercises.filter((e) => e.type !== "card").length;
+        const percent = total === 0 ? 100 : Math.round((correctCount / total) * 100);
         completeLesson(lesson.id, lesson.xpReward, percent);
       }
     } else {
@@ -117,7 +116,7 @@ const LessonPage = () => {
             <>
               <div className="text-5xl mb-4">🎉</div>
               <h2 className="text-xl font-bold text-foreground mb-2">Lecție completă!</h2>
-              <p className="text-sm text-muted-foreground mb-4">Ai răspuns corect la {correctCount}/{lesson.exercises.length} exerciții</p>
+              <p className="text-sm text-muted-foreground mb-4">Ai răspuns corect la {correctCount}/{lesson.exercises.filter((e) => e.type !== "card").length} exerciții</p>
               <div className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-4 py-2 text-primary font-bold mb-6">+{xpEarned} XP</div>
             </>
           ) : (
