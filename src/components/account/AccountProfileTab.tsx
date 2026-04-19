@@ -46,6 +46,7 @@ const AccountProfileTab = ({
   const { progress } = useProgress();
   const { data: chapters } = useChapters();
   const { subscribed, subscriptionEnd, source, openPortal } = useSubscription();
+  const { data: referralCodes = [] } = useTeacherReferralCodes();
   const [showPremiumDialog, setShowPremiumDialog] = useState(false);
   const [showTeacherPremiumDialog, setShowTeacherPremiumDialog] = useState(false);
   const [showVerificationForm, setShowVerificationForm] = useState(false);
