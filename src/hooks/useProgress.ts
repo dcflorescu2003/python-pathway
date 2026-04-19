@@ -352,7 +352,29 @@ export function useProgress() {
 
   const dismissStreakCelebration = useCallback(() => setStreakJustIncreased(false), []);
 
-  return { progress, completeLesson, loseLife, resetLives, setPremium, recordActivity, streakJustIncreased, newStreakCount, dismissStreakCelebration };
+  const unlockLessonViaSkip = useCallback(
+    (lessonIds: string[]) => {
+      setProgress((prev) => {
+        const newSkipUnlocks = { ...prev.skipUnlockedLessons };
+        for (const id of lessonIds) newSkipUnlocks[id] = true;
+        const newProgress = { ...prev, skipUnlockedLessons: newSkipUnlocks };
+        saveLocalProgress(newProgress, user?.id);
+        if (user) {
+          const rows = lessonIds.map((lesson_id) => ({ user_id: user.id, lesson_id }));
+          supabase
+            .from("skip_unlocked_lessons")
+            .upsert(rows, { onConflict: "user_id,lesson_id", ignoreDuplicates: true })
+            .then(({ error }) => {
+              if (error) console.error("Failed to sync skip unlocks:", error);
+            });
+        }
+        return newProgress;
+      });
+    },
+    [user]
+  );
+
+  return { progress, completeLesson, loseLife, resetLives, setPremium, recordActivity, unlockLessonViaSkip, streakJustIncreased, newStreakCount, dismissStreakCelebration };
 }
 
 function mergeProgress(a: UserProgress, b: UserProgress): UserProgress {
@@ -366,6 +388,11 @@ function mergeProgress(a: UserProgress, b: UserProgress): UserProgress {
     }
   }
 
+  const mergedSkipUnlocks: Record<string, true> = {
+    ...a.skipUnlockedLessons,
+    ...b.skipUnlockedLessons,
+  };
+
   const mergedDate = !a.lastActivityDate ? b.lastActivityDate
     : !b.lastActivityDate ? a.lastActivityDate
     : a.lastActivityDate > b.lastActivityDate ? a.lastActivityDate : b.lastActivityDate;
@@ -377,6 +404,7 @@ function mergeProgress(a: UserProgress, b: UserProgress): UserProgress {
     isPremium: a.isPremium || b.isPremium,
     lastActivityDate: mergedDate,
     completedLessons: mergedLessons,
+    skipUnlockedLessons: mergedSkipUnlocks,
     livesUpdatedAt: a.livesUpdatedAt > b.livesUpdatedAt ? a.livesUpdatedAt : b.livesUpdatedAt,
   };
 }
