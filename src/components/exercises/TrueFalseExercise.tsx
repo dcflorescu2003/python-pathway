@@ -32,9 +32,9 @@ const TrueFalseExercise = ({ exercise, onAnswer, feedback }: Props) => {
 
   return (
     <div>
-      <div className="text-foreground font-bold mb-2">Adevărat sau fals?</div>
+      <div className="text-foreground font-bold mb-2"><RichContent>{exercise.question}</RichContent></div>
       <div className="code-block mb-6 text-foreground">
-        <RichContent>{exercise.statement || exercise.question}</RichContent>
+        <RichContent>{exercise.statement}</RichContent>
       </div>
 
       <div className="grid grid-cols-2 gap-3 mb-6">
