@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import logo from "@/assets/logo.png";
+import PyroLogo from "@/components/brand/PyroLogo";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useChapters } from "@/hooks/useChapters";
@@ -251,12 +251,8 @@ const Index = (): JSX.Element => {
           : "border-border bg-background/80"
       }`}>
         <div className="flex items-center justify-between px-4 py-3">
-          <h1 className="text-xl font-bold font-mono">
-            <img src={logo} alt="PyRo" className="inline h-7 w-7 rounded-md mr-1" />{" "}
-            <span className="text-gradient-primary">Py</span>
-            <span className="text-tricolor">Ro</span>
-            {progress.isPremium && <span className="ml-1 text-xs text-yellow-500 font-bold">PRO</span>}
-          </h1>
+          <PyroLogo size="sm" premium={progress.isPremium} />
+
           <div className="flex items-center gap-3">
             <NotificationBell />
             {!progress.isPremium && (

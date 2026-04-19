@@ -7,6 +7,7 @@ import { schools, setSelectedSchool } from "@/data/schools";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import onboardingImg from "@/assets/onboarding-school.png";
+import PyroLogo from "@/components/brand/PyroLogo";
 import { toast } from "sonner";
 
 interface SchoolOnboardingProps {
@@ -110,18 +111,19 @@ function WelcomeStep({ onNext }: { onNext: () => void }) {
       transition={{ duration: 0.5, type: "spring", bounce: 0.3 }}
       className="w-full max-w-md flex flex-col items-center text-center"
     >
-      <motion.div initial={{ y: -30, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.2, type: "spring", bounce: 0.4 }}>
+      <motion.div initial={{ y: -30, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.15, type: "spring", bounce: 0.4 }} className="mb-2">
+        <PyroLogo size="lg" />
+      </motion.div>
+      <motion.div initial={{ y: -20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.25, type: "spring", bounce: 0.4 }}>
         <motion.img
           src={onboardingImg} alt="Python la școală"
-          className="w-48 h-48 object-contain mb-6 drop-shadow-lg"
+          className="w-40 h-40 object-contain mb-4 drop-shadow-lg"
           animate={{ y: [0, -8, 0] }}
           transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
         />
       </motion.div>
-      <motion.h1 className="text-3xl font-bold text-foreground mb-3" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
-        Bine ai venit în{" "}
-        <span className="text-gradient-primary">Py</span>
-        <span className="text-tricolor">Ro</span>! 🐍
+      <motion.h1 className="text-3xl font-bold text-foreground mb-3" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }}>
+        Bine ai venit! 🐍
       </motion.h1>
       <motion.p className="text-muted-foreground text-base leading-relaxed mb-8 max-w-sm" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.45 }}>
         Învață Python pas cu pas, rezolvă exerciții și urcă în clasament alături de colegi.

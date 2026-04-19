@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import splashLogo from "@/assets/splash-logo.png";
+import PyroLogo from "@/components/brand/PyroLogo";
 
 const SplashScreen = () => {
   return (
@@ -8,13 +8,8 @@ const SplashScreen = () => {
         initial={{ scale: 0.5, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         transition={{ type: "spring", stiffness: 260, damping: 20 }}
-        className="flex flex-col items-center gap-4"
       >
-        <img src={splashLogo} alt="PyRo" className="h-32 w-32 rounded-2xl" />
-        <h1 className="text-3xl font-bold font-mono">
-          <span className="text-gradient-primary">Py</span><span className="text-tricolor">Ro</span>
-        </h1>
-        <p className="text-sm text-muted-foreground">Învață Python pas cu pas</p>
+        <PyroLogo size="xl" showTagline />
       </motion.div>
       <motion.div
         initial={{ opacity: 0 }}
