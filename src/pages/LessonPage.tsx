@@ -116,7 +116,7 @@ const LessonPage = () => {
             <>
               <div className="text-5xl mb-4">🎉</div>
               <h2 className="text-xl font-bold text-foreground mb-2">Lecție completă!</h2>
-              <p className="text-sm text-muted-foreground mb-4">Ai răspuns corect la {correctCount}/{lesson.exercises.length} exerciții</p>
+              <p className="text-sm text-muted-foreground mb-4">Ai răspuns corect la {correctCount}/{lesson.exercises.filter((e) => e.type !== "card").length} exerciții</p>
               <div className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-4 py-2 text-primary font-bold mb-6">+{xpEarned} XP</div>
             </>
           ) : (
