@@ -3,7 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useChapters } from "@/hooks/useChapters";
 import { useProgress } from "@/hooks/useProgress";
 import { motion } from "framer-motion";
-import { ArrowLeft, Check, Lock, Play, BookOpen, Crown, Zap } from "lucide-react";
+import { ArrowLeft, Check, Lock, Play, BookOpen, Crown, Zap, Trophy, ArrowRight, Map } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import OfflineBanner from "@/components/states/OfflineBanner";
 import PremiumDialog from "@/components/PremiumDialog";
