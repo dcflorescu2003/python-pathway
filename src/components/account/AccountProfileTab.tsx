@@ -7,7 +7,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
-import { BookOpen, XCircle, Code, Zap, Flame, Crown, CreditCard, Sparkles, GraduationCap, UserPlus, Shield, Clock, MessageSquare, Check, X, Pencil } from "lucide-react";
+import { BookOpen, XCircle, Code, Zap, Flame, Crown, CreditCard, Sparkles, GraduationCap, UserPlus, Shield, Clock, MessageSquare, Check, X, Pencil, Users, Copy, CheckCircle } from "lucide-react";
+import { useTeacherReferralCodes } from "@/hooks/useTeacher";
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from "@/components/ui/alert-dialog";
 import CouponRedemption from "@/components/CouponRedemption";
 import PremiumDialog from "@/components/PremiumDialog";
@@ -45,6 +46,7 @@ const AccountProfileTab = ({
   const { progress } = useProgress();
   const { data: chapters } = useChapters();
   const { subscribed, subscriptionEnd, source, openPortal } = useSubscription();
+  const { data: referralCodes = [] } = useTeacherReferralCodes();
   const [showPremiumDialog, setShowPremiumDialog] = useState(false);
   const [showTeacherPremiumDialog, setShowTeacherPremiumDialog] = useState(false);
   const [showVerificationForm, setShowVerificationForm] = useState(false);
@@ -231,7 +233,38 @@ const AccountProfileTab = ({
       {teacherStatus ? (
         <div className="space-y-2">
           {teacherStatus === "verified" && (
-            <p className="text-center text-sm font-medium text-green-600">✓ Verificat</p>
+            <p className="text-center text-sm font-medium text-green-600">✓ Profesor Verificat</p>
+          )}
+
+          {teacherStatus === "verified" && referralCodes.length > 0 && (
+            <Card className="border-border">
+              <CardContent className="p-4">
+                <p className="text-sm font-semibold text-foreground mb-2 flex items-center gap-2">
+                  <Users className="h-4 w-4 text-primary" /> Coduri invitație pentru colegi
+                </p>
+                <div className="space-y-2">
+                  {referralCodes.map((c: any) => (
+                    <div key={c.id} className="flex items-center justify-between bg-muted/50 rounded-lg px-3 py-2">
+                      <div>
+                        <span className="text-sm font-mono font-bold text-foreground">{c.code}</span>
+                        {c.used_by ? (
+                          <span className="text-xs text-muted-foreground ml-2 inline-flex items-center gap-1">
+                            <CheckCircle className="h-3 w-3 text-primary" /> Folosit
+                          </span>
+                        ) : (
+                          <span className="text-xs text-primary ml-2">Disponibil</span>
+                        )}
+                      </div>
+                      {!c.used_by && (
+                        <Button size="sm" variant="ghost" className="gap-1" onClick={() => { navigator.clipboard.writeText(c.code); toast.success("Cod copiat!"); }}>
+                          <Copy className="h-3.5 w-3.5" />
+                        </Button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
           )}
 
           <Button
