@@ -1,27 +1,34 @@
 
 
-## Plan: Înlocuire iconiță iOS cu logo PyRo
+## Plan: Auto-submit test la părăsirea aplicației (toleranță 1s)
 
-Folosesc `splash-logo.png` (logo-ul PyRo deja folosit în splash screen) ca sursă pentru iconița iOS.
+### Comportament
+Când elevul părăsește aplicația în timpul unui test, pornește un timer de 1 secundă. Dacă revine în acea secundă, nimic nu se întâmplă. Dacă nu revine, testul se trimite automat.
 
-### Pași
-1. Verific dimensiunile și transparența `src/assets/splash-logo.png`.
-2. Procesez imaginea cu ImageMagick:
-   - Resize la exact 1024×1024
-   - Flatten pe fundal `#0F1219` (fundalul dark al aplicației, consistent cu splash screen-ul)
-   - Elimin canalul alpha (Apple respinge iconițe cu transparență)
-   - Format PNG, sRGB
-3. Suprascriu `ios/App/App/Assets.xcassets/AppIcon.appiconset/AppIcon-512@2x.png`.
-4. Confirm cu `identify` că rezultatul e 1024×1024, fără alpha.
+### Implementare în `src/pages/TakeTestPage.tsx`
 
-### După aplicare (pași pentru tine)
-1. `git pull` în proiectul local
-2. `npx cap sync ios`
-3. În Xcode: **Product → Clean Build Folder**, apoi rebuild
-4. Iconița nouă va apărea pe device/simulator
+**Detectare** (3 surse complementare):
+- `document.visibilitychange` → `document.hidden` (web + mobile)
+- `window.blur` / `window.focus` (desktop alt-tab)
+- `App.addListener('appStateChange')` din `@capacitor/app` (mobile background)
 
-### Fișier modificat
+**Logică toleranță**:
+- La eveniment de „ieșire” (hidden / blur / `!isActive`) → pornesc `setTimeout(autoSubmit, 1000)` și salvez ID-ul în `timeoutRef`.
+- La eveniment de „revenire” (visible / focus / `isActive`) → `clearTimeout(timeoutRef)`.
+- `hasSubmittedRef` previne dublu-submit.
+- Auto-submit apelează aceeași `handleSubmit()` existentă cu răspunsurile curente.
+- Toast: „Test trimis automat — ai părăsit aplicația mai mult de 1 secundă”.
+
+**Avertisment vizibil** deasupra testului:
+> ⚠️ Atenție: dacă părăsești aplicația sau schimbi fereastra mai mult de 1 secundă, testul va fi trimis automat.
+
+**Activare**: doar după ce testul a început (`submission` există) și înainte de submit manual.
+
+**Cleanup**: toate listener-ele + `clearTimeout` în `useEffect` cleanup.
+
+### Fișiere modificate
+
 | Fișier | Schimbare |
 |---|---|
-| `ios/App/App/Assets.xcassets/AppIcon.appiconset/AppIcon-512@2x.png` | Înlocuit cu logo PyRo 1024×1024 pe fundal `#0F1219` |
+| `src/pages/TakeTestPage.tsx` | useEffect cu visibility/blur/appStateChange + setTimeout 1s + ref anti-dublu-submit + avertisment vizibil |
 
