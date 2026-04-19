@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Capacitor } from "@capacitor/core";
-import logo from "@/assets/logo.png";
+import PyroLogo from "@/components/brand/PyroLogo";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { useAuth } from "@/hooks/useAuth";
@@ -203,7 +203,7 @@ const AccountView = () => {
       <div className="flex-1 flex flex-col px-4 pt-6 pb-12 max-w-lg mx-auto w-full">
         {/* Header: Avatar, name, email */}
         <div className="flex flex-col items-center mb-6">
-          <img src={logo} alt="PyRo" className="h-16 w-16 rounded-2xl mb-3" />
+          <PyroLogo size="lg" className="mb-3" />
           {editingName ? (
             <div className="flex items-center gap-2 mb-1">
               <Input
@@ -427,7 +427,7 @@ const AuthPage = () => {
 
       <div className="flex-1 flex flex-col items-center justify-center px-6 pb-12">
         <div className="text-center mb-8">
-          <img src={logo} alt="PyRo" className="h-16 w-16 rounded-2xl mx-auto mb-3" />
+          <PyroLogo size="lg" className="mx-auto mb-3" />
           <h1 className="text-2xl font-bold text-foreground">
             {isLogin ? "Bine ai revenit!" : "Creează un cont"}
           </h1>

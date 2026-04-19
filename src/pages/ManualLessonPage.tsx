@@ -14,6 +14,7 @@ import MatchExercise from "@/components/exercises/MatchExercise";
 import CardExercise from "@/components/exercises/CardExercise";
 import ProblemExercise from "@/components/exercises/ProblemExercise";
 import LoadingScreen from "@/components/states/LoadingScreen";
+import PyroLogo from "@/components/brand/PyroLogo";
 import logo from "@/assets/logo.png";
 import React from "react";
 
@@ -63,18 +64,10 @@ function mapExercise(row: any): Exercise {
   };
 }
 
-const PyRoLogo = () => (
-  <span className="text-xl font-black tracking-tight font-mono">
-    <span className="text-gradient-primary">Py</span>
-    <span className="text-tricolor">Ro</span>
-  </span>
-);
-
 const Header = () => (
   <header className="border-b border-border bg-card/80 backdrop-blur-md">
-    <div className="flex items-center justify-center gap-3 py-4 px-6">
-      <img src={logo} alt="PyRo" className="h-10 w-10 rounded-xl" />
-      <PyRoLogo />
+    <div className="flex items-center justify-center py-4 px-6">
+      <PyroLogo size="md" />
     </div>
   </header>
 );
@@ -260,7 +253,7 @@ const ManualLessonPage = () => {
       <header className="border-b border-border bg-card/80 backdrop-blur-md px-4 py-3 pt-[max(env(safe-area-inset-top),12px)]">
         <div className="flex items-center gap-3">
           <button onClick={() => setStarted(false)} className="touch-target flex items-center justify-center">
-            <img src={logo} alt="PyRo" className="h-8 w-8 rounded-lg" />
+            <PyroLogo size="sm" showWordmark={false} />
           </button>
           <Progress value={progressPercent} className="h-2.5 flex-1" />
           <span className="text-xs text-muted-foreground font-mono">
