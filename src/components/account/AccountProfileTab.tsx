@@ -263,6 +263,9 @@ const AccountProfileTab = ({
                     </div>
                   ))}
                 </div>
+                <p className="text-xs text-muted-foreground mt-3">
+                  Aceste coduri oferă colegilor statut de Profesor Verificat (fără AI).
+                </p>
               </CardContent>
             </Card>
           )}
