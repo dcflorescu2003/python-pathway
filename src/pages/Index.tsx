@@ -484,6 +484,7 @@ const Index = (): JSX.Element => {
       </main>
 
       <PremiumDialog open={showPremium || showPremiumPopup} onOpenChange={(open) => { setShowPremium(open); setShowPremiumPopup(open); }} />
+      <TeacherPremiumDialog open={showTeacherPremium || showTeacherPremiumPopup} onOpenChange={(open) => { setShowTeacherPremium(open); setShowTeacherPremiumPopup(open); }} />
       <LevelRoadmap open={showRoadmap} onOpenChange={setShowRoadmap} currentLevel={level} xpPerLevel={xpPerLevel} />
       <CouponExpiredDialog open={couponExpired} onOpenChange={(open) => { if (!open) dismissCouponExpired(); }} onSubscribe={startCheckout} onStayFree={dismissCouponExpired} couponType={couponType} />
       <LevelUpDialog open={showLevelUp} onOpenChange={setShowLevelUp} levelInfo={levelInfo} newLevel={level} />
