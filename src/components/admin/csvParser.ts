@@ -162,7 +162,7 @@ function rowToExercise(row: Record<string, string>): ParsedExercise {
     }
     case "truefalse": {
       ex.statement = row.statement || row.question || "";
-      ex.question = ex.statement;
+      ex.question = row.question?.trim() || ex.statement;
       if (!ex.statement) { ex.error = "Afirmație lipsă"; break; }
       const val = row.is_true?.toLowerCase().trim();
       if (val === "true" || val === "adevărat" || val === "1" || val === "da") ex.is_true = true;
