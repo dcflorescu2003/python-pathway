@@ -16,6 +16,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Flame, Heart, Zap, Trophy, Crown, School, ChevronDown, Plus, Target, BookOpen, Code } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import PremiumDialog from "@/components/PremiumDialog";
+import TeacherPremiumDialog from "@/components/TeacherPremiumDialog";
 import LevelRoadmap from "@/components/LevelRoadmap";
 import SchoolOnboarding from "@/components/onboarding/SchoolOnboarding";
 import { useInstallPrompt } from "@/hooks/useInstallPrompt";
@@ -51,6 +52,9 @@ const Index = (): JSX.Element => {
   const [showLevelUp, setShowLevelUp] = useState(false);
   const [showStreak, setShowStreak] = useState(false);
   const [bestStreak, setBestStreak] = useState(0);
+  const [teacherStatus, setTeacherStatus] = useState<string | null>(null);
+  const [showTeacherPremium, setShowTeacherPremium] = useState(false);
+  const [showTeacherPremiumPopup, setShowTeacherPremiumPopup] = useState(false);
 
   useEffect(() => {
     if (authLoading) return;
@@ -63,16 +67,17 @@ const Index = (): JSX.Element => {
     }
   }, [authLoading, user, navigate]);
 
-  // Fetch best_streak from profile
+  // Fetch best_streak + teacher_status from profile
   useEffect(() => {
     if (!user) return;
     supabase
       .from("profiles")
-      .select("best_streak")
+      .select("best_streak, teacher_status")
       .eq("user_id", user.id)
       .single()
       .then(({ data }) => {
         if (data?.best_streak != null) setBestStreak(data.best_streak);
+        if (data?.teacher_status != null) setTeacherStatus(data.teacher_status);
       });
   }, [user]);
 
@@ -147,11 +152,15 @@ const Index = (): JSX.Element => {
     const lastShown = localStorage.getItem("pyro-premium-popup-date");
     if (lastShown === today) return;
     const timer = setTimeout(() => {
-      setShowPremiumPopup(true);
+      if (teacherStatus === "verified") {
+        setShowTeacherPremiumPopup(true);
+      } else {
+        setShowPremiumPopup(true);
+      }
       localStorage.setItem("pyro-premium-popup-date", today);
     }, 1500);
     return () => clearTimeout(timer);
-  }, [user, progress.isPremium, authLoading]);
+  }, [user, progress.isPremium, authLoading, teacherStatus]);
 
   // Level Up dialog: show exactly once per level reached (lifetime, per user)
   const levelInitialized = useRef(false);
@@ -247,7 +256,7 @@ const Index = (): JSX.Element => {
           <div className="flex items-center gap-3">
             <NotificationBell />
             {!progress.isPremium && (
-              <button onClick={() => setShowPremium(true)} className="text-yellow-500 active:scale-95 transition-transform">
+              <button onClick={() => teacherStatus === "verified" ? setShowTeacherPremium(true) : setShowPremium(true)} className="text-yellow-500 active:scale-95 transition-transform">
                 <Crown className="h-5 w-5" />
               </button>
             )}
@@ -475,6 +484,7 @@ const Index = (): JSX.Element => {
       </main>
 
       <PremiumDialog open={showPremium || showPremiumPopup} onOpenChange={(open) => { setShowPremium(open); setShowPremiumPopup(open); }} />
+      <TeacherPremiumDialog open={showTeacherPremium || showTeacherPremiumPopup} onOpenChange={(open) => { setShowTeacherPremium(open); setShowTeacherPremiumPopup(open); }} />
       <LevelRoadmap open={showRoadmap} onOpenChange={setShowRoadmap} currentLevel={level} xpPerLevel={xpPerLevel} />
       <CouponExpiredDialog open={couponExpired} onOpenChange={(open) => { if (!open) dismissCouponExpired(); }} onSubscribe={startCheckout} onStayFree={dismissCouponExpired} couponType={couponType} />
       <LevelUpDialog open={showLevelUp} onOpenChange={setShowLevelUp} levelInfo={levelInfo} newLevel={level} />

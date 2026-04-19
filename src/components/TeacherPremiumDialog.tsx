@@ -1,6 +1,6 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Loader2, Settings, Sparkles, FileText, Brain, BarChart3, CheckCircle2, Crown } from "lucide-react";
+import { Loader2, Settings, Sparkles, FileText, Brain, BarChart3, CheckCircle2, Crown, Heart } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/useAuth";
 import { useSubscription, TEACHER_MONTHLY_PRICE, TEACHER_YEARLY_PRICE } from "@/hooks/useSubscription";
@@ -72,6 +72,9 @@ const TeacherPremiumDialog = ({ open, onOpenChange }: TeacherPremiumDialogProps)
                   Activ până la: {new Date(subscriptionEnd).toLocaleDateString("ro-RO")}
                 </p>
               )}
+              <p className="text-sm text-destructive flex items-center justify-center gap-1.5 font-medium">
+                <Heart className="h-4 w-4 fill-destructive" /> Inimi nelimitate active
+              </p>
               <Button variant="outline" onClick={handleManage} className="mt-2 gap-2">
                 <Settings className="h-4 w-4" />
                 Gestionează abonamentul
@@ -114,6 +117,10 @@ const TeacherPremiumDialog = ({ open, onOpenChange }: TeacherPremiumDialogProps)
                   <div className="flex items-start gap-2">
                     <Sparkles className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
                     <p className="text-xs text-foreground/70"><span className="font-semibold text-foreground">Corectura probleme</span> folosind AI</p>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <Heart className="h-4 w-4 text-destructive mt-0.5 flex-shrink-0 fill-destructive" />
+                    <p className="text-xs text-foreground/70"><span className="font-semibold text-foreground">Inimi nelimitate</span> — exersează fără limite</p>
                   </div>
                 </div>
               </div>
