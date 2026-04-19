@@ -7,7 +7,8 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Trash2, Plus } from "lucide-react";
-import MarkdownEditor from "./MarkdownEditor";
+import RichTextEditor from "./RichTextEditor";
+import CodeBlockEditor from "./CodeBlockEditor";
 
 interface Props {
   exercise?: Exercise;
@@ -117,11 +118,10 @@ const ExerciseEditor = ({ exercise, onSave, onCancel, lessonId, nextIndex }: Pro
     <div className="space-y-4">
       <div>
         <Label className="text-foreground">Cod inițial (opțional)</Label>
-        <Textarea
+        <CodeBlockEditor
           value={data.codeTemplate || ""}
-          onChange={(e) => updateField("codeTemplate", e.target.value)}
+          onChange={(v) => updateField("codeTemplate", v)}
           placeholder="# Scrie funcția ta aici..."
-          className="font-mono text-sm"
           rows={4}
         />
       </div>
@@ -250,11 +250,10 @@ const ExerciseEditor = ({ exercise, onSave, onCancel, lessonId, nextIndex }: Pro
     <div className="space-y-3">
       <div>
         <Label className="text-foreground">Șablon cod (folosește ___ pentru spații goale)</Label>
-        <Textarea
+        <CodeBlockEditor
           value={data.codeTemplate || ""}
-          onChange={(e) => updateField("codeTemplate", e.target.value)}
-          placeholder='x = ___\nprint(___)'
-          className="font-mono text-sm"
+          onChange={(v) => updateField("codeTemplate", v)}
+          placeholder={'x = ___\nprint(___)'}
           rows={4}
         />
       </div>
@@ -361,11 +360,11 @@ const ExerciseEditor = ({ exercise, onSave, onCancel, lessonId, nextIndex }: Pro
     <div className="space-y-3">
       <div>
         <Label className="text-foreground">Afirmație</Label>
-        <Textarea
+        <RichTextEditor
           value={data.statement || ""}
-          onChange={(e) => updateField("statement", e.target.value)}
+          onChange={(v) => updateField("statement", v)}
           placeholder="Afirmația de evaluat..."
-          rows={2}
+          rows={3}
         />
       </div>
       <div>
@@ -472,11 +471,11 @@ const ExerciseEditor = ({ exercise, onSave, onCancel, lessonId, nextIndex }: Pro
 
       <div>
         <Label className="text-foreground">{data.type === "card" ? "Titlu cartonaș" : "Întrebare"}</Label>
-        <Textarea
+        <RichTextEditor
           value={data.question}
-          onChange={(e) => updateField("question", e.target.value)}
+          onChange={(v) => updateField("question", v)}
           placeholder={data.type === "card" ? "Titlul cartonașului..." : "Scrie întrebarea aici..."}
-          rows={2}
+          rows={data.type === "card" ? 2 : 3}
         />
       </div>
 
@@ -490,11 +489,10 @@ const ExerciseEditor = ({ exercise, onSave, onCancel, lessonId, nextIndex }: Pro
       {data.type === "card" && (
         <div>
           <Label className="text-foreground">Cod Python (opțional)</Label>
-          <Textarea
+          <CodeBlockEditor
             value={data.codeTemplate || ""}
-            onChange={(e) => updateField("codeTemplate", e.target.value)}
+            onChange={(v) => updateField("codeTemplate", v)}
             placeholder="print('Hello!')"
-            className="font-mono text-sm"
             rows={4}
           />
         </div>
@@ -502,21 +500,12 @@ const ExerciseEditor = ({ exercise, onSave, onCancel, lessonId, nextIndex }: Pro
 
       <div>
         <Label className="text-foreground">{data.type === "card" ? "Explicație / Conținut" : "Explicație (apare după răspuns)"}</Label>
-        {data.type === "card" ? (
-          <MarkdownEditor
-            value={data.explanation || ""}
-            onChange={(v) => updateField("explanation", v)}
-            placeholder="Textul explicativ al cartonașului..."
-            rows={6}
-          />
-        ) : (
-          <Textarea
-            value={data.explanation || ""}
-            onChange={(e) => updateField("explanation", e.target.value)}
-            placeholder="Explică de ce răspunsul corect este..."
-            rows={2}
-          />
-        )}
+        <RichTextEditor
+          value={data.explanation || ""}
+          onChange={(v) => updateField("explanation", v)}
+          placeholder={data.type === "card" ? "Textul explicativ al cartonașului..." : "Explică de ce răspunsul corect este..."}
+          rows={data.type === "card" ? 6 : 3}
+        />
       </div>
 
       <div className="flex gap-3 pt-2">

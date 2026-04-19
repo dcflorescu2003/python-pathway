@@ -2,6 +2,7 @@ import { useState, useCallback, useRef } from "react";
 import { Exercise } from "@/data/courses";
 import { Button } from "@/components/ui/button";
 import { GripVertical } from "lucide-react";
+import RichContent from "@/components/RichContent";
 
 interface Props {
   exercise: Exercise;
@@ -128,7 +129,7 @@ const OrderExercise = ({ exercise, onAnswer, feedback }: Props) => {
 
   return (
     <div>
-      <p className="text-foreground font-bold mb-6 text-base">{exercise.question}</p>
+      <div className="mb-6 text-foreground font-bold text-base"><RichContent>{exercise.question}</RichContent></div>
       <div className="space-y-2 mb-6 mx-4" ref={containerRef}>
         {items.map((item, idx) => {
           const hasGroups = items.some(it => it.group !== undefined);

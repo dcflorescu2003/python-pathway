@@ -13,6 +13,7 @@ import TrueFalseExercise from "@/components/exercises/TrueFalseExercise";
 import MatchExercise from "@/components/exercises/MatchExercise";
 import CardExercise from "@/components/exercises/CardExercise";
 import ProblemExercise from "@/components/exercises/ProblemExercise";
+import RichContent from "@/components/RichContent";
 import LoadingScreen from "@/components/states/LoadingScreen";
 import PyroLogo from "@/components/brand/PyroLogo";
 import React from "react";
@@ -297,7 +298,10 @@ const ManualLessonPage = () => {
                 {feedback === "correct" ? "✅ Corect!" : "❌ Greșit!"}
               </p>
               {lastExplanation && (
-                <p className="text-sm text-foreground/70 text-center mb-3">💡 {lastExplanation}</p>
+                <div className="text-sm text-foreground/70 text-center mb-3 flex justify-center">
+                  <span className="mr-1">💡</span>
+                  <RichContent inline className="prose-p:inline">{lastExplanation}</RichContent>
+                </div>
               )}
               <Button
                 onClick={handleContinue}

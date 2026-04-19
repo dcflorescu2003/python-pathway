@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Exercise } from "@/data/courses";
 import { Button } from "@/components/ui/button";
+import RichContent from "@/components/RichContent";
 
 interface Props {
   exercise: Exercise;
@@ -18,7 +19,7 @@ const QuizExercise = ({ exercise, onAnswer, feedback }: Props) => {
 
   return (
     <div>
-      <pre className="code-block mb-6 whitespace-pre-wrap text-foreground">{exercise.question}</pre>
+      <div className="mb-6 text-foreground"><RichContent>{exercise.question}</RichContent></div>
       <div className="space-y-3 mb-6">
         {exercise.options?.map((opt) => {
           const isCorrectOption = opt.id === exercise.correctOptionId;

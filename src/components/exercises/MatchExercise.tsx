@@ -3,6 +3,7 @@ import { Exercise } from "@/hooks/useChapters";
 import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
 import { Check, X, Link2, RotateCcw } from "lucide-react";
+import RichContent from "@/components/RichContent";
 
 const MATCHED_STYLE = "border-muted-foreground/30 bg-muted/50 text-muted-foreground shadow-sm opacity-70";
 
@@ -128,7 +129,7 @@ const MatchExercise = ({ exercise, onAnswer, feedback }: Props) => {
   return (
     <div className="space-y-5">
       <div>
-        <h3 className="text-lg font-bold text-foreground">{exercise.question}</h3>
+        <div className="text-lg font-bold text-foreground"><RichContent>{exercise.question}</RichContent></div>
         <p className="text-sm text-muted-foreground mt-1">
           Selectează un element din stânga, apoi perechea lui din dreapta.
         </p>
