@@ -55,6 +55,7 @@ const TestBuilder = ({ onBack, editTestId, teacherStatus }: TestBuilderProps) =>
   const [variantMode, setVariantMode] = useState<string>("shuffle");
   const [items, setItems] = useState<TestItem[]>([]);
   const [allowRunTests, setAllowRunTests] = useState(false);
+  const [requireFullscreen, setRequireFullscreen] = useState(false);
   const [editLoaded, setEditLoaded] = useState(false);
   const [aiGradingItemIds, setAiGradingItemIds] = useState<string[]>([]);
 
@@ -270,6 +271,7 @@ const TestBuilder = ({ onBack, editTestId, teacherStatus }: TestBuilderProps) =>
         setTitle(test.title);
         setVariantMode(test.variant_mode);
         setAllowRunTests(test.allow_run_tests ?? false);
+        setRequireFullscreen((test as any).require_fullscreen ?? false);
         setAiGradingItemIds((test as any).ai_grading_item_ids ?? []);
         if (test.time_limit_minutes) {
           setTimeLimitEnabled(true);
@@ -312,6 +314,7 @@ const TestBuilder = ({ onBack, editTestId, teacherStatus }: TestBuilderProps) =>
           variant_mode: variantMode,
           items,
           allow_run_tests: allowRunTests,
+          require_fullscreen: requireFullscreen,
           ai_grading_item_ids: aiGradingItemIds,
         });
         toast.success("Test actualizat!");
@@ -322,6 +325,7 @@ const TestBuilder = ({ onBack, editTestId, teacherStatus }: TestBuilderProps) =>
           variant_mode: variantMode,
           items,
           allow_run_tests: allowRunTests,
+          require_fullscreen: requireFullscreen,
           ai_grading_item_ids: aiGradingItemIds,
         });
         toast.success("Test creat cu succes!");
@@ -547,6 +551,10 @@ const TestBuilder = ({ onBack, editTestId, teacherStatus }: TestBuilderProps) =>
           <div className="flex items-center gap-2">
             <Switch id="allow-run-tests" checked={allowRunTests} onCheckedChange={setAllowRunTests} />
             <Label htmlFor="allow-run-tests" className="text-sm">Permite rularea testelor la probleme</Label>
+          </div>
+          <div className="flex items-center gap-2">
+            <Switch id="require-fullscreen" checked={requireFullscreen} onCheckedChange={setRequireFullscreen} />
+            <Label htmlFor="require-fullscreen" className="text-sm">Mod fullscreen obligatoriu (ieșirea din fullscreen trimite testul)</Label>
           </div>
         </CardContent>
       </Card>
