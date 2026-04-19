@@ -162,9 +162,19 @@ export function useProgress() {
           .select("lesson_id, score")
           .eq("user_id", user.id);
 
+        const { data: skipUnlocks } = await supabase
+          .from("skip_unlocked_lessons")
+          .select("lesson_id")
+          .eq("user_id", user.id);
+
         const cloudCompleted: Record<string, { score: number; completed: boolean }> = {};
         lessons?.forEach((lesson) => {
           cloudCompleted[lesson.lesson_id] = { score: lesson.score, completed: true };
+        });
+
+        const cloudSkipUnlocks: Record<string, true> = {};
+        skipUnlocks?.forEach((row) => {
+          cloudSkipUnlocks[row.lesson_id] = true;
         });
 
         const cloudProgress: UserProgress = {
@@ -174,11 +184,12 @@ export function useProgress() {
           isPremium: profile?.is_premium ?? false,
           lastActivityDate: profile?.last_activity_date ?? getTodayDate(),
           completedLessons: cloudCompleted,
+          skipUnlockedLessons: cloudSkipUnlocks,
           livesUpdatedAt: profile?.lives_updated_at ?? new Date().toISOString(),
         };
 
         const localProgress = loadLocalProgress(user.id);
-        const hasCloudProgress = cloudProgress.xp > 0 || Object.keys(cloudCompleted).length > 0 || cloudProgress.isPremium;
+        const hasCloudProgress = cloudProgress.xp > 0 || Object.keys(cloudCompleted).length > 0 || cloudProgress.isPremium || Object.keys(cloudSkipUnlocks).length > 0;
         const finalProgress = hasCloudProgress
           ? checkStreakExpiry(mergeProgress(localProgress, cloudProgress))
           : checkStreakExpiry(cloudProgress);
