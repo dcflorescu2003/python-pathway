@@ -159,12 +159,15 @@ const TeacherWizard = ({ onComplete, onCancel }: TeacherWizardProps) => {
               </div>
 
               <Input
-                placeholder="Ex: Prof. Maria Ionescu"
+                placeholder="Nume Prenume (ex: Popescu Andrei)"
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
                 className="text-center"
                 autoFocus
               />
+              <p className="text-[10px] text-muted-foreground text-center">
+                Folosește formatul Nume Prenume pentru a apărea corect sortat în cataloage.
+              </p>
               {fullName.trim().length > 0 && fullName.trim().length < 3 && (
                 <p className="text-xs text-destructive text-center">Minim 3 caractere.</p>
               )}

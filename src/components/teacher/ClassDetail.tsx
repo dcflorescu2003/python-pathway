@@ -12,6 +12,7 @@ import ChallengeAssigner from "./ChallengeAssigner";
 import ClassAnalytics from "./ClassAnalytics";
 import { ArrowLeft, Copy, Trash2, Target, BookOpen, Code, Zap, Flame, CheckCircle, XCircle, ChevronDown, ChevronUp, BarChart3, Sparkles } from "lucide-react";
 import { toast } from "sonner";
+import { sortByDisplayName } from "@/lib/sortStudents";
 
 interface ClassDetailProps {
   classId: string;
@@ -33,6 +34,7 @@ const ClassDetail = ({ classId, className: clsName, joinCode, onBack }: ClassDet
 
   // Fetch completed_lessons for all students in the class
   const studentIds = useMemo(() => members.map((m) => m.student_id), [members]);
+  const sortedMembers = useMemo(() => sortByDisplayName(members), [members]);
   const { data: allCompletedLessons = [] } = useQuery({
     queryKey: ["class-completed-lessons", classId, studentIds],
     queryFn: async () => {
@@ -135,7 +137,7 @@ const ClassDetail = ({ classId, className: clsName, joinCode, onBack }: ClassDet
               <p className="text-sm text-muted-foreground">Niciun elev înscris încă.</p>
             ) : (
               <div className="space-y-2">
-                {members.map((m) => (
+                {sortedMembers.map((m) => (
                   <Card key={m.id}>
                     <CardContent className="p-3 flex items-center justify-between">
                       <span className="text-sm font-medium text-foreground">
@@ -185,7 +187,7 @@ const ClassDetail = ({ classId, className: clsName, joinCode, onBack }: ClassDet
               <div className="space-y-2">
                 {challenges.map((ch) => {
                   const isExpanded = expandedChallenge === ch.id;
-                  const completedCount = members.filter(
+                  const completedCount = sortedMembers.filter(
                     (m) => getStudentStatus(ch.item_type, ch.item_id, m.student_id) !== null
                   ).length;
 
@@ -228,7 +230,7 @@ const ClassDetail = ({ classId, className: clsName, joinCode, onBack }: ClassDet
 
                         {isExpanded && members.length > 0 && (
                           <div className="border-t border-border px-3 pb-3 pt-2 space-y-1.5">
-                            {members.map((m) => {
+                            {sortedMembers.map((m) => {
                               const status = getStudentStatus(ch.item_type, ch.item_id, m.student_id);
                               const completed = status !== null;
                               const displayScore = completed ? getDisplayPercent(ch.item_type, ch.item_id, status.score) : 0;

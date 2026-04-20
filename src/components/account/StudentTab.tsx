@@ -222,7 +222,7 @@ const StudentTab = ({ memberClassName, onLeaveClass }: StudentTabProps) => {
                   value={catalogName}
                   onChange={(e) => setCatalogName(e.target.value)}
                   className="h-7 text-sm flex-1"
-                  placeholder="Prenume Nume"
+                  placeholder="Nume Prenume (ex: Popescu Andrei)"
                   autoFocus
                 />
                 <button
@@ -252,6 +252,11 @@ const StudentTab = ({ memberClassName, onLeaveClass }: StudentTabProps) => {
             )}
           </div>
           <p className="text-xs text-muted-foreground">🔒 Vizibil doar profesorului tău</p>
+          {editingCatalogName && (
+            <p className="text-[10px] text-muted-foreground">
+              Folosește formatul Nume Prenume pentru a apărea corect sortat în catalog.
+            </p>
+          )}
         </CardContent>
       </Card>
 
