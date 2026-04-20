@@ -76,18 +76,41 @@ export async function initPlayBilling(userId?: string): Promise<void> {
     // Listen for approved purchases → verify with backend
     store.when().approved(async (transaction: any) => {
       try {
+        const native = transaction.nativePurchase || {};
         const purchaseToken =
-          transaction.transactionId || transaction.nativePurchase?.purchaseToken;
+          native.purchaseToken || transaction.transactionId;
         const products = transaction.products || [];
-        const productId = products[0]?.id || transaction.products?.[0]?.id;
-        const planId = products[0]?.offerId || "";
+        const productId =
+          native.productId || products[0]?.id || products[0]?.productId;
+
+        // Google Play wants basePlanId (e.g. "monthly"/"yearly"), NOT offerId
+        let planId =
+          native.basePlanId ||
+          products[0]?.basePlanId ||
+          products[0]?.planId ||
+          "";
+
+        // Fallback: try to infer from product offers via the matched offerId
+        if (!planId) {
+          const offerId = products[0]?.offerId || native.offerId;
+          const product = store.get(productId, Platform.GOOGLE_PLAY);
+          const matchedOffer =
+            product?.offers?.find((o: any) => o.id === offerId) ||
+            product?.offers?.[0];
+          planId =
+            matchedOffer?.basePlanId ||
+            (matchedOffer?.id?.includes("yearly") ? "yearly" : "") ||
+            (matchedOffer?.id?.includes("monthly") ? "monthly" : "");
+        }
+
+        console.log("[playBilling] approved tx", { productId, planId, hasToken: !!purchaseToken });
 
         if (purchaseToken && productId) {
           await verifyPurchaseOnServer({
             purchaseToken,
             productId,
             planId,
-            orderId: transaction.nativePurchase?.orderId,
+            orderId: native.orderId,
           });
         }
         await transaction.finish();

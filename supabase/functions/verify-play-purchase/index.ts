@@ -106,7 +106,7 @@ serve(async (req) => {
     const { purchaseToken, productId, planId, orderId } = body;
     if (!purchaseToken || !productId) throw new Error("Missing purchaseToken or productId");
 
-    log("verifying", { userId, productId, planId });
+    log("verifying", { userId, productId, planId, tokenLen: purchaseToken.length, tokenPrefix: purchaseToken.slice(0, 12) });
 
     const saJson = Deno.env.get("GOOGLE_PLAY_SERVICE_ACCOUNT_JSON");
     let expiryTime: Date;
