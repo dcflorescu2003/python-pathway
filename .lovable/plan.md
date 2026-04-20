@@ -1,81 +1,76 @@
-## Plan: Integrare AdMob pentru refill inimi prin reclamă rewarded
 
-### Ce facem
 
-Integrăm Google AdMob (rewarded video ads) în aplicația Capacitor, ca elevii fără Premium să poată câștiga 1 inimă vizionând o reclamă scurtă (~30s).
+User provided AdMob App ID: `ca-app-pub-8441862030200888~2393829276`. Need to:
+1. Replace test App ID in AndroidManifest.xml and Info.plist with this real one.
+2. Give detailed step-by-step instructions on what to do next in AdMob console (create ad units), and locally (npm install, cap sync, rebuild).
 
-### Arhitectură
+Ad Unit IDs (rewarded) — user hasn't provided yet. Will keep Google test rewarded unit IDs in `useAdMob.ts` until they create the rewarded ad units in AdMob console. That's safe and recommended.
 
-**Plugin folosit:** `@capacitor-community/admob` — oficial, suportă rewarded ads pe Android + iOS, integrare nativă curată.
+## Plan: Configurare AdMob App ID + pași următori
 
-**Flux UX:**
+### 1. Înlocuire App ID în cod (fac eu)
 
-1. Elev fără Premium încearcă să intre într-o lecție cu 0 inimi → dialog existent „Fără inimi"
-2. Adăugăm buton nou: **„Vizionează o reclamă pentru + 5 inimi ❤️"**
-3. Click → se afișează rewarded ad (full screen)
-4. La eveniment `Rewarded` (utilizatorul a vizionat complet) → +5 inimă în DB, sau 5daca are deja inimi
-5. Limită: max **2 reclame/zi** per user (anti-abuz), tracked în `profiles` (coloană nouă)
-6. Premium nu vede butonul (au inimi infinite)
+Înlocuiesc App ID-ul de test cu cel real (`ca-app-pub-8441862030200888~2393829276`) în:
 
-### Pași de implementare
+- **`android/app/src/main/AndroidManifest.xml`** — meta-data `com.google.android.gms.ads.APPLICATION_ID`
+- **`ios/App/App/Info.plist`** — cheia `GADApplicationIdentifier`
 
-**1. Instalare plugin**
+Las **Ad Unit IDs** (din `src/hooks/useAdMob.ts`) pe **test IDs Google** pentru moment — reclamele reale apar doar după ce creezi unități de reclamă în consola AdMob (pas 3 mai jos) și mi le trimiți.
 
-- `@capacitor-community/admob`
-- `npx cap sync` (utilizatorul rulează local după pull)
+### 2. Ce trebuie să faci tu local (după ce dau git push)
 
-**2. Configurare Android**
+```bash
+git pull
+npm install
+npm run build
+npx cap sync android
+npx cap sync ios   # doar dacă ai Mac cu Xcode
+```
 
-- `android/app/src/main/AndroidManifest.xml`: adaug `<meta-data android:name="com.google.android.gms.ads.APPLICATION_ID" android:value="ca-app-pub-XXXX~YYYY"/>`
-- `AdMob App ID` — îți cer să-l furnizezi (din contul AdMob)
+`cap sync` copiază App ID-ul nou în proiectele native. Fără el, schimbarea din `Info.plist` / `AndroidManifest.xml` nu se propagă.
 
-**3. Configurare iOS**
+### 3. Ce trebuie să faci în consola AdMob (https://apps.admob.com)
 
-- `ios/App/App/Info.plist`: adaug `GADApplicationIdentifier` + `SKAdNetworkItems`
-- Config NSUserTrackingUsageDescription pentru iOS 14+ (consimțământ tracking)
+Acum ai aplicația creată. Mai trebuie să creezi **unități de reclamă rewarded**:
 
-**4. Cod frontend (web fallback inclus)**
+1. AdMob → **Apps** → selectează aplicația PyRo (Android)
+2. Click **Ad units** → **Add ad unit**
+3. Alege **Rewarded** (NU rewarded interstitial, NU banner)
+4. Nume: `PyRo Rewarded Lives` (sau orice)
+5. Tipul recompensei: `Lives` cu valoare `5`
+6. Salvează → primești un ID de forma `ca-app-pub-8441862030200888/XXXXXXXXXX`
+7. **Repetă** pentru iOS dacă publici și pe App Store
 
-- Hook nou: `src/hooks/useAdMob.ts` — inițializare, request consent, show rewarded
-- Pe web (preview Lovable): butonul e ascuns sau afișează „Disponibil doar în aplicația mobilă"
-- Pe native: real ads (test IDs în development, production IDs în release)
+Trimite-mi cele 1-2 ID-uri (`ca-app-pub-8441862030200888/...`) și le pun în `useAdMob.ts` în locul ID-urilor de test.
 
-**5. UI în dialogul „Fără inimi"**
+### 4. Linkează aplicația cu Google Play (recomandat)
 
-- Identific dialogul actual (probabil în `useProgress.ts` sau component dedicat — verific la implementare)
-- Adaug buton rewarded ad sub mesaj, doar dacă: `!isPremium && !isNative ? hidden : visible`
-- Loading state cât se încarcă reclama; toast la succes/eșec
+În AdMob: **Apps → PyRo → App settings → Link to app store**.
 
-**6. Backend (DB + Edge)**
+- Necesar ca AdMob să-ți afișeze reclame reale în producție (altfel rămân la fill rate redus)
+- Funcționează doar după ce app-ul tău e listat în Google Play Console (chiar și internal testing e ok)
 
-- Migration: adaug în `profiles` coloanele `ads_watched_today` (int) + `ads_last_reset` (date)
-- Edge function nouă: `reward-life` — verifică limită 5/zi, resetează zilnic, incrementează inimi
-- RLS: doar user-ul propriu poate apela; edge function folosește service_role pentru update
+### 5. Testare
 
-**7. Test IDs vs Production IDs**
+**În development (acum, cu test IDs):**
+- Build app, instalează pe telefon → în dialogul „Fără inimi" apare butonul „Vizionează o reclamă pentru +5 inimi"
+- Reclama afișată are eticheta **„Test Ad"** — normal, înseamnă că funcționează corect
+- După vizionare → +5 vieți, contor `ads_watched_today` incrementat în DB
 
-- În development: folosim Google test ad unit IDs (oficial, sigure)
-- În production: utilizatorul îmi dă unit ID-urile reale după ce-și creează app-ul în AdMob
+**În producție (după ce-mi trimiți Ad Unit IDs reale):**
+- Înlocuiesc constantele `PROD_REWARDED_ANDROID` / `PROD_REWARDED_IOS` în `useAdMob.ts`
+- Build release AAB → upload Google Play
 
-### Ce am nevoie de la tine ulterior (după aprobare plan)
+### 6. ⚠️ Atenție important
 
-1. **AdMob App ID** (Android + iOS) — din panoul AdMob → App settings
-2. **Rewarded Ad Unit ID** (Android + iOS) — din panoul AdMob → Ad units
+- **NU** da click pe propriile reclame reale (te banează AdMob permanent). Pentru testare folosește mereu test IDs până ești în Play Store.
+- Plățile AdMob încep doar după ce atingi pragul de 100 USD acumulați.
+- Politica Google Play: Rewarded ads sunt **permise și încurajate** (vs interstitiale care irită utilizatorii).
 
-Dacă nu le ai încă, începem cu test IDs și înlocuim înainte de release în Play Store.
+### Fișiere modificate (pasul 1, fac eu acum după aprobare)
 
-### Fișiere afectate
+- `android/app/src/main/AndroidManifest.xml`
+- `ios/App/App/Info.plist`
 
-- `package.json` — dependență nouă
-- `android/app/src/main/AndroidManifest.xml` — App ID
-- `ios/App/App/Info.plist` — App ID + SKAdNetwork + tracking permission
-- `src/hooks/useAdMob.ts` — nou
-- Componenta dialog „Fără inimi" — buton nou
-- `supabase/functions/reward-life/index.ts` — nou
-- Migration SQL — coloane noi în `profiles`
+Atât. Restul rămâne identic — backend-ul (`reward-life`), butonul, hook-ul sunt deja gata.
 
-### Note
-
-- Nu mențin reclame interstițiale/banner — doar **rewarded** (alegere user, nu intruziv)
-- Compatibil cu politica Google Play (rewarded e încurajat)
-- Pe iOS necesită App Tracking Transparency prompt — handled de plugin
