@@ -34,6 +34,8 @@ const AccountView = () => {
   const [joinLoading, setJoinLoading] = useState(false);
   const [showNameDialog, setShowNameDialog] = useState(false);
   const [fullName, setFullName] = useState("");
+  const [joinLastName, setJoinLastName] = useState("");
+  const [joinFirstName, setJoinFirstName] = useState("");
   const [pendingClassId, setPendingClassId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState(false);
   const [editName, setEditName] = useState("");
