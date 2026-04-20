@@ -1,99 +1,47 @@
 
 
-## Integrare Google Play Billing nativă pentru Android
+## Adaugă secretul `GOOGLE_PLAY_SERVICE_ACCOUNT_JSON` și activează verificarea Play Billing
 
-Cele 4 planuri sunt active în Play Console. Acum legăm aplicația de ele, păstrând Stripe pentru web.
+Service account-ul `pyro-play-billing` e activ în Play Console. Mai trebuie un singur pas tehnic înainte să poți testa: secretul cu cheia JSON trebuie pus în Lovable Cloud ca să poată edge function-ul `verify-play-purchase` să cheme Google Play Developer API.
 
-### Strategia
+### Ce voi face
 
-- **Web (browser/PWA)**: rămâne Stripe — flux neschimbat
-- **Android nativ (Capacitor)**: Google Play Billing prin plugin nativ
-- Detectare runtime: `Capacitor.getPlatform() === 'android'` → ascunde butoanele Stripe, arată butoanele Play Billing
-- iOS: rămâne Stripe momentan (vom adăuga StoreKit ulterior, separat)
+1. **Declanșa dialogul de adăugare secret** pentru `GOOGLE_PLAY_SERVICE_ACCOUNT_JSON` în Lovable Cloud.
+2. Aștepta să introduci valoarea (conținutul integral al fișierului `.json` descărcat din Google Cloud Console).
 
-### Plugin recomandat
+### Ce trebuie să faci tu
 
-`@capgo/capacitor-purchases` (RevenueCat-free, gratuit, mentenanță activă, suportă Billing Library 7.x — exact versiunea pe care o avem deja în `build.gradle`).
+1. Deschide fișierul `.json` cu cheia service account-ului (cel descărcat când ai creat `pyro-play-billing` în Google Cloud).
+2. Selectează **tot conținutul** — de la prima `{` până la ultima `}`, inclusiv `private_key`, `client_email`, etc.
+3. Lipește în câmpul de valoare al secretului.
+4. Salvează.
 
-Alternativă: `cordova-plugin-purchase` — mai vechi dar bine testat. Aleg `@capgo/capacitor-purchases` pentru API modern Capacitor 6.
+### De ce e necesar
 
-### Modificări
+`supabase/functions/verify-play-purchase/index.ts` deja:
+- citește `Deno.env.get("GOOGLE_PLAY_SERVICE_ACCOUNT_JSON")`
+- semnează un JWT RS256 cu `private_key`
+- schimbă JWT-ul cu un access token OAuth2
+- cheamă `androidpublisher.googleapis.com/.../subscriptionsv2/tokens/{purchaseToken}`
+- validează `subscriptionState === SUBSCRIPTION_STATE_ACTIVE`
+- scrie în `play_billing_subscriptions` și marchează `profiles.is_premium = true`
 
-**1. Instalare plugin**
-```
-npm install @capgo/capacitor-purchases
-npx cap sync android
-```
+Fără secret, edge function-ul intră în ramura „unverified fallback" (acordă premium optimist 30/365 zile fără să întrebe Google) — nu vrem asta în producție.
 
-**2. `src/lib/playBilling.ts`** (nou)
-- Wrapper peste plugin
-- Funcții: `initPlayBilling()`, `getProducts()`, `purchaseSubscription(productId, planId)`, `restorePurchases()`
-- Mapare produse:
-  ```ts
-  ANDROID_PRODUCTS = {
-    student_monthly: { productId: 'student_premium', planId: 'monthly' },
-    student_yearly:  { productId: 'student_premium', planId: 'yearly' },
-    teacher_monthly: { productId: 'teacher_premium', planId: 'monthly' },
-    teacher_yearly:  { productId: 'teacher_premium', planId: 'yearly' },
-  }
-  ```
+### După ce salvezi secretul
 
-**3. `supabase/functions/verify-play-purchase/index.ts`** (nou edge function)
-- Primește `purchaseToken` + `productId` de la app după achiziție
-- Validează tokenul cu Google Play Developer API (server-to-server)
-- La verificare reușită → upsert în `subscribers` cu `source = 'play_billing'`, `subscribed = true`, `subscription_end = expiryTime`, `product_id = student_premium` sau `teacher_premium`
-- Necesită secret nou: **`GOOGLE_PLAY_SERVICE_ACCOUNT_JSON`** (cheie service account din Google Cloud Console cu rol „Pub/Sub Subscriber" + acces „Financial data, orders, and cancellation survey responses" în Play Console)
+1. Build AAB nou (sau folosește build-ul curent dacă produsele Play sunt deja propagate).
+2. Upload pe pista **Internal testing** în Play Console.
+3. Adaugă-ți contul Google ca **License tester**: Play Console → Setup → License testing.
+4. Instalează din linkul de internal testing pe telefon.
+5. Deschide PyRo → Cont → Premium → alege un plan.
+6. Confirmă plata test (nu se face debitare reală pentru License testers).
+7. Verifici în logs că apare `[VERIFY-PLAY-PURCHASE] Play API response { state: "SUBSCRIPTION_STATE_ACTIVE" }`.
+8. Verifici în profil că badge-ul Premium apare și că rândul există în `play_billing_subscriptions`.
 
-**4. `src/hooks/useSubscription.ts`** — extindere
-- `startCheckout(priceId)` devine smart:
-  - Dacă `Capacitor.getPlatform() === 'android'` → apelează `purchaseSubscription()` din `playBilling.ts` în loc de Stripe checkout
-  - Altfel → Stripe (comportament actual)
-- După achiziție Play Billing reușită → invocă `verify-play-purchase` → apoi `checkSubscription(true)` pentru refresh
-- Adaug funcție `restorePurchases()` (Android only) pentru recuperare achiziții (cerință Google Play)
+### Dacă apare eroare la primul test
 
-**5. `supabase/functions/check-subscription/index.ts`** — extindere
-- Verifică ÎNAINTE de Stripe dacă există abonament `source='play_billing'` activ în tabelul `subscribers`
-- Dacă da și nu e expirat → returnează direct fără query la Stripe
-- Pentru Play Billing nu reinterogăm Google la fiecare check (e rate-limited) — ne bazăm pe `subscription_end` și pe webhook-uri viitoare
-
-**6. UI — `PremiumDialog.tsx` + `TeacherPremiumDialog.tsx`**
-- Detectează platforma; pe Android afișează: „Plătește cu Google Play"
-- Adaugă buton „Restaurează achiziții" (obligatoriu pentru policy Google Play)
-- Mesaj informativ pe Android: „Achiziție gestionată de Google Play"
-
-**7. `android/app/src/main/AndroidManifest.xml`**
-- Permisiunea `BILLING` deja adăugată — ok
-
-### Despre verificarea server-side cu Google Play API
-
-Necesită setup în Google Cloud Console:
-1. Creează proiect Google Cloud (sau folosește existing)
-2. Activează „Google Play Android Developer API"
-3. Service account → cheie JSON → adaug ca secret `GOOGLE_PLAY_SERVICE_ACCOUNT_JSON` în Lovable Cloud
-4. În Play Console → Setări → Acces API → invită service account-ul → acordă permisiune „Vizualizare date financiare"
-
-Te ghidez pas cu pas când ajungem acolo.
-
-### Ordinea de implementare
-
-1. Instalez plugin + wrapper `playBilling.ts`
-2. Extind `useSubscription` cu detectare platformă
-3. Modific dialoguri Premium pentru UI Android
-4. Creez edge function `verify-play-purchase` (cu placeholder validare până configurezi service account)
-5. Extind `check-subscription` să citească Play Billing din DB
-6. Bump versionCode → 58, build AAB, test pe Internal Testing track
-
-### Ce rămâne pentru tine după implementare
-
-- Setup Google Cloud service account (te ghidez)
-- Adăugare secret `GOOGLE_PLAY_SERVICE_ACCOUNT_JSON`
-- Build AAB v58 + upload pe Internal Testing
-- Test flux complet de cumpărare cu cont de test (adaugi licență tester în Play Console → Setări → Testare licențiere)
-
-### Note importante
-
-- **iOS rămâne pe Stripe** momentan. Apple cere StoreKit pentru abonamente în-app — vom face asta separat (alt set de produse în App Store Connect, alt plugin).
-- **Web rămâne pe Stripe** — nicio schimbare pentru utilizatorii din browser.
-- **Cupoanele** (sistem coupon existent) rămân nealterate — funcționează pe toate platformele.
-- **Premium auto-grant pentru PWA** rămâne neatins.
+- **`401 Unauthorized` de la Google Play** → permisiunile service account-ului nu sunt complete; revino în Users and permissions → editează `pyro-play-billing` → bifează „View financial data" + „Manage orders and subscriptions" + acces la app PyRo.
+- **`Subscription not active`** → produsele tocmai create durează până la câteva ore să propage; sau folosești un cont care nu e License tester.
+- **`Produs negăsit` în client** → `student_premium` / `teacher_premium` nu sunt marcate Active în Play Console.
 
