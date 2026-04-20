@@ -45,7 +45,7 @@ export function useClassMembers(classId: string | null) {
 
       const { data: profiles } = await supabase
         .from("profiles")
-        .select("user_id, display_name, xp, streak, avatar_url")
+        .select("user_id, display_name, last_name, first_name, xp, streak, avatar_url")
         .in("user_id", studentIds);
 
       return data.map((m) => ({

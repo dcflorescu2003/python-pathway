@@ -727,10 +727,12 @@ export type Database = {
           best_streak: number
           created_at: string
           display_name: string | null
+          first_name: string | null
           id: string
           is_premium: boolean
           is_teacher: boolean
           last_activity_date: string
+          last_name: string | null
           lives: number
           lives_updated_at: string | null
           nickname: string | null
@@ -747,10 +749,12 @@ export type Database = {
           best_streak?: number
           created_at?: string
           display_name?: string | null
+          first_name?: string | null
           id?: string
           is_premium?: boolean
           is_teacher?: boolean
           last_activity_date?: string
+          last_name?: string | null
           lives?: number
           lives_updated_at?: string | null
           nickname?: string | null
@@ -767,10 +771,12 @@ export type Database = {
           best_streak?: number
           created_at?: string
           display_name?: string | null
+          first_name?: string | null
           id?: string
           is_premium?: boolean
           is_teacher?: boolean
           last_activity_date?: string
+          last_name?: string | null
           lives?: number
           lives_updated_at?: string | null
           nickname?: string | null
