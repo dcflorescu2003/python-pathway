@@ -115,15 +115,22 @@ export async function initPlayBilling(userId?: string): Promise<void> {
             (matchedOffer?.id?.includes("monthly") ? "monthly" : "");
         }
 
-        console.log("[playBilling] approved tx", { productId, planId, hasToken: !!purchaseToken });
+        console.log("[playBilling] approved tx", { productId, planId, hasToken: !!purchaseToken, tokenLen: purchaseToken?.length });
 
-        if (purchaseToken && productId) {
+        // ALWAYS send to backend, even if token looks short — backend will log raw payload for diagnostics
+        try {
           await verifyPurchaseOnServer({
-            purchaseToken,
-            productId,
+            purchaseToken: purchaseToken || "MISSING",
+            productId: productId || "MISSING",
             planId,
             orderId: native.orderId,
+            diagnostic: {
+              rawTransaction: JSON.parse(JSON.stringify(transaction)),
+              nativeKeys: Object.keys(native),
+            },
           });
+        } catch (e) {
+          console.error("[playBilling] verify call failed:", e);
         }
         await transaction.finish();
       } catch (err) {
