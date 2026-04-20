@@ -1,36 +1,60 @@
-## Card Profesor AI pentru profesori verificați + „Inimi nelimitate" în ofertă
 
-### Context tehnic
 
-1. **Daily popup în `Index.tsx**` (liniile 142-154, 477) afișează `PremiumDialog` (Elev Premium) o dată pe zi pentru toți non-premium. Profesorii verificați primesc același cartonaș „Elev Premium", deși ar trebui să vadă „Profesor AI".
-2. **Status profesor** nu e încă în `Index.tsx` — trebuie citit din `profiles.teacher_status`.
-3. `**useSubscription**` expune deja `isTeacherPremium` (Stripe product match TEACHER_PRODUCT_IDS sau cupon `coupon_type='teacher'`).
-4. **Inimi nelimitate**: backend-ul setează `is_premium=true` și pentru abonați Stripe Teacher (vezi `check-subscription/index.ts` linia ~138 `isPremium = stripeActive || couponActive`). Deci inimile infinite **funcționează deja automat** pentru Profesor AI — doar trebuie adăugat în textul de marketing.
+## Sortare alfabetică elevi după nume + format „Nume Prenume"
+
+### Context
+
+`display_name` din `profiles` e folosit în 4 locuri pentru afișarea elevilor unei clase: ClassDetail (Elevi + Provocări expanse), TestResults (rezultate teste), ClassAnalytics (charts/leaderboard). Datele vin neordonate din DB.
+
+Format dorit: utilizatorul își introduce numele ca **„Nume Prenume" (ex: Popescu Andrei)**, iar listele sunt sortate alfabetic după numele complet (care începe cu numele de familie).
 
 ### Modificări
 
-**1) `src/pages/Index.tsx**`
+**1) `src/components/account/StudentTab.tsx`** (intrare nume catalog elev)
+- Schimb placeholder-ul Input-ului din linia 225: `"Prenume Nume"` → `"Nume Prenume (ex: Popescu Andrei)"`
+- Adaug sub input un `<p className="text-[10px] text-muted-foreground">` cu hint: „Folosește formatul Nume Prenume pentru a apărea corect sortat în catalog."
 
-- Adaug fetch ușor pentru `teacher_status` la mount (sau citesc din profile, alături de fetch-ul existent). Simplu: useEffect separat care interoghează `profiles.teacher_status` o singură dată când `user` e disponibil.
-- Stare nouă: `const [teacherStatus, setTeacherStatus] = useState<string | null>(null);`
-- Logica popup zilnic (liniile 142-154):
-  - Condiție de afișare existentă: non-premium → rămâne.
-  - Decid ce dialog să arăt: dacă `teacherStatus === 'verified'` ⇒ `showTeacherPremiumPopup=true`, altfel `showPremiumPopup=true`.
-- Buton coroniță (liniile 249-253): la click, dacă profesor verificat → deschide `TeacherPremiumDialog`, altfel `PremiumDialog` (logica existentă).
-- La final (linia 477): import + adaug `<TeacherPremiumDialog open={showTeacherPremium || showTeacherPremiumPopup} onOpenChange={...} />` în paralel cu cel existent.
-- Cheia localStorage rămâne `pyro-premium-popup-date` (un singur popup/zi indiferent de variantă).
+**2) `src/components/account/TeacherWizard.tsx`** (intrare nume profesor în wizard)
+- Verific și actualizez placeholder-ul/hint-ul pentru `fullName` cu același format „Nume Prenume".
 
-**2) `src/components/TeacherPremiumDialog.tsx**`
+**3) Helper de sortare partajat** — creez `src/lib/sortStudents.ts`:
+```ts
+export function sortByDisplayName<T extends { profile?: { display_name?: string | null } | null }>(arr: T[]): T[] {
+  return [...arr].sort((a, b) => {
+    const nameA = (a.profile?.display_name || "Elev").trim();
+    const nameB = (b.profile?.display_name || "Elev").trim();
+    return nameA.localeCompare(nameB, "ro", { sensitivity: "base" });
+  });
+}
+```
 
-- În secțiunea „AI tier benefits" (liniile 95-119), adaug încă un beneficiu la final:
-  - Iconiță `Heart` (lucide) + text bold „Inimi nelimitate" — „Exersează fără limite"
-- În secțiunea `isTeacherPremium` activ (liniile 63-79), adaug sub textul existent o linie cu: `❤️ Inimi nelimitate active` pentru consistență.
+**4) `src/components/teacher/ClassDetail.tsx`**
+- Sortez `members` alfabetic înainte de toate randările (Elevi list + per-student status în Provocări):
+  ```ts
+  const sortedMembers = useMemo(() => sortByDisplayName(members), [members]);
+  ```
+- Înlocuiesc toate `members.map(...)` cu `sortedMembers.map(...)` (linia 138 + linia 254). Și `members.filter(...)` din `completedCount` (linia 199) → `sortedMembers.filter(...)`.
 
-### Fișiere modificate (2)
+**5) `src/components/teacher/TestResults.tsx`**
+- Sortez `submissions` alfabetic înainte de afișare și export CSV/PDF:
+  ```ts
+  const sortedSubmissions = useMemo(() => sortByDisplayName(submissions), [submissions]);
+  ```
+- Folosesc `sortedSubmissions` în: render list (linia 390), `exportTestCSV` (linia 200), `exportTestPDF` (liniile ~274, 287).
 
-- `src/pages/Index.tsx`
-- `src/components/TeacherPremiumDialog.tsx`
+**6) `src/components/teacher/ClassAnalytics.tsx`**
+- Sortez datele studenților alfabetic în chart-uri/leaderboards (linia ~327 unde se construiește `name: m.profile?.display_name`). Sortare doar pentru afișări care listează elevi pe nume (NU pentru ranking-uri pe scor — acestea rămân sortate după performanță).
 
-### Notă importantă
+### Note
+- `localeCompare("ro", { sensitivity: "base" })` ignoră diacriticele și majuscule/minuscule (Ăndrei = Andrei).
+- Nu e nevoie de migrare DB — formatul e doar o convenție UI; istoric se sortează corect oricum.
+- Numele existente care nu respectă formatul (ex: „Andrei Popescu") se vor sorta după primul cuvânt, ca până acum — nu spargem nimic, doar îndrumăm utilizatorii noi.
 
-Inimile nelimitate sunt deja active backend pentru orice utilizator cu `is_premium=true` (inclusiv Teacher AI prin Stripe sau cupon `PROF-`). Nu sunt necesare modificări DB sau în `useProgress`. Adăugarea e doar în UI/copy.  
+### Fișiere modificate (5) + 1 nou
+- `src/lib/sortStudents.ts` (nou)
+- `src/components/account/StudentTab.tsx`
+- `src/components/account/TeacherWizard.tsx`
+- `src/components/teacher/ClassDetail.tsx`
+- `src/components/teacher/TestResults.tsx`
+- `src/components/teacher/ClassAnalytics.tsx`
+
