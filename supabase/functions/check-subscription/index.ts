@@ -143,46 +143,44 @@ serve(async (req) => {
       }
     }
 
-    const isPremium = stripeActive || couponActive;
+    const isPremium = stripeActive || couponActive || playActive;
 
-    // Sync profile: if coupon expired and no stripe, downgrade premium
     const profileUpdate: Record<string, any> = { is_premium: isPremium };
-    if (couponExpired && !stripeActive && !couponActive) {
-      // If expired teacher coupon, only remove teacher status if verification was via coupon
-      // Teachers verified through other methods (invite_code, document, referral) keep their status
+    // (teacher coupon expiration logic preserved below)
+    if (couponExpired && !stripeActive && !couponActive && !playActive) {
       if (couponType === "teacher") {
         const { data: profile } = await supabaseClient
           .from("profiles")
           .select("verification_method")
           .eq("user_id", userId)
           .single();
-        
         if (profile?.verification_method === "coupon") {
           profileUpdate.is_teacher = false;
           profileUpdate.teacher_status = null;
           profileUpdate.verification_method = null;
-          logStep("Teacher coupon expired, removing teacher status (was coupon-verified)");
-        } else {
-          logStep("Teacher coupon expired, keeping teacher status (verified via " + profile?.verification_method + ")");
         }
       }
     }
     await supabaseClient.from("profiles").update(profileUpdate).eq("user_id", userId);
 
-    // Calculate days remaining for coupon
     let couponDaysRemaining: number | null = null;
     if (couponActive && couponEnd) {
       couponDaysRemaining = Math.ceil((new Date(couponEnd).getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
     }
 
+    // Determine source priority: play_billing > stripe > coupon
+    const source = playActive ? "play_billing" : stripeActive ? "stripe" : couponActive ? "coupon" : null;
+    const finalProductId = playActive ? playProductId : productId;
+    const finalEnd = playActive ? playEnd : (subscriptionEnd || couponEnd);
+
     return new Response(JSON.stringify({
       subscribed: isPremium,
-      subscription_end: subscriptionEnd || couponEnd,
-      source: stripeActive ? "stripe" : couponActive ? "coupon" : null,
-      coupon_expired: couponExpired && !stripeActive,
+      subscription_end: finalEnd,
+      source,
+      coupon_expired: couponExpired && !stripeActive && !playActive,
       coupon_type: couponType,
       coupon_days_remaining: couponDaysRemaining,
-      product_id: productId,
+      product_id: finalProductId,
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
