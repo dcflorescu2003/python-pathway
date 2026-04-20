@@ -1,11 +1,11 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Heart, Crown, Infinity, Loader2, Settings, ShieldCheck, Code, BarChart3, Trophy } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+import { Heart, Crown, Infinity, Loader2, Settings, ShieldCheck, Code, BarChart3, Trophy, RefreshCw } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
-import { useSubscription, STUDENT_MONTHLY_PRICE, STUDENT_YEARLY_PRICE } from "@/hooks/useSubscription";
+import { useSubscription, STUDENT_MONTHLY_PRICE } from "@/hooks/useSubscription";
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
+import { toast } from "sonner";
 
 interface PremiumDialogProps {
   open: boolean;
