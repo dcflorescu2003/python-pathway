@@ -1,47 +1,36 @@
 
 
-## Adaugă secretul `GOOGLE_PLAY_SERVICE_ACCOUNT_JSON` și activează verificarea Play Billing
+## Plan: Testare finală Play Billing cu loguri diagnostice
 
-Service account-ul `pyro-play-billing` e activ în Play Console. Mai trebuie un singur pas tehnic înainte să poți testa: secretul cu cheia JSON trebuie pus în Lovable Cloud ca să poată edge function-ul `verify-play-purchase` să cheme Google Play Developer API.
+### Ce facem
+Rebuild APK cu fix-ul actual → cumpărare de test → inspectăm logurile `playBilling` din Logcat și `verify-play-purchase` din Supabase pentru a confirma că `purchaseToken` are ~200+ caractere și verificarea Google Play reușește.
 
-### Ce voi face
+### Pașii utilizatorului (pe calculator)
 
-1. **Declanșa dialogul de adăugare secret** pentru `GOOGLE_PLAY_SERVICE_ACCOUNT_JSON` în Lovable Cloud.
-2. Aștepta să introduci valoarea (conținutul integral al fișierului `.json` descărcat din Google Cloud Console).
+1. **Rebuild APK cu codul nou:**
+   ```bash
+   npm run build
+   npx cap sync android
+   ```
+2. **În Android Studio:** Build → Clean Project → Rebuild Project → Run (▶️) pe telefon.
+3. **Deschide Logcat** în Android Studio, filtrează după `playBilling` (tag-ul logurilor noastre).
+4. **Pe telefon:** login cu `maria.florescu2012@gmail.com` → Account → Restaurează achizițiile (sau cumpără din nou un plan test).
+5. **Copiază din Logcat** liniile care încep cu `[playBilling] raw transaction` și `[playBilling] approved tx` și trimite-mi-le aici.
 
-### Ce trebuie să faci tu
+### Ce voi face eu după ce trimiți logurile
 
-1. Deschide fișierul `.json` cu cheia service account-ului (cel descărcat când ai creat `pyro-play-billing` în Google Cloud).
-2. Selectează **tot conținutul** — de la prima `{` până la ultima `}`, inclusiv `private_key`, `client_email`, etc.
-3. Lipește în câmpul de valoare al secretului.
-4. Salvează.
+- Verific în Logcat ce câmp conține token-ul real (pentru că `cordova-plugin-purchase` variază între versiuni: uneori `nativePurchase.purchaseToken`, uneori `receipt.purchaseToken`, uneori într-un array `transactions[]`).
+- Verific în `verify-play-purchase` logs dacă `tokenLen` > 100 și dacă `Play API response` întoarce `SUBSCRIPTION_STATE_ACTIVE`.
+- Dacă token-ul tot nu apare corect, ajustez extractorul din `src/lib/playBilling.ts` pe baza structurii reale văzute în log.
+- Dacă token-ul e corect dar Google API dă eroare, verific contul de service `GOOGLE_PLAY_SERVICE_ACCOUNT_JSON` (permisiuni în Play Console).
 
-### De ce e necesar
+### Plan B dacă nu poți rula Logcat
 
-`supabase/functions/verify-play-purchase/index.ts` deja:
-- citește `Deno.env.get("GOOGLE_PLAY_SERVICE_ACCOUNT_JSON")`
-- semnează un JWT RS256 cu `private_key`
-- schimbă JWT-ul cu un access token OAuth2
-- cheamă `androidpublisher.googleapis.com/.../subscriptionsv2/tokens/{purchaseToken}`
-- validează `subscriptionState === SUBSCRIPTION_STATE_ACTIVE`
-- scrie în `play_billing_subscriptions` și marchează `profiles.is_premium = true`
+Adaug loguri care se trimit direct la `verify-play-purchase` chiar și când token-ul pare invalid, așa că putem diagnostica din Supabase logs fără Logcat. Asta e un mic edit în `playBilling.ts` + `verify-play-purchase/index.ts` pentru a accepta un mod "diagnostic".
 
-Fără secret, edge function-ul intră în ramura „unverified fallback" (acordă premium optimist 30/365 zile fără să întrebe Google) — nu vrem asta în producție.
-
-### După ce salvezi secretul
-
-1. Build AAB nou (sau folosește build-ul curent dacă produsele Play sunt deja propagate).
-2. Upload pe pista **Internal testing** în Play Console.
-3. Adaugă-ți contul Google ca **License tester**: Play Console → Setup → License testing.
-4. Instalează din linkul de internal testing pe telefon.
-5. Deschide PyRo → Cont → Premium → alege un plan.
-6. Confirmă plata test (nu se face debitare reală pentru License testers).
-7. Verifici în logs că apare `[VERIFY-PLAY-PURCHASE] Play API response { state: "SUBSCRIPTION_STATE_ACTIVE" }`.
-8. Verifici în profil că badge-ul Premium apare și că rândul există în `play_billing_subscriptions`.
-
-### Dacă apare eroare la primul test
-
-- **`401 Unauthorized` de la Google Play** → permisiunile service account-ului nu sunt complete; revino în Users and permissions → editează `pyro-play-billing` → bifează „View financial data" + „Manage orders and subscriptions" + acces la app PyRo.
-- **`Subscription not active`** → produsele tocmai create durează până la câteva ore să propage; sau folosești un cont care nu e License tester.
-- **`Produs negăsit` în client** → `student_premium` / `teacher_premium` nu sunt marcate Active în Play Console.
+### Rezultat așteptat
+- Logcat: `hasToken: true`, `planId: "monthly"` sau `"yearly"`
+- Supabase: `tokenLen: 200+`, `Play API response: SUBSCRIPTION_STATE_ACTIVE`
+- DB: rând nou în `play_billing_subscriptions` cu `is_active: true`
+- UI: status Premium activ pe contul Mariei, sursă `play_billing`
 
