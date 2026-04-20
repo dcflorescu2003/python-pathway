@@ -31,17 +31,6 @@ export const TEACHER_YEARLY_PRICE = "price_1TLKwxRontECmDbLbRNdw8GG";
 interface SubscriptionState {
   subscribed: boolean;
   subscriptionEnd: string | null;
-  source: "stripe" | "coupon" | null;
-  couponExpired: boolean;
-  couponType: string | null;
-  couponDaysRemaining: number | null;
-  loading: boolean;
-  productId: string | null;
-}
-
-interface SubscriptionState {
-  subscribed: boolean;
-  subscriptionEnd: string | null;
   source: "stripe" | "coupon" | "play_billing" | null;
   couponExpired: boolean;
   couponType: string | null;
