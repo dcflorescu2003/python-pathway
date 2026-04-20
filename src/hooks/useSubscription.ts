@@ -1,6 +1,14 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import {
+  isAndroidNative,
+  initPlayBilling,
+  purchaseSubscription,
+  restorePlayPurchases,
+  openPlaySubscriptionManagement,
+  STRIPE_TO_ANDROID,
+} from "@/lib/playBilling";
 
 // Stripe product IDs for subscription type detection
 export const STUDENT_PRODUCT_IDS = [
@@ -130,6 +138,9 @@ export function useSubscription() {
       return;
     }
     checkSubscription();
+    if (isAndroidNative()) {
+      void initPlayBilling(user.id);
+    }
     const interval = setInterval(() => {
       void checkSubscription(true);
     }, 60_000);
@@ -153,29 +164,53 @@ export function useSubscription() {
   const startCheckout = useCallback(
     async (priceId: string) => {
       if (!session) return;
+
+      if (isAndroidNative()) {
+        const productKey = STRIPE_TO_ANDROID[priceId];
+        if (!productKey) throw new Error("Produsul nu este disponibil pe Android");
+        await purchaseSubscription(productKey);
+        setTimeout(() => void checkSubscription(true), 2500);
+        return;
+      }
+
       const { data, error } = await supabase.functions.invoke("create-checkout", {
         body: { priceId },
       });
       if (error) throw error;
       if (data?.url) window.open(data.url, "_blank");
     },
-    [session]
+    [session, checkSubscription]
   );
 
   const openPortal = useCallback(async () => {
     if (!session) return;
+
+    if (isAndroidNative()) {
+      await openPlaySubscriptionManagement();
+      return;
+    }
+
     const { data, error } = await supabase.functions.invoke("customer-portal");
     if (error) throw error;
     if (data?.url) window.open(data.url, "_blank");
   }, [session]);
 
+  const restorePurchases = useCallback(async () => {
+    if (!isAndroidNative()) return 0;
+    const count = await restorePlayPurchases();
+    setTimeout(() => void checkSubscription(true), 1500);
+    return count;
+  }, [checkSubscription]);
+
   return {
     ...state,
     isTeacherPremium,
     isStudentPremium,
+    isAndroidNative: isAndroidNative(),
     checkSubscription,
     startCheckout,
     openPortal,
+    restorePurchases,
     dismissCouponExpired,
   };
 }
