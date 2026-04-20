@@ -103,8 +103,20 @@ serve(async (req) => {
     if (!userId) throw new Error("No user");
 
     const body = await req.json();
-    const { purchaseToken, productId, planId, orderId } = body;
-    if (!purchaseToken || !productId) throw new Error("Missing purchaseToken or productId");
+    const { purchaseToken, productId, planId, orderId, diagnostic } = body;
+
+    // Always log diagnostic payload first so we can inspect raw transaction shape
+    if (diagnostic) {
+      log("DIAGNOSTIC raw transaction", diagnostic);
+    }
+
+    if (!purchaseToken || purchaseToken === "MISSING" || !productId || productId === "MISSING") {
+      log("Missing purchaseToken or productId — diagnostic only", { purchaseToken, productId });
+      return new Response(
+        JSON.stringify({ success: false, diagnostic: true, message: "Missing token/productId — see logs" }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     log("verifying", { userId, productId, planId, tokenLen: purchaseToken.length, tokenPrefix: purchaseToken.slice(0, 12) });
 
