@@ -5,8 +5,9 @@ import { Capacitor } from "@capacitor/core";
 const TEST_REWARDED_ANDROID = "ca-app-pub-3940256099942544/5224354917";
 const TEST_REWARDED_IOS = "ca-app-pub-3940256099942544/1712485313";
 
-// TODO: Replace with production unit IDs when AdMob account is set up
-const PROD_REWARDED_ANDROID = TEST_REWARDED_ANDROID;
+// Production rewarded ad unit IDs
+const PROD_REWARDED_ANDROID = "ca-app-pub-8441862030200888/4681915410";
+// TODO: Replace with iOS production unit ID when iOS app is registered in AdMob
 const PROD_REWARDED_IOS = TEST_REWARDED_IOS;
 
 const isDev = import.meta.env.DEV;
