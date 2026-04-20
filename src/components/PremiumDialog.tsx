@@ -1,11 +1,11 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Heart, Crown, Infinity, Loader2, Settings, ShieldCheck, Code, BarChart3, Trophy } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+import { Heart, Crown, Infinity, Loader2, Settings, ShieldCheck, Code, BarChart3, Trophy, RefreshCw } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
-import { useSubscription, STUDENT_MONTHLY_PRICE, STUDENT_YEARLY_PRICE } from "@/hooks/useSubscription";
+import { useSubscription, STUDENT_MONTHLY_PRICE } from "@/hooks/useSubscription";
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
+import { toast } from "sonner";
 
 interface PremiumDialogProps {
   open: boolean;
@@ -15,8 +15,22 @@ interface PremiumDialogProps {
 const PremiumDialog = ({ open, onOpenChange }: PremiumDialogProps) => {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const { subscribed, subscriptionEnd, loading, startCheckout, openPortal } = useSubscription();
+  const { subscribed, subscriptionEnd, loading, startCheckout, openPortal, isAndroidNative, restorePurchases } = useSubscription();
   const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null);
+  const [restoring, setRestoring] = useState(false);
+
+  const handleRestore = async () => {
+    setRestoring(true);
+    try {
+      await restorePurchases();
+      toast.success("Achizițiile au fost verificate");
+    } catch (err) {
+      console.error(err);
+      toast.error("Nu s-au putut restaura achizițiile");
+    } finally {
+      setRestoring(false);
+    }
+  };
 
   const handlePurchase = async (priceId: string) => {
     if (!user) {
@@ -74,7 +88,7 @@ const PremiumDialog = ({ open, onOpenChange }: PremiumDialogProps) => {
               )}
               <Button variant="outline" onClick={handleManage} className="mt-2 gap-2">
                 <Settings className="h-4 w-4" />
-                Gestionează abonamentul
+                {isAndroidNative ? "Gestionează în Google Play" : "Gestionează abonamentul"}
               </Button>
             </div>
           ) : (
@@ -159,8 +173,26 @@ const PremiumDialog = ({ open, onOpenChange }: PremiumDialogProps) => {
                 </p>
               )}
               <p className="text-[10px] text-center text-foreground/40">
-                Plata se procesează securizat prin Stripe
+                {isAndroidNative
+                  ? "Plata se procesează prin Google Play"
+                  : "Plata se procesează securizat prin Stripe"}
               </p>
+              {isAndroidNative && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleRestore}
+                  disabled={restoring}
+                  className="w-full gap-2 text-xs"
+                >
+                  {restoring ? (
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                  ) : (
+                    <RefreshCw className="h-3 w-3" />
+                  )}
+                  Restaurează achizițiile
+                </Button>
+              )}
             </>
           )}
         </div>
