@@ -1,43 +1,81 @@
-## Plan
+## Plan: Integrare AdMob pentru refill inimi prin reclamă rewarded
 
-Trei modificări:
+### Ce facem
 
-### 1. Nickname editabil în pagina Profil (deja există ✓)
+Integrăm Google AdMob (rewarded video ads) în aplicația Capacitor, ca elevii fără Premium să poată câștiga 1 inimă vizionând o reclamă scurtă (~30s).
 
-Verificat: `AccountProfileTab.tsx` are deja un editor de nickname (linii 108-156) cu salvare în `profiles.nickname`. **Nimic de făcut.**
+### Arhitectură
 
-### 2. Verificare afișare nickname în clasamente (deja corect ✓)
+**Plugin folosit:** `@capacitor-community/admob` — oficial, suportă rewarded ads pe Android + iOS, integrare nativă curată.
 
-`LeaderboardPage.tsx` linia 159: `entry.nickname || entry.display_name || "Anonim"`. Nickname-ul are prioritate. **Nimic de făcut.**
+**Flux UX:**
 
-### 3. Nume catalog editabil în StudentTab (deja există ✓)
+1. Elev fără Premium încearcă să intre într-o lecție cu 0 inimi → dialog existent „Fără inimi"
+2. Adăugăm buton nou: **„Vizionează o reclamă pentru + 5 inimi ❤️"**
+3. Click → se afișează rewarded ad (full screen)
+4. La eveniment `Rewarded` (utilizatorul a vizionat complet) → +5 inimă în DB, sau 5daca are deja inimi
+5. Limită: max **2 reclame/zi** per user (anti-abuz), tracked în `profiles` (coloană nouă)
+6. Premium nu vede butonul (au inimi infinite)
 
-`StudentTab.tsx` linii 220-287 — editor cu Nume + Prenume separat, salvare în `last_name`/`first_name`/`display_name`. **Scrie in dreptul lui Numele din catalog.**
+### Pași de implementare
 
-### 4. Nume catalog editabil pentru profesor în tab-ul "Clase" (NOU)
+**1. Instalare plugin**
 
-Profesorul setează nume + prenume doar la wizard-ul inițial — nu îl poate edita după. Adaug un editor în `TeacherClassesTab.tsx` (la început, înainte de `ClassManager`):
+- `@capacitor-community/admob`
+- `npx cap sync` (utilizatorul rulează local după pull)
 
-- Card cu "Numele tău în catalog" + valoarea curentă (`display_name` din `profiles`)
-- Buton creion → expandează 2 inputuri (Nume, Prenume) cu Salvează/Anulează
-- La salvare: `UPDATE profiles SET last_name, first_name, display_name = "Nume Prenume" WHERE user_id = auth.uid()`
-- Hint mic: "🔒 Vizibil doar elevilor din clasele tale"
-- Se afișează doar când `selectedClassId` e null (în lista de clase, nu în detaliul unei clase)
+**2. Configurare Android**
 
-### 5. Clarificare UX: "Numele din aceste două taburi apare doar în relația profesor-elev"
+- `android/app/src/main/AndroidManifest.xml`: adaug `<meta-data android:name="com.google.android.gms.ads.APPLICATION_ID" android:value="ca-app-pub-XXXX~YYYY"/>`
+- `AdMob App ID` — îți cer să-l furnizezi (din contul AdMob)
 
-Adaug o notă explicativă mică sub editorul de nume catalog (atât la elev cât și la profesor):
+**3. Configurare iOS**
 
-- Elev: deja există "🔒 Vizibil doar profesorului tău" (linia 281) ✓
-- Profesor (nou): "🔒 Vizibil doar elevilor din clasele tale"
+- `ios/App/App/Info.plist`: adaug `GADApplicationIdentifier` + `SKAdNetworkItems`
+- Config NSUserTrackingUsageDescription pentru iOS 14+ (consimțământ tracking)
 
-Astfel, în public (clasamente, profile) apare **nickname-ul**, iar în relația profesor↔elev (catalog clasă, rezultate teste) apare **display_name** (Nume Prenume).
+**4. Cod frontend (web fallback inclus)**
 
-### Fișier modificat (1)
+- Hook nou: `src/hooks/useAdMob.ts` — inițializare, request consent, show rewarded
+- Pe web (preview Lovable): butonul e ascuns sau afișează „Disponibil doar în aplicația mobilă"
+- Pe native: real ads (test IDs în development, production IDs în release)
 
-- `src/components/account/TeacherClassesTab.tsx` — adaug card editor nume catalog la început
+**5. UI în dialogul „Fără inimi"**
 
-### Comportament neschimbat
+- Identific dialogul actual (probabil în `useProgress.ts` sau component dedicat — verific la implementare)
+- Adaug buton rewarded ad sub mesaj, doar dacă: `!isPremium && !isNative ? hidden : visible`
+- Loading state cât se încarcă reclama; toast la succes/eșec
 
-- DB: nu sunt schimbări de schemă; coloanele `last_name`, `first_name`, `nickname` există deja
-- Locurile unde apare numele profesor↔elev (`ClassDetail`, `TestResults`, `ClassAnalytics`) folosesc deja `profile.display_name` care se actualizează automat
+**6. Backend (DB + Edge)**
+
+- Migration: adaug în `profiles` coloanele `ads_watched_today` (int) + `ads_last_reset` (date)
+- Edge function nouă: `reward-life` — verifică limită 5/zi, resetează zilnic, incrementează inimi
+- RLS: doar user-ul propriu poate apela; edge function folosește service_role pentru update
+
+**7. Test IDs vs Production IDs**
+
+- În development: folosim Google test ad unit IDs (oficial, sigure)
+- În production: utilizatorul îmi dă unit ID-urile reale după ce-și creează app-ul în AdMob
+
+### Ce am nevoie de la tine ulterior (după aprobare plan)
+
+1. **AdMob App ID** (Android + iOS) — din panoul AdMob → App settings
+2. **Rewarded Ad Unit ID** (Android + iOS) — din panoul AdMob → Ad units
+
+Dacă nu le ai încă, începem cu test IDs și înlocuim înainte de release în Play Store.
+
+### Fișiere afectate
+
+- `package.json` — dependență nouă
+- `android/app/src/main/AndroidManifest.xml` — App ID
+- `ios/App/App/Info.plist` — App ID + SKAdNetwork + tracking permission
+- `src/hooks/useAdMob.ts` — nou
+- Componenta dialog „Fără inimi" — buton nou
+- `supabase/functions/reward-life/index.ts` — nou
+- Migration SQL — coloane noi în `profiles`
+
+### Note
+
+- Nu mențin reclame interstițiale/banner — doar **rewarded** (alegere user, nu intruziv)
+- Compatibil cu politica Google Play (rewarded e încurajat)
+- Pe iOS necesită App Tracking Transparency prompt — handled de plugin
