@@ -1,0 +1,100 @@
+import { useCallback, useEffect, useState } from "react";
+import { Capacitor } from "@capacitor/core";
+
+// Google's official test IDs — safe to use during development
+const TEST_REWARDED_ANDROID = "ca-app-pub-3940256099942544/5224354917";
+const TEST_REWARDED_IOS = "ca-app-pub-3940256099942544/1712485313";
+
+// TODO: Replace with production unit IDs when AdMob account is set up
+const PROD_REWARDED_ANDROID = TEST_REWARDED_ANDROID;
+const PROD_REWARDED_IOS = TEST_REWARDED_IOS;
+
+const isDev = import.meta.env.DEV;
+
+function getAdUnitId(): string {
+  const platform = Capacitor.getPlatform();
+  if (platform === "ios") return isDev ? TEST_REWARDED_IOS : PROD_REWARDED_IOS;
+  return isDev ? TEST_REWARDED_ANDROID : PROD_REWARDED_ANDROID;
+}
+
+export function useAdMob() {
+  const isNative = Capacitor.isNativePlatform();
+  const [initialized, setInitialized] = useState(false);
+
+  useEffect(() => {
+    if (!isNative) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const { AdMob } = await import("@capacitor-community/admob");
+        await AdMob.initialize({
+          testingDevices: [],
+          initializeForTesting: isDev,
+        });
+        // Request consent (GDPR / iOS ATT)
+        try {
+          const consentInfo = await AdMob.requestConsentInfo();
+          if (
+            consentInfo.isConsentFormAvailable &&
+            consentInfo.status === "REQUIRED"
+          ) {
+            await AdMob.showConsentForm();
+          }
+        } catch (err) {
+          // Non-blocking
+          console.warn("AdMob consent flow failed:", err);
+        }
+        // iOS App Tracking Transparency
+        try {
+          const trackingInfo = await AdMob.trackingAuthorizationStatus();
+          if (trackingInfo.status === "notDetermined") {
+            await AdMob.requestTrackingAuthorization();
+          }
+        } catch {}
+        if (!cancelled) setInitialized(true);
+      } catch (err) {
+        console.error("AdMob init failed:", err);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [isNative]);
+
+  /**
+   * Show a rewarded ad. Resolves to true if the user earned the reward
+   * (i.e. watched the full ad), false otherwise.
+   */
+  const showRewarded = useCallback(async (): Promise<boolean> => {
+    if (!isNative) return false;
+    try {
+      const { AdMob, RewardAdPluginEvents } = await import(
+        "@capacitor-community/admob"
+      );
+      const adId = getAdUnitId();
+
+      let rewarded = false;
+      const rewardListener = await AdMob.addListener(
+        RewardAdPluginEvents.Rewarded,
+        () => {
+          rewarded = true;
+        }
+      );
+
+      await AdMob.prepareRewardVideoAd({ adId, isTesting: isDev });
+      await AdMob.showRewardVideoAd();
+
+      // Cleanup listener
+      try {
+        await rewardListener.remove();
+      } catch {}
+
+      return rewarded;
+    } catch (err) {
+      console.error("Rewarded ad failed:", err);
+      return false;
+    }
+  }, [isNative]);
+
+  return { isNative, initialized, showRewarded };
+}

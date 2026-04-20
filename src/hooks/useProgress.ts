@@ -309,6 +309,17 @@ export function useProgress() {
     });
   }, [user]);
 
+  const setLivesFromReward = useCallback(
+    (newLives: number, livesUpdatedAt: string) => {
+      setProgress((prev) => {
+        const newProgress = { ...prev, lives: newLives, livesUpdatedAt };
+        saveLocalProgress(newProgress, user?.id);
+        return newProgress;
+      });
+    },
+    [user]
+  );
+
   const setPremium = useCallback(
     (value: boolean) => {
       setProgress((prev) => {
@@ -374,7 +385,7 @@ export function useProgress() {
     [user]
   );
 
-  return { progress, completeLesson, loseLife, resetLives, setPremium, recordActivity, unlockLessonViaSkip, streakJustIncreased, newStreakCount, dismissStreakCelebration };
+  return { progress, completeLesson, loseLife, resetLives, setLivesFromReward, setPremium, recordActivity, unlockLessonViaSkip, streakJustIncreased, newStreakCount, dismissStreakCelebration };
 }
 
 function mergeProgress(a: UserProgress, b: UserProgress): UserProgress {
