@@ -33,6 +33,7 @@ const TestResults = ({ testId, testTitle, onBack }: TestResultsProps) => {
   const [expandedSubmissionId, setExpandedSubmissionId] = useState<string | null>(null);
 
   const { data: submissions = [] } = useTestSubmissions(selectedAssignmentId);
+  const sortedSubmissions = useMemo(() => sortByDisplayName(submissions as any[]), [submissions]);
   const { data: answers = [] } = useTestAnswers(expandedSubmissionId);
   const updateScore = useUpdateAnswerScore();
   const toggleScores = useToggleScoresReleased();
@@ -198,7 +199,7 @@ const TestResults = ({ testId, testTitle, onBack }: TestResultsProps) => {
       const rows: string[] = [];
       rows.push(["Elev", "Variantă", "Scor", "Maxim", "Procent", "Trimis la"].map(escapeCSV).join(","));
 
-      submissions.forEach((sub: any) => {
+      sortedSubmissions.forEach((sub: any) => {
         const pct = sub.max_score > 0 ? Math.round((sub.total_score / sub.max_score) * 100) : 0;
         rows.push([
           sub.profile?.display_name || "Elev",
@@ -213,7 +214,7 @@ const TestResults = ({ testId, testTitle, onBack }: TestResultsProps) => {
       // Detail section
       rows.push("");
       rows.push("--- Detalii per elev ---");
-      for (const sub of submissions) {
+      for (const sub of sortedSubmissions) {
         const subAnswers = (allAnswers || []).filter((a: any) => a.submission_id === sub.id);
         rows.push("");
         rows.push(`Elev: ${sub.profile?.display_name || "Elev"} (${sub.variant})`);
@@ -271,7 +272,7 @@ const TestResults = ({ testId, testTitle, onBack }: TestResultsProps) => {
 
       // Summary table
       html += `<table><tr><th>Elev</th><th>Variantă</th><th>Scor</th><th>Maxim</th><th>Procent</th><th>Trimis</th></tr>`;
-      submissions.forEach((sub: any) => {
+      sortedSubmissions.forEach((sub: any) => {
         const pct = sub.max_score > 0 ? Math.round((sub.total_score / sub.max_score) * 100) : 0;
         html += `<tr>
           <td>${sub.profile?.display_name || "Elev"}</td>
@@ -285,7 +286,7 @@ const TestResults = ({ testId, testTitle, onBack }: TestResultsProps) => {
       html += `</table>`;
 
       // Per-student details
-      for (const sub of submissions) {
+      for (const sub of sortedSubmissions) {
         const subAnswers = (allAnswers || []).filter((a: any) => a.submission_id === sub.id);
         html += `<h2>${sub.profile?.display_name || "Elev"} (Nr. ${sub.variant})</h2>`;
         html += `<table><tr><th>Item</th><th>Tip</th><th>Punctaj</th><th>Feedback</th></tr>`;
@@ -388,7 +389,7 @@ const TestResults = ({ testId, testTitle, onBack }: TestResultsProps) => {
           {submissions.length === 0 ? (
             <p className="text-sm text-muted-foreground">Nicio submitere încă.</p>
           ) : (
-            submissions.map((sub: any) => {
+            sortedSubmissions.map((sub: any) => {
               const isExpanded = expandedSubmissionId === sub.id;
               const percentage = sub.max_score > 0 ? Math.round((sub.total_score / sub.max_score) * 100) : 0;
               const ungradedCount = ungradedCountBySubmission[sub.id] || 0;
