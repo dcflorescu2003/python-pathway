@@ -723,6 +723,8 @@ export type Database = {
       }
       profiles: {
         Row: {
+          ads_last_reset: string
+          ads_watched_today: number
           avatar_url: string | null
           best_streak: number
           created_at: string
@@ -745,6 +747,8 @@ export type Database = {
           xp: number
         }
         Insert: {
+          ads_last_reset?: string
+          ads_watched_today?: number
           avatar_url?: string | null
           best_streak?: number
           created_at?: string
@@ -767,6 +771,8 @@ export type Database = {
           xp?: number
         }
         Update: {
+          ads_last_reset?: string
+          ads_watched_today?: number
           avatar_url?: string | null
           best_streak?: number
           created_at?: string
