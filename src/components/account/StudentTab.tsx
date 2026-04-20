@@ -252,6 +252,11 @@ const StudentTab = ({ memberClassName, onLeaveClass }: StudentTabProps) => {
             )}
           </div>
           <p className="text-xs text-muted-foreground">🔒 Vizibil doar profesorului tău</p>
+          {editingCatalogName && (
+            <p className="text-[10px] text-muted-foreground">
+              Folosește formatul Nume Prenume pentru a apărea corect sortat în catalog.
+            </p>
+          )}
         </CardContent>
       </Card>
 
