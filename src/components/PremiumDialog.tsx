@@ -15,8 +15,22 @@ interface PremiumDialogProps {
 const PremiumDialog = ({ open, onOpenChange }: PremiumDialogProps) => {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const { subscribed, subscriptionEnd, loading, startCheckout, openPortal } = useSubscription();
+  const { subscribed, subscriptionEnd, loading, startCheckout, openPortal, isAndroidNative, restorePurchases } = useSubscription();
   const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null);
+  const [restoring, setRestoring] = useState(false);
+
+  const handleRestore = async () => {
+    setRestoring(true);
+    try {
+      await restorePurchases();
+      toast.success("Achizițiile au fost verificate");
+    } catch (err) {
+      console.error(err);
+      toast.error("Nu s-au putut restaura achizițiile");
+    } finally {
+      setRestoring(false);
+    }
+  };
 
   const handlePurchase = async (priceId: string) => {
     if (!user) {
