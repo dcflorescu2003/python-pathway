@@ -1,5 +1,4 @@
 
+User wants the "join class" dialog to have separate Nume + Prenume inputs instead of the single full-name field shown in the screenshot.
 
-User reports: la elev (StudentTab) nu apar câmpurile separate Nume/Prenume, doar la profesor (TeacherWizard). Trebuie să verific StudentTab.
-
-Din ultima rundă, AI a editat StudentTab.tsx, dar probabil schimbarea nu a fost aplicată corect sau câmpurile separate nu se afișează în UI.
+Need to find the join-class dialog. Likely in StudentTab.tsx (where student joins a class with a code) — there's a dialog asking for catalog name before joining.
