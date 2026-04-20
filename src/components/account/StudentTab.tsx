@@ -222,7 +222,7 @@ const StudentTab = ({ memberClassName, onLeaveClass }: StudentTabProps) => {
                   value={catalogName}
                   onChange={(e) => setCatalogName(e.target.value)}
                   className="h-7 text-sm flex-1"
-                  placeholder="Prenume Nume"
+                  placeholder="Nume Prenume (ex: Popescu Andrei)"
                   autoFocus
                 />
                 <button
