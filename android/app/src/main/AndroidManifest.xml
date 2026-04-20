@@ -42,10 +42,10 @@
 
         </activity>
 
-        <!-- AdMob App ID (test ID — replace with production ID before release) -->
+        <!-- AdMob App ID (PyRo production) -->
         <meta-data
             android:name="com.google.android.gms.ads.APPLICATION_ID"
-            android:value="ca-app-pub-3940256099942544~3347511713"/>
+            android:value="ca-app-pub-8441862030200888~2393829276"/>
 
         <provider
             android:name="androidx.core.content.FileProvider"
