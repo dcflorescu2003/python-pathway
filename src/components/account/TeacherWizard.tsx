@@ -166,25 +166,33 @@ const TeacherWizard = ({ onComplete, onCancel }: TeacherWizardProps) => {
                 <p className="text-xs text-muted-foreground mt-1">Acest nume va fi vizibil doar administratorilor la verificare.</p>
               </div>
 
-              <Input
-                placeholder="Nume Prenume (ex: Popescu Andrei)"
-                value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
-                className="text-center"
-                autoFocus
-              />
+              <div className="grid grid-cols-2 gap-2">
+                <Input
+                  placeholder="Nume (ex: Popescu)"
+                  value={lastName}
+                  onChange={(e) => setLastName(e.target.value)}
+                  className="text-center"
+                  autoFocus
+                />
+                <Input
+                  placeholder="Prenume (ex: Andrei)"
+                  value={firstName}
+                  onChange={(e) => setFirstName(e.target.value)}
+                  className="text-center"
+                />
+              </div>
               <p className="text-[10px] text-muted-foreground text-center">
-                Folosește formatul Nume Prenume pentru a apărea corect sortat în cataloage.
+                Vei apărea în cataloage ca „Nume Prenume" pentru sortare alfabetică corectă.
               </p>
-              {fullName.trim().length > 0 && fullName.trim().length < 3 && (
-                <p className="text-xs text-destructive text-center">Minim 3 caractere.</p>
+              {(lastName.trim().length > 0 && lastName.trim().length < 2) && (
+                <p className="text-xs text-destructive text-center">Numele trebuie să aibă minim 2 caractere.</p>
               )}
 
               <div className="flex gap-2">
                 <Button variant="outline" onClick={() => setStep(0)} className="flex-1 gap-1">
                   <ArrowLeft className="h-4 w-4" /> Înapoi
                 </Button>
-                <Button onClick={() => setStep(2)} disabled={fullName.trim().length < 3} className="flex-1 gap-1">
+                <Button onClick={() => setStep(2)} disabled={lastName.trim().length < 2 || firstName.trim().length < 2} className="flex-1 gap-1">
                   Continuă <ArrowRight className="h-4 w-4" />
                 </Button>
               </div>
@@ -206,7 +214,7 @@ const TeacherWizard = ({ onComplete, onCancel }: TeacherWizardProps) => {
 
               <div className="bg-muted/50 rounded-lg p-3 space-y-2 text-sm">
                 <p className="text-foreground"><strong>Liceu:</strong> {selectedSchool?.name}</p>
-                <p className="text-foreground"><strong>Nume:</strong> {fullName.trim()}</p>
+                <p className="text-foreground"><strong>Nume:</strong> {`${lastName.trim()} ${firstName.trim()}`}</p>
               </div>
 
               <div className="bg-primary/5 border border-primary/20 rounded-lg p-3">
