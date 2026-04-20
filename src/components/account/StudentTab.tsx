@@ -26,7 +26,8 @@ const StudentTab = ({ memberClassName, onLeaveClass }: StudentTabProps) => {
   const navigate = useNavigate();
   const [leavingClass, setLeavingClass] = useState(false);
   const [editingCatalogName, setEditingCatalogName] = useState(false);
-  const [catalogName, setCatalogName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [firstName, setFirstName] = useState("");
   const [savingName, setSavingName] = useState(false);
   const [expandedTestId, setExpandedTestId] = useState<string | null>(null);
 
@@ -40,7 +41,7 @@ const StudentTab = ({ memberClassName, onLeaveClass }: StudentTabProps) => {
       if (!user) return null;
       const { data } = await supabase
         .from("profiles")
-        .select("display_name")
+        .select("display_name, last_name, first_name")
         .eq("user_id", user.id)
         .single();
       return data;
@@ -166,11 +167,14 @@ const StudentTab = ({ memberClassName, onLeaveClass }: StudentTabProps) => {
   };
 
   const handleSaveCatalogName = async () => {
-    if (!user || catalogName.trim().length < 3) return;
+    const ln = lastName.trim();
+    const fn = firstName.trim();
+    if (!user || ln.length < 2 || fn.length < 2) return;
     setSavingName(true);
+    const display = `${ln} ${fn}`;
     const { error } = await supabase
       .from("profiles")
-      .update({ display_name: catalogName.trim() })
+      .update({ display_name: display, last_name: ln, first_name: fn })
       .eq("user_id", user.id);
     setSavingName(false);
     if (error) {
@@ -213,35 +217,58 @@ const StudentTab = ({ memberClassName, onLeaveClass }: StudentTabProps) => {
             </Button>
           </div>
 
-          {/* Editable catalog name */}
-          <div className="flex items-center gap-2 text-sm">
+          {/* Editable catalog name (Nume + Prenume) */}
+          <div className="space-y-2 text-sm">
             <span className="text-muted-foreground">Nume catalog:</span>
             {editingCatalogName ? (
-              <div className="flex items-center gap-1.5 flex-1">
-                <Input
-                  value={catalogName}
-                  onChange={(e) => setCatalogName(e.target.value)}
-                  className="h-7 text-sm flex-1"
-                  placeholder="Nume Prenume (ex: Popescu Andrei)"
-                  autoFocus
-                />
-                <button
-                  disabled={savingName || catalogName.trim().length < 3}
-                  onClick={handleSaveCatalogName}
-                  className="text-primary hover:text-primary/80 disabled:opacity-40"
-                >
-                  <Check className="h-4 w-4" />
-                </button>
-                <button onClick={() => setEditingCatalogName(false)} className="text-muted-foreground hover:text-foreground">
-                  <X className="h-4 w-4" />
-                </button>
+              <div className="space-y-2">
+                <div className="grid grid-cols-2 gap-2">
+                  <Input
+                    value={lastName}
+                    onChange={(e) => setLastName(e.target.value)}
+                    className="h-8 text-sm"
+                    placeholder="Nume (ex: Popescu)"
+                    autoFocus
+                  />
+                  <Input
+                    value={firstName}
+                    onChange={(e) => setFirstName(e.target.value)}
+                    className="h-8 text-sm"
+                    placeholder="Prenume (ex: Andrei)"
+                  />
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    disabled={savingName || lastName.trim().length < 2 || firstName.trim().length < 2}
+                    onClick={handleSaveCatalogName}
+                    className="text-primary hover:text-primary/80 disabled:opacity-40 flex items-center gap-1 text-xs font-medium"
+                  >
+                    <Check className="h-4 w-4" /> Salvează
+                  </button>
+                  <button onClick={() => setEditingCatalogName(false)} className="text-muted-foreground hover:text-foreground flex items-center gap-1 text-xs">
+                    <X className="h-4 w-4" /> Anulează
+                  </button>
+                </div>
               </div>
             ) : (
               <div className="flex items-center gap-1.5">
                 <span className="font-medium text-foreground">{profile?.display_name || "—"}</span>
                 <button
                   onClick={() => {
-                    setCatalogName(profile?.display_name || "");
+                    const existingLn = (profile as any)?.last_name || "";
+                    const existingFn = (profile as any)?.first_name || "";
+                    if (existingLn || existingFn) {
+                      setLastName(existingLn);
+                      setFirstName(existingFn);
+                    } else if (profile?.display_name) {
+                      // Fallback: split first space (assume "Nume Prenume")
+                      const parts = profile.display_name.trim().split(/\s+/);
+                      setLastName(parts[0] || "");
+                      setFirstName(parts.slice(1).join(" ") || "");
+                    } else {
+                      setLastName("");
+                      setFirstName("");
+                    }
                     setEditingCatalogName(true);
                   }}
                   className="text-muted-foreground hover:text-foreground"
@@ -254,7 +281,7 @@ const StudentTab = ({ memberClassName, onLeaveClass }: StudentTabProps) => {
           <p className="text-xs text-muted-foreground">🔒 Vizibil doar profesorului tău</p>
           {editingCatalogName && (
             <p className="text-[10px] text-muted-foreground">
-              Folosește formatul Nume Prenume pentru a apărea corect sortat în catalog.
+              Numele apare în catalog ca „Nume Prenume" și asigură sortarea alfabetică corectă.
             </p>
           )}
         </CardContent>
