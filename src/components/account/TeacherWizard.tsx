@@ -19,7 +19,8 @@ const TeacherWizard = ({ onComplete, onCancel }: TeacherWizardProps) => {
   const [step, setStep] = useState(0);
   const [schoolSearch, setSchoolSearch] = useState("");
   const [selectedSchoolId, setSelectedSchoolId] = useState<string | null>(null);
-  const [fullName, setFullName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [firstName, setFirstName] = useState("");
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -47,8 +48,15 @@ const TeacherWizard = ({ onComplete, onCancel }: TeacherWizardProps) => {
     if (!user) return;
     setLoading(true);
     try {
-      // Update profile with school and display_name
-      const updates: Record<string, string | null> = { display_name: fullName.trim() };
+      const ln = lastName.trim();
+      const fn = firstName.trim();
+      const display = `${ln} ${fn}`;
+      // Update profile with school and name fields
+      const updates: Record<string, string | null> = {
+        display_name: display,
+        last_name: ln,
+        first_name: fn,
+      };
       if (selectedSchoolId) updates.school_id = selectedSchoolId;
 
       await supabase.from("profiles").update(updates).eq("user_id", user.id);
