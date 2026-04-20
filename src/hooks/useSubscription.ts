@@ -165,13 +165,18 @@ export function useSubscription() {
     async (priceId: string) => {
       if (!session) return;
 
-      if (isAndroidNative()) {
+      const native = isAndroidNative();
+      console.log("[startCheckout] isAndroidNative:", native, "priceId:", priceId);
+
+      if (native) {
         const productKey = STRIPE_TO_ANDROID[priceId];
         if (!productKey) throw new Error("Produsul nu este disponibil pe Android");
         await purchaseSubscription(productKey);
         setTimeout(() => void checkSubscription(true), 2500);
         return;
       }
+
+      console.log("[startCheckout] Falling back to Stripe checkout");
 
       const { data, error } = await supabase.functions.invoke("create-checkout", {
         body: { priceId },
