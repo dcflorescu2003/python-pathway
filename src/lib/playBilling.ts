@@ -77,8 +77,20 @@ export async function initPlayBilling(userId?: string): Promise<void> {
     store.when().approved(async (transaction: any) => {
       try {
         const native = transaction.nativePurchase || {};
-        const purchaseToken =
-          native.purchaseToken || transaction.transactionId;
+        console.log("[playBilling] raw transaction", JSON.stringify(transaction, null, 2));
+        console.log("[playBilling] native keys", Object.keys(native));
+
+        // A real Google Play purchaseToken is ~200+ chars; orderId is ~24 chars (GPA.XXXX-...).
+        // Try multiple locations to find the real token.
+        const candidates = [
+          native.purchaseToken,
+          transaction.purchaseToken,
+          native.token,
+          transaction.nativePurchase?.purchaseToken,
+          (transaction as any).receipt?.purchaseToken,
+        ].filter((t) => typeof t === "string" && t.length > 50);
+
+        const purchaseToken = candidates[0] || native.purchaseToken || transaction.transactionId;
         const products = transaction.products || [];
         const productId =
           native.productId || products[0]?.id || products[0]?.productId;
