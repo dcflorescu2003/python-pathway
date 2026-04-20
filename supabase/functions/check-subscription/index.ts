@@ -48,6 +48,29 @@ serve(async (req) => {
     if (!userId || !userEmail) throw new Error("User not authenticated");
     logStep("User authenticated", { email: userEmail });
 
+    // Check Google Play Billing first (Android native purchases)
+    const { data: playSubs } = await supabaseClient
+      .from("play_billing_subscriptions")
+      .select("product_id, plan_id, expiry_time, is_active")
+      .eq("user_id", userId)
+      .eq("is_active", true)
+      .order("expiry_time", { ascending: false })
+      .limit(1);
+
+    const latestPlay = playSubs?.[0];
+    let playActive = false;
+    let playEnd: string | null = null;
+    let playProductId: string | null = null;
+    if (latestPlay) {
+      const expiry = new Date(latestPlay.expiry_time);
+      if (expiry > new Date()) {
+        playActive = true;
+        playEnd = latestPlay.expiry_time;
+        playProductId = latestPlay.product_id;
+        logStep("Active Play Billing subscription", { productId: playProductId, end: playEnd });
+      }
+    }
+
     // Check coupon-based premium (latest active redemption)
     const { data: redemptions } = await supabaseClient
       .from("coupon_redemptions")
