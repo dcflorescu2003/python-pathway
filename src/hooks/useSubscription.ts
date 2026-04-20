@@ -39,6 +39,17 @@ interface SubscriptionState {
   productId: string | null;
 }
 
+interface SubscriptionState {
+  subscribed: boolean;
+  subscriptionEnd: string | null;
+  source: "stripe" | "coupon" | "play_billing" | null;
+  couponExpired: boolean;
+  couponType: string | null;
+  couponDaysRemaining: number | null;
+  loading: boolean;
+  productId: string | null;
+}
+
 const DEFAULT_STATE: SubscriptionState = {
   subscribed: false,
   subscriptionEnd: null,
