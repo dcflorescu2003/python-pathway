@@ -166,15 +166,22 @@ const AccountView = () => {
   };
 
   const handleNameConfirm = async () => {
-    if (!user || !pendingClassId || fullName.trim().length < 3) return;
+    const ln = joinLastName.trim();
+    const fn = joinFirstName.trim();
+    const combined = `${ln} ${fn}`.trim();
+    if (!user || !pendingClassId || ln.length < 2 || fn.length < 2) return;
     setJoinLoading(true);
     try {
-      await supabase.from("profiles").update({ display_name: fullName.trim() }).eq("user_id", user.id);
+      await supabase
+        .from("profiles")
+        .update({ display_name: combined, last_name: ln, first_name: fn })
+        .eq("user_id", user.id);
       await joinClassDirect(pendingClassId);
       setShowNameDialog(false);
       setPendingClassId(null);
-      setFullName("");
-      setDisplayName(fullName.trim());
+      setJoinLastName("");
+      setJoinFirstName("");
+      setDisplayName(combined);
     } finally {
       setJoinLoading(false);
     }
