@@ -287,20 +287,6 @@ const ClassDetail = ({ classId, className: clsName, joinCode, onBack }: ClassDet
             )}
           </div>
 
-          {/* Upsell for non-premium */}
-          {!isTeacherPremium && (
-            <Card className="border-primary/30 bg-primary/5">
-              <CardContent className="p-4 flex items-center gap-3">
-                <Sparkles className="h-5 w-5 text-primary flex-shrink-0" />
-                <div>
-                  <p className="text-sm font-medium text-foreground">Statistici avansate</p>
-                  <p className="text-xs text-muted-foreground">
-                    Upgrade la Profesor AI pentru grafice detaliate, erori frecvente și clasament.
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-          )}
         </TabsContent>
 
         {isTeacherPremium && (
