@@ -1,33 +1,43 @@
+## Plan
 
-Need to check StudentTab for a join-class dialog with name input.
-<lov-tool-use id="toolu_vrtx_01VFBKRDBi1xFo17tEJLdrdr" name="code--search_files" integration-id="code" data="{\"query\": \"join\", \"include_patterns\": \"src/components/account/StudentTab.tsx\"}">
-</lov-tool-use>
+Trei modificări:
 
-<lov-tool-use id="toolu_vrtx_014DSTbnwB2VaAtycmWL5u5B" name="code--search_files" integration-id="code" data="{\"query\": \"join|alătur|Alătur\", \"include_patterns\": \"src/components/account/StudentTab.tsx\"}">
-</lov-tool-use>
+### 1. Nickname editabil în pagina Profil (deja există ✓)
 
-<lov-tool-use id="toolu_vrtx_015xiCf5HhMcC8yFUdpUsB1M" name="code--search_files" integration-id="code" data="{\"include_patterns\": \"src/components/account/StudentTab.tsx\", \"query\": \"classCode|class_code|cod clasă|Cod clasă|enroll\"}">
-</lov-tool-use>
-StudentTab doesn't have a join-class dialog. The only entry point for joining is in `AuthPage.tsx` (already updated). Let me confirm.
-<lov-tool-use id="toolu_vrtx_01QwDPXjrTfJ7M9683C94PBX" name="code--search_files" integration-id="code" data="{\"query\": \"class_members|join.*class|alătur.*clas\", \"include_patterns\": \"src/**/*.tsx\"}">
-</lov-tool-use>
-The join entry point is in `AccountProfileTab.tsx` (called from AuthPage). The `onJoinClass` calls `handleJoinClass` in AuthPage which already triggers the name dialog with separate fields. So flow is consistent.
+Verificat: `AccountProfileTab.tsx` are deja un editor de nickname (linii 108-156) cu salvare în `profiles.nickname`. **Nimic de făcut.**
 
-But wait - this same `AccountProfileTab` is used presumably also from other pages. Let me verify and check if the dialog logic is shared.
-<lov-tool-use id="toolu_vrtx_01LivkXaPXfiqAzSZuTqUfx5" name="code--search_files" integration-id="code" data="{\"include_patterns\": \"src/**/*.tsx\", \"query\": \"AccountProfileTab|onJoinClass\"}">
-</lov-tool-use>
-Confirmed: only AuthPage uses AccountProfileTab, and the join flow already routes through the updated dialog with separate fields. No other entry point exists.
+### 2. Verificare afișare nickname în clasamente (deja corect ✓)
 
-<lov-plan>
+`LeaderboardPage.tsx` linia 159: `entry.nickname || entry.display_name || "Anonim"`. Nickname-ul are prioritate. **Nimic de făcut.**
 
-## Nu sunt necesare modificări
+### 3. Nume catalog editabil în StudentTab (deja există ✓)
 
-Am verificat — singura intrare pentru „alătură-te unei clase" pentru elev este:
+`StudentTab.tsx` linii 220-287 — editor cu Nume + Prenume separat, salvare în `last_name`/`first_name`/`display_name`. **Scrie in dreptul lui Numele din catalog.**
 
-- **`AccountProfileTab.tsx`** (input cu cod 6 caractere + buton „Intră") — folosit doar în `AuthPage.tsx`
-- Click-ul apelează `onJoinClass` → `handleJoinClass` din `AuthPage.tsx` → deschide deja dialogul actualizat cu câmpurile separate **Nume** și **Prenume**
+### 4. Nume catalog editabil pentru profesor în tab-ul "Clase" (NOU)
 
-`StudentTab.tsx` **nu** are un dialog propriu de alăturare la clasă — gestionează doar starea „elev deja înscris" (afișare clasă, părăsire, provocări). Câmpurile separate Nume/Prenume sunt deja prezente acolo în modul edit pentru numele de catalog.
+Profesorul setează nume + prenume doar la wizard-ul inițial — nu îl poate edita după. Adaug un editor în `TeacherClassesTab.tsx` (la început, înainte de `ClassManager`):
 
-Nu există un al doilea punct de intrare. Fluxul e deja unificat prin dialogul din `AuthPage` care salvează `last_name`, `first_name` și `display_name` combinat.
+- Card cu "Numele tău în catalog" + valoarea curentă (`display_name` din `profiles`)
+- Buton creion → expandează 2 inputuri (Nume, Prenume) cu Salvează/Anulează
+- La salvare: `UPDATE profiles SET last_name, first_name, display_name = "Nume Prenume" WHERE user_id = auth.uid()`
+- Hint mic: "🔒 Vizibil doar elevilor din clasele tale"
+- Se afișează doar când `selectedClassId` e null (în lista de clase, nu în detaliul unei clase)
 
+### 5. Clarificare UX: "Numele din aceste două taburi apare doar în relația profesor-elev"
+
+Adaug o notă explicativă mică sub editorul de nume catalog (atât la elev cât și la profesor):
+
+- Elev: deja există "🔒 Vizibil doar profesorului tău" (linia 281) ✓
+- Profesor (nou): "🔒 Vizibil doar elevilor din clasele tale"
+
+Astfel, în public (clasamente, profile) apare **nickname-ul**, iar în relația profesor↔elev (catalog clasă, rezultate teste) apare **display_name** (Nume Prenume).
+
+### Fișier modificat (1)
+
+- `src/components/account/TeacherClassesTab.tsx` — adaug card editor nume catalog la început
+
+### Comportament neschimbat
+
+- DB: nu sunt schimbări de schemă; coloanele `last_name`, `first_name`, `nickname` există deja
+- Locurile unde apare numele profesor↔elev (`ClassDetail`, `TestResults`, `ClassAnalytics`) folosesc deja `profile.display_name` care se actualizează automat
