@@ -576,6 +576,48 @@ export type Database = {
         }
         Relationships: []
       }
+      play_billing_subscriptions: {
+        Row: {
+          auto_renewing: boolean
+          created_at: string
+          expiry_time: string
+          id: string
+          is_active: boolean
+          order_id: string | null
+          plan_id: string | null
+          product_id: string
+          purchase_token: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          auto_renewing?: boolean
+          created_at?: string
+          expiry_time: string
+          id?: string
+          is_active?: boolean
+          order_id?: string | null
+          plan_id?: string | null
+          product_id: string
+          purchase_token: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          auto_renewing?: boolean
+          created_at?: string
+          expiry_time?: string
+          id?: string
+          is_active?: boolean
+          order_id?: string | null
+          plan_id?: string | null
+          product_id?: string
+          purchase_token?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       predefined_test_items: {
         Row: {
           custom_data: Json | null
