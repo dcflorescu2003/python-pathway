@@ -174,6 +174,7 @@ export async function verifyPurchaseOnServer(args: {
   productId: string;
   planId: string;
   orderId?: string;
+  diagnostic?: unknown;
 }): Promise<void> {
   const { error } = await supabase.functions.invoke("verify-play-purchase", {
     body: args,
