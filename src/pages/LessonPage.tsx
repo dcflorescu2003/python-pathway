@@ -16,6 +16,7 @@ import ProblemExercise from "@/components/exercises/ProblemExercise";
 import LoadingScreen from "@/components/states/LoadingScreen";
 import StreakCelebrationDialog from "@/components/StreakCelebrationDialog";
 import RichContent from "@/components/RichContent";
+import WatchAdForLivesButton from "@/components/WatchAdForLivesButton";
 
 import React from "react";
 
@@ -42,7 +43,7 @@ class ExerciseErrorBoundary extends React.Component<
 const LessonPage = () => {
   const { lessonId } = useParams();
   const navigate = useNavigate();
-  const { progress, completeLesson, loseLife, streakJustIncreased, newStreakCount, dismissStreakCelebration } = useProgress();
+  const { progress, completeLesson, loseLife, setLivesFromReward, streakJustIncreased, newStreakCount, dismissStreakCelebration } = useProgress();
   const { data: chapters, isLoading } = useChapters();
 
   const lesson = chapters?.flatMap((c) => c.lessons).find((l) => l.id === lessonId);
@@ -123,7 +124,16 @@ const LessonPage = () => {
             <>
               <div className="text-5xl mb-4">💔</div>
               <h2 className="text-xl font-bold text-foreground mb-2">Ai rămas fără vieți!</h2>
-              <p className="text-sm text-muted-foreground mb-6">Încearcă din nou mai târziu.</p>
+              <p className="text-sm text-muted-foreground mb-4">Încearcă din nou mai târziu sau vizionează o reclamă pentru a primi 5 inimi.</p>
+              <div className="mb-4">
+                <WatchAdForLivesButton
+                  isPremium={progress.isPremium}
+                  onLivesGranted={(newLives, livesUpdatedAt) => {
+                    setLivesFromReward(newLives, livesUpdatedAt);
+                    setLives(newLives);
+                  }}
+                />
+              </div>
             </>
           )}
           <div className="flex gap-3">
