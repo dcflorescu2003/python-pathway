@@ -34,6 +34,8 @@ const AccountView = () => {
   const [joinLoading, setJoinLoading] = useState(false);
   const [showNameDialog, setShowNameDialog] = useState(false);
   const [fullName, setFullName] = useState("");
+  const [joinLastName, setJoinLastName] = useState("");
+  const [joinFirstName, setJoinFirstName] = useState("");
   const [pendingClassId, setPendingClassId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState(false);
   const [editName, setEditName] = useState("");
@@ -119,13 +121,27 @@ const AccountView = () => {
       // Always require catalog name when joining
       const { data: profile } = await supabase
         .from("profiles")
-        .select("display_name")
+        .select("display_name, last_name, first_name")
         .eq("user_id", user.id)
         .single();
 
       setPendingClassId(cls.id);
-      const name = profile?.display_name?.trim();
-      setFullName(name && name !== user.email && name.length >= 3 ? name : "");
+      const ln = (profile?.last_name || "").trim();
+      const fn = (profile?.first_name || "").trim();
+      if (ln || fn) {
+        setJoinLastName(ln);
+        setJoinFirstName(fn);
+      } else {
+        const name = profile?.display_name?.trim();
+        if (name && name !== user.email && name.length >= 3) {
+          const parts = name.split(/\s+/);
+          setJoinLastName(parts[0] || "");
+          setJoinFirstName(parts.slice(1).join(" ") || "");
+        } else {
+          setJoinLastName("");
+          setJoinFirstName("");
+        }
+      }
       setShowNameDialog(true);
     } finally {
       setJoinLoading(false);
@@ -150,15 +166,22 @@ const AccountView = () => {
   };
 
   const handleNameConfirm = async () => {
-    if (!user || !pendingClassId || fullName.trim().length < 3) return;
+    const ln = joinLastName.trim();
+    const fn = joinFirstName.trim();
+    const combined = `${ln} ${fn}`.trim();
+    if (!user || !pendingClassId || ln.length < 2 || fn.length < 2) return;
     setJoinLoading(true);
     try {
-      await supabase.from("profiles").update({ display_name: fullName.trim() }).eq("user_id", user.id);
+      await supabase
+        .from("profiles")
+        .update({ display_name: combined, last_name: ln, first_name: fn })
+        .eq("user_id", user.id);
       await joinClassDirect(pendingClassId);
       setShowNameDialog(false);
       setPendingClassId(null);
-      setFullName("");
-      setDisplayName(fullName.trim());
+      setJoinLastName("");
+      setJoinFirstName("");
+      setDisplayName(combined);
     } finally {
       setJoinLoading(false);
     }
@@ -331,16 +354,39 @@ const AccountView = () => {
               <User className="h-5 w-5 text-primary" /> Numele din catalog
             </DialogTitle>
             <DialogDescription className="text-center text-foreground/70">
-              Scrie-ți numele complet (prenume și nume de familie) așa cum apare în catalogul clasei.
+              Scrie-ți numele și prenumele așa cum apar în catalogul clasei.
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-2">
-            <Input placeholder="Ex: Andrei Popescu" value={fullName} onChange={(e) => setFullName(e.target.value)} className="text-center" autoFocus />
-            <p className="text-xs text-muted-foreground text-center">🔒 Acest nume va fi vizibil doar profesorului tău.</p>
-            {fullName.trim().length > 0 && fullName.trim().length < 3 && (
-              <p className="text-xs text-destructive text-center">Numele trebuie să aibă minim 3 caractere.</p>
+          <div className="space-y-3 py-2">
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-foreground/80">Nume</label>
+              <Input
+                placeholder="Ex: Popescu"
+                value={joinLastName}
+                onChange={(e) => setJoinLastName(e.target.value)}
+                autoFocus
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-foreground/80">Prenume</label>
+              <Input
+                placeholder="Ex: Andrei"
+                value={joinFirstName}
+                onChange={(e) => setJoinFirstName(e.target.value)}
+              />
+            </div>
+            <p className="text-xs text-muted-foreground text-center">🔒 Vizibil doar profesorului tău.</p>
+            {(joinLastName.trim().length > 0 && joinLastName.trim().length < 2) && (
+              <p className="text-xs text-destructive text-center">Numele trebuie să aibă minim 2 caractere.</p>
             )}
-            <Button className="w-full" onClick={handleNameConfirm} disabled={fullName.trim().length < 3 || joinLoading}>
+            {(joinFirstName.trim().length > 0 && joinFirstName.trim().length < 2) && (
+              <p className="text-xs text-destructive text-center">Prenumele trebuie să aibă minim 2 caractere.</p>
+            )}
+            <Button
+              className="w-full"
+              onClick={handleNameConfirm}
+              disabled={joinLastName.trim().length < 2 || joinFirstName.trim().length < 2 || joinLoading}
+            >
               {joinLoading ? "Se înscrie..." : "Confirmă și intră în clasă"}
             </Button>
           </div>
