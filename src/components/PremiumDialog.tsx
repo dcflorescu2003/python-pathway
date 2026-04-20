@@ -74,7 +74,7 @@ const PremiumDialog = ({ open, onOpenChange }: PremiumDialogProps) => {
               )}
               <Button variant="outline" onClick={handleManage} className="mt-2 gap-2">
                 <Settings className="h-4 w-4" />
-                Gestionează abonamentul
+                {isAndroidNative ? "Gestionează în Google Play" : "Gestionează abonamentul"}
               </Button>
             </div>
           ) : (
@@ -159,8 +159,26 @@ const PremiumDialog = ({ open, onOpenChange }: PremiumDialogProps) => {
                 </p>
               )}
               <p className="text-[10px] text-center text-foreground/40">
-                Plata se procesează securizat prin Stripe
+                {isAndroidNative
+                  ? "Plata se procesează prin Google Play"
+                  : "Plata se procesează securizat prin Stripe"}
               </p>
+              {isAndroidNative && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleRestore}
+                  disabled={restoring}
+                  className="w-full gap-2 text-xs"
+                >
+                  {restoring ? (
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                  ) : (
+                    <RefreshCw className="h-3 w-3" />
+                  )}
+                  Restaurează achizițiile
+                </Button>
+              )}
             </>
           )}
         </div>

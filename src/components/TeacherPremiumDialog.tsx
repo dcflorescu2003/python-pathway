@@ -1,11 +1,12 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Loader2, Settings, Sparkles, FileText, Brain, BarChart3, CheckCircle2, Crown, Heart } from "lucide-react";
+import { Loader2, Settings, Sparkles, FileText, Brain, BarChart3, CheckCircle2, Crown, Heart, RefreshCw } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/useAuth";
 import { useSubscription, TEACHER_MONTHLY_PRICE, TEACHER_YEARLY_PRICE } from "@/hooks/useSubscription";
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
+import { toast } from "sonner";
 
 interface TeacherPremiumDialogProps {
   open: boolean;
@@ -77,7 +78,7 @@ const TeacherPremiumDialog = ({ open, onOpenChange }: TeacherPremiumDialogProps)
               </p>
               <Button variant="outline" onClick={handleManage} className="mt-2 gap-2">
                 <Settings className="h-4 w-4" />
-                Gestionează abonamentul
+                {isAndroidNative ? "Gestionează în Google Play" : "Gestionează abonamentul"}
               </Button>
             </div>
           ) : (
@@ -145,8 +146,26 @@ const TeacherPremiumDialog = ({ open, onOpenChange }: TeacherPremiumDialogProps)
                 Preț de fondator
               </p>
               <p className="text-[10px] text-center text-foreground/40">
-                Plata se procesează securizat prin Stripe
+                {isAndroidNative
+                  ? "Plata se procesează prin Google Play"
+                  : "Plata se procesează securizat prin Stripe"}
               </p>
+              {isAndroidNative && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleRestore}
+                  disabled={restoring}
+                  className="w-full gap-2 text-xs"
+                >
+                  {restoring ? (
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                  ) : (
+                    <RefreshCw className="h-3 w-3" />
+                  )}
+                  Restaurează achizițiile
+                </Button>
+              )}
             </>
           )}
         </div>
