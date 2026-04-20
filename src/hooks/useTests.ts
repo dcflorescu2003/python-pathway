@@ -216,7 +216,7 @@ export function useTestSubmissions(assignmentId: string | null) {
       if (studentIds.length === 0) return [];
       const { data: profiles } = await supabase
         .from("profiles")
-        .select("user_id, display_name")
+        .select("user_id, display_name, last_name, first_name")
         .in("user_id", studentIds);
 
       return data.map((s) => ({
