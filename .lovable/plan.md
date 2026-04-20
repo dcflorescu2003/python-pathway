@@ -1,49 +1,99 @@
 
 
-User got error: Play Billing AIDL version too old, needs >= 6.0.1. Plus deprecation warnings from Gradle/AdMob (these are just warnings, can ignore).
+## Integrare Google Play Billing nativă pentru Android
 
-The app uses Capacitor. They haven't installed any billing plugin yet — Stripe is currently used. The error means Google Play scans the AAB and finds an old AIDL Billing library somewhere. This usually comes from:
-- A Capacitor plugin that bundles old Play Billing (admob plugin sometimes?)
-- Or Google Play Services version
+Cele 4 planuri sunt active în Play Console. Acum legăm aplicația de ele, păstrând Stripe pentru web.
 
-Actually — the warning shows `@capacitor-community/admob` is compiled. AdMob plugin doesn't include billing. So where does AIDL billing come from?
+### Strategia
 
-Most likely: there's no billing library at all, and Google detects the BILLING permission we just added but no modern Billing library → flags it. OR there's an old transitive dependency.
+- **Web (browser/PWA)**: rămâne Stripe — flux neschimbat
+- **Android nativ (Capacitor)**: Google Play Billing prin plugin nativ
+- Detectare runtime: `Capacitor.getPlatform() === 'android'` → ascunde butoanele Stripe, arată butoanele Play Billing
+- iOS: rămâne Stripe momentan (vom adăuga StoreKit ulterior, separat)
 
-Best fix: add the modern Google Play Billing library directly to `android/app/build.gradle`:
-```
-implementation 'com.android.billingclient:billing:7.1.1'
-```
-This satisfies the >= 6.0.1 requirement. Even if not used yet via code (RevenueCat will use it later), having it declared makes Play Console accept the AAB.
+### Plugin recomandat
 
-Also bump versionCode to 56.
+`@capgo/capacitor-purchases` (RevenueCat-free, gratuit, mentenanță activă, suportă Billing Library 7.x — exact versiunea pe care o avem deja în `build.gradle`).
 
-Warnings in screenshot are deprecation warnings from Gradle 8 + AdMob plugin — purely cosmetic, don't block anything. I'll mention this so user doesn't worry.
-
-## Plan: Fix Play Billing AIDL error
-
-### Cauza
-Am adăugat `<uses-permission BILLING />` dar nu există nicio librărie modernă Play Billing în AAB. Google Play detectează permisiunea + lipsa Billing Library nouă → respinge upload-ul.
+Alternativă: `cordova-plugin-purchase` — mai vechi dar bine testat. Aleg `@capgo/capacitor-purchases` pentru API modern Capacitor 6.
 
 ### Modificări
 
-**1. `android/app/build.gradle`** — adaug dependența Play Billing 7.1.1 (cea mai nouă, peste pragul 6.0.1):
-```gradle
-implementation 'com.android.billingclient:billing:7.1.1'
+**1. Instalare plugin**
 ```
-Și bump `versionCode 55 → 56`, `versionName "1.55" → "1.56"`.
+npm install @capgo/capacitor-purchases
+npx cap sync android
+```
 
-### Despre avertismente (screenshot)
-Toate sunt **warnings**, nu erori — nu blochează build-ul:
-- `android.usesSdkInManifest.disallowed=false` etc. → setări Gradle deprecated în AGP 8.x, vor fi eliminate în viitor; nu afectează funcționalitatea
-- `Using flatDir should be avoided` → modul în care Capacitor leagă plugin-urile native, nu putem schimba
-- `SMART_BANNER deprecated` → AdMob plugin folosește un API vechi pentru bannere, dar funcționează
+**2. `src/lib/playBilling.ts`** (nou)
+- Wrapper peste plugin
+- Funcții: `initPlayBilling()`, `getProducts()`, `purchaseSubscription(productId, planId)`, `restorePurchases()`
+- Mapare produse:
+  ```ts
+  ANDROID_PRODUCTS = {
+    student_monthly: { productId: 'student_premium', planId: 'monthly' },
+    student_yearly:  { productId: 'student_premium', planId: 'yearly' },
+    teacher_monthly: { productId: 'teacher_premium', planId: 'monthly' },
+    teacher_yearly:  { productId: 'teacher_premium', planId: 'yearly' },
+  }
+  ```
 
-**Le ignorăm momentan.** Sunt zgomot, nu probleme reale.
+**3. `supabase/functions/verify-play-purchase/index.ts`** (nou edge function)
+- Primește `purchaseToken` + `productId` de la app după achiziție
+- Validează tokenul cu Google Play Developer API (server-to-server)
+- La verificare reușită → upsert în `subscribers` cu `source = 'play_billing'`, `subscribed = true`, `subscription_end = expiryTime`, `product_id = student_premium` sau `teacher_premium`
+- Necesită secret nou: **`GOOGLE_PLAY_SERVICE_ACCOUNT_JSON`** (cheie service account din Google Cloud Console cu rol „Pub/Sub Subscriber" + acces „Financial data, orders, and cancellation survey responses" în Play Console)
 
-### Pașii tăi
-1. `npm run build && npx cap sync android`
-2. Android Studio → **Generate Signed App Bundle** (versionCode 56)
-3. Upload AAB pe Alpha în Play Console
-4. Eroarea Billing AIDL dispare → poți crea abonamentele
+**4. `src/hooks/useSubscription.ts`** — extindere
+- `startCheckout(priceId)` devine smart:
+  - Dacă `Capacitor.getPlatform() === 'android'` → apelează `purchaseSubscription()` din `playBilling.ts` în loc de Stripe checkout
+  - Altfel → Stripe (comportament actual)
+- După achiziție Play Billing reușită → invocă `verify-play-purchase` → apoi `checkSubscription(true)` pentru refresh
+- Adaug funcție `restorePurchases()` (Android only) pentru recuperare achiziții (cerință Google Play)
+
+**5. `supabase/functions/check-subscription/index.ts`** — extindere
+- Verifică ÎNAINTE de Stripe dacă există abonament `source='play_billing'` activ în tabelul `subscribers`
+- Dacă da și nu e expirat → returnează direct fără query la Stripe
+- Pentru Play Billing nu reinterogăm Google la fiecare check (e rate-limited) — ne bazăm pe `subscription_end` și pe webhook-uri viitoare
+
+**6. UI — `PremiumDialog.tsx` + `TeacherPremiumDialog.tsx`**
+- Detectează platforma; pe Android afișează: „Plătește cu Google Play"
+- Adaugă buton „Restaurează achiziții" (obligatoriu pentru policy Google Play)
+- Mesaj informativ pe Android: „Achiziție gestionată de Google Play"
+
+**7. `android/app/src/main/AndroidManifest.xml`**
+- Permisiunea `BILLING` deja adăugată — ok
+
+### Despre verificarea server-side cu Google Play API
+
+Necesită setup în Google Cloud Console:
+1. Creează proiect Google Cloud (sau folosește existing)
+2. Activează „Google Play Android Developer API"
+3. Service account → cheie JSON → adaug ca secret `GOOGLE_PLAY_SERVICE_ACCOUNT_JSON` în Lovable Cloud
+4. În Play Console → Setări → Acces API → invită service account-ul → acordă permisiune „Vizualizare date financiare"
+
+Te ghidez pas cu pas când ajungem acolo.
+
+### Ordinea de implementare
+
+1. Instalez plugin + wrapper `playBilling.ts`
+2. Extind `useSubscription` cu detectare platformă
+3. Modific dialoguri Premium pentru UI Android
+4. Creez edge function `verify-play-purchase` (cu placeholder validare până configurezi service account)
+5. Extind `check-subscription` să citească Play Billing din DB
+6. Bump versionCode → 58, build AAB, test pe Internal Testing track
+
+### Ce rămâne pentru tine după implementare
+
+- Setup Google Cloud service account (te ghidez)
+- Adăugare secret `GOOGLE_PLAY_SERVICE_ACCOUNT_JSON`
+- Build AAB v58 + upload pe Internal Testing
+- Test flux complet de cumpărare cu cont de test (adaugi licență tester în Play Console → Setări → Testare licențiere)
+
+### Note importante
+
+- **iOS rămâne pe Stripe** momentan. Apple cere StoreKit pentru abonamente în-app — vom face asta separat (alt set de produse în App Store Connect, alt plugin).
+- **Web rămâne pe Stripe** — nicio schimbare pentru utilizatorii din browser.
+- **Cupoanele** (sistem coupon existent) rămân nealterate — funcționează pe toate platformele.
+- **Premium auto-grant pentru PWA** rămâne neatins.
 
