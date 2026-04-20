@@ -121,13 +121,27 @@ const AccountView = () => {
       // Always require catalog name when joining
       const { data: profile } = await supabase
         .from("profiles")
-        .select("display_name")
+        .select("display_name, last_name, first_name")
         .eq("user_id", user.id)
         .single();
 
       setPendingClassId(cls.id);
-      const name = profile?.display_name?.trim();
-      setFullName(name && name !== user.email && name.length >= 3 ? name : "");
+      const ln = (profile?.last_name || "").trim();
+      const fn = (profile?.first_name || "").trim();
+      if (ln || fn) {
+        setJoinLastName(ln);
+        setJoinFirstName(fn);
+      } else {
+        const name = profile?.display_name?.trim();
+        if (name && name !== user.email && name.length >= 3) {
+          const parts = name.split(/\s+/);
+          setJoinLastName(parts[0] || "");
+          setJoinFirstName(parts.slice(1).join(" ") || "");
+        } else {
+          setJoinLastName("");
+          setJoinFirstName("");
+        }
+      }
       setShowNameDialog(true);
     } finally {
       setJoinLoading(false);
