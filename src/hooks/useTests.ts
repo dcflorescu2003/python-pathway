@@ -392,6 +392,22 @@ export function useUpdateAnswerScore() {
   });
 }
 
+export function useAllowRetake() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (submissionId: string) => {
+      const { error: ansErr } = await supabase.from("test_answers").delete().eq("submission_id", submissionId);
+      if (ansErr) throw ansErr;
+      const { error: subErr } = await supabase.from("test_submissions").delete().eq("id", submissionId);
+      if (subErr) throw subErr;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["test-submissions"] });
+      qc.invalidateQueries({ queryKey: ["student-test-assignments"] });
+    },
+  });
+}
+
 export function useToggleScoresReleased() {
   const qc = useQueryClient();
   return useMutation({
