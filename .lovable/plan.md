@@ -1,51 +1,62 @@
 
 
-## Plan: Reparăm livrarea fișierului `app-ads.txt` pentru AdMob
+## Plan: Fix test auto-submit on mobile + proper exercise/problem rendering in tests
 
-### Problema identificată
+### Problem 1: Auto-submit does NOT trigger when checking notifications on mobile
 
-Am verificat `https://pyroskill.info/app-ads.txt` și `https://www.pyroskill.info/app-ads.txt`. Fișierul **există și are conținutul corect**, DAR este servit ambalat în HTML:
+The auto-submit logic relies on `document.visibilitychange` and `window.blur/focus`. On many mobile browsers (especially in Capacitor WebView), pulling down the notification shade does **not** fire `visibilitychange` or `blur`. The Capacitor `appStateChange` listener also doesn't fire for the notification shade — only for full app backgrounding.
 
-```html
-<html><body>google.com, pub-8441862030200888, DIRECT, f08c47fec0942fa0
-</body></html>
-```
+**Fix:** Add the `pause`/`resume` events from the Capacitor `App` plugin, which fire more reliably on Android. Also add a `touchend` + `setTimeout` heuristic: if a touch ends and no interaction happens for 1.5s while the page is not focused, treat it as a leave. Additionally, ensure `handleSubmitRef` always has the latest closure by using refs for `items` and `answers` (already done with `answersRef`/`itemsRef`).
 
-Specificația IAB cere ca fișierul să fie servit ca **text simplu** (Content-Type: `text/plain`), fără tag-uri HTML. Crawler-ul AdMob respinge fișierul când întâlnește HTML, de aceea verificarea eșuează cu „Nu am găsit identificatorul publisher-ului".
+**File:** `src/pages/TakeTestPage.tsx`, lines 314-385
 
-### Cauza tehnică
+### Problem 2: Exercise types render incorrectly in tests (especially Match)
 
-Hostingul Lovable pare să injecteze `<html><body>` în jurul conținutului fișierului `.txt` din `public/`. Singurul mod sigur de a livra `app-ads.txt` ca text curat este pe **un domeniu/subdomeniu sub controlul tău cu hosting standard** sau prin adăugarea unei rute care forțează `text/plain`.
+The `ExerciseRenderer` (lines 611-791) uses crude inline renderers:
+- **Match**: text inputs instead of two-column tap-to-match
+- **Order**: basic drag with `onDragStart`/`onDragOver` (doesn't work on mobile touch)
+- **Problem**: plain `Textarea` instead of `CodeEditor` component
 
-### Reguli AdMob pe care trebuie să le respectăm
+**Fix:** Rewrite `ExerciseRenderer` and `ProblemRenderer` to use test-adapted versions of the real components. Since the lesson components report `onAnswer(isCorrect: boolean)` but tests need the actual answer data, we build test-specific renderers that replicate the same visual UI but store answer data instead:
 
-1. ✅ Conținut corect: `google.com, pub-8441862030200888, DIRECT, f08c47fec0942fa0`
-2. ❌ Content-Type `text/plain` — momentan e `text/html`
-3. ❌ Fără wrapper HTML — momentan are `<html><body>`
-4. ⚠️ Domeniul `pyroskill.info` trebuie să fie EXACT cel declarat în **Google Play Console → Detalii magazin → Site web** pentru aplicația `ro.pythonpathway.app`
+| Type | Current (broken) | Fixed |
+|------|------------------|-------|
+| **match** | Text inputs per pair | Two-column tap-to-match (replicating `MatchExercise` UI) without submit button, storing `{ matches: { pairId: rightId } }` |
+| **order** | Desktop-only drag + arrow buttons | Same arrow buttons but with proper touch support, storing `{ order: [...ids] }` |
+| **quiz** | Plain buttons (OK but basic) | Keep similar, add proper selected styling |
+| **truefalse** | Inline buttons (OK) | Keep, minor styling alignment |
+| **fill** | Inline inputs in code template | Keep current implementation (works) |
+| **problem** | Plain `<Textarea>` | Use `CodeEditor` component, same as `ProblemExercise` |
 
-### Soluții (în ordinea recomandată)
+For **match** specifically: build a test-specific two-column matcher that:
+- Shows left items in original order, right items shuffled
+- Tap left then right to match (or vice versa)
+- Shows link icon and muted style on matched pairs
+- Tap a matched pair to unmatch
+- Stores `{ matches: { [pairId]: rightPairId } }` in answer state
+- No "Verifică" button (test has its own submit)
 
-**Soluția A — Verifică Play Console (verificare rapidă, fără cod)**
-- Deschide Google Play Console → aplicația PyRo → **Magazin Play → Setări magazin → Detalii despre magazin**
-- Confirmă că la „Site web" este setat exact `https://pyroskill.info` (nu altceva, nu gol, nu `pyro-learn.lovable.app`)
-- Dacă nu este, schimbă-l și salvează — propagarea către AdMob durează 24-48h
+For **problem**: Replace `<Textarea>` with `CodeEditor` component, keeping the same Pyodide test runner when `allowRunTests` is true.
 
-**Soluția B — Servește `app-ads.txt` printr-o Edge Function Supabase (cea mai sigură tehnic)**
+**Files modified:**
+- `src/pages/TakeTestPage.tsx` — rewrite `ExerciseRenderer` match/order sections and `ProblemRenderer`
 
-Adăugăm o funcție Edge `app-ads` care întoarce conținutul cu `Content-Type: text/plain` corect, apoi configurăm un redirect / proxy de la `/app-ads.txt`. Totuși, AdMob nu urmărește redirect-uri către alte domenii, deci această soluție necesită ca Edge Function-ul să fie expus pe `pyroskill.info/app-ads.txt`, ceea ce nu e direct posibil pe hostingul Lovable.
+### Technical details
 
-**Soluția C — Folosește GitHub Pages / Netlify pentru un subdomeniu dedicat**
+**Auto-submit fix (lines 314-385):**
+- Keep `visibilitychange` and `window.blur/focus` listeners
+- In the Capacitor section, also listen for `pause`/`resume` events (more granular than `appStateChange`)
+- Add a `document.hasFocus()` check on a 2-second interval as a fallback: if focus is lost for >1s, trigger auto-submit
 
-Creezi un subdomeniu (ex: `ads.pyroskill.info`) hostat separat care servește un singur fișier `app-ads.txt` curat, apoi schimbi link-ul „Site web" din Play Console la `https://ads.pyroskill.info`.
+**Match renderer rewrite (lines 760-778):**
+- Replace text inputs with interactive two-column UI
+- Use `useState` for `selectedLeft`, `selectedRight`, `matched` map
+- Shuffle right column with `useMemo`
+- Show progress bar and reset button
+- Store matches in answer state on each change via `onAnswer`
 
-### Recomandare
-
-Începem cu **Soluția A** — este foarte probabil ca problema reală să fie că Play Console nu are setat `pyroskill.info` ca site al dezvoltatorului, iar AdMob caută `app-ads.txt` pe alt domeniu (sau pe niciunul). Verifică asta întâi, apoi raportezi rezultatul.
-
-Dacă Play Console e configurat corect și eroarea persistă după 48h, trecem la Soluția C cu un subdomeniu separat.
-
-### Fără modificări de cod în acest pas
-
-Nu modificăm nimic în cod până nu confirmăm setarea din Play Console. `public/app-ads.txt` rămâne așa cum este — conținutul e corect, doar livrarea e problematică.
+**Problem renderer rewrite (lines 794-855):**
+- Import `CodeEditor` from `@/components/CodeEditor`
+- Replace `<Textarea>` with `<CodeEditor value={...} onChange={...} />`
+- Keep Pyodide test runner logic unchanged
 
