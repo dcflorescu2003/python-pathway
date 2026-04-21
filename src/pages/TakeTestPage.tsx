@@ -957,37 +957,6 @@ const TestMatchRenderer = ({ exercise, answer, onAnswer }: { exercise: any; answ
               )}
             </div>
           );
-        })}
-              >
-                <div className="flex items-center gap-2">
-                  {matchEntry && (
-                    <motion.span
-                      initial={{ scale: 0, rotate: -90 }}
-                      animate={{ scale: 1, rotate: 0 }}
-                      transition={{ type: "spring", stiffness: 500, damping: 20 }}
-                      aria-hidden="true"
-                    >
-                      <Link2 className="h-3.5 w-3.5 shrink-0 opacity-60" />
-                    </motion.span>
-                  )}
-                  <span className="flex-1">{p.right}</span>
-                </div>
-                <AnimatePresence>
-                  {recentlyMatched && matchEntry && matchEntry[0] === recentlyMatched && (
-                    <motion.div
-                      initial={{ opacity: 0.5, scale: 0.5 }}
-                      animate={{ opacity: 0, scale: 2.5 }}
-                      exit={{ opacity: 0 }}
-                      transition={{ duration: 0.5 }}
-                      className="absolute inset-0 rounded-xl bg-primary/20 pointer-events-none"
-                      aria-hidden="true"
-                    />
-                  )}
-                </AnimatePresence>
-              </motion.button>
-            );
-          })}
-        </div>
       </div>
     </div>
   );
