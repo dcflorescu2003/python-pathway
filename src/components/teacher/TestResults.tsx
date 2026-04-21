@@ -4,8 +4,19 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
-import { useTestAssignments, useTestSubmissions, useTestAnswers, useTestItems, useUpdateAnswerScore, useToggleScoresReleased } from "@/hooks/useTests";
-import { ArrowLeft, ChevronDown, ChevronUp, CheckCircle, XCircle, Save, FileSpreadsheet, FileText, Eye, EyeOff, AlertCircle } from "lucide-react";
+import { useTestAssignments, useTestSubmissions, useTestAnswers, useTestItems, useUpdateAnswerScore, useToggleScoresReleased, useAllowRetake } from "@/hooks/useTests";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { ArrowLeft, ChevronDown, ChevronUp, CheckCircle, XCircle, Save, FileSpreadsheet, FileText, Eye, EyeOff, AlertCircle, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 import { sortByDisplayName } from "@/lib/sortStudents";
 
@@ -22,6 +33,7 @@ const autoReasonLabel = (reason: string | null | undefined): string => {
     case "fullscreen_exit": return "A ieșit din fullscreen";
     case "app_background": return "A părăsit aplicația";
     case "time_expired": return "Timp expirat";
+    case "browser_closed": return "Browser închis";
     default: return reason ? "Auto-trimis" : "";
   }
 };
@@ -37,6 +49,7 @@ const TestResults = ({ testId, testTitle, onBack }: TestResultsProps) => {
   const { data: answers = [] } = useTestAnswers(expandedSubmissionId);
   const updateScore = useUpdateAnswerScore();
   const toggleScores = useToggleScoresReleased();
+  const allowRetake = useAllowRetake();
 
   // Enriched data: exercise/problem details keyed by source_id
   const [enrichedData, setEnrichedData] = useState<Record<string, any>>({});
@@ -414,6 +427,39 @@ const TestResults = ({ testId, testTitle, onBack }: TestResultsProps) => {
                             >
                               ⚠️ {autoReasonLabel(sub.auto_submitted_reason)}
                             </span>
+                          )}
+                          {sub.auto_submitted_reason && (
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <button
+                                  onClick={(e) => e.stopPropagation()}
+                                  className="inline-flex items-center gap-1 text-[9px] px-1.5 py-0.5 rounded-full bg-primary/10 border border-primary/30 text-primary font-medium hover:bg-primary/20 transition-colors"
+                                >
+                                  <RotateCcw className="h-3 w-3" /> Permite reluarea
+                                </button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent onClick={(e) => e.stopPropagation()}>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Permite reluarea testului?</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    Submiterea și răspunsurile elevului <strong>{sub.profile?.display_name || "Elev"}</strong> vor fi șterse. Elevul va putea relua testul de la zero.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Anulează</AlertDialogCancel>
+                                  <AlertDialogAction
+                                    onClick={() => {
+                                      allowRetake.mutate(sub.id, {
+                                        onSuccess: () => toast.success("Elevul poate relua testul."),
+                                        onError: () => toast.error("Eroare la resetarea testului."),
+                                      });
+                                    }}
+                                  >
+                                    Confirmă
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
                           )}
                         </p>
                         <p className="text-[10px] text-muted-foreground">
