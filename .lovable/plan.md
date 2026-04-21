@@ -1,30 +1,26 @@
 
 
-## Plan: Re-activează auto-submit când elevul trage bara de notificări pe Android
+## Plan: Adaugă fișierul `app-ads.txt` pentru verificarea AdMob
 
-### Schimbare
+### Problema
 
-Revert-ul modificării anterioare: ștergem condiția `isNativePlatform()` și re-activăm `window.blur` / `window.focus` pe toate platformele.
+AdMob nu poate verifica aplicația PyRo deoarece lipsește fișierul `app-ads.txt` de pe domeniul dezvoltatorului (`pyroskill.info`).
 
-### Fișier modificat: `src/pages/TakeTestPage.tsx`
+### Modificare
 
-**Liniile ~347-355** — Eliminăm blocul condițional și comentariul, înregistrăm blur/focus necondițional:
+Creăm fișierul `public/app-ads.txt` cu conținutul indicat de AdMob:
 
-```typescript
-document.addEventListener("visibilitychange", onVisibility);
-window.addEventListener("blur", onBlur);
-window.addEventListener("focus", onFocus);
+```
+google.com, pub-8441862030200888, DIRECT, f08c47fec0942fa0
 ```
 
-**Liniile ~382-388** — Cleanup necondițional:
+Acest fișier va fi servit automat la `https://pyroskill.info/app-ads.txt` după publicare.
 
-```typescript
-document.removeEventListener("visibilitychange", onVisibility);
-window.removeEventListener("blur", onBlur);
-window.removeEventListener("focus", onFocus);
-```
+### Pași
 
-Variabila `isNative` și import-ul `Capacitor` pot rămâne (se folosesc și în altă parte) sau se elimină dacă nu mai sunt referite.
+1. Creăm `public/app-ads.txt` cu linia de mai sus.
+2. Publicăm aplicația (click "Update" in publish dialog).
+3. După publicare, revii în AdMob Console și apeși "Căutați actualizări" pentru ca AdMob să re-verifice fișierul.
 
 ### Fără schimbări de bază de date
 
