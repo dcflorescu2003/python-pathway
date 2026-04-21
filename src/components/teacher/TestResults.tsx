@@ -33,6 +33,7 @@ const autoReasonLabel = (reason: string | null | undefined): string => {
     case "fullscreen_exit": return "A ieșit din fullscreen";
     case "app_background": return "A părăsit aplicația";
     case "time_expired": return "Timp expirat";
+    case "browser_closed": return "Browser închis";
     default: return reason ? "Auto-trimis" : "";
   }
 };
