@@ -77,20 +77,31 @@ export async function initPlayBilling(userId?: string): Promise<void> {
     store.when().approved(async (transaction: any) => {
       try {
         const native = transaction.nativePurchase || {};
-        console.log("[playBilling] raw transaction", JSON.stringify(transaction, null, 2));
+        console.log("[playBilling] transaction keys", Object.keys(transaction));
         console.log("[playBilling] native keys", Object.keys(native));
 
+        // Parse receipt — cordova-plugin-purchase often stores the raw Google Play JSON here
+        let parsedReceipt: any = {};
+        try {
+          const rawReceipt = transaction.receipt || native.receipt;
+          if (typeof rawReceipt === "string" && rawReceipt.startsWith("{")) {
+            parsedReceipt = JSON.parse(rawReceipt);
+          }
+        } catch {}
+        console.log("[playBilling] parsedReceipt keys", Object.keys(parsedReceipt));
+
         // A real Google Play purchaseToken is ~200+ chars; orderId is ~24 chars (GPA.XXXX-...).
-        // Try multiple locations to find the real token.
         const candidates = [
           native.purchaseToken,
           transaction.purchaseToken,
+          parsedReceipt.purchaseToken,
           native.token,
+          transaction.transactionReceipt,
           transaction.nativePurchase?.purchaseToken,
-          (transaction as any).receipt?.purchaseToken,
         ].filter((t) => typeof t === "string" && t.length > 50);
 
         const purchaseToken = candidates[0] || native.purchaseToken || transaction.transactionId;
+
         const products = transaction.products || [];
         const productId =
           native.productId || products[0]?.id || products[0]?.productId;
@@ -115,7 +126,20 @@ export async function initPlayBilling(userId?: string): Promise<void> {
             (matchedOffer?.id?.includes("monthly") ? "monthly" : "");
         }
 
-        console.log("[playBilling] approved tx", { productId, planId, hasToken: !!purchaseToken, tokenLen: purchaseToken?.length });
+        // Last resort: infer planId from productId naming
+        if (!planId && productId) {
+          if (productId.includes("monthly")) planId = "monthly";
+          else if (productId.includes("yearly")) planId = "yearly";
+        }
+
+        console.log("[playBilling] approved tx", {
+          productId,
+          planId,
+          hasToken: !!purchaseToken,
+          tokenLen: purchaseToken?.length,
+          tokenPreview: purchaseToken?.substring(0, 30),
+          candidatesFound: candidates.length,
+        });
 
         // ALWAYS send to backend, even if token looks short — backend will log raw payload for diagnostics
         try {
@@ -125,8 +149,10 @@ export async function initPlayBilling(userId?: string): Promise<void> {
             planId,
             orderId: native.orderId,
             diagnostic: {
-              rawTransaction: JSON.parse(JSON.stringify(transaction)),
+              transactionKeys: Object.keys(transaction),
               nativeKeys: Object.keys(native),
+              parsedReceiptKeys: Object.keys(parsedReceipt),
+              candidatesFound: candidates.length,
             },
           });
         } catch (e) {
