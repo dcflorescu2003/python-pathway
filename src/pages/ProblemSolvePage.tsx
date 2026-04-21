@@ -95,9 +95,9 @@ const ProblemSolvePage = () => {
   const totalCount = results?.length ?? 0;
 
   return (
-    <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="min-h-screen bg-background pb-8">
+    <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="min-h-screen bg-background pb-[calc(env(safe-area-inset-bottom)+32px)]">
       <div className="sticky top-0 z-40 bg-background/95 backdrop-blur-md border-b border-border">
-        <div className="flex items-center gap-3 px-4 py-3">
+        <div className="flex items-center gap-3 px-4 py-3 pt-[calc(env(safe-area-inset-top)+16px)]">
           <button onClick={() => navigate("/problems")} className="active:scale-90 transition-transform">
             <ArrowLeft className="h-6 w-6 text-foreground" />
           </button>
