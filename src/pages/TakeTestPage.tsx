@@ -375,10 +375,8 @@ const TakeTestPage = () => {
     return () => {
       cancelLeave();
       document.removeEventListener("visibilitychange", onVisibility);
-      if (!isNative) {
-        window.removeEventListener("blur", onBlur);
-        window.removeEventListener("focus", onFocus);
-      }
+      window.removeEventListener("blur", onBlur);
+      window.removeEventListener("focus", onFocus);
       if (requireFullscreen) {
         document.removeEventListener("fullscreenchange", onFullscreenChange);
       }
