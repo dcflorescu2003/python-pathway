@@ -48,6 +48,7 @@ const TestResults = ({ testId, testTitle, onBack }: TestResultsProps) => {
   const { data: answers = [] } = useTestAnswers(expandedSubmissionId);
   const updateScore = useUpdateAnswerScore();
   const toggleScores = useToggleScoresReleased();
+  const allowRetake = useAllowRetake();
 
   // Enriched data: exercise/problem details keyed by source_id
   const [enrichedData, setEnrichedData] = useState<Record<string, any>>({});
@@ -425,6 +426,39 @@ const TestResults = ({ testId, testTitle, onBack }: TestResultsProps) => {
                             >
                               ⚠️ {autoReasonLabel(sub.auto_submitted_reason)}
                             </span>
+                          )}
+                          {sub.auto_submitted_reason && (
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <button
+                                  onClick={(e) => e.stopPropagation()}
+                                  className="inline-flex items-center gap-1 text-[9px] px-1.5 py-0.5 rounded-full bg-primary/10 border border-primary/30 text-primary font-medium hover:bg-primary/20 transition-colors"
+                                >
+                                  <RotateCcw className="h-3 w-3" /> Permite reluarea
+                                </button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent onClick={(e) => e.stopPropagation()}>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Permite reluarea testului?</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    Submiterea și răspunsurile elevului <strong>{sub.profile?.display_name || "Elev"}</strong> vor fi șterse. Elevul va putea relua testul de la zero.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Anulează</AlertDialogCancel>
+                                  <AlertDialogAction
+                                    onClick={() => {
+                                      allowRetake.mutate(sub.id, {
+                                        onSuccess: () => toast.success("Elevul poate relua testul."),
+                                        onError: () => toast.error("Eroare la resetarea testului."),
+                                      });
+                                    }}
+                                  >
+                                    Confirmă
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
                           )}
                         </p>
                         <p className="text-[10px] text-muted-foreground">
