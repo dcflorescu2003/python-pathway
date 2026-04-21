@@ -343,9 +343,19 @@ const TakeTestPage = () => {
     const onFocus = () => cancelLeave();
 
     document.addEventListener("visibilitychange", onVisibility);
-
     window.addEventListener("blur", onBlur);
     window.addEventListener("focus", onFocus);
+
+    // Polling fallback: check document.hasFocus() every 2s
+    // This catches notification shade on mobile where blur/visibilitychange may not fire
+    const focusPollInterval = setInterval(() => {
+      if (hasFiredRef.current) return;
+      if (!document.hasFocus()) {
+        triggerLeave("focus_poll_lost");
+      } else {
+        cancelLeave();
+      }
+    }, 2000);
 
     // Fullscreen exit triggers leave (only if test requires fullscreen)
     const onFullscreenChange = () => {
@@ -357,8 +367,10 @@ const TakeTestPage = () => {
       document.addEventListener("fullscreenchange", onFullscreenChange);
     }
 
-    // Capacitor app state (mobile background)
+    // Capacitor app state (mobile background) + pause/resume
     let capListener: { remove: () => void } | null = null;
+    let capPauseListener: { remove: () => void } | null = null;
+    let capResumeListener: { remove: () => void } | null = null;
     (async () => {
       try {
         const { App } = await import("@capacitor/app");
@@ -367,6 +379,15 @@ const TakeTestPage = () => {
           else cancelLeave();
         });
         capListener = handle;
+        // pause/resume fire more reliably on Android notification shade
+        const pauseHandle = await App.addListener("pause" as any, () => {
+          triggerLeave("app_pause");
+        });
+        capPauseListener = pauseHandle;
+        const resumeHandle = await App.addListener("resume" as any, () => {
+          cancelLeave();
+        });
+        capResumeListener = resumeHandle;
       } catch {
         // @capacitor/app not available (web) — ignore
       }
@@ -374,6 +395,7 @@ const TakeTestPage = () => {
 
     return () => {
       cancelLeave();
+      clearInterval(focusPollInterval);
       document.removeEventListener("visibilitychange", onVisibility);
       window.removeEventListener("blur", onBlur);
       window.removeEventListener("focus", onFocus);
@@ -381,6 +403,8 @@ const TakeTestPage = () => {
         document.removeEventListener("fullscreenchange", onFullscreenChange);
       }
       capListener?.remove();
+      capPauseListener?.remove();
+      capResumeListener?.remove();
     };
   }, [submissionId, submitted, requireFullscreen]);
 
