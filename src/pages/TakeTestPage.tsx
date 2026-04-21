@@ -347,11 +347,7 @@ const TakeTestPage = () => {
     // On native Capacitor (Android/iOS), skip blur/focus listeners because
     // pulling down the notification shade fires window.blur without the student
     // actually leaving the app.  We rely on visibilitychange + appStateChange instead.
-    let isNative = false;
-    try {
-      const { Capacitor } = await import("@capacitor/core");
-      isNative = Capacitor.isNativePlatform();
-    } catch { /* not available */ }
+    const isNative = Capacitor.isNativePlatform();
 
     if (!isNative) {
       window.addEventListener("blur", onBlur);
