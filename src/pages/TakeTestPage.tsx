@@ -199,10 +199,85 @@ const TakeTestPage = () => {
     setAnswers((prev) => ({ ...prev, [itemId]: data }));
   };
 
+  // --- Draft auto-save to localStorage ---
+  const draftKey = submissionId ? `test_draft_${submissionId}` : null;
+
+  // Restore draft on load
+  useEffect(() => {
+    if (!draftKey || submitted) return;
+    try {
+      const saved = localStorage.getItem(draftKey);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed && typeof parsed === "object") {
+          setAnswers((prev) => ({ ...parsed, ...prev }));
+        }
+      }
+    } catch { /* ignore corrupt data */ }
+  }, [draftKey, submitted]);
+
+  // Keep refs for use in effects/callbacks
+  const answersRef = useRef(answers);
+  useEffect(() => { answersRef.current = answers; }, [answers]);
+  const itemsRef = useRef(items);
+  useEffect(() => { itemsRef.current = items; }, [items]);
+  const submittedRef = useRef(submitted);
+  useEffect(() => { submittedRef.current = submitted; }, [submitted]);
+
+  // Periodic save every 30s + save on visibilitychange
+  useEffect(() => {
+    if (!draftKey || submitted) return;
+    const saveDraft = () => {
+      try { localStorage.setItem(draftKey, JSON.stringify(answersRef.current)); } catch {}
+    };
+    const interval = setInterval(saveDraft, 30_000);
+    const onVis = () => { if (document.hidden) saveDraft(); };
+    document.addEventListener("visibilitychange", onVis);
+    return () => { clearInterval(interval); document.removeEventListener("visibilitychange", onVis); };
+  }, [draftKey, submitted]);
+
+  // Clean up draft after successful submit
+  useEffect(() => {
+    if (submitted && draftKey) {
+      try { localStorage.removeItem(draftKey); } catch {}
+    }
+  }, [submitted, draftKey]);
+
+  // --- sendBeacon on beforeunload (browser close / crash) ---
+  useEffect(() => {
+    if (!submissionId || submitted) return;
+    const onBeforeUnload = () => {
+      if (submittedRef.current) return;
+      // Save draft as last resort
+      if (draftKey) {
+        try { localStorage.setItem(draftKey, JSON.stringify(answersRef.current)); } catch {}
+      }
+      // Try to submit via beacon
+      const answersList = itemsRef.current.map((item) => ({
+        test_item_id: item.id,
+        answer_data: answersRef.current[item.id] || null,
+        max_points: item.points,
+      }));
+      const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+      const payload = JSON.stringify({
+        submission_id: submissionId,
+        answers: answersList,
+        auto_submitted_reason: "browser_closed",
+      });
+      try {
+        navigator.sendBeacon(
+          `https://${projectId}.supabase.co/functions/v1/grade-submission`,
+          new Blob([payload], { type: "application/json" })
+        );
+      } catch {}
+    };
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => window.removeEventListener("beforeunload", onBeforeUnload);
+  }, [submissionId, submitted, draftKey]);
+
   const handleSubmit = useCallback(async (autoReason?: string) => {
     if (!submissionId || submitted) return;
     setSubmitted(true);
-    // Exit fullscreen on submit so user is not stuck
     if (document.fullscreenElement && document.exitFullscreen) {
       document.exitFullscreen().catch(() => {});
     }
@@ -224,7 +299,6 @@ const TakeTestPage = () => {
     }
   }, [submissionId, submitted, items, answers, submitTest]);
 
-  // Keep latest handleSubmit in a ref for the visibility listeners
   const handleSubmitRef = useRef(handleSubmit);
   useEffect(() => { handleSubmitRef.current = handleSubmit; }, [handleSubmit]);
 
