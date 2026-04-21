@@ -1,31 +1,30 @@
 
 
-## Plan: Nu auto-trimite testul când elevul verifică notificările Android
+## Plan: Re-activează auto-submit când elevul trage bara de notificări pe Android
 
-### Problemă
-Pe Android (Capacitor WebView), tragerea barei de notificări declanșează `window.blur`, ceea ce pornește timer-ul de 1 secundă și auto-trimite testul. Elevul nu a părăsit cu adevărat aplicația.
+### Schimbare
 
-### Soluție
-Pe platforma nativă Capacitor, nu ne mai bazăm pe `window.blur` / `window.focus` pentru detecția părăsirii. Folosim doar:
-- `document.visibilitychange` (tab hidden) — se activează când aplicația e complet acoperită
-- `@capacitor/app` `appStateChange` — se activează când aplicația intră în background
+Revert-ul modificării anterioare: ștergem condiția `isNativePlatform()` și re-activăm `window.blur` / `window.focus` pe toate platformele.
 
-Pe web (browser), păstrăm `window.blur` deoarece acolo este singurul mod de a detecta schimbarea de fereastră.
+### Fișier modificat: `src/pages/TakeTestPage.tsx`
 
-### Schimbări
+**Liniile ~347-355** — Eliminăm blocul condițional și comentariul, înregistrăm blur/focus necondițional:
 
-**`src/pages/TakeTestPage.tsx`** — Condiționare platformă pentru blur listener
+```typescript
+document.addEventListener("visibilitychange", onVisibility);
+window.addEventListener("blur", onBlur);
+window.addEventListener("focus", onFocus);
+```
 
-În blocul `useEffect` care configurează listenerii de auto-submit (~linia 310-380):
+**Liniile ~382-388** — Cleanup necondițional:
 
-1. Import `Capacitor` din `@capacitor/core`
-2. Înregistrează `window.blur` și `window.focus` **doar dacă NU suntem pe platformă nativă** (`!Capacitor.isNativePlatform()`)
-3. Pe nativ, ne bazăm exclusiv pe `visibilitychange` + `appStateChange` care nu se activează la notification shade
+```typescript
+document.removeEventListener("visibilitychange", onVisibility);
+window.removeEventListener("blur", onBlur);
+window.removeEventListener("focus", onFocus);
+```
 
-Aceasta este o schimbare minimală — doar adăugăm o condiție `if (!Capacitor.isNativePlatform())` în jurul celor două linii care adaugă/șterg blur/focus listeners.
-
-### Fișiere modificate
-- `src/pages/TakeTestPage.tsx`
+Variabila `isNative` și import-ul `Capacitor` pot rămâne (se folosesc și în altă parte) sau se elimină dacă nu mai sunt referite.
 
 ### Fără schimbări de bază de date
 
