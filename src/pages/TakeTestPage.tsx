@@ -889,33 +889,33 @@ const TestMatchRenderer = ({ exercise, answer, onAnswer }: { exercise: any; answ
         )}
       </div>
 
-      <div className="grid grid-cols-2 gap-3" role="application" aria-label="Coloane de asociere — apasă stânga apoi dreapta">
-        {/* Left column */}
-        <div className="space-y-2.5" role="listbox" aria-label="Elemente din stânga">
-          {pairs.map((p, i) => {
-            const isMatched = matched.has(p.id);
-            const isSelected = selectedLeft === p.id;
-            const matchedText = getMatchedRightText(p.id);
-            return (
+      <div className="space-y-2.5" role="application" aria-label="Coloane de asociere — apasă stânga apoi dreapta">
+        {pairs.map((p, i) => {
+          const isLeftMatched = matched.has(p.id);
+          const isLeftSelected = selectedLeft === p.id;
+          const matchedText = getMatchedRightText(p.id);
+          const rightItem = shuffledRight[i];
+          const rightMatchEntry = rightItem ? [...matched.entries()].find(([, v]) => v === rightItem.id) : null;
+          const isRightMatched = !!rightMatchEntry;
+          const isRightSelected = rightItem ? selectedRight === rightItem.id : false;
+          const matchedLeftText = rightMatchEntry ? pairs.find(pp => pp.id === rightMatchEntry[0])?.left : null;
+
+          return (
+            <div key={p.id} className="grid grid-cols-2 gap-3">
+              {/* Left item */}
               <motion.button
-                key={p.id}
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: i * 0.06, type: "spring", stiffness: 400, damping: 25 }}
                 role="option"
-                aria-selected={isSelected}
-                aria-label={`${p.left}${isMatched ? ` — asociat cu ${matchedText}. Apasă pentru a deface.` : isSelected ? " — selectat" : ""}`}
+                aria-selected={isLeftSelected}
+                aria-label={`${p.left}${isLeftMatched ? ` — asociat cu ${matchedText}. Apasă pentru a deface.` : isLeftSelected ? " — selectat" : ""}`}
                 onClick={() => handleLeftClick(p.id)}
                 className={`w-full rounded-xl border-2 px-3 py-3 text-sm font-medium transition-all duration-200 text-left relative overflow-hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background ${getLeftStyle(p.id)} cursor-pointer active:scale-[0.97]`}
               >
                 <div className="flex items-center gap-2">
-                  {isMatched && (
-                    <motion.span
-                      initial={{ scale: 0, rotate: -90 }}
-                      animate={{ scale: 1, rotate: 0 }}
-                      transition={{ type: "spring", stiffness: 500, damping: 20 }}
-                      aria-hidden="true"
-                    >
+                  {isLeftMatched && (
+                    <motion.span initial={{ scale: 0, rotate: -90 }} animate={{ scale: 1, rotate: 0 }} transition={{ type: "spring", stiffness: 500, damping: 20 }} aria-hidden="true">
                       <Link2 className="h-3.5 w-3.5 shrink-0 opacity-60" />
                     </motion.span>
                   )}
@@ -923,39 +923,41 @@ const TestMatchRenderer = ({ exercise, answer, onAnswer }: { exercise: any; answ
                 </div>
                 <AnimatePresence>
                   {recentlyMatched === p.id && (
-                    <motion.div
-                      initial={{ opacity: 0.5, scale: 0.5 }}
-                      animate={{ opacity: 0, scale: 2.5 }}
-                      exit={{ opacity: 0 }}
-                      transition={{ duration: 0.5 }}
-                      className="absolute inset-0 rounded-xl bg-primary/20 pointer-events-none"
-                      aria-hidden="true"
-                    />
+                    <motion.div initial={{ opacity: 0.5, scale: 0.5 }} animate={{ opacity: 0, scale: 2.5 }} exit={{ opacity: 0 }} transition={{ duration: 0.5 }} className="absolute inset-0 rounded-xl bg-primary/20 pointer-events-none" aria-hidden="true" />
                   )}
                 </AnimatePresence>
               </motion.button>
-            );
-          })}
-        </div>
 
-        {/* Right column */}
-        <div className="space-y-2.5" role="listbox" aria-label="Elemente din dreapta">
-          {shuffledRight.map((p, i) => {
-            const matchEntry = [...matched.entries()].find(([, v]) => v === p.id);
-            const isMatched = !!matchEntry;
-            const isSelected = selectedRight === p.id;
-            const matchedLeftText = matchEntry ? pairs.find(pp => pp.id === matchEntry[0])?.left : null;
-            return (
-              <motion.button
-                key={p.id}
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: i * 0.06, type: "spring", stiffness: 400, damping: 25 }}
-                role="option"
-                aria-selected={isSelected}
-                aria-label={`${p.right}${isMatched ? ` — asociat cu ${matchedLeftText}. Apasă pentru a deface.` : isSelected ? " — selectat" : ""}`}
-                onClick={() => handleRightClick(p.id)}
-                className={`w-full rounded-xl border-2 px-3 py-3 text-sm font-medium transition-all duration-200 text-left relative overflow-hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background ${getRightStyle(p.id)} cursor-pointer active:scale-[0.97]`}
+              {/* Right item */}
+              {rightItem && (
+                <motion.button
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: i * 0.06, type: "spring", stiffness: 400, damping: 25 }}
+                  role="option"
+                  aria-selected={isRightSelected}
+                  aria-label={`${rightItem.right}${isRightMatched ? ` — asociat cu ${matchedLeftText}. Apasă pentru a deface.` : isRightSelected ? " — selectat" : ""}`}
+                  onClick={() => handleRightClick(rightItem.id)}
+                  className={`w-full rounded-xl border-2 px-3 py-3 text-sm font-medium transition-all duration-200 text-left relative overflow-hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background ${getRightStyle(rightItem.id)} cursor-pointer active:scale-[0.97]`}
+                >
+                  <div className="flex items-center gap-2">
+                    {rightMatchEntry && (
+                      <motion.span initial={{ scale: 0, rotate: -90 }} animate={{ scale: 1, rotate: 0 }} transition={{ type: "spring", stiffness: 500, damping: 20 }} aria-hidden="true">
+                        <Link2 className="h-3.5 w-3.5 shrink-0 opacity-60" />
+                      </motion.span>
+                    )}
+                    <span className="flex-1">{rightItem.right}</span>
+                  </div>
+                  <AnimatePresence>
+                    {recentlyMatched && rightMatchEntry && rightMatchEntry[0] === recentlyMatched && (
+                      <motion.div initial={{ opacity: 0.5, scale: 0.5 }} animate={{ opacity: 0, scale: 2.5 }} exit={{ opacity: 0 }} transition={{ duration: 0.5 }} className="absolute inset-0 rounded-xl bg-primary/20 pointer-events-none" aria-hidden="true" />
+                    )}
+                  </AnimatePresence>
+                </motion.button>
+              )}
+            </div>
+          );
+        })}
               >
                 <div className="flex items-center gap-2">
                   {matchEntry && (
