@@ -344,15 +344,8 @@ const TakeTestPage = () => {
 
     document.addEventListener("visibilitychange", onVisibility);
 
-    // On native Capacitor (Android/iOS), skip blur/focus listeners because
-    // pulling down the notification shade fires window.blur without the student
-    // actually leaving the app.  We rely on visibilitychange + appStateChange instead.
-    const isNative = Capacitor.isNativePlatform();
-
-    if (!isNative) {
-      window.addEventListener("blur", onBlur);
-      window.addEventListener("focus", onFocus);
-    }
+    window.addEventListener("blur", onBlur);
+    window.addEventListener("focus", onFocus);
 
     // Fullscreen exit triggers leave (only if test requires fullscreen)
     const onFullscreenChange = () => {
@@ -382,10 +375,8 @@ const TakeTestPage = () => {
     return () => {
       cancelLeave();
       document.removeEventListener("visibilitychange", onVisibility);
-      if (!isNative) {
-        window.removeEventListener("blur", onBlur);
-        window.removeEventListener("focus", onFocus);
-      }
+      window.removeEventListener("blur", onBlur);
+      window.removeEventListener("focus", onFocus);
       if (requireFullscreen) {
         document.removeEventListener("fullscreenchange", onFullscreenChange);
       }
