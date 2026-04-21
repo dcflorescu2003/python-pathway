@@ -431,12 +431,14 @@ const TestResults = ({ testId, testTitle, onBack }: TestResultsProps) => {
                           {sub.auto_submitted_reason && (
                             <AlertDialog>
                               <AlertDialogTrigger asChild>
-                                <button
+                                <Button
+                                  size="sm"
+                                  variant="outline"
                                   onClick={(e) => e.stopPropagation()}
-                                  className="inline-flex items-center gap-1 text-[9px] px-1.5 py-0.5 rounded-full bg-primary/10 border border-primary/30 text-primary font-medium hover:bg-primary/20 transition-colors"
+                                  className="h-7 text-xs px-2.5 gap-1 border-primary/40 text-primary hover:bg-primary/10"
                                 >
-                                  <RotateCcw className="h-3 w-3" /> Permite reluarea
-                                </button>
+                                  <RotateCcw className="h-3.5 w-3.5" /> Permite reluarea
+                                </Button>
                               </AlertDialogTrigger>
                               <AlertDialogContent onClick={(e) => e.stopPropagation()}>
                                 <AlertDialogHeader>
