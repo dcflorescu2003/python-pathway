@@ -281,7 +281,8 @@ const TakeTestPage = () => {
   }, [submissionId, submitted, draftKey]);
 
   const handleSubmit = useCallback(async (autoReason?: string) => {
-    if (!submissionId || submitted) return;
+    if (!submissionId || submitted || submitInFlightRef.current) return;
+    submitInFlightRef.current = true;
     setSubmitted(true);
     if (document.fullscreenElement && document.exitFullscreen) {
       document.exitFullscreen().catch(() => {});
@@ -301,6 +302,7 @@ const TakeTestPage = () => {
     } catch {
       toast.error("Eroare la trimiterea testului.");
       setSubmitted(false);
+      submitInFlightRef.current = false;
     }
   }, [submissionId, submitted, items, answers, submitTest]);
 
