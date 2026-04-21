@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
+import { Capacitor } from "@capacitor/core";
 import { AlertTriangle } from "lucide-react";
 import { useParams, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
@@ -342,8 +343,16 @@ const TakeTestPage = () => {
     const onFocus = () => cancelLeave();
 
     document.addEventListener("visibilitychange", onVisibility);
-    window.addEventListener("blur", onBlur);
-    window.addEventListener("focus", onFocus);
+
+    // On native Capacitor (Android/iOS), skip blur/focus listeners because
+    // pulling down the notification shade fires window.blur without the student
+    // actually leaving the app.  We rely on visibilitychange + appStateChange instead.
+    const isNative = Capacitor.isNativePlatform();
+
+    if (!isNative) {
+      window.addEventListener("blur", onBlur);
+      window.addEventListener("focus", onFocus);
+    }
 
     // Fullscreen exit triggers leave (only if test requires fullscreen)
     const onFullscreenChange = () => {
@@ -373,12 +382,14 @@ const TakeTestPage = () => {
     return () => {
       cancelLeave();
       document.removeEventListener("visibilitychange", onVisibility);
-      window.removeEventListener("blur", onBlur);
-      window.removeEventListener("focus", onFocus);
+      if (!isNative) {
+        window.removeEventListener("blur", onBlur);
+        window.removeEventListener("focus", onFocus);
+      }
       if (requireFullscreen) {
         document.removeEventListener("fullscreenchange", onFullscreenChange);
       }
-    capListener?.remove();
+      capListener?.remove();
     };
   }, [submissionId, submitted, requireFullscreen]);
 
