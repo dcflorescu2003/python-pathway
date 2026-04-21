@@ -638,13 +638,15 @@ const ExerciseRenderer = ({ exercise, answer, onAnswer }: { exercise: any; answe
   if (type === "quiz") {
     const options = (exercise.options || []) as { id: string; text: string }[];
     return (
-      <div className="space-y-2">
-        <p className="text-sm font-medium text-foreground">{exercise.question}</p>
+      <div className="space-y-2" role="radiogroup" aria-label={exercise.question}>
+        <p className="text-sm font-medium text-foreground" id="quiz-question">{exercise.question}</p>
         {options.map((opt) => (
           <button
             key={opt.id}
+            role="radio"
+            aria-checked={answer?.selected === opt.id}
             onClick={() => onAnswer({ selected: opt.id })}
-            className={`w-full text-left p-3 rounded-xl border-2 text-sm font-medium transition-all duration-200 ${
+            className={`w-full text-left p-3 rounded-xl border-2 text-sm font-medium transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
               answer?.selected === opt.id
                 ? "border-primary bg-primary/10 text-foreground scale-[1.01]"
                 : "border-border bg-card text-foreground hover:border-primary/50 hover:bg-muted/50"
@@ -659,14 +661,16 @@ const ExerciseRenderer = ({ exercise, answer, onAnswer }: { exercise: any; answe
 
   if (type === "truefalse") {
     return (
-      <div className="space-y-3">
+      <div className="space-y-3" role="radiogroup" aria-label={exercise.statement || exercise.question}>
         <p className="text-sm font-medium text-foreground">{exercise.statement || exercise.question}</p>
         <div className="flex gap-3">
           {[true, false].map((val) => (
             <button
               key={String(val)}
+              role="radio"
+              aria-checked={answer?.selected === val}
               onClick={() => onAnswer({ selected: val })}
-              className={`flex-1 p-3 rounded-xl border-2 text-sm font-medium transition-all duration-200 ${
+              className={`flex-1 p-3 rounded-xl border-2 text-sm font-medium transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
                 answer?.selected === val
                   ? "border-primary bg-primary/10"
                   : "border-border hover:border-primary/50"
@@ -691,6 +695,7 @@ const ExerciseRenderer = ({ exercise, answer, onAnswer }: { exercise: any; answe
           <Input
             key={blank.id}
             placeholder={`Spațiu ${idx + 1}`}
+            aria-label={`Răspuns pentru spațiul ${idx + 1}`}
             value={currentAnswers[blank.id] || ""}
             onChange={(e) => onAnswer({ blanks: { ...currentAnswers, [blank.id]: e.target.value } })}
             className="text-sm"
@@ -706,6 +711,7 @@ const ExerciseRenderer = ({ exercise, answer, onAnswer }: { exercise: any; answe
               {i < parts.length - 1 && blanks[i] && (
                 <Input
                   autoCapitalize="none"
+                  aria-label={`Completează spațiul ${i + 1}`}
                   className="inline-block w-28 h-7 mx-1 font-mono text-sm bg-secondary border-primary/50 text-primary"
                   value={currentAnswers[blanks[i].id] || ""}
                   onChange={(e) => onAnswer({ blanks: { ...currentAnswers, [blanks[i].id]: e.target.value } })}
@@ -843,8 +849,15 @@ const TestMatchRenderer = ({ exercise, answer, onAnswer }: { exercise: any; answ
   const matchedCount = matched.size;
   const totalPairs = pairs.length;
 
+  // Find the matched right text for a given left pair (for aria-label)
+  const getMatchedRightText = (leftId: string) => {
+    const rightId = matched.get(leftId);
+    if (!rightId) return null;
+    return pairs.find(p => p.id === rightId)?.right || shuffledRight.find(p => p.id === rightId)?.right;
+  };
+
   return (
-    <div className="space-y-5">
+    <div className="space-y-5" role="group" aria-label="Exercițiu de asociere">
       <div>
         <p className="text-sm font-medium text-foreground">{exercise.question}</p>
         <p className="text-xs text-muted-foreground mt-1">
@@ -854,7 +867,7 @@ const TestMatchRenderer = ({ exercise, answer, onAnswer }: { exercise: any; answ
 
       {/* Progress indicator + reset */}
       <div className="flex items-center gap-2">
-        <div className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden">
+        <div className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden" role="progressbar" aria-valuenow={matchedCount} aria-valuemin={0} aria-valuemax={totalPairs} aria-label={`${matchedCount} din ${totalPairs} perechi asociate`}>
           <motion.div
             className="h-full bg-primary rounded-full"
             initial={{ width: 0 }}
@@ -862,71 +875,87 @@ const TestMatchRenderer = ({ exercise, answer, onAnswer }: { exercise: any; answ
             transition={{ type: "spring", stiffness: 300, damping: 25 }}
           />
         </div>
-        <span className="text-xs font-medium text-muted-foreground tabular-nums">
+        <span className="text-xs font-medium text-muted-foreground tabular-nums" aria-hidden="true">
           {matchedCount}/{totalPairs}
         </span>
         {matchedCount > 0 && (
           <button
             onClick={() => onAnswer({ matches: {} })}
-            className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-            title="Resetează perechile"
+            className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+            aria-label="Resetează toate perechile"
           >
             <RotateCcw className="h-4 w-4" />
           </button>
         )}
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-2 gap-3" role="application" aria-label="Coloane de asociere — apasă stânga apoi dreapta">
         {/* Left column */}
-        <div className="space-y-2.5">
-          {pairs.map((p, i) => (
-            <motion.button
-              key={p.id}
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: i * 0.06, type: "spring", stiffness: 400, damping: 25 }}
-              onClick={() => handleLeftClick(p.id)}
-              className={`w-full rounded-xl border-2 px-3 py-3 text-sm font-medium transition-all duration-200 text-left relative overflow-hidden ${getLeftStyle(p.id)} cursor-pointer active:scale-[0.97]`}
-            >
-              <div className="flex items-center gap-2">
-                {matched.has(p.id) && (
-                  <motion.span
-                    initial={{ scale: 0, rotate: -90 }}
-                    animate={{ scale: 1, rotate: 0 }}
-                    transition={{ type: "spring", stiffness: 500, damping: 20 }}
-                  >
-                    <Link2 className="h-3.5 w-3.5 shrink-0 opacity-60" />
-                  </motion.span>
-                )}
-                <span className="flex-1">{p.left}</span>
-              </div>
-              <AnimatePresence>
-                {recentlyMatched === p.id && (
-                  <motion.div
-                    initial={{ opacity: 0.5, scale: 0.5 }}
-                    animate={{ opacity: 0, scale: 2.5 }}
-                    exit={{ opacity: 0 }}
-                    transition={{ duration: 0.5 }}
-                    className="absolute inset-0 rounded-xl bg-primary/20 pointer-events-none"
-                  />
-                )}
-              </AnimatePresence>
-            </motion.button>
-          ))}
+        <div className="space-y-2.5" role="listbox" aria-label="Elemente din stânga">
+          {pairs.map((p, i) => {
+            const isMatched = matched.has(p.id);
+            const isSelected = selectedLeft === p.id;
+            const matchedText = getMatchedRightText(p.id);
+            return (
+              <motion.button
+                key={p.id}
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: i * 0.06, type: "spring", stiffness: 400, damping: 25 }}
+                role="option"
+                aria-selected={isSelected}
+                aria-label={`${p.left}${isMatched ? ` — asociat cu ${matchedText}. Apasă pentru a deface.` : isSelected ? " — selectat" : ""}`}
+                onClick={() => handleLeftClick(p.id)}
+                className={`w-full rounded-xl border-2 px-3 py-3 text-sm font-medium transition-all duration-200 text-left relative overflow-hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background ${getLeftStyle(p.id)} cursor-pointer active:scale-[0.97]`}
+              >
+                <div className="flex items-center gap-2">
+                  {isMatched && (
+                    <motion.span
+                      initial={{ scale: 0, rotate: -90 }}
+                      animate={{ scale: 1, rotate: 0 }}
+                      transition={{ type: "spring", stiffness: 500, damping: 20 }}
+                      aria-hidden="true"
+                    >
+                      <Link2 className="h-3.5 w-3.5 shrink-0 opacity-60" />
+                    </motion.span>
+                  )}
+                  <span className="flex-1">{p.left}</span>
+                </div>
+                <AnimatePresence>
+                  {recentlyMatched === p.id && (
+                    <motion.div
+                      initial={{ opacity: 0.5, scale: 0.5 }}
+                      animate={{ opacity: 0, scale: 2.5 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.5 }}
+                      className="absolute inset-0 rounded-xl bg-primary/20 pointer-events-none"
+                      aria-hidden="true"
+                    />
+                  )}
+                </AnimatePresence>
+              </motion.button>
+            );
+          })}
         </div>
 
         {/* Right column */}
-        <div className="space-y-2.5">
+        <div className="space-y-2.5" role="listbox" aria-label="Elemente din dreapta">
           {shuffledRight.map((p, i) => {
             const matchEntry = [...matched.entries()].find(([, v]) => v === p.id);
+            const isMatched = !!matchEntry;
+            const isSelected = selectedRight === p.id;
+            const matchedLeftText = matchEntry ? pairs.find(pp => pp.id === matchEntry[0])?.left : null;
             return (
               <motion.button
                 key={p.id}
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: i * 0.06, type: "spring", stiffness: 400, damping: 25 }}
+                role="option"
+                aria-selected={isSelected}
+                aria-label={`${p.right}${isMatched ? ` — asociat cu ${matchedLeftText}. Apasă pentru a deface.` : isSelected ? " — selectat" : ""}`}
                 onClick={() => handleRightClick(p.id)}
-                className={`w-full rounded-xl border-2 px-3 py-3 text-sm font-medium transition-all duration-200 text-left relative overflow-hidden ${getRightStyle(p.id)} cursor-pointer active:scale-[0.97]`}
+                className={`w-full rounded-xl border-2 px-3 py-3 text-sm font-medium transition-all duration-200 text-left relative overflow-hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background ${getRightStyle(p.id)} cursor-pointer active:scale-[0.97]`}
               >
                 <div className="flex items-center gap-2">
                   {matchEntry && (
@@ -934,6 +963,7 @@ const TestMatchRenderer = ({ exercise, answer, onAnswer }: { exercise: any; answ
                       initial={{ scale: 0, rotate: -90 }}
                       animate={{ scale: 1, rotate: 0 }}
                       transition={{ type: "spring", stiffness: 500, damping: 20 }}
+                      aria-hidden="true"
                     >
                       <Link2 className="h-3.5 w-3.5 shrink-0 opacity-60" />
                     </motion.span>
@@ -948,6 +978,7 @@ const TestMatchRenderer = ({ exercise, answer, onAnswer }: { exercise: any; answ
                       exit={{ opacity: 0 }}
                       transition={{ duration: 0.5 }}
                       className="absolute inset-0 rounded-xl bg-primary/20 pointer-events-none"
+                      aria-hidden="true"
                     />
                   )}
                 </AnimatePresence>
@@ -973,28 +1004,33 @@ const TestOrderRenderer = ({ exercise, answer, onAnswer }: { exercise: any; answ
   };
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-2" role="group" aria-label="Exercițiu de ordonare">
       <p className="text-sm font-medium text-foreground">{exercise.question}</p>
-      <div className="space-y-2">
+      <div className="space-y-2" role="list" aria-label="Linii de cod — folosește butoanele ▲ și ▼ pentru a reordona">
         {ordered.map((lineId: string, idx: number) => {
           const line = lines.find((l) => l.id === lineId);
+          const lineText = line?.text || lineId;
           return (
             <div
               key={lineId}
+              role="listitem"
+              aria-label={`Linia ${idx + 1}: ${lineText}`}
               className="flex items-center gap-3 rounded-lg border border-border bg-card p-3 font-mono text-sm select-none"
             >
-              <GripVertical className="h-5 w-5 text-muted-foreground shrink-0" />
-              <code className="text-foreground whitespace-pre-wrap break-words flex-1">{line?.text || lineId}</code>
-              <div className="ml-auto flex gap-1">
+              <GripVertical className="h-5 w-5 text-muted-foreground shrink-0" aria-hidden="true" />
+              <code className="text-foreground whitespace-pre-wrap break-words flex-1">{lineText}</code>
+              <div className="ml-auto flex gap-1" role="group" aria-label={`Mută linia ${idx + 1}`}>
                 <button
                   onClick={() => idx > 0 && moveItem(idx, idx - 1)}
                   disabled={idx === 0}
-                  className="text-base text-muted-foreground hover:text-foreground disabled:opacity-30 px-2 py-1"
+                  aria-label={`Mută „${lineText}" în sus`}
+                  className="text-base text-muted-foreground hover:text-foreground disabled:opacity-30 px-2 py-1 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                 >▲</button>
                 <button
                   onClick={() => idx < ordered.length - 1 && moveItem(idx, idx + 1)}
                   disabled={idx === ordered.length - 1}
-                  className="text-base text-muted-foreground hover:text-foreground disabled:opacity-30 px-2 py-1"
+                  aria-label={`Mută „${lineText}" în jos`}
+                  className="text-base text-muted-foreground hover:text-foreground disabled:opacity-30 px-2 py-1 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                 >▼</button>
               </div>
             </div>
@@ -1024,7 +1060,7 @@ const ProblemRenderer = ({ problem, answer, onAnswer, allowRunTests }: { problem
   };
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-3" role="group" aria-label={`Problemă: ${problem.title}`}>
       <h3 className="text-sm font-bold text-foreground">{problem.title}</h3>
       <p className="text-xs text-muted-foreground whitespace-pre-wrap">{problem.description}</p>
       {problem.hint && (
@@ -1043,15 +1079,16 @@ const ProblemRenderer = ({ problem, answer, onAnswer, allowRunTests }: { problem
             onClick={handleRun}
             disabled={running || pyLoading}
             className="gap-1.5"
+            aria-label={pyLoading ? "Se încarcă motorul Python" : running ? "Se rulează testele" : "Rulează testele"}
           >
-            {running || pyLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Play className="h-3.5 w-3.5" />}
+            {running || pyLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /> : <Play className="h-3.5 w-3.5" aria-hidden="true" />}
             {pyLoading ? "Se încarcă..." : running ? "Rulează..." : "Rulează teste"}
           </Button>
           {testResults.length > 0 && (
-            <div className="space-y-1.5">
+            <div className="space-y-1.5" role="list" aria-label="Rezultatele testelor">
               {testResults.map((r, i) => (
-                <div key={i} className={`flex items-start gap-2 p-2 rounded-lg border text-xs ${r.passed ? "border-primary/30 bg-primary/5" : "border-destructive/30 bg-destructive/5"}`}>
-                  {r.passed ? <CheckCircle className="h-3.5 w-3.5 text-primary shrink-0 mt-0.5" /> : <XCircle className="h-3.5 w-3.5 text-destructive shrink-0 mt-0.5" />}
+                <div key={i} role="listitem" aria-label={`Test ${i + 1}: ${r.passed ? "trecut" : "picat"}`} className={`flex items-start gap-2 p-2 rounded-lg border text-xs ${r.passed ? "border-primary/30 bg-primary/5" : "border-destructive/30 bg-destructive/5"}`}>
+                  {r.passed ? <CheckCircle className="h-3.5 w-3.5 text-primary shrink-0 mt-0.5" aria-hidden="true" /> : <XCircle className="h-3.5 w-3.5 text-destructive shrink-0 mt-0.5" aria-hidden="true" />}
                   <div className="min-w-0">
                     <p className="font-mono text-muted-foreground">Input: {r.input}</p>
                     <p className="font-mono text-muted-foreground">Așteptat: {r.expectedOutput}</p>
