@@ -224,6 +224,9 @@ const TakeTestPage = () => {
   const submittedRef = useRef(submitted);
   useEffect(() => { submittedRef.current = submitted; }, [submitted]);
 
+  // Single in-flight guard – set synchronously before any submit path fires
+  const submitInFlightRef = useRef(false);
+
   // Periodic save every 30s + save on visibilitychange
   useEffect(() => {
     if (!draftKey || submitted) return;
@@ -247,12 +250,14 @@ const TakeTestPage = () => {
   useEffect(() => {
     if (!submissionId || submitted) return;
     const onBeforeUnload = () => {
-      if (submittedRef.current) return;
+      // Skip if already submitted or another submit path is in-flight
+      if (submittedRef.current || submitInFlightRef.current) return;
       // Save draft as last resort
       if (draftKey) {
         try { localStorage.setItem(draftKey, JSON.stringify(answersRef.current)); } catch {}
       }
       // Try to submit via beacon
+      submitInFlightRef.current = true;
       const answersList = itemsRef.current.map((item) => ({
         test_item_id: item.id,
         answer_data: answersRef.current[item.id] || null,
