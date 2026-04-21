@@ -19,7 +19,8 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { submission_id } = await req.json();
+    const body = await req.json();
+    const { submission_id, answers: inlineAnswers, auto_submitted_reason } = body;
     if (!submission_id) {
       return new Response(JSON.stringify({ error: "Missing submission_id" }), {
         status: 400,
@@ -30,6 +31,41 @@ Deno.serve(async (req) => {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, serviceRoleKey);
+
+    // If answers were sent inline (e.g. from sendBeacon on browser close),
+    // insert them and mark submission as submitted before grading.
+    if (inlineAnswers && Array.isArray(inlineAnswers) && inlineAnswers.length > 0) {
+      // Check if answers already exist (avoid duplicates)
+      const { data: existingAnswers } = await supabase
+        .from("test_answers")
+        .select("id")
+        .eq("submission_id", submission_id)
+        .limit(1);
+
+      if (!existingAnswers || existingAnswers.length === 0) {
+        const answersToInsert = inlineAnswers.map((a: any) => ({
+          submission_id,
+          test_item_id: a.test_item_id,
+          answer_data: a.answer_data,
+          max_points: a.max_points,
+          score: 0,
+        }));
+        await supabase.from("test_answers").insert(answersToInsert);
+      }
+
+      // Mark as submitted if not already
+      const { data: sub } = await supabase
+        .from("test_submissions")
+        .select("submitted_at")
+        .eq("id", submission_id)
+        .single();
+
+      if (sub && !sub.submitted_at) {
+        const updatePayload: Record<string, any> = { submitted_at: new Date().toISOString() };
+        if (auto_submitted_reason) updatePayload.auto_submitted_reason = auto_submitted_reason;
+        await supabase.from("test_submissions").update(updatePayload).eq("id", submission_id);
+      }
+    }
 
     // Get submission + answers
     const { data: submission } = await supabase
