@@ -1,36 +1,48 @@
 
 
-## Plan: Testare finală Play Billing cu loguri diagnostice
+## Plan: Fix purchaseToken extraction in playBilling.ts
 
-### Ce facem
-Rebuild APK cu fix-ul actual → cumpărare de test → inspectăm logurile `playBilling` din Logcat și `verify-play-purchase` din Supabase pentru a confirma că `purchaseToken` are ~200+ caractere și verificarea Google Play reușește.
+### Problem
+The `approved` handler in `playBilling.ts` falls back to `transaction.transactionId` (which is the 24-char orderId like `GPA.33xx...`) because none of the candidates pass the `length > 50` filter. The real `purchaseToken` (~200+ chars) is likely in a location we're not checking, such as:
+- `transaction.receipt` (often a JSON string on Android containing the token)
+- `transaction.transactionReceipt`
+- `transaction.nativePurchase.receipt` (raw JSON from Google Play)
 
-### Pașii utilizatorului (pe calculator)
+### Changes
 
-1. **Rebuild APK cu codul nou:**
-   ```bash
-   npm run build
-   npx cap sync android
-   ```
-2. **În Android Studio:** Build → Clean Project → Rebuild Project → Run (▶️) pe telefon.
-3. **Deschide Logcat** în Android Studio, filtrează după `playBilling` (tag-ul logurilor noastre).
-4. **Pe telefon:** login cu `maria.florescu2012@gmail.com` → Account → Restaurează achizițiile (sau cumpără din nou un plan test).
-5. **Copiază din Logcat** liniile care încep cu `[playBilling] raw transaction` și `[playBilling] approved tx` și trimite-mi-le aici.
+**1. `src/lib/playBilling.ts` — Rewrite token extraction in `approved` handler**
 
-### Ce voi face eu după ce trimiți logurile
+Expand the candidate search to include:
+- Parse `transaction.receipt` as JSON if it's a string (cordova-plugin-purchase often puts the raw Google Play JSON here, which contains `purchaseToken`)
+- Check `transaction.transactionReceipt` (another common field)
+- Log the **full list of top-level keys** on `transaction` and `nativePurchase` so we can see exactly what fields exist
+- Add a parsed receipt log so if none of the direct fields work, we can see the receipt structure
 
-- Verific în Logcat ce câmp conține token-ul real (pentru că `cordova-plugin-purchase` variază între versiuni: uneori `nativePurchase.purchaseToken`, uneori `receipt.purchaseToken`, uneori într-un array `transactions[]`).
-- Verific în `verify-play-purchase` logs dacă `tokenLen` > 100 și dacă `Play API response` întoarce `SUBSCRIPTION_STATE_ACTIVE`.
-- Dacă token-ul tot nu apare corect, ajustez extractorul din `src/lib/playBilling.ts` pe baza structurii reale văzute în log.
-- Dacă token-ul e corect dar Google API dă eroare, verific contul de service `GOOGLE_PLAY_SERVICE_ACCOUNT_JSON` (permisiuni în Play Console).
+```typescript
+// Parse receipt if it's a JSON string (common in cordova-plugin-purchase)
+let parsedReceipt: any = {};
+try {
+  const rawReceipt = transaction.receipt || native.receipt;
+  if (typeof rawReceipt === "string" && rawReceipt.startsWith("{")) {
+    parsedReceipt = JSON.parse(rawReceipt);
+  }
+} catch {}
 
-### Plan B dacă nu poți rula Logcat
+const candidates = [
+  native.purchaseToken,
+  transaction.purchaseToken,
+  parsedReceipt.purchaseToken,
+  native.token,
+  transaction.transactionReceipt,
+].filter((t) => typeof t === "string" && t.length > 50);
+```
 
-Adaug loguri care se trimit direct la `verify-play-purchase` chiar și când token-ul pare invalid, așa că putem diagnostica din Supabase logs fără Logcat. Asta e un mic edit în `playBilling.ts` + `verify-play-purchase/index.ts` pentru a accepta un mod "diagnostic".
+Also log `transaction` keys, `native` keys, and `parsedReceipt` keys for full diagnostics.
 
-### Rezultat așteptat
-- Logcat: `hasToken: true`, `planId: "monthly"` sau `"yearly"`
-- Supabase: `tokenLen: 200+`, `Play API response: SUBSCRIPTION_STATE_ACTIVE`
-- DB: rând nou în `play_billing_subscriptions` cu `is_active: true`
-- UI: status Premium activ pe contul Mariei, sursă `play_billing`
+**2. No backend changes needed** — the `verify-play-purchase` edge function already handles both short and long tokens correctly.
+
+### Expected result after rebuild
+- Logcat shows `tokenLen: 200+` instead of `tokenLen: 24`
+- Backend receives the real `purchaseToken` and verifies with Google Play API
+- Premium is granted with proper verification
 
