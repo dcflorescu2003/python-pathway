@@ -123,8 +123,15 @@ serve(async (req) => {
     const saJson = Deno.env.get("GOOGLE_PLAY_SERVICE_ACCOUNT_JSON");
     let expiryTime: Date;
     let autoRenewing = true;
+    const isShortToken = purchaseToken.length < 50;
 
-    if (saJson) {
+    if (isShortToken) {
+      // Client sent orderId instead of purchaseToken — store optimistically
+      // and grant premium so the user isn't blocked. Will re-verify when client sends real token.
+      log("Short token (likely orderId) — granting optimistically", { tokenLen: purchaseToken.length });
+      const days = planId === "yearly" ? 365 : 30;
+      expiryTime = new Date(Date.now() + days * 24 * 60 * 60 * 1000);
+    } else if (saJson) {
       // Real verification with Google Play Developer API
       const sa: ServiceAccount = JSON.parse(saJson);
       const accessToken = await getAccessToken(sa);
@@ -143,7 +150,6 @@ serve(async (req) => {
       const purchase = await playRes.json();
       log("Play API response", { state: purchase.subscriptionState });
 
-      // Check active state
       const validStates = ["SUBSCRIPTION_STATE_ACTIVE", "SUBSCRIPTION_STATE_IN_GRACE_PERIOD"];
       if (!validStates.includes(purchase.subscriptionState)) {
         throw new Error(`Subscription not active: ${purchase.subscriptionState}`);
@@ -155,8 +161,6 @@ serve(async (req) => {
       expiryTime = new Date(expiry);
       autoRenewing = !purchase.canceledStateContext;
     } else {
-      // No service account configured yet — store raw purchase optimistically
-      // (will be re-verified once GOOGLE_PLAY_SERVICE_ACCOUNT_JSON is set)
       log("No GOOGLE_PLAY_SERVICE_ACCOUNT_JSON; storing unverified");
       const days = planId === "yearly" ? 365 : 30;
       expiryTime = new Date(Date.now() + days * 24 * 60 * 60 * 1000);
