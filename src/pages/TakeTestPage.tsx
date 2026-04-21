@@ -644,11 +644,11 @@ const ExerciseRenderer = ({ exercise, answer, onAnswer }: { exercise: any; answe
           <button
             key={opt.id}
             onClick={() => onAnswer({ selected: opt.id })}
-            className={`w-full text-left p-3 rounded-lg border text-sm transition-colors ${
+            className={`w-full text-left p-3 rounded-xl border-2 text-sm font-medium transition-all duration-200 ${
               answer?.selected === opt.id
-                ? "border-primary bg-primary/10 text-foreground"
-                : "border-border text-foreground hover:border-primary/50"
-            }`}
+                ? "border-primary bg-primary/10 text-foreground scale-[1.01]"
+                : "border-border bg-card text-foreground hover:border-primary/50 hover:bg-muted/50"
+            } active:scale-[0.97]`}
           >
             {opt.text}
           </button>
@@ -666,11 +666,11 @@ const ExerciseRenderer = ({ exercise, answer, onAnswer }: { exercise: any; answe
             <button
               key={String(val)}
               onClick={() => onAnswer({ selected: val })}
-              className={`flex-1 p-3 rounded-lg border text-sm font-medium transition-colors ${
+              className={`flex-1 p-3 rounded-xl border-2 text-sm font-medium transition-all duration-200 ${
                 answer?.selected === val
                   ? "border-primary bg-primary/10"
                   : "border-border hover:border-primary/50"
-              }`}
+              } active:scale-[0.97]`}
             >
               {val ? "Adevărat" : "Fals"}
             </button>
@@ -727,90 +727,280 @@ const ExerciseRenderer = ({ exercise, answer, onAnswer }: { exercise: any; answe
   }
 
   if (type === "order") {
-    const lines = (exercise.lines || []) as { id: string; text: string }[];
-    const ordered: string[] = answer?.order || lines.map((l) => l.id);
-    const dragIdxRef = { current: null as number | null };
-
-    const moveItem = (from: number, to: number) => {
-      const newOrder = [...ordered];
-      const [item] = newOrder.splice(from, 1);
-      newOrder.splice(to, 0, item);
-      onAnswer({ order: newOrder });
-    };
-
-    return (
-      <div className="space-y-2">
-        <p className="text-sm font-medium text-foreground">{exercise.question}</p>
-        <div className="space-y-2">
-          {ordered.map((lineId: string, idx: number) => {
-            const line = lines.find((l) => l.id === lineId);
-            return (
-              <div
-                key={lineId}
-                draggable
-                onDragStart={() => { dragIdxRef.current = idx; }}
-                onDragOver={(e) => {
-                  e.preventDefault();
-                  if (dragIdxRef.current !== null && dragIdxRef.current !== idx) {
-                    moveItem(dragIdxRef.current, idx);
-                    dragIdxRef.current = idx;
-                  }
-                }}
-                onDragEnd={() => { dragIdxRef.current = null; }}
-                className="flex items-center gap-2 p-3 rounded-lg border border-border bg-card text-sm font-mono cursor-grab active:cursor-grabbing select-none touch-none"
-              >
-                <span className="text-muted-foreground shrink-0">≡</span>
-                <code className="text-foreground whitespace-pre-wrap break-words flex-1">{line?.text || lineId}</code>
-                <div className="ml-auto flex gap-1">
-                  <button
-                    onClick={() => idx > 0 && moveItem(idx, idx - 1)}
-                    disabled={idx === 0}
-                    className="text-base text-muted-foreground hover:text-foreground disabled:opacity-30 px-1"
-                  >▲</button>
-                  <button
-                    onClick={() => idx < ordered.length - 1 && moveItem(idx, idx + 1)}
-                    disabled={idx === ordered.length - 1}
-                    className="text-base text-muted-foreground hover:text-foreground disabled:opacity-30 px-1"
-                  >▼</button>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-    );
+    return <TestOrderRenderer exercise={exercise} answer={answer} onAnswer={onAnswer} />;
   }
 
   if (type === "match") {
-    const pairs = (exercise.pairs || []) as { id: string; left: string; right: string }[];
-    return (
-      <div className="space-y-2">
-        <p className="text-sm font-medium text-foreground">{exercise.question}</p>
-        {pairs.map((pair) => (
-          <div key={pair.id} className="flex items-center gap-2 text-xs">
-            <span className="bg-muted px-2 py-1 rounded flex-1">{pair.left}</span>
-            <span className="text-muted-foreground">→</span>
-            <Input
-              value={answer?.matches?.[pair.id] || ""}
-              onChange={(e) => onAnswer({ matches: { ...(answer?.matches || {}), [pair.id]: e.target.value } })}
-              placeholder={pair.right}
-              className="flex-1 h-7 text-xs"
-            />
-          </div>
-        ))}
-      </div>
-    );
+    return <TestMatchRenderer exercise={exercise} answer={answer} onAnswer={onAnswer} />;
   }
 
   // Fallback
   return (
     <div className="space-y-2">
       <p className="text-sm font-medium text-foreground">{exercise.question}</p>
-      <Textarea
+      <CodeEditor
         placeholder="Scrie răspunsul tău..."
         value={answer?.text || ""}
-        onChange={(e) => onAnswer({ text: e.target.value })}
+        onChange={(val) => onAnswer({ text: val })}
       />
+    </div>
+  );
+};
+
+// Test-specific Match renderer (two-column tap-to-match, no submit button)
+const TestMatchRenderer = ({ exercise, answer, onAnswer }: { exercise: any; answer: any; onAnswer: (d: any) => void }) => {
+  const pairs = (exercise.pairs || []) as { id: string; left: string; right: string }[];
+  const [selectedLeft, setSelectedLeft] = useState<string | null>(null);
+  const [selectedRight, setSelectedRight] = useState<string | null>(null);
+  const [recentlyMatched, setRecentlyMatched] = useState<string | null>(null);
+
+  const shuffledRight = useMemo(
+    () => [...pairs].sort(() => Math.random() - 0.5),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [exercise.question]
+  );
+
+  // Derive matched map from answer state
+  const matched = useMemo(() => {
+    const m = new Map<string, string>();
+    if (answer?.matches) {
+      for (const [k, v] of Object.entries(answer.matches)) {
+        m.set(k, v as string);
+      }
+    }
+    return m;
+  }, [answer?.matches]);
+
+  const setMatched = (updater: (prev: Map<string, string>) => Map<string, string>) => {
+    const next = updater(matched);
+    const obj: Record<string, string> = {};
+    next.forEach((v, k) => { obj[k] = v; });
+    onAnswer({ matches: obj });
+  };
+
+  useEffect(() => {
+    if (recentlyMatched) {
+      const timer = setTimeout(() => setRecentlyMatched(null), 600);
+      return () => clearTimeout(timer);
+    }
+  }, [recentlyMatched]);
+
+  const addMatch = useCallback((leftId: string, rightId: string) => {
+    setMatched(prev => {
+      const next = new Map(prev);
+      next.set(leftId, rightId);
+      return next;
+    });
+    setSelectedLeft(null);
+    setSelectedRight(null);
+    setRecentlyMatched(leftId);
+  }, [matched, onAnswer]);
+
+  const handleLeftClick = useCallback((id: string) => {
+    if (matched.has(id)) {
+      setMatched(prev => { const next = new Map(prev); next.delete(id); return next; });
+      return;
+    }
+    if (selectedRight) {
+      addMatch(id, selectedRight);
+    } else {
+      setSelectedLeft(prev => prev === id ? null : id);
+    }
+  }, [matched, selectedRight, addMatch]);
+
+  const handleRightClick = useCallback((id: string) => {
+    const matchedRight = [...matched.values()];
+    if (matchedRight.includes(id)) {
+      setMatched(prev => {
+        const next = new Map(prev);
+        for (const [k, v] of next) { if (v === id) { next.delete(k); break; } }
+        return next;
+      });
+      return;
+    }
+    if (selectedLeft) {
+      addMatch(selectedLeft, id);
+    } else {
+      setSelectedRight(prev => prev === id ? null : id);
+    }
+  }, [matched, selectedLeft, addMatch]);
+
+  const MATCHED_STYLE = "border-muted-foreground/30 bg-muted/50 text-muted-foreground shadow-sm opacity-70";
+
+  const getLeftStyle = (id: string) => {
+    if (matched.has(id)) return MATCHED_STYLE;
+    if (selectedLeft === id) return "ring-2 ring-primary ring-offset-2 ring-offset-background border-primary bg-primary/10 scale-[1.02]";
+    return "border-border bg-card hover:bg-muted/50 hover:border-muted-foreground/30";
+  };
+
+  const getRightStyle = (id: string) => {
+    const isMatched = [...matched.values()].includes(id);
+    if (isMatched) return MATCHED_STYLE;
+    if (selectedRight === id) return "ring-2 ring-primary ring-offset-2 ring-offset-background border-primary bg-primary/10 scale-[1.02]";
+    return "border-border bg-card hover:bg-muted/50 hover:border-muted-foreground/30";
+  };
+
+  const matchedCount = matched.size;
+  const totalPairs = pairs.length;
+
+  return (
+    <div className="space-y-5">
+      <div>
+        <p className="text-sm font-medium text-foreground">{exercise.question}</p>
+        <p className="text-xs text-muted-foreground mt-1">
+          Selectează un element din stânga, apoi perechea lui din dreapta.
+        </p>
+      </div>
+
+      {/* Progress indicator + reset */}
+      <div className="flex items-center gap-2">
+        <div className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden">
+          <motion.div
+            className="h-full bg-primary rounded-full"
+            initial={{ width: 0 }}
+            animate={{ width: `${(matchedCount / totalPairs) * 100}%` }}
+            transition={{ type: "spring", stiffness: 300, damping: 25 }}
+          />
+        </div>
+        <span className="text-xs font-medium text-muted-foreground tabular-nums">
+          {matchedCount}/{totalPairs}
+        </span>
+        {matchedCount > 0 && (
+          <button
+            onClick={() => onAnswer({ matches: {} })}
+            className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+            title="Resetează perechile"
+          >
+            <RotateCcw className="h-4 w-4" />
+          </button>
+        )}
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        {/* Left column */}
+        <div className="space-y-2.5">
+          {pairs.map((p, i) => (
+            <motion.button
+              key={p.id}
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: i * 0.06, type: "spring", stiffness: 400, damping: 25 }}
+              onClick={() => handleLeftClick(p.id)}
+              className={`w-full rounded-xl border-2 px-3 py-3 text-sm font-medium transition-all duration-200 text-left relative overflow-hidden ${getLeftStyle(p.id)} cursor-pointer active:scale-[0.97]`}
+            >
+              <div className="flex items-center gap-2">
+                {matched.has(p.id) && (
+                  <motion.span
+                    initial={{ scale: 0, rotate: -90 }}
+                    animate={{ scale: 1, rotate: 0 }}
+                    transition={{ type: "spring", stiffness: 500, damping: 20 }}
+                  >
+                    <Link2 className="h-3.5 w-3.5 shrink-0 opacity-60" />
+                  </motion.span>
+                )}
+                <span className="flex-1">{p.left}</span>
+              </div>
+              <AnimatePresence>
+                {recentlyMatched === p.id && (
+                  <motion.div
+                    initial={{ opacity: 0.5, scale: 0.5 }}
+                    animate={{ opacity: 0, scale: 2.5 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.5 }}
+                    className="absolute inset-0 rounded-xl bg-primary/20 pointer-events-none"
+                  />
+                )}
+              </AnimatePresence>
+            </motion.button>
+          ))}
+        </div>
+
+        {/* Right column */}
+        <div className="space-y-2.5">
+          {shuffledRight.map((p, i) => {
+            const matchEntry = [...matched.entries()].find(([, v]) => v === p.id);
+            return (
+              <motion.button
+                key={p.id}
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: i * 0.06, type: "spring", stiffness: 400, damping: 25 }}
+                onClick={() => handleRightClick(p.id)}
+                className={`w-full rounded-xl border-2 px-3 py-3 text-sm font-medium transition-all duration-200 text-left relative overflow-hidden ${getRightStyle(p.id)} cursor-pointer active:scale-[0.97]`}
+              >
+                <div className="flex items-center gap-2">
+                  {matchEntry && (
+                    <motion.span
+                      initial={{ scale: 0, rotate: -90 }}
+                      animate={{ scale: 1, rotate: 0 }}
+                      transition={{ type: "spring", stiffness: 500, damping: 20 }}
+                    >
+                      <Link2 className="h-3.5 w-3.5 shrink-0 opacity-60" />
+                    </motion.span>
+                  )}
+                  <span className="flex-1">{p.right}</span>
+                </div>
+                <AnimatePresence>
+                  {recentlyMatched && matchEntry && matchEntry[0] === recentlyMatched && (
+                    <motion.div
+                      initial={{ opacity: 0.5, scale: 0.5 }}
+                      animate={{ opacity: 0, scale: 2.5 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.5 }}
+                      className="absolute inset-0 rounded-xl bg-primary/20 pointer-events-none"
+                    />
+                  )}
+                </AnimatePresence>
+              </motion.button>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Test-specific Order renderer with touch-friendly arrow buttons
+const TestOrderRenderer = ({ exercise, answer, onAnswer }: { exercise: any; answer: any; onAnswer: (d: any) => void }) => {
+  const lines = (exercise.lines || []) as { id: string; text: string }[];
+  const ordered: string[] = answer?.order || lines.map((l) => l.id);
+
+  const moveItem = (from: number, to: number) => {
+    const newOrder = [...ordered];
+    const [item] = newOrder.splice(from, 1);
+    newOrder.splice(to, 0, item);
+    onAnswer({ order: newOrder });
+  };
+
+  return (
+    <div className="space-y-2">
+      <p className="text-sm font-medium text-foreground">{exercise.question}</p>
+      <div className="space-y-2">
+        {ordered.map((lineId: string, idx: number) => {
+          const line = lines.find((l) => l.id === lineId);
+          return (
+            <div
+              key={lineId}
+              className="flex items-center gap-3 rounded-lg border border-border bg-card p-3 font-mono text-sm select-none"
+            >
+              <GripVertical className="h-5 w-5 text-muted-foreground shrink-0" />
+              <code className="text-foreground whitespace-pre-wrap break-words flex-1">{line?.text || lineId}</code>
+              <div className="ml-auto flex gap-1">
+                <button
+                  onClick={() => idx > 0 && moveItem(idx, idx - 1)}
+                  disabled={idx === 0}
+                  className="text-base text-muted-foreground hover:text-foreground disabled:opacity-30 px-2 py-1"
+                >▲</button>
+                <button
+                  onClick={() => idx < ordered.length - 1 && moveItem(idx, idx + 1)}
+                  disabled={idx === ordered.length - 1}
+                  className="text-base text-muted-foreground hover:text-foreground disabled:opacity-30 px-2 py-1"
+                >▼</button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 };
@@ -840,11 +1030,10 @@ const ProblemRenderer = ({ problem, answer, onAnswer, allowRunTests }: { problem
       {problem.hint && (
         <p className="text-[10px] text-muted-foreground italic">💡 {problem.hint}</p>
       )}
-      <Textarea
+      <CodeEditor
         placeholder="Scrie codul Python aici..."
         value={answer?.code || ""}
-        onChange={(e) => onAnswer({ code: e.target.value })}
-        className="font-mono text-xs min-h-[200px]"
+        onChange={(val) => onAnswer({ code: val })}
       />
       {allowRunTests && visibleTests.length > 0 && (
         <div className="space-y-2">
@@ -861,8 +1050,8 @@ const ProblemRenderer = ({ problem, answer, onAnswer, allowRunTests }: { problem
           {testResults.length > 0 && (
             <div className="space-y-1.5">
               {testResults.map((r, i) => (
-                <div key={i} className={`flex items-start gap-2 p-2 rounded-lg border text-xs ${r.passed ? "border-green-500/30 bg-green-500/5" : "border-destructive/30 bg-destructive/5"}`}>
-                  {r.passed ? <CheckCircle className="h-3.5 w-3.5 text-green-500 shrink-0 mt-0.5" /> : <XCircle className="h-3.5 w-3.5 text-destructive shrink-0 mt-0.5" />}
+                <div key={i} className={`flex items-start gap-2 p-2 rounded-lg border text-xs ${r.passed ? "border-primary/30 bg-primary/5" : "border-destructive/30 bg-destructive/5"}`}>
+                  {r.passed ? <CheckCircle className="h-3.5 w-3.5 text-primary shrink-0 mt-0.5" /> : <XCircle className="h-3.5 w-3.5 text-destructive shrink-0 mt-0.5" />}
                   <div className="min-w-0">
                     <p className="font-mono text-muted-foreground">Input: {r.input}</p>
                     <p className="font-mono text-muted-foreground">Așteptat: {r.expectedOutput}</p>
