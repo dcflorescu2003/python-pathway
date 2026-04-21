@@ -382,12 +382,14 @@ const TakeTestPage = () => {
     return () => {
       cancelLeave();
       document.removeEventListener("visibilitychange", onVisibility);
-      window.removeEventListener("blur", onBlur);
-      window.removeEventListener("focus", onFocus);
+      if (!isNative) {
+        window.removeEventListener("blur", onBlur);
+        window.removeEventListener("focus", onFocus);
+      }
       if (requireFullscreen) {
         document.removeEventListener("fullscreenchange", onFullscreenChange);
       }
-    capListener?.remove();
+      capListener?.remove();
     };
   }, [submissionId, submitted, requireFullscreen]);
 
