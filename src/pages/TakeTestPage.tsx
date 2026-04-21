@@ -956,6 +956,7 @@ const TestMatchRenderer = ({ exercise, answer, onAnswer }: { exercise: any; answ
                 </motion.button>
               )}
             </div>
+          );
         })}
       </div>
     </div>
