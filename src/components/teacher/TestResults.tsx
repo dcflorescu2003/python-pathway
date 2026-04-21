@@ -428,15 +428,22 @@ const TestResults = ({ testId, testTitle, onBack }: TestResultsProps) => {
                               ⚠️ {autoReasonLabel(sub.auto_submitted_reason)}
                             </span>
                           )}
+                        </p>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <p className="text-[10px] text-muted-foreground">
+                            Nr. {sub.variant === "A" ? "1" : "2"} · {sub.submitted_at ? new Date(sub.submitted_at).toLocaleDateString("ro-RO") : "În curs"}
+                          </p>
                           {sub.auto_submitted_reason && (
                             <AlertDialog>
                               <AlertDialogTrigger asChild>
-                                <button
+                                <Button
+                                  size="sm"
+                                  variant="outline"
                                   onClick={(e) => e.stopPropagation()}
-                                  className="inline-flex items-center gap-1 text-[9px] px-1.5 py-0.5 rounded-full bg-primary/10 border border-primary/30 text-primary font-medium hover:bg-primary/20 transition-colors"
+                                  className="h-6 text-[10px] px-2 gap-1 border-primary/40 text-primary hover:bg-primary/10"
                                 >
                                   <RotateCcw className="h-3 w-3" /> Permite reluarea
-                                </button>
+                                </Button>
                               </AlertDialogTrigger>
                               <AlertDialogContent onClick={(e) => e.stopPropagation()}>
                                 <AlertDialogHeader>
@@ -461,10 +468,7 @@ const TestResults = ({ testId, testTitle, onBack }: TestResultsProps) => {
                               </AlertDialogContent>
                             </AlertDialog>
                           )}
-                        </p>
-                        <p className="text-[10px] text-muted-foreground">
-                          Nr. {sub.variant === "A" ? "1" : "2"} · {sub.submitted_at ? new Date(sub.submitted_at).toLocaleDateString("ro-RO") : "În curs"}
-                        </p>
+                        </div>
                       </div>
                       <div className="flex items-center gap-2">
                         {ungradedCount > 0 && (
