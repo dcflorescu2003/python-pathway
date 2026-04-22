@@ -96,6 +96,7 @@ Deno.serve(async (req) => {
     // Determine teacher and check Profesor AI subscription
     let teacherHasAI = false;
     let aiGradingItemIds: string[] = [];
+    let officePoints = 10;
     const firstItem = answers[0]?.test_items;
     if (firstItem?.test_id) {
       const { data: test } = await supabase
@@ -105,6 +106,7 @@ Deno.serve(async (req) => {
         .single();
 
       aiGradingItemIds = (test as any)?.ai_grading_item_ids ?? [];
+      officePoints = (test as any)?.office_points ?? 10;
 
       if (test) {
         const { data: profile } = await supabase
@@ -276,6 +278,10 @@ Deno.serve(async (req) => {
         }
       }
     }
+
+    // Add office points
+    totalScore += officePoints;
+    maxScore += officePoints;
 
     // Update submission
     await supabase
