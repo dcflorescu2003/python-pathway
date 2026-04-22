@@ -71,34 +71,23 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const authHeader = req.headers.get("Authorization");
-    console.log("[SEND-PUSH] Auth header present:", !!authHeader, "starts with Bearer:", authHeader?.startsWith("Bearer "));
-
-    if (!authHeader?.startsWith("Bearer ")) {
-      console.log("[SEND-PUSH] REJECTED: No valid Authorization header");
+    // Validate using apikey header (sent automatically by supabase-js)
+    const apiKey = req.headers.get("apikey");
+    const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
+    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    
+    if (!apiKey || (apiKey !== anonKey && apiKey !== serviceKey)) {
+      console.log("[SEND-PUSH] REJECTED: Invalid apikey");
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,
         headers: corsHeaders,
       });
     }
 
-    // Use service role to validate the JWT token
-    const token = authHeader.replace("Bearer ", "");
     const adminClient = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
-
-    const { data: { user }, error: userError } = await adminClient.auth.getUser(token);
-    console.log("[SEND-PUSH] getUser result:", user ? `user=${user.id} email=${user.email}` : "null", "error:", userError?.message ?? "none");
-
-    if (userError || !user) {
-      console.log("[SEND-PUSH] REJECTED: getUser failed");
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401,
-        headers: corsHeaders,
-      });
-    }
 
     const body = await req.json();
     const { student_ids, title, body: msgBody } = body;
