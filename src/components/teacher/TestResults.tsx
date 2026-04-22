@@ -24,6 +24,7 @@ interface TestResultsProps {
   testId: string;
   testTitle?: string;
   onBack: () => void;
+  initialClassId?: string;
 }
 
 const autoReasonLabel = (reason: string | null | undefined): string => {
@@ -41,10 +42,18 @@ const autoReasonLabel = (reason: string | null | undefined): string => {
   }
 };
 
-const TestResults = ({ testId, testTitle, onBack }: TestResultsProps) => {
+const TestResults = ({ testId, testTitle, onBack, initialClassId }: TestResultsProps) => {
   const { data: assignments = [] } = useTestAssignments(testId);
   const { data: testItems = [] } = useTestItems(testId);
   const [selectedAssignmentId, setSelectedAssignmentId] = useState<string | null>(null);
+
+  // Auto-select assignment matching initialClassId
+  useEffect(() => {
+    if (initialClassId && assignments.length > 0 && !selectedAssignmentId) {
+      const match = assignments.find((a: any) => a.class_id === initialClassId);
+      if (match) setSelectedAssignmentId(match.id);
+    }
+  }, [initialClassId, assignments, selectedAssignmentId]);
   const [expandedSubmissionId, setExpandedSubmissionId] = useState<string | null>(null);
   const [officePoints, setOfficePoints] = useState<number>(10);
 

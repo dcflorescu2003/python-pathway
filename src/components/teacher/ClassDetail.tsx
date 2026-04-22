@@ -127,6 +127,7 @@ const ClassDetail = ({ classId, className: clsName, joinCode, onBack }: ClassDet
         testId={viewingResultsTestId}
         testTitle={viewingResultsTitle}
         onBack={() => { setViewingResultsTestId(null); setViewingResultsTitle(""); }}
+        initialClassId={classId}
       />
     );
   }
