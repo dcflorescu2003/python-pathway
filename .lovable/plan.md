@@ -1,39 +1,49 @@
 
 
-## Plan: Add iOS native focus bridge for test auto-submit parity
-
-### What's missing
-
-On Android, `MainActivity.onWindowFocusChanged` emits `pyro:native_focus_lost` / `pyro:native_focus_gained` to the web layer, which triggers test auto-submit when the notification shade or Control Center is opened. On iOS, `AppDelegate.swift` has empty `applicationWillResignActive` / `applicationDidBecomeActive` methods that do nothing — no events reach the web layer.
-
-The web-side listener in `TakeTestPage.tsx` already handles `pyro:native_focus_lost` and `pyro:native_focus_gained`, so only the iOS native side needs the bridge.
-
-### Changes
-
-**File: `ios/App/App/AppDelegate.swift`**
-
-Add JavaScript event dispatching in the two existing lifecycle methods:
-
-- `applicationWillResignActive` — fires when the user opens Control Center, Notification Center, receives a phone call, or pulls down the status bar. Emit `pyro:native_focus_lost` to the WebView.
-- `applicationDidBecomeActive` — fires when the app regains focus. Emit `pyro:native_focus_gained` to cancel the auto-submit timer.
-
-Implementation: access the Capacitor bridge's WebView via `window?.rootViewController` (cast to `CAPBridgeViewController`), then call `webView?.evaluateJavaScript("window.dispatchEvent(new Event('pyro:native_focus_lost'))")` — mirroring exactly what Android does.
-
-**File: `src/pages/TakeTestPage.tsx`**
-
-No changes needed — the listeners for `pyro:native_focus_lost` / `pyro:native_focus_gained` are already wired at lines 416-419.
-
-**File: `src/components/teacher/TestResults.tsx`**
-
-No changes needed — the `native_window_focus_lost` reason label already covers both platforms.
+## Plan: Restructure ClassDetail for teachers + reorder StudentTab sections
 
 ### Summary
 
-| Platform | Trigger | Event emitted | Already handled in web |
-|----------|---------|---------------|----------------------|
-| Android | `onWindowFocusChanged(false)` | `pyro:native_focus_lost` | Yes |
-| iOS (new) | `applicationWillResignActive` | `pyro:native_focus_lost` | Yes |
-| iOS (new) | `applicationDidBecomeActive` | `pyro:native_focus_gained` | Yes |
+**Teacher ClassDetail**: Replace the current flat layout (Students list + Challenges list) with three collapsible sections: **Elevi** (collapsed by default), **Teste** (collapsed, shows tests assigned to this class with a link to results), **Provocari** (collapsed, current challenge list). Remove the Tabs component since Analytics stays separate.
 
-Single file change: `ios/App/App/AppDelegate.swift`. After merging, run `npx cap sync ios`.
+**Student tab**: Move the "Teste" section above "Provocari" (both active and completed) so tests appear first after the class info card.
+
+---
+
+### Changes
+
+#### 1. `src/components/teacher/ClassDetail.tsx`
+
+- Replace the flat Students + Challenges layout inside the "overview" TabsContent with three `Collapsible` sections (from `@/components/ui/collapsible`):
+  1. **Elevi (N)** -- collapsed by default, clicking expands the student list
+  2. **Teste** -- collapsed by default, fetches `test_assignments` filtered by `class_id`, shows each assigned test (title, date, time limit) as a card. Each card has a "Rezultate" button that navigates to `TestResults` inline (reuse existing pattern with `viewingResultsTestId` state)
+  3. **Provocari (N)** -- collapsed by default, contains the current challenges UI with the "Atribuie" button and expandable per-student status
+
+- Add a new query to fetch test assignments for this class:
+  ```
+  supabase.from("test_assignments")
+    .select("*, tests(id, title, time_limit_minutes, created_at)")
+    .eq("class_id", classId)
+    .order("assigned_at", { ascending: false })
+  ```
+
+- Import `TestResults` component and add state for `viewingResultsTestId`. When viewing results, render `TestResults` with an `onBack` callback (same pattern as `TestManager`).
+
+- Each collapsible header uses `CollapsibleTrigger` with a chevron icon and the section title.
+
+#### 2. `src/components/account/StudentTab.tsx`
+
+- Reorder the JSX so that the **Teste** section (currently inside "Istoric" at line 368) appears **before** the active challenges and completed challenges sections.
+- Specifically: after the class info card (line 201-288), render in this order:
+  1. **Teste** section (active tests to take + completed tests with expandable details) -- extracted from the current "Istoric" block
+  2. **Provocari active** (current activeChallenges block, lines 291-317)
+  3. **Istoric provocari** (current completedChallenges block, lines 326-365)
+- Remove the "Istoric" wrapper heading since tests and challenges will be separate top-level sections.
+
+---
+
+### Files modified
+
+- `src/components/teacher/ClassDetail.tsx` -- collapsible sections, test assignments query, TestResults integration
+- `src/components/account/StudentTab.tsx` -- reorder tests above challenges
 
