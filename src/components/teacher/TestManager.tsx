@@ -154,6 +154,17 @@ const TestManager = ({ onCreateTest, onEditTest }: TestManagerProps) => {
                           ))}
                         </SelectContent>
                       </Select>
+                      <div>
+                        <label className="text-[10px] text-muted-foreground">Disponibil timp de (minute)</label>
+                        <Input
+                          type="number"
+                          min={1}
+                          className="h-8 text-xs"
+                          placeholder="ex: 60"
+                          value={windowMinutes}
+                          onChange={(e) => setWindowMinutes(e.target.value)}
+                        />
+                      </div>
                       <Button size="sm" onClick={() => handleAssign(test.id, test.title)} disabled={!selectedClassId || assignTest.isPending} className="w-full">
                         {assignTest.isPending ? "Se distribuie..." : "Confirmă"}
                       </Button>
