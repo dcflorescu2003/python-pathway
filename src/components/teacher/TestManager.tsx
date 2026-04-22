@@ -121,7 +121,14 @@ const TestManager = ({ onCreateTest, onEditTest }: TestManagerProps) => {
                       size="sm"
                       variant="outline"
                       className="gap-1"
-                      onClick={() => setAssigningTestId(assigningTestId === test.id ? null : test.id)}
+                      onClick={() => {
+                        if (assigningTestId === test.id) {
+                          setAssigningTestId(null);
+                        } else {
+                          setAssigningTestId(test.id);
+                          setWindowMinutes(test.time_limit_minutes ? String(test.time_limit_minutes) : "");
+                        }
+                      }}
                     >
                       <Send className="h-3.5 w-3.5" /> Distribuie
                     </Button>
