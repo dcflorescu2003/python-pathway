@@ -562,6 +562,7 @@ const AnswerDetail = ({
   onSave: () => void;
   saving: boolean;
 }) => {
+  const [showRaw, setShowRaw] = useState(false);
   const isCorrect = answer.score >= answer.max_points;
   const itemType = questionInfo.type;
   const exerciseData = questionInfo.data;
