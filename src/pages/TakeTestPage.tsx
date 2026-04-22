@@ -92,6 +92,17 @@ const TakeTestPage = () => {
           .single();
 
         if (!assignment) { navigate("/"); return; }
+
+        // Check window expiration on the client side
+        if (assignment.window_minutes) {
+          const deadline = new Date(new Date(assignment.assigned_at).getTime() + assignment.window_minutes * 60000);
+          if (deadline < new Date()) {
+            toast.error("Testul a expirat.");
+            navigate("/");
+            return;
+          }
+        }
+
         setTestInfo(assignment);
 
         // Check existing submission
