@@ -1,36 +1,38 @@
 
 
-## Plan: Fix `send-push` edge function authentication
+## Plan: Diagnosticare send-push cu logging detaliat
 
-### Problem
+### Problema curenta
 
-The `send-push` edge function uses `supabase.auth.getClaims(token)` which is not available in the imported `@supabase/supabase-js@2` version. This causes a silent 401 error on every call. The client-side code catches the error silently (`catch (e) { console.error(...) }`), so no visible error appears — but no push notification is ever sent.
+Edge function `send-push` returneaza 401 la fiecare apel. Log-urile functiei nu contin niciun mesaj (doar boot/shutdown), ceea ce inseamna ca functia nu logheaza inainte de a returna eroarea. Trebuie adaugat logging detaliat pentru a identifica exact unde pica.
 
-Evidence: zero `send-push` HTTP entries in edge logs despite the in-app notification insert succeeding (confirming the mutation runs).
+### Pasi
 
-### Fix
+#### 1. Adaugare logging in `send-push/index.ts`
 
-**File: `supabase/functions/send-push/index.ts`**
+Adaugam `console.log` la fiecare pas critic:
+- La intrarea in functie (confirmare ca se executa)
+- Daca lipseste Authorization header
+- Rezultatul `getUser()` (eroarea exacta)
+- Dupa parsarea body-ului
+- Numarul de device tokens gasite
+- Rezultatul fiecarui apel FCM
 
-Replace the `getClaims` authentication block (lines 87-95) with `supabase.auth.getUser()`:
+#### 2. Redeploy si test manual
 
-```typescript
-const { data: { user }, error: userError } = await supabase.auth.getUser();
-if (userError || !user) {
-  return new Response(JSON.stringify({ error: "Unauthorized" }), {
-    status: 401,
-    headers: corsHeaders,
-  });
-}
-```
+- Redeployam functia
+- Apelam `send-push` prin `curl_edge_functions` cu un body valid (student_ids din `device_tokens`)
+- Citim log-urile pentru a vedea exact unde pica
 
-This uses the standard, always-available `getUser()` method which validates the JWT via the Authorization header already passed to the client.
+#### 3. Fix bazat pe diagnostic
 
-### Verification
+Cele mai probabile cauze:
+- **getUser() esueaza** -- token-ul JWT din header nu este valid (posibil `supabase.functions.invoke` nu trimite header-ul corect din mediul nativ Capacitor)
+- **Body-ul nu se parseaza** -- `req.json()` ar putea esua daca body-ul e malformat
 
-After deploying, call `send-push` via `curl_edge_functions` with a real student ID from `device_tokens` to confirm FCM delivery works end-to-end.
+Daca `getUser()` e problema, solutia va fi sa facem functia sa accepte apeluri autentificate cu service role key (verificand doar ca apelantul e profesor), sau sa adaugam header-ul explicit in apelurile din frontend.
 
-### Files modified
+### Fisiere modificate
 
-- `supabase/functions/send-push/index.ts` -- replace `getClaims` with `getUser`
+- `supabase/functions/send-push/index.ts` -- adaugare console.log-uri la fiecare pas
 
