@@ -417,8 +417,30 @@ export function useUpdateAnswerScore() {
         .eq("submission_id", params.submissionId);
 
       if (allAnswers) {
-        const totalScore = allAnswers.reduce((sum, a) => sum + (Number(a.score) || 0), 0);
-        const maxScore = allAnswers.reduce((sum, a) => sum + (Number(a.max_points) || 0), 0);
+        // Get office_points from the test
+        const { data: sub } = await supabase
+          .from("test_submissions")
+          .select("assignment_id")
+          .eq("id", params.submissionId)
+          .single();
+        let op = 10;
+        if (sub) {
+          const { data: assignment } = await supabase
+            .from("test_assignments")
+            .select("test_id")
+            .eq("id", sub.assignment_id)
+            .single();
+          if (assignment) {
+            const { data: test } = await supabase
+              .from("tests")
+              .select("office_points")
+              .eq("id", assignment.test_id)
+              .single();
+            op = (test as any)?.office_points ?? 10;
+          }
+        }
+        const totalScore = allAnswers.reduce((sum, a) => sum + (Number(a.score) || 0), 0) + op;
+        const maxScore = allAnswers.reduce((sum, a) => sum + (Number(a.max_points) || 0), 0) + op;
         await supabase
           .from("test_submissions")
           .update({ total_score: totalScore, max_score: maxScore })
