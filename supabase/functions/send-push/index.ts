@@ -82,13 +82,14 @@ Deno.serve(async (req) => {
       });
     }
 
-    const supabase = createClient(
+    // Use service role to validate the JWT token
+    const token = authHeader.replace("Bearer ", "");
+    const adminClient = createClient(
       Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_ANON_KEY")!,
-      { global: { headers: { Authorization: authHeader } } }
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    const { data: { user }, error: userError } = await adminClient.auth.getUser(token);
     console.log("[SEND-PUSH] getUser result:", user ? `user=${user.id} email=${user.email}` : "null", "error:", userError?.message ?? "none");
 
     if (userError || !user) {
