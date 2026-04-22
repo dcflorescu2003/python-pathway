@@ -1071,6 +1071,7 @@ export type Database = {
           is_active: boolean
           scores_released: boolean
           test_id: string
+          window_minutes: number | null
         }
         Insert: {
           assigned_at?: string
@@ -1080,6 +1081,7 @@ export type Database = {
           is_active?: boolean
           scores_released?: boolean
           test_id: string
+          window_minutes?: number | null
         }
         Update: {
           assigned_at?: string
@@ -1089,6 +1091,7 @@ export type Database = {
           is_active?: boolean
           scores_released?: boolean
           test_id?: string
+          window_minutes?: number | null
         }
         Relationships: [
           {
