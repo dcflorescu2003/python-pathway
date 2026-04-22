@@ -169,13 +169,14 @@ export function useDeleteTest() {
 export function useAssignTest() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (params: { test_id: string; class_id: string; due_date?: string; testTitle?: string }) => {
+    mutationFn: async (params: { test_id: string; class_id: string; due_date?: string; testTitle?: string; window_minutes?: number }) => {
       const { data, error } = await supabase
         .from("test_assignments")
         .insert({
           test_id: params.test_id,
           class_id: params.class_id,
           due_date: params.due_date || null,
+          window_minutes: params.window_minutes ?? null,
         })
         .select()
         .single();

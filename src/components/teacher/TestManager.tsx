@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { useTeacherTests, useDeleteTest, useAssignTest, useTestAssignments, useTestItems } from "@/hooks/useTests";
 import { useTeacherClasses } from "@/hooks/useTeacher";
 import { Plus, Trash2, FileText, Clock, Send, ChevronDown, ChevronUp, Users, Pencil } from "lucide-react";
@@ -21,6 +22,7 @@ const TestManager = ({ onCreateTest, onEditTest }: TestManagerProps) => {
   const [expandedTestId, setExpandedTestId] = useState<string | null>(null);
   const [assigningTestId, setAssigningTestId] = useState<string | null>(null);
   const [selectedClassId, setSelectedClassId] = useState<string>("");
+  const [windowMinutes, setWindowMinutes] = useState<string>("");
   const [viewingResultsTestId, setViewingResultsTestId] = useState<string | null>(null);
 
   const { data: assignments = [] } = useTestAssignments(expandedTestId);
@@ -40,10 +42,12 @@ const TestManager = ({ onCreateTest, onEditTest }: TestManagerProps) => {
   const handleAssign = async (testId: string, testTitle: string) => {
     if (!selectedClassId) return;
     try {
-      await assignTest.mutateAsync({ test_id: testId, class_id: selectedClassId, testTitle });
+      const wm = windowMinutes ? parseInt(windowMinutes, 10) : undefined;
+      await assignTest.mutateAsync({ test_id: testId, class_id: selectedClassId, testTitle, window_minutes: wm && wm > 0 ? wm : undefined });
       toast.success("Test distribuit!");
       setAssigningTestId(null);
       setSelectedClassId("");
+      setWindowMinutes("");
     } catch {
       toast.error("Eroare la distribuire.");
     }
@@ -117,7 +121,14 @@ const TestManager = ({ onCreateTest, onEditTest }: TestManagerProps) => {
                       size="sm"
                       variant="outline"
                       className="gap-1"
-                      onClick={() => setAssigningTestId(assigningTestId === test.id ? null : test.id)}
+                      onClick={() => {
+                        if (assigningTestId === test.id) {
+                          setAssigningTestId(null);
+                        } else {
+                          setAssigningTestId(test.id);
+                          setWindowMinutes(test.time_limit_minutes ? String(test.time_limit_minutes) : "");
+                        }
+                      }}
                     >
                       <Send className="h-3.5 w-3.5" /> Distribuie
                     </Button>
@@ -143,6 +154,17 @@ const TestManager = ({ onCreateTest, onEditTest }: TestManagerProps) => {
                           ))}
                         </SelectContent>
                       </Select>
+                      <div>
+                        <label className="text-[10px] text-muted-foreground">Disponibil timp de (minute)</label>
+                        <Input
+                          type="number"
+                          min={1}
+                          className="h-8 text-xs"
+                          placeholder="ex: 60"
+                          value={windowMinutes}
+                          onChange={(e) => setWindowMinutes(e.target.value)}
+                        />
+                      </div>
                       <Button size="sm" onClick={() => handleAssign(test.id, test.title)} disabled={!selectedClassId || assignTest.isPending} className="w-full">
                         {assignTest.isPending ? "Se distribuie..." : "Confirmă"}
                       </Button>
