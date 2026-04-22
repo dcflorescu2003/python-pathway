@@ -1,49 +1,40 @@
 
 
-## Plan: Restructure ClassDetail for teachers + reorder StudentTab sections
+## Plan: Diagnosticare si reparare notificari push Android
 
-### Summary
+### Problema identificata
 
-**Teacher ClassDetail**: Replace the current flat layout (Students list + Challenges list) with three collapsible sections: **Elevi** (collapsed by default), **Teste** (collapsed, shows tests assigned to this class with a link to results), **Provocari** (collapsed, current challenge list). Remove the Tabs component since Analytics stays separate.
+Infrastructura push este corect configurata:
+- `@capacitor/push-notifications` instalat si functional
+- Device tokens se salveaza in baza de date (10+ token-uri active)
+- `FIREBASE_SERVICE_ACCOUNT` secret configurat
+- `google-services.json` prezent in proiectul Android
+- Edge functions `send-push` si `send-streak-reminder` exista
 
-**Student tab**: Move the "Teste" section above "Provocari" (both active and completed) so tests appear first after the class info card.
+Insa **`send-push` nu a fost apelata niciodata** (zero log-uri). Singurul loc care o invoca este `ChallengeAssigner.tsx` cand un profesor atribuie o provocare. Functia `send-streak-reminder` nu are niciun scheduler/cron care s-o apeleze automat.
 
----
+### Pasi de rezolvare
 
-### Changes
+#### 1. Test imediat: verificare ca FCM functioneaza
+- Apelez `send-push` edge function manual cu un token real din baza de date pentru a confirma ca Firebase Cloud Messaging trimite cu succes notificari pe dispozitiv.
+- Daca FCM returneaza eroare, diagnosticam problema din `FIREBASE_SERVICE_ACCOUNT` sau configurarea proiectului Firebase.
 
-#### 1. `src/components/teacher/ClassDetail.tsx`
+#### 2. Adaugare cron job pentru `send-streak-reminder`
+- Activez `pg_cron` (daca nu e deja activ) si creez un cron job care apeleaza `send-streak-reminder` zilnic seara (de ex. ora 20:00 Romania, UTC+3 = 17:00 UTC).
+- Asta va trimite automat notificari push utilizatorilor care au streak activ dar nu au invatat inca in ziua respectiva.
 
-- Replace the flat Students + Challenges layout inside the "overview" TabsContent with three `Collapsible` sections (from `@/components/ui/collapsible`):
-  1. **Elevi (N)** -- collapsed by default, clicking expands the student list
-  2. **Teste** -- collapsed by default, fetches `test_assignments` filtered by `class_id`, shows each assigned test (title, date, time limit) as a card. Each card has a "Rezultate" button that navigates to `TestResults` inline (reuse existing pattern with `viewingResultsTestId` state)
-  3. **Provocari (N)** -- collapsed by default, contains the current challenges UI with the "Atribuie" button and expandable per-student status
+#### 3. Extindere notificari push la mai multe evenimente
+- **Cand profesorul distribuie un test** -- adaug apel `send-push` in fluxul de atribuire teste (similar cu provocarile)
+- **Cand profesorul publica rezultatele** -- notificare catre elevii clasei cand se deblocheaza notele
 
-- Add a new query to fetch test assignments for this class:
-  ```
-  supabase.from("test_assignments")
-    .select("*, tests(id, title, time_limit_minutes, created_at)")
-    .eq("class_id", classId)
-    .order("assigned_at", { ascending: false })
-  ```
+#### 4. Fisiere modificate
+- `supabase/functions/send-streak-reminder/index.ts` -- eventual mici ajustari daca testul FCM releva probleme
+- `src/components/teacher/ClassDetail.tsx` sau `TestManager.tsx` -- adaugare apel `send-push` la distribuirea testelor
+- `src/components/teacher/TestResults.tsx` -- apel `send-push` la publicarea rezultatelor
+- Migrare SQL noua -- cron job `pg_cron` pentru streak reminder
 
-- Import `TestResults` component and add state for `viewingResultsTestId`. When viewing results, render `TestResults` with an `onBack` callback (same pattern as `TestManager`).
-
-- Each collapsible header uses `CollapsibleTrigger` with a chevron icon and the section title.
-
-#### 2. `src/components/account/StudentTab.tsx`
-
-- Reorder the JSX so that the **Teste** section (currently inside "Istoric" at line 368) appears **before** the active challenges and completed challenges sections.
-- Specifically: after the class info card (line 201-288), render in this order:
-  1. **Teste** section (active tests to take + completed tests with expandable details) -- extracted from the current "Istoric" block
-  2. **Provocari active** (current activeChallenges block, lines 291-317)
-  3. **Istoric provocari** (current completedChallenges block, lines 326-365)
-- Remove the "Istoric" wrapper heading since tests and challenges will be separate top-level sections.
-
----
-
-### Files modified
-
-- `src/components/teacher/ClassDetail.tsx` -- collapsible sections, test assignments query, TestResults integration
-- `src/components/account/StudentTab.tsx` -- reorder tests above challenges
+#### 5. Verificare
+- Testez `send-push` direct prin `curl_edge_functions` cu token-ul tau real
+- Confirm ca primesti notificarea pe telefon
+- Confirm ca streak reminder-ul se programeaza corect
 
