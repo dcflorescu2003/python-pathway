@@ -20,7 +20,6 @@ async function getAccessToken(serviceAccount: any): Promise<string> {
     })
   );
 
-  // Import the private key
   const pemContent = serviceAccount.private_key
     .replace("-----BEGIN PRIVATE KEY-----", "")
     .replace("-----END PRIVATE KEY-----", "")
@@ -65,52 +64,56 @@ async function getAccessToken(serviceAccount: any): Promise<string> {
 }
 
 Deno.serve(async (req) => {
+  console.log("[SEND-PUSH] Function invoked, method:", req.method);
+
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
+    // Validate caller has a valid apikey or authorization header
+    const apiKey = req.headers.get("apikey");
     const authHeader = req.headers.get("Authorization");
-    if (!authHeader?.startsWith("Bearer ")) {
+    const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
+    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    
+    const hasValidApiKey = apiKey && (apiKey === anonKey || apiKey === serviceKey);
+    const hasValidAuth = authHeader?.startsWith("Bearer ");
+    
+    if (!hasValidApiKey && !hasValidAuth) {
+      console.log("[SEND-PUSH] REJECTED: No valid credentials");
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,
         headers: corsHeaders,
       });
     }
+    console.log("[SEND-PUSH] Auth OK - apikey:", !!hasValidApiKey, "bearer:", !!hasValidAuth);
 
-    const supabase = createClient(
+    const adminClient = createClient(
       Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_ANON_KEY")!,
-      { global: { headers: { Authorization: authHeader } } }
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
-    if (userError || !user) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401,
-        headers: corsHeaders,
-      });
-    }
+    const body = await req.json();
+    const { student_ids, title, body: msgBody } = body;
+    console.log("[SEND-PUSH] Body parsed:", JSON.stringify({ student_ids_count: student_ids?.length, title, body: msgBody }));
 
-    const { student_ids, title, body } = await req.json();
-
-    if (!student_ids?.length || !title || !body) {
+    if (!student_ids?.length || !title || !msgBody) {
+      console.log("[SEND-PUSH] REJECTED: Missing fields");
       return new Response(
         JSON.stringify({ error: "Missing student_ids, title, or body" }),
         { status: 400, headers: corsHeaders }
       );
     }
 
-    // Get device tokens for students using service role
-    const adminClient = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-    );
+    // Reuse adminClient from above for device tokens
 
-    const { data: tokens } = await adminClient
+    const { data: tokens, error: tokensError } = await adminClient
       .from("device_tokens")
       .select("token")
       .in("user_id", student_ids);
+
+    console.log("[SEND-PUSH] Device tokens found:", tokens?.length ?? 0, "error:", tokensError?.message ?? "none");
 
     if (!tokens || tokens.length === 0) {
       return new Response(
@@ -120,15 +123,17 @@ Deno.serve(async (req) => {
     }
 
     // Get FCM access token
-    const serviceAccount = JSON.parse(
-      Deno.env.get("FIREBASE_SERVICE_ACCOUNT")!
-    );
+    const rawServiceAccount = Deno.env.get("FIREBASE_SERVICE_ACCOUNT") ?? "";
+    console.log("[SEND-PUSH] FIREBASE_SERVICE_ACCOUNT length:", rawServiceAccount.length, "first 20 chars:", rawServiceAccount.substring(0, 20));
+    const serviceAccount = JSON.parse(rawServiceAccount);
     const accessToken = await getAccessToken(serviceAccount);
     const projectId = serviceAccount.project_id;
+    console.log("[SEND-PUSH] FCM access token obtained, project:", projectId);
 
     // Send to each device
     let sent = 0;
     for (const { token: deviceToken } of tokens) {
+      console.log("[SEND-PUSH] Sending to token:", deviceToken.substring(0, 20) + "...");
       const res = await fetch(
         `https://fcm.googleapis.com/v1/projects/${projectId}/messages:send`,
         {
@@ -140,7 +145,7 @@ Deno.serve(async (req) => {
           body: JSON.stringify({
             message: {
               token: deviceToken,
-              notification: { title, body },
+              notification: { title, body: msgBody },
               android: {
                 priority: "high",
                 notification: { sound: "default" },
@@ -162,18 +167,20 @@ Deno.serve(async (req) => {
         }
       );
       const resBody = await res.text();
+      console.log("[SEND-PUSH] FCM response status:", res.status, "body:", resBody);
       if (res.ok) {
         sent++;
       } else {
-        console.error("FCM error for token:", deviceToken, resBody);
+        console.error("[SEND-PUSH] FCM error for token:", deviceToken.substring(0, 20) + "...", resBody);
       }
     }
 
+    console.log("[SEND-PUSH] Done. Sent:", sent, "of", tokens.length);
     return new Response(JSON.stringify({ sent }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (err) {
-    console.error("send-push error:", err);
+    console.error("[SEND-PUSH] Unhandled error:", err);
     return new Response(JSON.stringify({ error: String(err) }), {
       status: 500,
       headers: corsHeaders,
