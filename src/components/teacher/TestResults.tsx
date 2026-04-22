@@ -48,12 +48,17 @@ const TestResults = ({ testId, testTitle, onBack, initialClassId }: TestResultsP
   const [selectedAssignmentId, setSelectedAssignmentId] = useState<string | null>(null);
 
   // Auto-select assignment matching initialClassId
+  const [initialAutoSelectDone, setInitialAutoSelectDone] = useState(false);
   useEffect(() => {
-    if (initialClassId && assignments.length > 0 && !selectedAssignmentId) {
-      const match = assignments.find((a: any) => a.class_id === initialClassId);
-      if (match) setSelectedAssignmentId(match.id);
+    if (!initialClassId || assignments.length === 0 || initialAutoSelectDone) return;
+    const match = assignments.find((a: any) => a.class_id === initialClassId);
+    if (match) {
+      setSelectedAssignmentId(match.id);
+    } else {
+      toast.error("Testul nu a fost distribuit la această clasă. Selectează manual o clasă de mai jos.");
     }
-  }, [initialClassId, assignments, selectedAssignmentId]);
+    setInitialAutoSelectDone(true);
+  }, [initialClassId, assignments, initialAutoSelectDone]);
   const [expandedSubmissionId, setExpandedSubmissionId] = useState<string | null>(null);
   const [officePoints, setOfficePoints] = useState<number>(10);
 
