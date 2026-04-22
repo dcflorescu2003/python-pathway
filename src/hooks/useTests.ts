@@ -479,6 +479,19 @@ export function useToggleScoresReleased() {
                 body: `Notele pentru testul «${title}» au fost publicate.`,
               }));
               await supabase.from("notifications").insert(notifications);
+
+              // Push notifications
+              const studentIds = members.map((m) => m.student_id);
+              const { data: { session } } = await supabase.auth.getSession();
+              if (session?.access_token) {
+                await supabase.functions.invoke("send-push", {
+                  body: {
+                    student_ids: studentIds,
+                    title: "Rezultate publicate 📊",
+                    body: `Notele pentru testul «${title}» au fost publicate.`,
+                  },
+                });
+              }
             }
           }
         } catch (e) {
