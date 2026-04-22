@@ -378,6 +378,16 @@ const TestResults = ({ testId, testTitle, onBack, initialClassId }: TestResultsP
           <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
           <p className="text-sm text-muted-foreground">Se încarcă clasele…</p>
         </div>
+      ) : assignmentsError ? (
+        <Card className="border-destructive/30">
+          <CardContent className="p-4 text-center">
+            <AlertCircle className="h-8 w-8 mx-auto mb-2 text-destructive/60" />
+            <p className="text-sm font-medium text-muted-foreground">Eroare la încărcarea claselor.</p>
+            <Button variant="outline" size="sm" className="mt-2 gap-1" onClick={() => refetchAssignments()}>
+              <RotateCcw className="h-3.5 w-3.5" /> Reîncearcă
+            </Button>
+          </CardContent>
+        </Card>
       ) : assignments.length === 0 ? (
         <Card className="border-muted">
           <CardContent className="p-4 text-center">
