@@ -1,56 +1,29 @@
-## Plan: Cleanup token-uri invalide + Afisare completa raspunsuri elevi
-
-### 1. Edge Function `cleanup-tokens` -- stergere automata token-uri UNREGISTERED
-
-Se creeaza o noua Edge Function `cleanup-tokens` care:
-
-- Citeste toate token-urile din `device_tokens`
-- Trimite un dry-run catre FCM pentru fiecare token (sau direct sterge cele marcate ca invalide)
-- Alternativ (mai eficient): se modifica `send-push` sa stearga automat token-urile care returneaza `UNREGISTERED` / `NOT_FOUND` dupa trimitere
-- Se adauga un cron job (pg_cron) optional pentru cleanup periodic
-
-**Abordarea recomandata**: Modificam `send-push` sa stearga token-urile invalide inline (fara functie separata), deoarece deja stim care token-uri sunt invalide la momentul trimiterii. Aceasta e cea mai simpla si eficienta solutie.
-
-**Modificari in `supabase/functions/send-push/index.ts**`:
-
-- Dupa fiecare raspuns FCM cu eroare `UNREGISTERED` sau `NOT_FOUND`, se sterge token-ul din `device_tokens` folosind `adminClient`
-- Se logheaza cate token-uri au fost curatate
-
-### 2. Afisare completa raspunsuri elevi in TestResults
-
-Componenta `TestResults.tsx` (sectiunea `AnswerDetail`) deja afiseaza raspunsurile elevilor pentru toate tipurile, dar are cateva probleme:
-
-**a) Match -- bug afisare right text**
-
-- Linia 689: `val as string` afiseaza ID-ul drept (ex: "p2"), nu textul asociat
-- Fix: se rezolva `val` prin `pairs?.find(p => p.id === val)?.right || val`
-
-**b) Eval exercises din teste predefinite**
-
-- Cand un test importa itemi din banca de evaluare, `source_type` e convertit la `"exercise"` dar `source_id` refera `eval_exercises`, nu `exercises`
-- TestResults.tsx cauta in tabelul `exercises` si nu gaseste nimic, deci nu are date pentru cerinta/optiuni
-- Fix: In `fetchDetails`, se adauga fallback -- daca un exercise ID nu e gasit in `exercises`, se cauta si in `eval_exercises`
-
-**c) Verificare ca `answer_data` e populat corect**
-
-- Quiz: `{ selected: "a" }` -- deja afisat corect
-- TrueFalse: `{ selected: true/false }` -- deja afisat corect
-- Fill: `{ blanks: { id: "val" } }` -- deja afisat corect
-- Order: `{ order: ["id1", "id2"] }` -- deja afisat corect
-- Match: `{ matches: { leftId: rightId } }` -- bug la afisarea textului drept (fix-ul de la pct. a)
-- Problem: `{ code: "..." }` -- deja afisat corect  
-  
-La order, daca elevul lasa asa nu se afiseaza nimic
-
-### Fisiere modificate
 
 
-| Fisier                                   | Modificare                                                   |
-| ---------------------------------------- | ------------------------------------------------------------ |
-| `supabase/functions/send-push/index.ts`  | Stergere automata token-uri UNREGISTERED dupa trimitere      |
-| `src/components/teacher/TestResults.tsx` | Fix match right-text display + fallback eval_exercises fetch |
+## Plan: Toggle raw `answer_data` in TestResults
 
+### What changes
 
-### Migrari DB
+Add a small "Debug" toggle button in the `AnswerDetail` header that, when active, renders the raw `answer_data` JSON below the human-readable answer section. This lets teachers inspect both the resolved text and the stored data structure side by side.
 
-Niciuna necesara.
+### Implementation
+
+**File: `src/components/teacher/TestResults.tsx`**
+
+1. Add a `showRaw` boolean state inside `AnswerDetail` (local per-item toggle).
+2. In the header bar (line ~596, next to the score), add a small icon button (`Code` icon from lucide-react) that toggles `showRaw`.
+3. At the bottom of the answer details section (after the last exercise-type block, before the feedback section around line 733), conditionally render:
+   ```tsx
+   {showRaw && (
+     <div>
+       <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">Date brute (answer_data)</p>
+       <pre className="text-[10px] font-mono bg-muted p-2 rounded overflow-x-auto whitespace-pre-wrap max-h-40 overflow-y-auto">
+         {JSON.stringify(answer.answer_data, null, 2)}
+       </pre>
+     </div>
+   )}
+   ```
+4. Import `Code` from `lucide-react` (add to existing import on line 19).
+
+### No other files modified. No migrations needed.
+
