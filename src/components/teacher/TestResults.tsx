@@ -734,6 +734,15 @@ const AnswerDetail = ({
           </div>
         )}
 
+        {showRaw && (
+          <div>
+            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">Date brute (answer_data)</p>
+            <pre className="text-[10px] font-mono bg-muted p-2 rounded overflow-x-auto whitespace-pre-wrap max-h-40 overflow-y-auto">
+              {JSON.stringify(answer.answer_data, null, 2)}
+            </pre>
+          </div>
+        )}
+
         {/* Feedback profesor */}
         <div className="pt-2 border-t border-border space-y-2">
           <div>
