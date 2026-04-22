@@ -22,6 +22,7 @@ const TestManager = ({ onCreateTest, onEditTest }: TestManagerProps) => {
   const [expandedTestId, setExpandedTestId] = useState<string | null>(null);
   const [assigningTestId, setAssigningTestId] = useState<string | null>(null);
   const [selectedClassId, setSelectedClassId] = useState<string>("");
+  const [windowMinutes, setWindowMinutes] = useState<string>("");
   const [viewingResultsTestId, setViewingResultsTestId] = useState<string | null>(null);
 
   const { data: assignments = [] } = useTestAssignments(expandedTestId);
@@ -41,10 +42,12 @@ const TestManager = ({ onCreateTest, onEditTest }: TestManagerProps) => {
   const handleAssign = async (testId: string, testTitle: string) => {
     if (!selectedClassId) return;
     try {
-      await assignTest.mutateAsync({ test_id: testId, class_id: selectedClassId, testTitle });
+      const wm = windowMinutes ? parseInt(windowMinutes, 10) : undefined;
+      await assignTest.mutateAsync({ test_id: testId, class_id: selectedClassId, testTitle, window_minutes: wm && wm > 0 ? wm : undefined });
       toast.success("Test distribuit!");
       setAssigningTestId(null);
       setSelectedClassId("");
+      setWindowMinutes("");
     } catch {
       toast.error("Eroare la distribuire.");
     }
