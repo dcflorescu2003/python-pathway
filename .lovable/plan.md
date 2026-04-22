@@ -1,40 +1,36 @@
 
 
-## Plan: Diagnosticare si reparare notificari push Android
+## Plan: Fix `send-push` edge function authentication
 
-### Problema identificata
+### Problem
 
-Infrastructura push este corect configurata:
-- `@capacitor/push-notifications` instalat si functional
-- Device tokens se salveaza in baza de date (10+ token-uri active)
-- `FIREBASE_SERVICE_ACCOUNT` secret configurat
-- `google-services.json` prezent in proiectul Android
-- Edge functions `send-push` si `send-streak-reminder` exista
+The `send-push` edge function uses `supabase.auth.getClaims(token)` which is not available in the imported `@supabase/supabase-js@2` version. This causes a silent 401 error on every call. The client-side code catches the error silently (`catch (e) { console.error(...) }`), so no visible error appears — but no push notification is ever sent.
 
-Insa **`send-push` nu a fost apelata niciodata** (zero log-uri). Singurul loc care o invoca este `ChallengeAssigner.tsx` cand un profesor atribuie o provocare. Functia `send-streak-reminder` nu are niciun scheduler/cron care s-o apeleze automat.
+Evidence: zero `send-push` HTTP entries in edge logs despite the in-app notification insert succeeding (confirming the mutation runs).
 
-### Pasi de rezolvare
+### Fix
 
-#### 1. Test imediat: verificare ca FCM functioneaza
-- Apelez `send-push` edge function manual cu un token real din baza de date pentru a confirma ca Firebase Cloud Messaging trimite cu succes notificari pe dispozitiv.
-- Daca FCM returneaza eroare, diagnosticam problema din `FIREBASE_SERVICE_ACCOUNT` sau configurarea proiectului Firebase.
+**File: `supabase/functions/send-push/index.ts`**
 
-#### 2. Adaugare cron job pentru `send-streak-reminder`
-- Activez `pg_cron` (daca nu e deja activ) si creez un cron job care apeleaza `send-streak-reminder` zilnic seara (de ex. ora 20:00 Romania, UTC+3 = 17:00 UTC).
-- Asta va trimite automat notificari push utilizatorilor care au streak activ dar nu au invatat inca in ziua respectiva.
+Replace the `getClaims` authentication block (lines 87-95) with `supabase.auth.getUser()`:
 
-#### 3. Extindere notificari push la mai multe evenimente
-- **Cand profesorul distribuie un test** -- adaug apel `send-push` in fluxul de atribuire teste (similar cu provocarile)
-- **Cand profesorul publica rezultatele** -- notificare catre elevii clasei cand se deblocheaza notele
+```typescript
+const { data: { user }, error: userError } = await supabase.auth.getUser();
+if (userError || !user) {
+  return new Response(JSON.stringify({ error: "Unauthorized" }), {
+    status: 401,
+    headers: corsHeaders,
+  });
+}
+```
 
-#### 4. Fisiere modificate
-- `supabase/functions/send-streak-reminder/index.ts` -- eventual mici ajustari daca testul FCM releva probleme
-- `src/components/teacher/ClassDetail.tsx` sau `TestManager.tsx` -- adaugare apel `send-push` la distribuirea testelor
-- `src/components/teacher/TestResults.tsx` -- apel `send-push` la publicarea rezultatelor
-- Migrare SQL noua -- cron job `pg_cron` pentru streak reminder
+This uses the standard, always-available `getUser()` method which validates the JWT via the Authorization header already passed to the client.
 
-#### 5. Verificare
-- Testez `send-push` direct prin `curl_edge_functions` cu token-ul tau real
-- Confirm ca primesti notificarea pe telefon
-- Confirm ca streak reminder-ul se programeaza corect
+### Verification
+
+After deploying, call `send-push` via `curl_edge_functions` with a real student ID from `device_tokens` to confirm FCM delivery works end-to-end.
+
+### Files modified
+
+- `supabase/functions/send-push/index.ts` -- replace `getClaims` with `getUser`
 
