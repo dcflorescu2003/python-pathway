@@ -451,7 +451,7 @@ const TestResults = ({ testId, testTitle, onBack }: TestResultsProps) => {
                         </p>
                         <div className="flex items-center gap-2 mt-0.5">
                           <p className="text-[10px] text-muted-foreground">
-                            Nr. {sub.variant === "A" ? "1" : "2"} · {sub.submitted_at ? new Date(sub.submitted_at).toLocaleDateString("ro-RO") : "În curs"}
+                            Nr. {sub.variant === "A" ? "1" : "2"} · {sub.submitted_at ? new Date(sub.submitted_at).toLocaleDateString("ro-RO") : "În curs"} · Din oficiu: {officePoints}p
                           </p>
                           {sub.auto_submitted_reason && (
                             <AlertDialog>
