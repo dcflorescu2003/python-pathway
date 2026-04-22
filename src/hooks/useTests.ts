@@ -165,7 +165,7 @@ export function useDeleteTest() {
 export function useAssignTest() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (params: { test_id: string; class_id: string; due_date?: string }) => {
+    mutationFn: async (params: { test_id: string; class_id: string; due_date?: string; testTitle?: string }) => {
       const { data, error } = await supabase
         .from("test_assignments")
         .insert({
@@ -176,6 +176,42 @@ export function useAssignTest() {
         .select()
         .single();
       if (error) throw error;
+
+      // Send push + in-app notifications to students in the class
+      try {
+        const { data: members } = await supabase
+          .from("class_members")
+          .select("student_id")
+          .eq("class_id", params.class_id);
+
+        if (members && members.length > 0) {
+          const studentIds = members.map((m) => m.student_id);
+          const title = params.testTitle || "Test nou";
+
+          // In-app notifications
+          const notifications = studentIds.map((id) => ({
+            user_id: id,
+            title: "Test nou disponibil 📝",
+            body: `Ai primit testul «${title}». Intră să-l rezolvi!`,
+          }));
+          await supabase.from("notifications").insert(notifications);
+
+          // Push notifications
+          const { data: { session } } = await supabase.auth.getSession();
+          if (session?.access_token) {
+            await supabase.functions.invoke("send-push", {
+              body: {
+                student_ids: studentIds,
+                title: "Test nou disponibil 📝",
+                body: `Ai primit testul «${title}». Intră să-l rezolvi!`,
+              },
+            });
+          }
+        }
+      } catch (e) {
+        console.error("Failed to send test assignment notifications:", e);
+      }
+
       return data;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["test-assignments"] }),
@@ -443,6 +479,19 @@ export function useToggleScoresReleased() {
                 body: `Notele pentru testul «${title}» au fost publicate.`,
               }));
               await supabase.from("notifications").insert(notifications);
+
+              // Push notifications
+              const studentIds = members.map((m) => m.student_id);
+              const { data: { session } } = await supabase.auth.getSession();
+              if (session?.access_token) {
+                await supabase.functions.invoke("send-push", {
+                  body: {
+                    student_ids: studentIds,
+                    title: "Rezultate publicate 📊",
+                    body: `Notele pentru testul «${title}» au fost publicate.`,
+                  },
+                });
+              }
             }
           }
         } catch (e) {

@@ -37,10 +37,10 @@ const TestManager = ({ onCreateTest, onEditTest }: TestManagerProps) => {
     }
   };
 
-  const handleAssign = async (testId: string) => {
+  const handleAssign = async (testId: string, testTitle: string) => {
     if (!selectedClassId) return;
     try {
-      await assignTest.mutateAsync({ test_id: testId, class_id: selectedClassId });
+      await assignTest.mutateAsync({ test_id: testId, class_id: selectedClassId, testTitle });
       toast.success("Test distribuit!");
       setAssigningTestId(null);
       setSelectedClassId("");
@@ -143,7 +143,7 @@ const TestManager = ({ onCreateTest, onEditTest }: TestManagerProps) => {
                           ))}
                         </SelectContent>
                       </Select>
-                      <Button size="sm" onClick={() => handleAssign(test.id)} disabled={!selectedClassId || assignTest.isPending} className="w-full">
+                      <Button size="sm" onClick={() => handleAssign(test.id, test.title)} disabled={!selectedClassId || assignTest.isPending} className="w-full">
                         {assignTest.isPending ? "Se distribuie..." : "Confirmă"}
                       </Button>
                     </div>
