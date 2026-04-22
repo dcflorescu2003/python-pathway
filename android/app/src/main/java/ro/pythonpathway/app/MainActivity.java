@@ -29,6 +29,23 @@ public class MainActivity extends BridgeActivity implements ModifiedMainActivity
     }
 
     @Override
+    public void onWindowFocusChanged(boolean hasFocus) {
+        super.onWindowFocusChanged(hasFocus);
+        // Emit focus events to the web layer so the test page can detect
+        // the notification shade being pulled down (which doesn't fire
+        // visibilitychange or blur in Android WebView).
+        if (getBridge() != null && getBridge().getWebView() != null) {
+            final String event = hasFocus ? "pyro:native_focus_gained" : "pyro:native_focus_lost";
+            getBridge().getWebView().post(() -> {
+                getBridge().getWebView().evaluateJavascript(
+                    "window.dispatchEvent(new Event('" + event + "'));",
+                    null
+                );
+            });
+        }
+    }
+
+    @Override
     public void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
 

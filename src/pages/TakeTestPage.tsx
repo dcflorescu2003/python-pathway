@@ -15,6 +15,25 @@ import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import CodeEditor from "@/components/CodeEditor";
 import LoadingScreen from "@/components/states/LoadingScreen";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  TouchSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import { restrictToVerticalAxis } from "@dnd-kit/modifiers";
 
 interface TestItemData {
   id: string;
@@ -393,12 +412,20 @@ const TakeTestPage = () => {
       }
     })();
 
+    // Native Android bridge: listen for window focus lost/gained from MainActivity
+    const onNativeFocusLost = () => triggerLeave("native_window_focus_lost");
+    const onNativeFocusGained = () => cancelLeave();
+    window.addEventListener("pyro:native_focus_lost", onNativeFocusLost);
+    window.addEventListener("pyro:native_focus_gained", onNativeFocusGained);
+
     return () => {
       cancelLeave();
       clearInterval(focusPollInterval);
       document.removeEventListener("visibilitychange", onVisibility);
       window.removeEventListener("blur", onBlur);
       window.removeEventListener("focus", onFocus);
+      window.removeEventListener("pyro:native_focus_lost", onNativeFocusLost);
+      window.removeEventListener("pyro:native_focus_gained", onNativeFocusGained);
       if (requireFullscreen) {
         document.removeEventListener("fullscreenchange", onFullscreenChange);
       }
@@ -963,10 +990,79 @@ const TestMatchRenderer = ({ exercise, answer, onAnswer }: { exercise: any; answ
   );
 };
 
-// Test-specific Order renderer with touch-friendly arrow buttons
+// Sortable item for DnD order renderer
+const SortableOrderItem = ({ id, lineText, idx, total, onMoveUp, onMoveDown }: {
+  id: string; lineText: string; idx: number; total: number;
+  onMoveUp: () => void; onMoveDown: () => void;
+}) => {
+  const {
+    attributes, listeners, setNodeRef, setActivatorNodeRef,
+    transform, transition, isDragging,
+  } = useSortable({ id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    zIndex: isDragging ? 50 : undefined,
+    opacity: isDragging ? 0.85 : 1,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      role="listitem"
+      aria-label={`Linia ${idx + 1}: ${lineText}`}
+      className={`flex items-center gap-3 rounded-lg border border-border bg-card p-3 font-mono text-sm select-none ${isDragging ? "shadow-lg ring-2 ring-primary" : ""}`}
+    >
+      {/* Drag handle */}
+      <button
+        ref={setActivatorNodeRef}
+        {...attributes}
+        {...listeners}
+        aria-label={`Trage pentru a muta „${lineText}"`}
+        className="touch-none min-h-[44px] min-w-[44px] flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background cursor-grab active:cursor-grabbing"
+      >
+        <GripVertical className="h-5 w-5" aria-hidden="true" />
+      </button>
+      <code className="text-foreground whitespace-pre-wrap break-words flex-1">{lineText}</code>
+      <div className="ml-auto flex gap-1" role="group" aria-label={`Mută linia ${idx + 1}`}>
+        <button
+          onClick={onMoveUp}
+          disabled={idx === 0}
+          aria-label={`Mută „${lineText}" în sus`}
+          className="text-base text-muted-foreground hover:text-foreground disabled:opacity-30 px-2 py-1 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+        >▲</button>
+        <button
+          onClick={onMoveDown}
+          disabled={idx === total - 1}
+          aria-label={`Mută „${lineText}" în jos`}
+          className="text-base text-muted-foreground hover:text-foreground disabled:opacity-30 px-2 py-1 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+        >▼</button>
+      </div>
+    </div>
+  );
+};
+
+// Test-specific Order renderer with drag-and-drop + arrow fallback
 const TestOrderRenderer = ({ exercise, answer, onAnswer }: { exercise: any; answer: any; onAnswer: (d: any) => void }) => {
   const lines = (exercise.lines || []) as { id: string; text: string }[];
   const ordered: string[] = answer?.order || lines.map((l) => l.id);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (over && active.id !== over.id) {
+      const oldIndex = ordered.indexOf(active.id as string);
+      const newIndex = ordered.indexOf(over.id as string);
+      onAnswer({ order: arrayMove(ordered, oldIndex, newIndex) });
+    }
+  };
 
   const moveItem = (from: number, to: number) => {
     const newOrder = [...ordered];
@@ -978,37 +1074,27 @@ const TestOrderRenderer = ({ exercise, answer, onAnswer }: { exercise: any; answ
   return (
     <div className="space-y-2" role="group" aria-label="Exercițiu de ordonare">
       <p className="text-sm font-medium text-foreground">{exercise.question}</p>
-      <div className="space-y-2" role="list" aria-label="Linii de cod — folosește butoanele ▲ și ▼ pentru a reordona">
-        {ordered.map((lineId: string, idx: number) => {
-          const line = lines.find((l) => l.id === lineId);
-          const lineText = line?.text || lineId;
-          return (
-            <div
-              key={lineId}
-              role="listitem"
-              aria-label={`Linia ${idx + 1}: ${lineText}`}
-              className="flex items-center gap-3 rounded-lg border border-border bg-card p-3 font-mono text-sm select-none"
-            >
-              <GripVertical className="h-5 w-5 text-muted-foreground shrink-0" aria-hidden="true" />
-              <code className="text-foreground whitespace-pre-wrap break-words flex-1">{lineText}</code>
-              <div className="ml-auto flex gap-1" role="group" aria-label={`Mută linia ${idx + 1}`}>
-                <button
-                  onClick={() => idx > 0 && moveItem(idx, idx - 1)}
-                  disabled={idx === 0}
-                  aria-label={`Mută „${lineText}" în sus`}
-                  className="text-base text-muted-foreground hover:text-foreground disabled:opacity-30 px-2 py-1 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-                >▲</button>
-                <button
-                  onClick={() => idx < ordered.length - 1 && moveItem(idx, idx + 1)}
-                  disabled={idx === ordered.length - 1}
-                  aria-label={`Mută „${lineText}" în jos`}
-                  className="text-base text-muted-foreground hover:text-foreground disabled:opacity-30 px-2 py-1 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-                >▼</button>
-              </div>
-            </div>
-          );
-        })}
-      </div>
+      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd} modifiers={[restrictToVerticalAxis]}>
+        <SortableContext items={ordered} strategy={verticalListSortingStrategy}>
+          <div className="space-y-2" role="list" aria-label="Linii de cod — trage sau folosește butoanele ▲ ▼">
+            {ordered.map((lineId: string, idx: number) => {
+              const line = lines.find((l) => l.id === lineId);
+              const lineText = line?.text || lineId;
+              return (
+                <SortableOrderItem
+                  key={lineId}
+                  id={lineId}
+                  lineText={lineText}
+                  idx={idx}
+                  total={ordered.length}
+                  onMoveUp={() => idx > 0 && moveItem(idx, idx - 1)}
+                  onMoveDown={() => idx < ordered.length - 1 && moveItem(idx, idx + 1)}
+                />
+              );
+            })}
+          </div>
+        </SortableContext>
+      </DndContext>
     </div>
   );
 };
