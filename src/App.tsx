@@ -32,6 +32,7 @@ const SupportPage = lazy(() => import("./pages/SupportPage"));
 const ManualLessonPage = lazy(() => import("./pages/ManualLessonPage"));
 const TakeTestPage = lazy(() => import("./pages/TakeTestPage"));
 const SkipChallengePage = lazy(() => import("./pages/SkipChallengePage"));
+const UnsubscribePage = lazy(() => import("./pages/UnsubscribePage"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 const queryClient = new QueryClient();
@@ -64,6 +65,7 @@ const AppRoutes = () => {
           <Route path="/test/:assignmentId" element={<TakeTestPage />} />
           <Route path="/manual/:lessonId" element={<ManualLessonPage />} />
           <Route path="/skip-challenge/:lessonId" element={<SkipChallengePage />} />
+          <Route path="/unsubscribe" element={<UnsubscribePage />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </AnimatePresence>
