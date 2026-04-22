@@ -43,8 +43,8 @@ const autoReasonLabel = (reason: string | null | undefined): string => {
 };
 
 const TestResults = ({ testId, testTitle, onBack, initialClassId }: TestResultsProps) => {
-  const { data: assignments = [], isLoading: assignmentsLoading } = useTestAssignments(testId);
-  const { data: testItems = [], isLoading: testItemsLoading } = useTestItems(testId);
+  const { data: assignments = [], isLoading: assignmentsLoading, isError: assignmentsError, refetch: refetchAssignments } = useTestAssignments(testId);
+  const { data: testItems = [], isLoading: testItemsLoading, isError: testItemsError, refetch: refetchTestItems } = useTestItems(testId);
   const [selectedAssignmentId, setSelectedAssignmentId] = useState<string | null>(null);
 
   // Auto-select assignment matching initialClassId (waits for assignments to finish loading)
@@ -378,6 +378,16 @@ const TestResults = ({ testId, testTitle, onBack, initialClassId }: TestResultsP
           <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
           <p className="text-sm text-muted-foreground">Se încarcă clasele…</p>
         </div>
+      ) : assignmentsError ? (
+        <Card className="border-destructive/30">
+          <CardContent className="p-4 text-center">
+            <AlertCircle className="h-8 w-8 mx-auto mb-2 text-destructive/60" />
+            <p className="text-sm font-medium text-muted-foreground">Eroare la încărcarea claselor.</p>
+            <Button variant="outline" size="sm" className="mt-2 gap-1" onClick={() => refetchAssignments()}>
+              <RotateCcw className="h-3.5 w-3.5" /> Reîncearcă
+            </Button>
+          </CardContent>
+        </Card>
       ) : assignments.length === 0 ? (
         <Card className="border-muted">
           <CardContent className="p-4 text-center">
@@ -427,7 +437,19 @@ const TestResults = ({ testId, testTitle, onBack, initialClassId }: TestResultsP
         </div>
       )}
 
-      {selectedAssignmentId && !testItemsLoading && (
+      {selectedAssignmentId && testItemsError && (
+        <Card className="border-destructive/30">
+          <CardContent className="p-4 text-center">
+            <AlertCircle className="h-8 w-8 mx-auto mb-2 text-destructive/60" />
+            <p className="text-sm font-medium text-muted-foreground">Eroare la încărcarea itemilor testului.</p>
+            <Button variant="outline" size="sm" className="mt-2 gap-1" onClick={() => refetchTestItems()}>
+              <RotateCcw className="h-3.5 w-3.5" /> Reîncearcă
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
+      {selectedAssignmentId && !testItemsLoading && !testItemsError && (
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
