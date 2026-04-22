@@ -1,29 +1,49 @@
 
 
-## Plan: Toggle raw `answer_data` in TestResults
+## Plan: Puncte din oficiu (bonus points per test)
 
-### What changes
+### Ce se schimba
 
-Add a small "Debug" toggle button in the `AnswerDetail` header that, when active, renders the raw `answer_data` JSON below the human-readable answer section. This lets teachers inspect both the resolved text and the stored data structure side by side.
+Se adauga un camp "Puncte din oficiu" la fiecare test, cu valoare implicita 10. Aceste puncte se aduna automat la scorul total al elevului la notare. Profesorul poate modifica valoarea in TestBuilder.
 
-### Implementation
+### 1. Migrare DB -- coloana `office_points` pe `tests`
 
-**File: `src/components/teacher/TestResults.tsx`**
+```sql
+ALTER TABLE public.tests ADD COLUMN office_points integer NOT NULL DEFAULT 10;
+```
 
-1. Add a `showRaw` boolean state inside `AnswerDetail` (local per-item toggle).
-2. In the header bar (line ~596, next to the score), add a small icon button (`Code` icon from lucide-react) that toggles `showRaw`.
-3. At the bottom of the answer details section (after the last exercise-type block, before the feedback section around line 733), conditionally render:
-   ```tsx
-   {showRaw && (
-     <div>
-       <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">Date brute (answer_data)</p>
-       <pre className="text-[10px] font-mono bg-muted p-2 rounded overflow-x-auto whitespace-pre-wrap max-h-40 overflow-y-auto">
-         {JSON.stringify(answer.answer_data, null, 2)}
-       </pre>
-     </div>
-   )}
-   ```
-4. Import `Code` from `lucide-react` (add to existing import on line 19).
+### 2. TestBuilder -- camp UI sub titlu
 
-### No other files modified. No migrations needed.
+In `src/components/teacher/TestBuilder.tsx`:
+- Adauga state `officePoints` (default 10), initializat din test la editare
+- Adauga un `Input` de tip number sub titlu, cu label "Puncte din oficiu"
+- Trimite `office_points` in `handleSave` catre `createTest` / `updateTest`
+
+### 3. useTests.ts -- include `office_points` in mutations
+
+In `src/hooks/useTests.ts`:
+- Adauga `office_points?: number` la parametrii `useCreateTest` si `useUpdateTest`
+- Include campul in `.insert()` si `.update()` catre tabelul `tests`
+
+### 4. grade-submission -- adauga punctele din oficiu la scor
+
+In `supabase/functions/grade-submission/index.ts`:
+- Dupa ce se obtine testul (linia ~101), se citeste `office_points`
+- Se adauga `office_points` la `totalScore` si `maxScore` inainte de update-ul final pe `test_submissions`
+
+### 5. TestResults -- afiseaza punctele din oficiu
+
+In `src/components/teacher/TestResults.tsx`:
+- Citeste `office_points` din testul curent
+- Afiseaza in rezumat ca linie separata (ex: "Din oficiu: 10p")
+
+### Fisiere modificate
+
+| Fisier | Modificare |
+|--------|-----------|
+| Migrare DB | `ALTER TABLE tests ADD COLUMN office_points integer NOT NULL DEFAULT 10` |
+| `src/components/teacher/TestBuilder.tsx` | State + Input + pass to save |
+| `src/hooks/useTests.ts` | `office_points` in create/update params |
+| `supabase/functions/grade-submission/index.ts` | Adauga office_points la totalScore/maxScore |
+| `src/components/teacher/TestResults.tsx` | Afiseaza "Din oficiu: Xp" |
 
