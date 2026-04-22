@@ -43,14 +43,15 @@ const autoReasonLabel = (reason: string | null | undefined): string => {
 };
 
 const TestResults = ({ testId, testTitle, onBack, initialClassId }: TestResultsProps) => {
-  const { data: assignments = [] } = useTestAssignments(testId);
-  const { data: testItems = [] } = useTestItems(testId);
+  const { data: assignments = [], isLoading: assignmentsLoading } = useTestAssignments(testId);
+  const { data: testItems = [], isLoading: testItemsLoading } = useTestItems(testId);
   const [selectedAssignmentId, setSelectedAssignmentId] = useState<string | null>(null);
 
-  // Auto-select assignment matching initialClassId
+  // Auto-select assignment matching initialClassId (waits for assignments to finish loading)
   const [initialAutoSelectDone, setInitialAutoSelectDone] = useState(false);
   useEffect(() => {
-    if (!initialClassId || assignments.length === 0 || initialAutoSelectDone) return;
+    if (!initialClassId || assignmentsLoading || initialAutoSelectDone) return;
+    if (assignments.length === 0) return; // no assignments at all — handled by UI below
     const match = assignments.find((a: any) => a.class_id === initialClassId);
     if (match) {
       setSelectedAssignmentId(match.id);
@@ -58,7 +59,7 @@ const TestResults = ({ testId, testTitle, onBack, initialClassId }: TestResultsP
       toast.error("Testul nu a fost distribuit la această clasă. Selectează manual o clasă de mai jos.");
     }
     setInitialAutoSelectDone(true);
-  }, [initialClassId, assignments, initialAutoSelectDone]);
+  }, [initialClassId, assignments, assignmentsLoading, initialAutoSelectDone]);
   const [expandedSubmissionId, setExpandedSubmissionId] = useState<string | null>(null);
   const [officePoints, setOfficePoints] = useState<number>(10);
 
