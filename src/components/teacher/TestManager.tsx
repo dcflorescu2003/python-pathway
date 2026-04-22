@@ -37,10 +37,10 @@ const TestManager = ({ onCreateTest, onEditTest }: TestManagerProps) => {
     }
   };
 
-  const handleAssign = async (testId: string) => {
+  const handleAssign = async (testId: string, testTitle: string) => {
     if (!selectedClassId) return;
     try {
-      await assignTest.mutateAsync({ test_id: testId, class_id: selectedClassId });
+      await assignTest.mutateAsync({ test_id: testId, class_id: selectedClassId, testTitle });
       toast.success("Test distribuit!");
       setAssigningTestId(null);
       setSelectedClassId("");
