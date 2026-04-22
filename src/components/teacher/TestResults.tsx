@@ -373,8 +373,19 @@ const TestResults = ({ testId, testTitle, onBack, initialClassId }: TestResultsP
         <h2 className="text-lg font-bold text-foreground">Rezultate test</h2>
       </div>
 
-      {assignments.length === 0 ? (
-        <p className="text-sm text-muted-foreground">Testul nu a fost distribuit încă.</p>
+      {assignmentsLoading ? (
+        <div className="flex items-center gap-2 py-4">
+          <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+          <p className="text-sm text-muted-foreground">Se încarcă clasele…</p>
+        </div>
+      ) : assignments.length === 0 ? (
+        <Card className="border-muted">
+          <CardContent className="p-4 text-center">
+            <Users className="h-8 w-8 mx-auto mb-2 text-muted-foreground/50" />
+            <p className="text-sm font-medium text-muted-foreground">Testul nu a fost distribuit încă.</p>
+            <p className="text-xs text-muted-foreground/70 mt-1">Distribuie testul la o clasă din pagina testelor.</p>
+          </CardContent>
+        </Card>
       ) : (
         <div className="space-y-2">
           <p className="text-xs font-medium text-muted-foreground">Selectează clasa:</p>
@@ -409,7 +420,14 @@ const TestResults = ({ testId, testTitle, onBack, initialClassId }: TestResultsP
         </div>
       )}
 
-      {selectedAssignmentId && (
+      {selectedAssignmentId && testItemsLoading && (
+        <div className="flex items-center gap-2 py-4">
+          <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+          <p className="text-sm text-muted-foreground">Se încarcă itemii testului…</p>
+        </div>
+      )}
+
+      {selectedAssignmentId && !testItemsLoading && (
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -435,7 +453,13 @@ const TestResults = ({ testId, testTitle, onBack, initialClassId }: TestResultsP
             )}
           </div>
           {submissions.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Nicio submitere încă.</p>
+            <Card className="border-muted">
+              <CardContent className="p-4 text-center">
+                <FileText className="h-8 w-8 mx-auto mb-2 text-muted-foreground/50" />
+                <p className="text-sm font-medium text-muted-foreground">Nicio submitere încă.</p>
+                <p className="text-xs text-muted-foreground/70 mt-1">Elevii nu au trimis răspunsuri pentru acest test.</p>
+              </CardContent>
+            </Card>
           ) : (
             sortedSubmissions.map((sub: any) => {
               const isExpanded = expandedSubmissionId === sub.id;
