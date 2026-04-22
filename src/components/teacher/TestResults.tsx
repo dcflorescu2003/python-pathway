@@ -32,8 +32,11 @@ const autoReasonLabel = (reason: string | null | undefined): string => {
     case "window_blur": return "A pierdut focus-ul";
     case "fullscreen_exit": return "A ieșit din fullscreen";
     case "app_background": return "A părăsit aplicația";
+    case "app_pause": return "A părăsit aplicația";
     case "time_expired": return "Timp expirat";
     case "browser_closed": return "Browser închis";
+    case "focus_poll_lost": return "A pierdut focus-ul (poll)";
+    case "native_window_focus_lost": return "A deschis notificările";
     default: return reason ? "Auto-trimis" : "";
   }
 };
