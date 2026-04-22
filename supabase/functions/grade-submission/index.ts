@@ -100,7 +100,7 @@ Deno.serve(async (req) => {
     if (firstItem?.test_id) {
       const { data: test } = await supabase
         .from("tests")
-        .select("teacher_id, ai_grading_item_ids")
+        .select("teacher_id, ai_grading_item_ids, office_points")
         .eq("id", firstItem.test_id)
         .single();
 

@@ -60,6 +60,7 @@ export function useCreateTest() {
       allow_run_tests?: boolean;
       require_fullscreen?: boolean;
       ai_grading_item_ids?: string[];
+      office_points?: number;
     }) => {
       if (!user) throw new Error("Not authenticated");
       const { data: test, error } = await supabase
@@ -72,7 +73,8 @@ export function useCreateTest() {
           allow_run_tests: params.allow_run_tests ?? false,
           require_fullscreen: params.require_fullscreen ?? false,
           ai_grading_item_ids: params.ai_grading_item_ids ?? [],
-        })
+          office_points: params.office_points ?? 10,
+        } as any)
         .select()
         .single();
       if (error) throw error;
@@ -108,6 +110,7 @@ export function useUpdateTest() {
       allow_run_tests?: boolean;
       require_fullscreen?: boolean;
       ai_grading_item_ids?: string[];
+      office_points?: number;
     }) => {
       // Update test metadata
       const { error: testError } = await supabase
@@ -119,7 +122,8 @@ export function useUpdateTest() {
           allow_run_tests: params.allow_run_tests ?? false,
           require_fullscreen: params.require_fullscreen ?? false,
           ai_grading_item_ids: params.ai_grading_item_ids ?? [],
-        })
+          office_points: params.office_points ?? 10,
+        } as any)
         .eq("id", params.id);
       if (testError) throw testError;
 
