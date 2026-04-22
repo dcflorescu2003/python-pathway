@@ -123,9 +123,9 @@ Deno.serve(async (req) => {
     }
 
     // Get FCM access token
-    const serviceAccount = JSON.parse(
-      Deno.env.get("FIREBASE_SERVICE_ACCOUNT")!
-    );
+    const rawServiceAccount = Deno.env.get("FIREBASE_SERVICE_ACCOUNT") ?? "";
+    console.log("[SEND-PUSH] FIREBASE_SERVICE_ACCOUNT length:", rawServiceAccount.length, "first 20 chars:", rawServiceAccount.substring(0, 20));
+    const serviceAccount = JSON.parse(rawServiceAccount);
     const accessToken = await getAccessToken(serviceAccount);
     const projectId = serviceAccount.project_id;
     console.log("[SEND-PUSH] FCM access token obtained, project:", projectId);
