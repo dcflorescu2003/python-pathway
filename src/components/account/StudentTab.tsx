@@ -297,7 +297,14 @@ const StudentTab = ({ memberClassName, onLeaveClass }: StudentTabProps) => {
             {assignments.map((a: any) => {
               const submission = submissions.find((s) => s.assignment_id === a.id);
               const isCompleted = !!submission?.submitted_at;
-              const isExpired = a.due_date && new Date(a.due_date) < new Date() && !isCompleted;
+              const windowDeadline = a.window_minutes
+                ? new Date(new Date(a.assigned_at).getTime() + a.window_minutes * 60000)
+                : null;
+              const dueDeadline = a.due_date ? new Date(a.due_date) : null;
+              const effectiveDeadline = windowDeadline && dueDeadline
+                ? (windowDeadline < dueDeadline ? windowDeadline : dueDeadline)
+                : windowDeadline || dueDeadline;
+              const isExpired = effectiveDeadline && effectiveDeadline < new Date() && !isCompleted;
               const isExpanded = expandedTestId === a.id;
 
               return (
