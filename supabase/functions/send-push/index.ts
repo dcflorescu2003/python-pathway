@@ -112,11 +112,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Get device tokens for students using service role
-    const adminClient = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-    );
+    // Reuse adminClient from above for device tokens
 
     const { data: tokens, error: tokensError } = await adminClient
       .from("device_tokens")
