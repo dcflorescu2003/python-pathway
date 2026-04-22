@@ -43,8 +43,8 @@ const autoReasonLabel = (reason: string | null | undefined): string => {
 };
 
 const TestResults = ({ testId, testTitle, onBack, initialClassId }: TestResultsProps) => {
-  const { data: assignments = [], isLoading: assignmentsLoading } = useTestAssignments(testId);
-  const { data: testItems = [], isLoading: testItemsLoading } = useTestItems(testId);
+  const { data: assignments = [], isLoading: assignmentsLoading, isError: assignmentsError, refetch: refetchAssignments } = useTestAssignments(testId);
+  const { data: testItems = [], isLoading: testItemsLoading, isError: testItemsError, refetch: refetchTestItems } = useTestItems(testId);
   const [selectedAssignmentId, setSelectedAssignmentId] = useState<string | null>(null);
 
   // Auto-select assignment matching initialClassId (waits for assignments to finish loading)
