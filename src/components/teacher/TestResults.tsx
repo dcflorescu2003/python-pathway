@@ -46,6 +46,16 @@ const TestResults = ({ testId, testTitle, onBack }: TestResultsProps) => {
   const { data: testItems = [] } = useTestItems(testId);
   const [selectedAssignmentId, setSelectedAssignmentId] = useState<string | null>(null);
   const [expandedSubmissionId, setExpandedSubmissionId] = useState<string | null>(null);
+  const [officePoints, setOfficePoints] = useState<number>(10);
+
+  // Fetch office_points from the test
+  useEffect(() => {
+    const fetchOfficePoints = async () => {
+      const { data } = await supabase.from("tests").select("office_points").eq("id", testId).single();
+      if (data) setOfficePoints((data as any).office_points ?? 10);
+    };
+    fetchOfficePoints();
+  }, [testId]);
 
   const { data: submissions = [] } = useTestSubmissions(selectedAssignmentId);
   const sortedSubmissions = useMemo(() => sortByDisplayName(submissions as any[]), [submissions]);
