@@ -1,49 +1,72 @@
 
 
-## Plan: Puncte din oficiu (bonus points per test)
+## Plan: Expirare automata a testelor dupa durata stabilita
 
-### Ce se schimba
+### Problema
 
-Se adauga un camp "Puncte din oficiu" la fiecare test, cu valoare implicita 10. Aceste puncte se aduna automat la scorul total al elevului la notare. Profesorul poate modifica valoarea in TestBuilder.
+Dupa ce un profesor distribuie un test, elevii pot accesa subiectele oricand, chiar si dupa zile intregi. Trebuie ca testul sa expire automat dupa o durata stabilita de la momentul distribuirii.
 
-### 1. Migrare DB -- coloana `office_points` pe `tests`
+### Solutia
+
+Se adauga un camp **"Disponibil timp de (minute)"** pe assignment. Implicit ia valoarea `time_limit_minutes` de pe test (daca exista), dar profesorul o poate modifica la distribuire. Dupa acest interval de la `assigned_at`, elevii nu mai pot incepe testul si nu mai pot vedea subiectele.
+
+Protectia se aplica in **3 straturi**: UI student, pagina de test, si functia RPC din backend.
+
+### 1. Migrare DB -- coloana `window_minutes` pe `test_assignments`
 
 ```sql
-ALTER TABLE public.tests ADD COLUMN office_points integer NOT NULL DEFAULT 10;
+ALTER TABLE public.test_assignments
+  ADD COLUMN window_minutes integer DEFAULT NULL;
 ```
 
-### 2. TestBuilder -- camp UI sub titlu
+Cand `window_minutes` este setat, deadline-ul efectiv devine `assigned_at + window_minutes`. Daca `due_date` este deja setat manual, se ia cea mai mica valoare dintre cele doua.
 
-In `src/components/teacher/TestBuilder.tsx`:
-- Adauga state `officePoints` (default 10), initializat din test la editare
-- Adauga un `Input` de tip number sub titlu, cu label "Puncte din oficiu"
-- Trimite `office_points` in `handleSave` catre `createTest` / `updateTest`
+### 2. TestManager -- input la distribuire
 
-### 3. useTests.ts -- include `office_points` in mutations
+In `src/components/teacher/TestManager.tsx`:
+- Adauga un camp numeric "Disponibil timp de (min)" langa selectorul de clasa, pre-populat cu `time_limit_minutes` de pe test (daca exista)
+- Trimite `window_minutes` in `assignTest.mutateAsync()`
 
-In `src/hooks/useTests.ts`:
-- Adauga `office_points?: number` la parametrii `useCreateTest` si `useUpdateTest`
-- Include campul in `.insert()` si `.update()` catre tabelul `tests`
+### 3. useTests.ts -- include `window_minutes` in `useAssignTest`
 
-### 4. grade-submission -- adauga punctele din oficiu la scor
+- Adauga `window_minutes?: number` la parametrii mutation-ului
+- Include campul in `.insert()` catre `test_assignments`
 
-In `supabase/functions/grade-submission/index.ts`:
-- Dupa ce se obtine testul (linia ~101), se citeste `office_points`
-- Se adauga `office_points` la `totalScore` si `maxScore` inainte de update-ul final pe `test_submissions`
+### 4. Backend -- protectie in RPC `get_test_items_for_student`
 
-### 5. TestResults -- afiseaza punctele din oficiu
+Modifica functia RPC sa verifice expirarea inainte de a returna itemi:
 
-In `src/components/teacher/TestResults.tsx`:
-- Citeste `office_points` din testul curent
-- Afiseaza in rezumat ca linie separata (ex: "Din oficiu: 10p")
+```sql
+-- In get_test_items_for_student, dupa obtinerea assignment-ului:
+IF v_assignment.window_minutes IS NOT NULL
+   AND v_assignment.assigned_at + (v_assignment.window_minutes || ' minutes')::interval < now()
+THEN
+  RETURN; -- nu returneaza nimic, testul a expirat
+END IF;
+```
+
+Aceasta este protectia principala -- chiar daca frontend-ul ar fi manipulat, backend-ul refuza subiectele.
+
+### 5. TakeTestPage -- verificare frontend
+
+In `src/pages/TakeTestPage.tsx`:
+- Dupa ce se incarca assignment-ul, calculeaza deadline-ul efectiv din `assigned_at + window_minutes`
+- Daca a expirat, afiseaza mesaj "Testul a expirat" si blocheaza accesul
+
+### 6. StudentTab -- afisare status expirat
+
+In `src/components/account/StudentTab.tsx`:
+- Calculeaza expirarea si din `window_minutes` (nu doar din `due_date`)
+- Afiseaza badge "Expirat" si dezactiveaza butonul
 
 ### Fisiere modificate
 
 | Fisier | Modificare |
 |--------|-----------|
-| Migrare DB | `ALTER TABLE tests ADD COLUMN office_points integer NOT NULL DEFAULT 10` |
-| `src/components/teacher/TestBuilder.tsx` | State + Input + pass to save |
-| `src/hooks/useTests.ts` | `office_points` in create/update params |
-| `supabase/functions/grade-submission/index.ts` | Adauga office_points la totalScore/maxScore |
-| `src/components/teacher/TestResults.tsx` | Afiseaza "Din oficiu: Xp" |
+| Migrare DB | `ALTER TABLE test_assignments ADD COLUMN window_minutes integer` |
+| `src/components/teacher/TestManager.tsx` | Input numeric "Disponibil timp de" la distribuire |
+| `src/hooks/useTests.ts` | `window_minutes` in assign mutation |
+| Migrare DB (RPC) | Update `get_test_items_for_student` cu verificare expirare |
+| `src/pages/TakeTestPage.tsx` | Verificare expirare inainte de incarcare |
+| `src/components/account/StudentTab.tsx` | Calcul expirare din `window_minutes` |
 
