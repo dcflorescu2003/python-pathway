@@ -71,18 +71,23 @@ Deno.serve(async (req) => {
   }
 
   try {
-    // Validate using apikey header (sent automatically by supabase-js)
+    // Validate caller has a valid apikey or authorization header
     const apiKey = req.headers.get("apikey");
+    const authHeader = req.headers.get("Authorization");
     const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
     
-    if (!apiKey || (apiKey !== anonKey && apiKey !== serviceKey)) {
-      console.log("[SEND-PUSH] REJECTED: Invalid apikey");
+    const hasValidApiKey = apiKey && (apiKey === anonKey || apiKey === serviceKey);
+    const hasValidAuth = authHeader?.startsWith("Bearer ");
+    
+    if (!hasValidApiKey && !hasValidAuth) {
+      console.log("[SEND-PUSH] REJECTED: No valid credentials");
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,
         headers: corsHeaders,
       });
     }
+    console.log("[SEND-PUSH] Auth OK - apikey:", !!hasValidApiKey, "bearer:", !!hasValidAuth);
 
     const adminClient = createClient(
       Deno.env.get("SUPABASE_URL")!,
