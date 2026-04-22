@@ -16,7 +16,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { ArrowLeft, ChevronDown, ChevronUp, CheckCircle, XCircle, Save, FileSpreadsheet, FileText, Eye, EyeOff, AlertCircle, RotateCcw, Code } from "lucide-react";
+import { ArrowLeft, ChevronDown, ChevronUp, CheckCircle, XCircle, Save, FileSpreadsheet, FileText, Eye, EyeOff, AlertCircle, RotateCcw, Code, Users } from "lucide-react";
 import { toast } from "sonner";
 import { sortByDisplayName } from "@/lib/sortStudents";
 
@@ -43,14 +43,15 @@ const autoReasonLabel = (reason: string | null | undefined): string => {
 };
 
 const TestResults = ({ testId, testTitle, onBack, initialClassId }: TestResultsProps) => {
-  const { data: assignments = [] } = useTestAssignments(testId);
-  const { data: testItems = [] } = useTestItems(testId);
+  const { data: assignments = [], isLoading: assignmentsLoading } = useTestAssignments(testId);
+  const { data: testItems = [], isLoading: testItemsLoading } = useTestItems(testId);
   const [selectedAssignmentId, setSelectedAssignmentId] = useState<string | null>(null);
 
-  // Auto-select assignment matching initialClassId
+  // Auto-select assignment matching initialClassId (waits for assignments to finish loading)
   const [initialAutoSelectDone, setInitialAutoSelectDone] = useState(false);
   useEffect(() => {
-    if (!initialClassId || assignments.length === 0 || initialAutoSelectDone) return;
+    if (!initialClassId || assignmentsLoading || initialAutoSelectDone) return;
+    if (assignments.length === 0) return; // no assignments at all — handled by UI below
     const match = assignments.find((a: any) => a.class_id === initialClassId);
     if (match) {
       setSelectedAssignmentId(match.id);
@@ -58,7 +59,7 @@ const TestResults = ({ testId, testTitle, onBack, initialClassId }: TestResultsP
       toast.error("Testul nu a fost distribuit la această clasă. Selectează manual o clasă de mai jos.");
     }
     setInitialAutoSelectDone(true);
-  }, [initialClassId, assignments, initialAutoSelectDone]);
+  }, [initialClassId, assignments, assignmentsLoading, initialAutoSelectDone]);
   const [expandedSubmissionId, setExpandedSubmissionId] = useState<string | null>(null);
   const [officePoints, setOfficePoints] = useState<number>(10);
 
@@ -372,8 +373,19 @@ const TestResults = ({ testId, testTitle, onBack, initialClassId }: TestResultsP
         <h2 className="text-lg font-bold text-foreground">Rezultate test</h2>
       </div>
 
-      {assignments.length === 0 ? (
-        <p className="text-sm text-muted-foreground">Testul nu a fost distribuit încă.</p>
+      {assignmentsLoading ? (
+        <div className="flex items-center gap-2 py-4">
+          <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+          <p className="text-sm text-muted-foreground">Se încarcă clasele…</p>
+        </div>
+      ) : assignments.length === 0 ? (
+        <Card className="border-muted">
+          <CardContent className="p-4 text-center">
+            <Users className="h-8 w-8 mx-auto mb-2 text-muted-foreground/50" />
+            <p className="text-sm font-medium text-muted-foreground">Testul nu a fost distribuit încă.</p>
+            <p className="text-xs text-muted-foreground/70 mt-1">Distribuie testul la o clasă din pagina testelor.</p>
+          </CardContent>
+        </Card>
       ) : (
         <div className="space-y-2">
           <p className="text-xs font-medium text-muted-foreground">Selectează clasa:</p>
@@ -408,7 +420,14 @@ const TestResults = ({ testId, testTitle, onBack, initialClassId }: TestResultsP
         </div>
       )}
 
-      {selectedAssignmentId && (
+      {selectedAssignmentId && testItemsLoading && (
+        <div className="flex items-center gap-2 py-4">
+          <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+          <p className="text-sm text-muted-foreground">Se încarcă itemii testului…</p>
+        </div>
+      )}
+
+      {selectedAssignmentId && !testItemsLoading && (
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -434,7 +453,13 @@ const TestResults = ({ testId, testTitle, onBack, initialClassId }: TestResultsP
             )}
           </div>
           {submissions.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Nicio submitere încă.</p>
+            <Card className="border-muted">
+              <CardContent className="p-4 text-center">
+                <FileText className="h-8 w-8 mx-auto mb-2 text-muted-foreground/50" />
+                <p className="text-sm font-medium text-muted-foreground">Nicio submitere încă.</p>
+                <p className="text-xs text-muted-foreground/70 mt-1">Elevii nu au trimis răspunsuri pentru acest test.</p>
+              </CardContent>
+            </Card>
           ) : (
             sortedSubmissions.map((sub: any) => {
               const isExpanded = expandedSubmissionId === sub.id;
