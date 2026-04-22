@@ -1,38 +1,56 @@
+## Plan: Cleanup token-uri invalide + Afisare completa raspunsuri elevi
 
+### 1. Edge Function `cleanup-tokens` -- stergere automata token-uri UNREGISTERED
 
-## Plan: Diagnosticare send-push cu logging detaliat
+Se creeaza o noua Edge Function `cleanup-tokens` care:
 
-### Problema curenta
+- Citeste toate token-urile din `device_tokens`
+- Trimite un dry-run catre FCM pentru fiecare token (sau direct sterge cele marcate ca invalide)
+- Alternativ (mai eficient): se modifica `send-push` sa stearga automat token-urile care returneaza `UNREGISTERED` / `NOT_FOUND` dupa trimitere
+- Se adauga un cron job (pg_cron) optional pentru cleanup periodic
 
-Edge function `send-push` returneaza 401 la fiecare apel. Log-urile functiei nu contin niciun mesaj (doar boot/shutdown), ceea ce inseamna ca functia nu logheaza inainte de a returna eroarea. Trebuie adaugat logging detaliat pentru a identifica exact unde pica.
+**Abordarea recomandata**: Modificam `send-push` sa stearga token-urile invalide inline (fara functie separata), deoarece deja stim care token-uri sunt invalide la momentul trimiterii. Aceasta e cea mai simpla si eficienta solutie.
 
-### Pasi
+**Modificari in `supabase/functions/send-push/index.ts**`:
 
-#### 1. Adaugare logging in `send-push/index.ts`
+- Dupa fiecare raspuns FCM cu eroare `UNREGISTERED` sau `NOT_FOUND`, se sterge token-ul din `device_tokens` folosind `adminClient`
+- Se logheaza cate token-uri au fost curatate
 
-Adaugam `console.log` la fiecare pas critic:
-- La intrarea in functie (confirmare ca se executa)
-- Daca lipseste Authorization header
-- Rezultatul `getUser()` (eroarea exacta)
-- Dupa parsarea body-ului
-- Numarul de device tokens gasite
-- Rezultatul fiecarui apel FCM
+### 2. Afisare completa raspunsuri elevi in TestResults
 
-#### 2. Redeploy si test manual
+Componenta `TestResults.tsx` (sectiunea `AnswerDetail`) deja afiseaza raspunsurile elevilor pentru toate tipurile, dar are cateva probleme:
 
-- Redeployam functia
-- Apelam `send-push` prin `curl_edge_functions` cu un body valid (student_ids din `device_tokens`)
-- Citim log-urile pentru a vedea exact unde pica
+**a) Match -- bug afisare right text**
 
-#### 3. Fix bazat pe diagnostic
+- Linia 689: `val as string` afiseaza ID-ul drept (ex: "p2"), nu textul asociat
+- Fix: se rezolva `val` prin `pairs?.find(p => p.id === val)?.right || val`
 
-Cele mai probabile cauze:
-- **getUser() esueaza** -- token-ul JWT din header nu este valid (posibil `supabase.functions.invoke` nu trimite header-ul corect din mediul nativ Capacitor)
-- **Body-ul nu se parseaza** -- `req.json()` ar putea esua daca body-ul e malformat
+**b) Eval exercises din teste predefinite**
 
-Daca `getUser()` e problema, solutia va fi sa facem functia sa accepte apeluri autentificate cu service role key (verificand doar ca apelantul e profesor), sau sa adaugam header-ul explicit in apelurile din frontend.
+- Cand un test importa itemi din banca de evaluare, `source_type` e convertit la `"exercise"` dar `source_id` refera `eval_exercises`, nu `exercises`
+- TestResults.tsx cauta in tabelul `exercises` si nu gaseste nimic, deci nu are date pentru cerinta/optiuni
+- Fix: In `fetchDetails`, se adauga fallback -- daca un exercise ID nu e gasit in `exercises`, se cauta si in `eval_exercises`
+
+**c) Verificare ca `answer_data` e populat corect**
+
+- Quiz: `{ selected: "a" }` -- deja afisat corect
+- TrueFalse: `{ selected: true/false }` -- deja afisat corect
+- Fill: `{ blanks: { id: "val" } }` -- deja afisat corect
+- Order: `{ order: ["id1", "id2"] }` -- deja afisat corect
+- Match: `{ matches: { leftId: rightId } }` -- bug la afisarea textului drept (fix-ul de la pct. a)
+- Problem: `{ code: "..." }` -- deja afisat corect  
+  
+La order, daca elevul lasa asa nu se afiseaza nimic
 
 ### Fisiere modificate
 
-- `supabase/functions/send-push/index.ts` -- adaugare console.log-uri la fiecare pas
 
+| Fisier                                   | Modificare                                                   |
+| ---------------------------------------- | ------------------------------------------------------------ |
+| `supabase/functions/send-push/index.ts`  | Stergere automata token-uri UNREGISTERED dupa trimitere      |
+| `src/components/teacher/TestResults.tsx` | Fix match right-text display + fallback eval_exercises fetch |
+
+
+### Migrari DB
+
+Niciuna necesara.
