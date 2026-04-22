@@ -71,6 +71,13 @@ const TestResults = ({ testId, testTitle, onBack }: TestResultsProps) => {
       if (exerciseIds.length > 0) {
         const { data } = await supabase.from("exercises").select("*").in("id", exerciseIds);
         data?.forEach((ex) => { result[ex.id] = { ...ex, _sourceType: "exercise" }; });
+        // Fallback: check eval_exercises for IDs not found in exercises
+        const foundIds = new Set(data?.map((ex) => ex.id) || []);
+        const missingIds = exerciseIds.filter((id: string) => !foundIds.has(id));
+        if (missingIds.length > 0) {
+          const { data: evalData } = await supabase.from("eval_exercises").select("*").in("id", missingIds);
+          evalData?.forEach((ex) => { result[ex.id] = { ...ex, _sourceType: "exercise" }; });
+        }
       }
       if (problemIds.length > 0) {
         const { data } = await supabase.from("problems").select("id, title, description, test_cases, hint, difficulty").in("id", problemIds);
@@ -665,17 +672,27 @@ const AnswerDetail = ({
         )}
 
         {/* Order */}
-        {itemType === "order" && answer.answer_data?.order && (
+        {itemType === "order" && (
           <div>
             <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">Ordinea elevului</p>
-            {(answer.answer_data.order as string[]).map((lineId: string, i: number) => {
-              const line = lines?.find((l: any) => l.id === lineId);
-              return (
-                <p key={lineId} className="text-xs font-mono bg-muted px-2 py-1 rounded mt-1">
-                  {i + 1}. {line?.text || lineId}
+            {answer.answer_data?.order && (answer.answer_data.order as string[]).length > 0 ? (
+              (answer.answer_data.order as string[]).map((lineId: string, i: number) => {
+                const line = lines?.find((l: any) => l.id === lineId);
+                return (
+                  <p key={lineId} className="text-xs font-mono bg-muted px-2 py-1 rounded mt-1">
+                    {i + 1}. {line?.text || lineId}
+                  </p>
+                );
+              })
+            ) : lines && (lines as any[]).length > 0 ? (
+              (lines as any[]).map((line: any, i: number) => (
+                <p key={line.id} className="text-xs font-mono bg-muted px-2 py-1 rounded mt-1 opacity-50">
+                  {i + 1}. {line.text}
                 </p>
-              );
-            })}
+              ))
+            ) : (
+              <p className="text-xs text-muted-foreground italic">Necompletat</p>
+            )}
           </div>
         )}
 
@@ -685,9 +702,10 @@ const AnswerDetail = ({
             <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">Potriviri elev</p>
             {Object.entries(answer.answer_data.matches).map(([pairId, val]) => {
               const pair = pairs?.find((p: any) => p.id === pairId);
+              const rightText = pairs?.find((p: any) => p.id === val)?.right || (val as string) || "(gol)";
               return (
                 <p key={pairId} className="text-xs bg-muted px-2 py-1 rounded mt-1">
-                  {pair?.left || pairId} → <span className="font-medium">{val as string || "(gol)"}</span>
+                  {pair?.left || pairId} → <span className="font-medium">{rightText}</span>
                 </p>
               );
             })}

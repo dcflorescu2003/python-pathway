@@ -132,6 +132,7 @@ Deno.serve(async (req) => {
 
     // Send to each device
     let sent = 0;
+    const tokensToDelete: string[] = [];
     for (const { token: deviceToken } of tokens) {
       console.log("[SEND-PUSH] Sending to token:", deviceToken.substring(0, 20) + "...");
       const res = await fetch(
@@ -172,7 +173,20 @@ Deno.serve(async (req) => {
         sent++;
       } else {
         console.error("[SEND-PUSH] FCM error for token:", deviceToken.substring(0, 20) + "...", resBody);
+        // Mark unregistered tokens for deletion
+        if (resBody.includes("UNREGISTERED") || resBody.includes("NOT_FOUND")) {
+          tokensToDelete.push(deviceToken);
+        }
       }
+    }
+
+    // Cleanup invalid tokens
+    if (tokensToDelete.length > 0) {
+      const { error: delErr } = await adminClient
+        .from("device_tokens")
+        .delete()
+        .in("token", tokensToDelete);
+      console.log("[SEND-PUSH] Cleaned up", tokensToDelete.length, "invalid tokens. Error:", delErr?.message ?? "none");
     }
 
     console.log("[SEND-PUSH] Done. Sent:", sent, "of", tokens.length);
