@@ -595,6 +595,9 @@ const AnswerDetail = ({
           )}
         </div>
         <div className="flex items-center gap-2">
+          <button onClick={() => setShowRaw(v => !v)} className={`p-1 rounded hover:bg-muted transition-colors ${showRaw ? 'text-primary' : 'text-muted-foreground'}`} title="Date brute">
+            <Code className="h-3.5 w-3.5" />
+          </button>
           <span className="text-xs font-medium">{answer.score}/{answer.max_points} pct</span>
           {answer.ai_reviewed && (
             <span className="text-[10px] bg-primary/10 text-primary px-1 rounded">AI</span>
