@@ -46,6 +46,16 @@ const TestResults = ({ testId, testTitle, onBack }: TestResultsProps) => {
   const { data: testItems = [] } = useTestItems(testId);
   const [selectedAssignmentId, setSelectedAssignmentId] = useState<string | null>(null);
   const [expandedSubmissionId, setExpandedSubmissionId] = useState<string | null>(null);
+  const [officePoints, setOfficePoints] = useState<number>(10);
+
+  // Fetch office_points from the test
+  useEffect(() => {
+    const fetchOfficePoints = async () => {
+      const { data } = await supabase.from("tests").select("office_points").eq("id", testId).single();
+      if (data) setOfficePoints((data as any).office_points ?? 10);
+    };
+    fetchOfficePoints();
+  }, [testId]);
 
   const { data: submissions = [] } = useTestSubmissions(selectedAssignmentId);
   const sortedSubmissions = useMemo(() => sortByDisplayName(submissions as any[]), [submissions]);
@@ -441,7 +451,7 @@ const TestResults = ({ testId, testTitle, onBack }: TestResultsProps) => {
                         </p>
                         <div className="flex items-center gap-2 mt-0.5">
                           <p className="text-[10px] text-muted-foreground">
-                            Nr. {sub.variant === "A" ? "1" : "2"} · {sub.submitted_at ? new Date(sub.submitted_at).toLocaleDateString("ro-RO") : "În curs"}
+                            Nr. {sub.variant === "A" ? "1" : "2"} · {sub.submitted_at ? new Date(sub.submitted_at).toLocaleDateString("ro-RO") : "În curs"} · Din oficiu: {officePoints}p
                           </p>
                           {sub.auto_submitted_reason && (
                             <AlertDialog>

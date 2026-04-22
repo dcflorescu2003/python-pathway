@@ -60,6 +60,7 @@ export function useCreateTest() {
       allow_run_tests?: boolean;
       require_fullscreen?: boolean;
       ai_grading_item_ids?: string[];
+      office_points?: number;
     }) => {
       if (!user) throw new Error("Not authenticated");
       const { data: test, error } = await supabase
@@ -72,7 +73,8 @@ export function useCreateTest() {
           allow_run_tests: params.allow_run_tests ?? false,
           require_fullscreen: params.require_fullscreen ?? false,
           ai_grading_item_ids: params.ai_grading_item_ids ?? [],
-        })
+          office_points: params.office_points ?? 10,
+        } as any)
         .select()
         .single();
       if (error) throw error;
@@ -108,6 +110,7 @@ export function useUpdateTest() {
       allow_run_tests?: boolean;
       require_fullscreen?: boolean;
       ai_grading_item_ids?: string[];
+      office_points?: number;
     }) => {
       // Update test metadata
       const { error: testError } = await supabase
@@ -119,7 +122,8 @@ export function useUpdateTest() {
           allow_run_tests: params.allow_run_tests ?? false,
           require_fullscreen: params.require_fullscreen ?? false,
           ai_grading_item_ids: params.ai_grading_item_ids ?? [],
-        })
+          office_points: params.office_points ?? 10,
+        } as any)
         .eq("id", params.id);
       if (testError) throw testError;
 
@@ -413,8 +417,30 @@ export function useUpdateAnswerScore() {
         .eq("submission_id", params.submissionId);
 
       if (allAnswers) {
-        const totalScore = allAnswers.reduce((sum, a) => sum + (Number(a.score) || 0), 0);
-        const maxScore = allAnswers.reduce((sum, a) => sum + (Number(a.max_points) || 0), 0);
+        // Get office_points from the test
+        const { data: sub } = await supabase
+          .from("test_submissions")
+          .select("assignment_id")
+          .eq("id", params.submissionId)
+          .single();
+        let op = 10;
+        if (sub) {
+          const { data: assignment } = await supabase
+            .from("test_assignments")
+            .select("test_id")
+            .eq("id", sub.assignment_id)
+            .single();
+          if (assignment) {
+            const { data: test } = await supabase
+              .from("tests")
+              .select("office_points")
+              .eq("id", assignment.test_id)
+              .single();
+            op = (test as any)?.office_points ?? 10;
+          }
+        }
+        const totalScore = allAnswers.reduce((sum, a) => sum + (Number(a.score) || 0), 0) + op;
+        const maxScore = allAnswers.reduce((sum, a) => sum + (Number(a.max_points) || 0), 0) + op;
         await supabase
           .from("test_submissions")
           .update({ total_score: totalScore, max_score: maxScore })

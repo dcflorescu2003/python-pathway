@@ -1,0 +1,1 @@
+ALTER TABLE public.tests ADD COLUMN office_points integer NOT NULL DEFAULT 10;

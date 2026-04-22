@@ -58,6 +58,7 @@ const TestBuilder = ({ onBack, editTestId, teacherStatus }: TestBuilderProps) =>
   const [requireFullscreen, setRequireFullscreen] = useState(false);
   const [editLoaded, setEditLoaded] = useState(false);
   const [aiGradingItemIds, setAiGradingItemIds] = useState<string[]>([]);
+  const [officePoints, setOfficePoints] = useState(10);
 
   // Browser state
   const [selectedChapterId, setSelectedChapterId] = useState<string>("");
@@ -273,6 +274,7 @@ const TestBuilder = ({ onBack, editTestId, teacherStatus }: TestBuilderProps) =>
         setAllowRunTests(test.allow_run_tests ?? false);
         setRequireFullscreen((test as any).require_fullscreen ?? false);
         setAiGradingItemIds((test as any).ai_grading_item_ids ?? []);
+        setOfficePoints((test as any).office_points ?? 10);
         if (test.time_limit_minutes) {
           setTimeLimitEnabled(true);
           setTimeLimit(test.time_limit_minutes);
@@ -316,6 +318,7 @@ const TestBuilder = ({ onBack, editTestId, teacherStatus }: TestBuilderProps) =>
           allow_run_tests: allowRunTests,
           require_fullscreen: requireFullscreen,
           ai_grading_item_ids: aiGradingItemIds,
+          office_points: officePoints,
         });
         toast.success("Test actualizat!");
       } else {
@@ -327,6 +330,7 @@ const TestBuilder = ({ onBack, editTestId, teacherStatus }: TestBuilderProps) =>
           allow_run_tests: allowRunTests,
           require_fullscreen: requireFullscreen,
           ai_grading_item_ids: aiGradingItemIds,
+          office_points: officePoints,
         });
         toast.success("Test creat cu succes!");
       }
@@ -519,6 +523,17 @@ const TestBuilder = ({ onBack, editTestId, teacherStatus }: TestBuilderProps) =>
             value={title}
             onChange={(e) => setTitle(e.target.value)}
           />
+          <div className="flex items-center gap-2">
+            <Label className="text-sm whitespace-nowrap">Puncte din oficiu:</Label>
+            <Input
+              type="number"
+              value={officePoints}
+              onChange={(e) => setOfficePoints(Math.max(0, Number(e.target.value)))}
+              className="w-20 h-8 text-sm"
+              min={0}
+              max={100}
+            />
+          </div>
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2">
               <Switch id="time-limit" checked={timeLimitEnabled} onCheckedChange={setTimeLimitEnabled} />
