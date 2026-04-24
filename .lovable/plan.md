@@ -1,23 +1,78 @@
-## Problema
+## Diagnostic: ecran negru la prima deschidere după install/update
 
-În `LessonPage.tsx` linia 55: `const [lives, setLives] = useState(5);` — viețile sunt state local inițializat mereu la 5. Când greșești, scade doar local; când reintri în lecție pornești iar de la 5. `loseLife()` actualizează totuși DB, dar UI-ul nu citește din `progress.lives`.
+Există **3 cauze probabile** care se combină pentru a produce ecranul negru. Pe a 2-a deschidere totul funcționează pentru că assets-urile sunt deja în cache și storage e cald.
 
-Mai există un bug colateral: la „heart granted" se apela `setLives(newLives)`, dar acum nu mai există acel state local.
+### Cauzele identificate
 
-## Soluție
+**1. Splash-ul nativ Android se ascunde prea devreme (cauza principală)**
 
-În `src/pages/LessonPage.tsx`:
+Capacitor folosește `androidx.core.splashscreen` (definit în `styles.xml` ca `AppTheme.NoActionBarLaunch`) care se ascunde **automat de îndată ce primul frame e desenat de WebView**. La prima rulare:
+- WebView nu are bundle-ul JS în cache → arată un frame gol (negru) imediat ce se inițializează
+- Splash-ul nativ se ascunde
+- React încă nu s-a montat → utilizatorul vede negru până când JS-ul se încarcă, parsează și montează
 
-1. Elimin state-ul local `lives`. Folosesc direct `progress.lives` (sau `5` dacă e Premium):
-   ```ts
-   const lives = progress.isPremium ? 5 : progress.lives;
-   ```
+La a 2-a deschidere, JS-ul e cache-uit de WebView și React montează rapid → fără gap.
 
-2. La greșeală, scot `setLives((l) => l - 1)` și păstrez doar `loseLife()` (care actualizează deja `progress.lives` în Supabase + state global).
+**Nu e instalat pluginul `@capacitor/splash-screen`**, deci nu putem controla momentul ascunderii din JS.
 
-3. La refill prin reclamă, scot `setLives(newLives)` din callback — `setLivesFromReward` actualizează deja `progress.lives` și UI-ul reflectează automat.
+**2. `SplashScreen.tsx` (React) nu se afișează la prima rulare**
 
-4. Dacă utilizatorul intră în lecție cu `progress.lives === 0` și nu e Premium, redirecționez instant la pagina capitolului cu un toast „Nu ai inimi. Așteaptă 20 min sau vizionează o reclamă". Asta previne situația în care lecția pornește deja terminată cu „Ai rămas fără vieți".
+În `App.tsx` (liniile 108-111):
+```ts
+const [showSplash, setShowSplash] = useState(() => {
+  const shown = sessionStorage.getItem("pyro-splash-shown");
+  return !shown;
+});
+```
+Splash-ul React durează 1500ms, apoi setează `pyro-splash-shown` în `sessionStorage`. Problema: dacă React încă n-a apucat să se monteze, acest splash nu acoperă gap-ul nativ-WebView. E doar un cover **după** ce React e gata.
 
-## Fișier modificat
-- `src/pages/LessonPage.tsx`
+**3. Background-ul aplicației nu e setat în temele native**
+
+În `styles.xml`:
+- `AppTheme.NoActionBar` are `android:background = @null`
+- Body-ul HTML / WebView nu are un background-color forțat la nivelul nativ
+
+În timpul gap-ului, fundalul implicit Android e negru → de asta apare exact „ecran negru” în loc de fundalul aplicației (`#0f1219`).
+
+### Plan de remediere
+
+**Pas 1: Instalez `@capacitor/splash-screen`** și configurez în `capacitor.config.ts`:
+- `launchAutoHide: false` → splash-ul nativ rămâne afișat până îl ascundem manual
+- `backgroundColor: "#0f1219"` → background match cu app
+- `showSpinner: true`, culoare spinner brand
+- `launchShowDuration: 3000` ca fallback de siguranță (în caz că JS nu pornește)
+
+**Pas 2: Ascund splash-ul nativ din JS la momentul corect** în `App.tsx`:
+- După ce React s-a montat și `AuthProvider` a încărcat sesiunea inițială (sau cel mai târziu după ce splash-ul React intră în scenă), apelez `SplashScreen.hide()`.
+- Asta elimină complet gap-ul WebView-negru.
+
+**Pas 3: Setez fundal corect în temele Android** ca defensivă:
+- În `styles.xml`, schimb `android:background` în `AppTheme.NoActionBar` din `@null` într-o culoare solidă `#0f1219` (folosită deja ca theme-color)
+- Adaug `android:windowBackground` pe `AppTheme.NoActionBarLaunch` pentru a evita orice flash negru între splash și activitate
+
+**Pas 4: Drawable-ul splash existent**
+- Verific `android/app/src/main/res/drawable/splash.xml` și mă asigur că background-ul lui e `#0f1219` (nu alb sau transparent).
+
+**Pas 5: Bump versiune la 1.72**
+- `versionCode = 72`, `versionName = "1.72"` în `android/app/build.gradle` ca să poți testa pe un build nou.
+
+### Tehnic — fișiere modificate
+
+- `package.json` — adaug `@capacitor/splash-screen`
+- `capacitor.config.ts` — config plugin SplashScreen
+- `src/App.tsx` — apel `SplashScreen.hide()` din `useEffect` după mount
+- `android/app/src/main/res/values/styles.xml` — fundal solid în teme
+- `android/app/src/main/res/drawable/splash.xml` — verific/setez background
+- `android/app/build.gradle` — bump versiune 1.72
+
+### Ce trebuie să faci tu după
+
+După ce aplic schimbările:
+1. Pull din Git
+2. `npm install` (pentru pluginul nou)
+3. `npx cap sync android`
+4. Build AAB nou și încarcă în Play Console pentru test
+
+Ar trebui să rezolve ecranul negru atât la primă instalare, cât și după update. Splash-ul nativ va rămâne vizibil până React e efectiv pe ecran, fără gap.
+
+Confirmă să implementez.
