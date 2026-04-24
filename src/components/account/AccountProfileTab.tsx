@@ -7,7 +7,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
-import { BookOpen, XCircle, Code, Zap, Flame, Crown, CreditCard, Sparkles, GraduationCap, UserPlus, Shield, Clock, MessageSquare, Check, X, Pencil, Users, Copy, CheckCircle } from "lucide-react";
+import { BookOpen, XCircle, Code, Zap, Flame, Crown, CreditCard, Sparkles, GraduationCap, UserPlus, Shield, Clock, MessageSquare, Check, X, Pencil, Users, Copy, CheckCircle, ShieldCheck } from "lucide-react";
+import { useAdMob } from "@/hooks/useAdMob";
 import { useTeacherReferralCodes } from "@/hooks/useTeacher";
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from "@/components/ui/alert-dialog";
 import CouponRedemption from "@/components/CouponRedemption";
@@ -47,6 +48,8 @@ const AccountProfileTab = ({
   const { data: chapters } = useChapters();
   const { subscribed, subscriptionEnd, source, openPortal } = useSubscription();
   const { data: referralCodes = [] } = useTeacherReferralCodes();
+  const { isNative, showPrivacyOptions } = useAdMob();
+  const [privacyLoading, setPrivacyLoading] = useState(false);
   const [showPremiumDialog, setShowPremiumDialog] = useState(false);
   const [showTeacherPremiumDialog, setShowTeacherPremiumDialog] = useState(false);
   const [showVerificationForm, setShowVerificationForm] = useState(false);
@@ -479,6 +482,43 @@ const AccountProfileTab = ({
             </div>
           ) : null}
         </>
+      )}
+
+      {/* Privacy / GDPR consent management — only on native platforms */}
+      {isNative && (
+        <Card className="border-border">
+          <CardContent className="p-4 space-y-2">
+            <div className="flex items-center gap-2">
+              <ShieldCheck className="h-4 w-4 text-primary" />
+              <span className="text-sm font-medium text-foreground">Confidențialitate & reclame</span>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Gestionează consimțământul pentru reclame personalizate (GDPR). Poți retrage sau modifica oricând acordul.
+            </p>
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full gap-2"
+              disabled={privacyLoading}
+              onClick={async () => {
+                setPrivacyLoading(true);
+                try {
+                  const shown = await showPrivacyOptions();
+                  if (!shown) {
+                    toast.info("Nu există opțiuni de confidențialitate disponibile pentru regiunea ta.");
+                  }
+                } catch {
+                  toast.error("Nu am putut deschide preferințele de confidențialitate.");
+                } finally {
+                  setPrivacyLoading(false);
+                }
+              }}
+            >
+              <ShieldCheck className="h-4 w-4" />
+              {privacyLoading ? "Se deschide..." : "Gestionează preferințele de confidențialitate"}
+            </Button>
+          </CardContent>
+        </Card>
       )}
 
       <PremiumDialog open={showPremiumDialog} onOpenChange={setShowPremiumDialog} />
