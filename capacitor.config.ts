@@ -13,6 +13,18 @@ const config: CapacitorConfig = {
         twitter: false,
       },
     },
+    SplashScreen: {
+      launchShowDuration: 3000,
+      launchAutoHide: false,
+      backgroundColor: "#0f1219",
+      androidSplashResourceName: "splash",
+      androidScaleType: "CENTER_CROP",
+      showSpinner: true,
+      androidSpinnerStyle: "large",
+      spinnerColor: "#22c55e",
+      splashFullScreen: true,
+      splashImmersive: true,
+    },
   },
   server: {
     androidScheme: 'https',
