@@ -75,22 +75,59 @@ export function useAdMob() {
       const adId = getAdUnitId();
 
       let rewarded = false;
-      const rewardListener = await AdMob.addListener(
-        RewardAdPluginEvents.Rewarded,
-        () => {
-          rewarded = true;
-        }
-      );
+      const listeners: Array<{ remove: () => Promise<void> }> = [];
 
-      await AdMob.prepareRewardVideoAd({ adId, isTesting: isDev });
-      await AdMob.showRewardVideoAd();
+      // Promise that resolves on the first terminal event
+      const result = new Promise<boolean>(async (resolve) => {
+        let settled = false;
+        const settle = (val: boolean, delay = 0) => {
+          if (settled) return;
+          settled = true;
+          if (delay > 0) {
+            setTimeout(() => resolve(val), delay);
+          } else {
+            resolve(val);
+          }
+        };
 
-      // Cleanup listener
+        listeners.push(
+          await AdMob.addListener(RewardAdPluginEvents.Rewarded, () => {
+            rewarded = true;
+            settle(true);
+          })
+        );
+        listeners.push(
+          await AdMob.addListener(RewardAdPluginEvents.Dismissed, () => {
+            // Wait briefly in case Rewarded event arrives just after Dismissed
+            setTimeout(() => settle(rewarded), 500);
+          })
+        );
+        listeners.push(
+          await AdMob.addListener(RewardAdPluginEvents.FailedToLoad, () => settle(false))
+        );
+        listeners.push(
+          await AdMob.addListener(RewardAdPluginEvents.FailedToShow, () => settle(false))
+        );
+
+        // Safety timeout: if nothing happens within 5 minutes, resolve false
+        setTimeout(() => settle(rewarded), 5 * 60 * 1000);
+      });
+
       try {
-        await rewardListener.remove();
-      } catch {}
+        await AdMob.prepareRewardVideoAd({ adId, isTesting: isDev });
+        await AdMob.showRewardVideoAd();
+      } catch (err) {
+        console.error("Failed to prepare/show rewarded ad:", err);
+        // Cleanup listeners and bail
+        await Promise.all(listeners.map((l) => l.remove().catch(() => {})));
+        return false;
+      }
 
-      return rewarded;
+      const earned = await result;
+
+      // Cleanup
+      await Promise.all(listeners.map((l) => l.remove().catch(() => {})));
+      return earned;
     } catch (err) {
       console.error("Rewarded ad failed:", err);
       return false;
