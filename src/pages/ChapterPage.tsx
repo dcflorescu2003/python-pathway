@@ -4,7 +4,17 @@ import { useChapters } from "@/hooks/useChapters";
 import { useProgress } from "@/hooks/useProgress";
 import { useAuth } from "@/hooks/useAuth";
 import { motion } from "framer-motion";
-import { ArrowLeft, Check, Lock, Play, BookOpen, Crown, Zap, Trophy, ArrowRight, Map } from "lucide-react";
+import { ArrowLeft, Check, Lock, Play, BookOpen, Crown, Zap, Trophy, ArrowRight, Map, Info } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import OfflineBanner from "@/components/states/OfflineBanner";
 import PremiumDialog from "@/components/PremiumDialog";
@@ -22,6 +32,7 @@ const ChapterPage = () => {
   const { user } = useAuth();
   const [showPremium, setShowPremium] = useState(false);
   const [skipDialog, setSkipDialog] = useState<{ lessonId: string; title: string; cooldownMs: number } | null>(null);
+  const [lockedInfo, setLockedInfo] = useState<{ lessonId: string; title: string; previousTitle: string | null; cooldownMs: number } | null>(null);
   const [showConfetti, setShowConfetti] = useState(false);
   const currentLessonRef = useRef<HTMLDivElement>(null);
   const { data: chapters, isLoading } = useChapters();
