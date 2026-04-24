@@ -8,6 +8,7 @@ import { AnimatePresence } from "framer-motion";
 import { Capacitor } from "@capacitor/core";
 import { App as CapApp } from "@capacitor/app";
 import { Browser } from "@capacitor/browser";
+import { SplashScreen as CapSplashScreen } from "@capacitor/splash-screen";
 import { supabase } from "@/integrations/supabase/client";
 import { AuthProvider } from "@/hooks/useAuth";
 import MobileLayout from "@/components/layout/MobileLayout";
@@ -111,6 +112,11 @@ const AppComponent = () => {
   });
 
   useEffect(() => {
+    // Hide native splash as soon as React mounts (covers black-screen gap on cold start / after update)
+    if (Capacitor.isNativePlatform()) {
+      CapSplashScreen.hide({ fadeOutDuration: 250 }).catch(() => undefined);
+    }
+
     if (showSplash) {
       const timer = setTimeout(() => {
         setShowSplash(false);
