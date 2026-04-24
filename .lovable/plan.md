@@ -1,34 +1,36 @@
 
 
-## Verificare `app-ads.txt` — totul este OK din partea noastră
+## Problemă
 
-Am verificat live URL-ul `https://pyroskill.info/app-ads.txt` (atât root, cât și `www`, plus `pyro-learn.lovable.app`). Toate trei returnează:
+Când refaci o lecție din **Sumar personalizat**, streak-ul se actualizează doar la finalul lecției (în `completeLesson`). Dacă utilizatorul abandonează refacerea, închide app-ul, sau pierde toate viețile, activitatea de azi NU este înregistrată — deși a făcut efectiv exerciții.
 
-- **Status HTTP:** `200 OK`
-- **Content-Type:** `text/plain; charset=utf-8` ✅ (nu HTML)
-- **Conținut exact:**
-  ```
-  google.com, pub-8441862030200888, DIRECT, f08c47fec0942fa0
-  ```
-- **Server:** Cloudflare (cache valid, etag prezent)
+În plus, `useProgress` este instanțiat separat în fiecare pagină (Index, LessonPage), deci după ce LessonPage face update-ul, Index se bazează pe re-mount + citire localStorage. Dacă, dintr-un motiv anume, sincronizarea cloud rămâne în urmă, contoarele afișate pe Acasă pot părea „înghețate".
 
-Deci fișierul **este servit corect** ca text, exact cum cere AdMob. Conversația de acum 3 zile pe care o pomenești se referea la o limitare generală PWA — dar în practică, Lovable serveste `public/app-ads.txt` ca `text/plain`, nu ca HTML, așa cum confirmă headerele de mai sus. Eroarea anterioară din răspunsul meu (sugestia că ar fi servit ca HTML) a fost incorectă.
+## Plan de remediere
 
-## De ce vezi totuși gol în browser
+**1. Înregistrează activitatea la primul răspuns corect din `LessonPage`**
 
-Două cauze posibile, niciuna legată de cod:
+În `src/pages/LessonPage.tsx`:
+- Importă `recordActivity` din `useProgress()`.
+- Apelează-l o singură dată per montare a paginii, la primul exercițiu rezolvat corect (folosind un `useRef` flag).
+- Asta garantează că orice exercițiu făcut prin Sumarul Personalizat (sau orice replay de lecție) bumpează streak-ul imediat, exact ca la `ProblemSolvePage`.
 
-1. **Cache Cloudflare / browser** — deschide într-o fereastră privată sau forțează refresh cu `Ctrl+Shift+R`. Cloudflare cache-uiește agresiv `.txt`.
-2. **AdMob nu a procesat încă** — crawler-ul Google rulează la 24h–7 zile după ce detectează fișierul. „Căutați actualizări" în AdMob → Aplicații → app-ads.txt forțează o re-verificare.
+**2. Re-sincronizare la revenire pe Index**
 
-## Ce putem face dacă vrei să fim 100% siguri
+În `src/hooks/useProgress.ts`:
+- Adaugă un listener `visibilitychange` + `focus` pe `window` care re-citește `profiles` (xp, streak, lives, last_activity_date) când tab-ul redevine vizibil.
+- Update local state doar dacă valorile cloud sunt mai recente (compară `last_activity_date` sau `streak`).
+- Asta aliniază Index cu modificările făcute în LessonPage chiar și fără re-mount.
 
-Opțiuni de acțiune (niciuna nu necesită modificări de cod chiar acum):
+**3. Verificare consistență**
 
-1. **Așteaptă încă 2–4 zile** și apasă „Căutați actualizări" în AdMob. Termenul oficial Google este până la 7 zile, iar noi suntem în ziua 3.
-2. **Dacă după 7 zile total tot nu se confirmă**, atunci adăugăm o funcție Edge dedicată (`/app-ads.txt` → `text/plain`) ca fallback bullet-proof, independentă de hosting-ul static. Pot pregăti asta acum dacă preferi siguranța maximă.
+- Streak-ul se actualizează deja corect în `completeLesson` și `recordActivity` — nu schimbăm logica de calcul.
+- Toate conturile cu acces la Sumar (Premium) folosesc același flux `LessonPage`, deci fix-ul acoperă toți userii vizați automat.
 
-## Recomandare
+## Fișiere modificate
 
-Așteaptă până luni (ziua 7). Dacă AdMob tot afișează „necrawled", revino și implementez varianta cu Edge Function care garantează MIME-type-ul, indiferent de comportamentul hosting-ului.
+- `src/pages/LessonPage.tsx` — apel `recordActivity()` la primul exercițiu corect
+- `src/hooks/useProgress.ts` — listener `visibilitychange`/`focus` pentru refetch profile
+
+Niciun schimbări de schemă DB, nicio migrație.
 
