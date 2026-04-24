@@ -208,6 +208,58 @@ export function useProgress() {
     void loadCloud();
   }, [user]);
 
+  // Re-sync from cloud when tab/window regains focus, so counters on Index reflect
+  // updates made elsewhere (e.g. streak bumped in LessonPage).
+  useEffect(() => {
+    if (!user) return;
+
+    const refetch = async () => {
+      try {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("xp, streak, lives, is_premium, last_activity_date, lives_updated_at")
+          .eq("user_id", user.id)
+          .single();
+        if (!profile) return;
+
+        setProgress((prev) => {
+          const cloudDate = profile.last_activity_date ?? "";
+          const isCloudNewer =
+            (cloudDate && cloudDate > prev.lastActivityDate) ||
+            (profile.streak ?? 0) > prev.streak ||
+            (profile.xp ?? 0) > prev.xp;
+          if (!isCloudNewer) return prev;
+
+          const merged: UserProgress = {
+            ...prev,
+            xp: Math.max(prev.xp, profile.xp ?? 0),
+            streak: Math.max(prev.streak, profile.streak ?? 0),
+            lives: profile.lives ?? prev.lives,
+            isPremium: profile.is_premium ?? prev.isPremium,
+            lastActivityDate: cloudDate > prev.lastActivityDate ? cloudDate : prev.lastActivityDate,
+            livesUpdatedAt: profile.lives_updated_at ?? prev.livesUpdatedAt,
+          };
+          saveLocalProgress(merged, user.id);
+          return merged;
+        });
+      } catch (err) {
+        console.error("Failed to refetch progress on focus:", err);
+      }
+    };
+
+    const onVisible = () => {
+      if (document.visibilityState === "visible") void refetch();
+    };
+    const onFocus = () => void refetch();
+
+    document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("focus", onFocus);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("focus", onFocus);
+    };
+  }, [user]);
+
   const completeLesson = useCallback(
     async (lessonId: string, xpEarned: number, score: number) => {
       let bonusMultiplier = 1;
