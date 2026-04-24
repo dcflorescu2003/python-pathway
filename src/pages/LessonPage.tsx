@@ -1,4 +1,5 @@
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
+import { toast } from "@/hooks/use-toast";
 import { useParams, useNavigate } from "react-router-dom";
 import { useChapters, type Exercise } from "@/hooks/useChapters";
 import { useProgress } from "@/hooks/useProgress";
@@ -57,6 +58,18 @@ const LessonPage = () => {
   const [feedback, setFeedback] = useState<"correct" | "wrong" | null>(null);
   const [lastExplanation, setLastExplanation] = useState<string | null>(null);
   const wasFirstTime = !progress.completedLessons[lessonId || ""]?.completed;
+
+  // Redirect dacă userul intră în lecție fără inimi
+  useEffect(() => {
+    if (!isFinished && !progress.isPremium && progress.lives <= 0 && chapter) {
+      toast({
+        title: "Nu mai ai inimi 💔",
+        description: "Așteaptă 20 de minute pentru o inimă sau vizionează o reclamă din pagina principală.",
+        variant: "destructive",
+      });
+      navigate(`/chapter/${chapter.id}`);
+    }
+  }, [progress.lives, progress.isPremium, chapter, isFinished, navigate]);
 
   const handleAnswer = useCallback(
     (isCorrect: boolean) => {
