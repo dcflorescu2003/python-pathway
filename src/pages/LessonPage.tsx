@@ -1,5 +1,4 @@
-import { useState, useCallback, useRef, useEffect } from "react";
-import { toast } from "@/hooks/use-toast";
+import { useState, useCallback, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useChapters, type Exercise } from "@/hooks/useChapters";
 import { useProgress } from "@/hooks/useProgress";
@@ -59,17 +58,9 @@ const LessonPage = () => {
   const [lastExplanation, setLastExplanation] = useState<string | null>(null);
   const wasFirstTime = !progress.completedLessons[lessonId || ""]?.completed;
 
-  // Redirect dacă userul intră în lecție fără inimi
-  useEffect(() => {
-    if (!isFinished && !progress.isPremium && progress.lives <= 0 && chapter) {
-      toast({
-        title: "Nu mai ai inimi 💔",
-        description: "Așteaptă 20 de minute pentru o inimă sau vizionează o reclamă din pagina principală.",
-        variant: "destructive",
-      });
-      navigate(`/chapter/${chapter.id}`);
-    }
-  }, [progress.lives, progress.isPremium, chapter, isFinished, navigate]);
+  // Lecția nu poate începe sau continua dacă userul nu are inimi (excepție: Premium)
+  const noLives = !progress.isPremium && progress.lives <= 0;
+  const lessonStarted = currentIndex > 0 || feedback !== null || correctCount > 0;
 
   const handleAnswer = useCallback(
     (isCorrect: boolean) => {
@@ -100,6 +91,10 @@ const LessonPage = () => {
         loseLife();
         setFeedback("wrong");
         setLastExplanation(exercise?.explanation || null);
+        // Dacă era ultima inimă, marcăm lecția ca terminată după ce userul vede feedback-ul
+        if (!progress.isPremium && progress.lives <= 1) {
+          // setIsFinished se va declanșa când userul apasă „Vezi rezultatul"
+        }
       }
     },
     [currentIndex, lesson, loseLife, correctCount, completeLesson, recordActivity]
@@ -124,6 +119,32 @@ const LessonPage = () => {
 
   if (isLoading || !chapters) return <LoadingScreen />;
   if (!lesson || !chapter) return <div className="p-8 text-center text-foreground">Lecție negăsită</div>;
+
+  // Gate: nu poți începe lecția dacă nu ai inimi
+  if (noLives && !lessonStarted && !isFinished) {
+    return (
+      <div className="fixed inset-0 flex items-center justify-center bg-background p-6 safe-top safe-bottom">
+        <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="w-full max-w-sm rounded-xl border border-border bg-card p-6 text-center">
+          <div className="text-5xl mb-4">💔</div>
+          <h2 className="text-xl font-bold text-foreground mb-2">Nu ai inimi</h2>
+          <p className="text-sm text-muted-foreground mb-4">
+            Așteaptă 20 de minute pentru a primi o inimă sau vizionează o reclamă pentru a-ți reumple toate inimile.
+          </p>
+          <div className="mb-4">
+            <WatchAdForLivesButton
+              isPremium={progress.isPremium}
+              onLivesGranted={(newLives, livesUpdatedAt) => {
+                setLivesFromReward(newLives, livesUpdatedAt);
+              }}
+            />
+          </div>
+          <Button variant="outline" className="w-full touch-target" onClick={() => navigate(`/chapter/${chapter.id}`)}>
+            Înapoi
+          </Button>
+        </motion.div>
+      </div>
+    );
+  }
 
   if (isFinished) {
     const xpEarned = lives > 0 ? (wasFirstTime ? lesson.xpReward : 3) : 0;
@@ -225,7 +246,7 @@ const LessonPage = () => {
                 </div>
               )}
               <Button onClick={handleContinue} className="w-full h-14 text-lg font-bold" variant={feedback === "correct" ? "default" : "destructive"}>
-                Continuă
+                {feedback === "wrong" && lives <= 0 ? "Vezi rezultatul" : "Continuă"}
               </Button>
             </div>
           </motion.div>
