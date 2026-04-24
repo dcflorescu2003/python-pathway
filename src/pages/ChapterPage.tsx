@@ -4,7 +4,17 @@ import { useChapters } from "@/hooks/useChapters";
 import { useProgress } from "@/hooks/useProgress";
 import { useAuth } from "@/hooks/useAuth";
 import { motion } from "framer-motion";
-import { ArrowLeft, Check, Lock, Play, BookOpen, Crown, Zap, Trophy, ArrowRight, Map } from "lucide-react";
+import { ArrowLeft, Check, Lock, Play, BookOpen, Crown, Zap, Trophy, ArrowRight, Map, Info } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import OfflineBanner from "@/components/states/OfflineBanner";
 import PremiumDialog from "@/components/PremiumDialog";
@@ -22,6 +32,7 @@ const ChapterPage = () => {
   const { user } = useAuth();
   const [showPremium, setShowPremium] = useState(false);
   const [skipDialog, setSkipDialog] = useState<{ lessonId: string; title: string; cooldownMs: number } | null>(null);
+  const [lockedInfo, setLockedInfo] = useState<{ lessonId: string; title: string; previousTitle: string | null; cooldownMs: number } | null>(null);
   const [showConfetti, setShowConfetti] = useState(false);
   const currentLessonRef = useRef<HTMLDivElement>(null);
   const { data: chapters, isLoading } = useChapters();
@@ -33,11 +44,27 @@ const ChapterPage = () => {
     [chapter, progress.completedLessons]
   );
 
-  useEffect(() => {
-    if (currentLessonRef.current) {
-      currentLessonRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+  // Compute first uncompleted (and unlocked) lesson — focus target on chapter entry
+  const firstUncompletedId = useMemo(() => {
+    if (!chapter) return null;
+    for (let i = 0; i < chapter.lessons.length; i++) {
+      const l = chapter.lessons[i];
+      const done = !!progress.completedLessons[l.id]?.completed;
+      const prevDone = i === 0 || !!progress.completedLessons[chapter.lessons[i - 1].id]?.completed;
+      const skipUnlocked = !!progress.skipUnlockedLessons?.[l.id];
+      if (!done && (prevDone || skipUnlocked)) return l.id;
     }
-  }, [chapterId]);
+    return null;
+  }, [chapter, progress.completedLessons, progress.skipUnlockedLessons]);
+
+  // Scroll to first uncompleted lesson once data is ready (re-runs if chapter changes)
+  useEffect(() => {
+    if (!firstUncompletedId) return;
+    const t = window.setTimeout(() => {
+      currentLessonRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 80);
+    return () => window.clearTimeout(t);
+  }, [chapterId, firstUncompletedId]);
 
   useEffect(() => {
     if (!allDone || !chapter) return;
@@ -68,9 +95,6 @@ const ChapterPage = () => {
             <p className="text-xs font-mono text-muted-foreground uppercase tracking-wider">Capitol {chapter.number}</p>
             <h1 className="text-lg font-bold text-foreground truncate">{chapter.title}</h1>
           </div>
-          <Button variant="outline" size="sm" onClick={() => navigate(`/chapter/${chapter.id}/roadmap`)} className="gap-1.5 touch-target">
-            <Map className="h-4 w-4" /> Roadmap
-          </Button>
           <Button variant="outline" size="sm" onClick={() => navigate(`/chapter/${chapter.id}/theory`)} className="gap-1.5 touch-target">
             <BookOpen className="h-4 w-4" /> Teorie
           </Button>
@@ -92,17 +116,18 @@ const ChapterPage = () => {
             const handleClick = () => {
               if (isPremiumLocked) { setShowPremium(true); return; }
               if (!isLocked) { navigate(`/lesson/${lesson.id}`); return; }
-              // Locked → offer skip challenge
+              // Locked → show confirmation with explanation; user can choose to try skip challenge
               let cooldownMs = 0;
               try {
                 const stored = localStorage.getItem(`${COOLDOWN_KEY_PREFIX}${lesson.id}`);
                 if (stored) cooldownMs = Math.max(0, parseInt(stored, 10) - Date.now());
               } catch {}
-              setSkipDialog({ lessonId: lesson.id, title: lesson.title, cooldownMs });
+              const previousTitle = idx > 0 ? chapter.lessons[idx - 1].title : null;
+              setLockedInfo({ lessonId: lesson.id, title: lesson.title, previousTitle, cooldownMs });
             };
 
             return (
-              <div key={lesson.id} className="flex flex-col items-center" ref={isCurrent ? currentLessonRef : undefined}>
+              <div key={lesson.id} className="flex flex-col items-center" ref={lesson.id === firstUncompletedId ? currentLessonRef : undefined}>
                 {idx > 0 && <div className={`h-8 w-0.5 ${isCompleted ? "bg-primary/40" : "bg-border"}`} />}
                 {(() => {
                   const hueShift = idx * 30;
@@ -203,6 +228,53 @@ const ChapterPage = () => {
           cooldownRemainingMs={skipDialog.cooldownMs}
         />
       )}
+      <AlertDialog open={!!lockedInfo} onOpenChange={(o) => { if (!o) setLockedInfo(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <Lock className="h-5 w-5 text-yellow-500" />
+              Lecție blocată
+            </AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-3 text-left">
+                <p>
+                  Lecția <span className="font-semibold text-foreground">„{lockedInfo?.title}"</span> nu este încă disponibilă.
+                </p>
+                <div className="rounded-lg border border-border bg-muted/40 p-3 text-sm">
+                  <p className="flex items-center gap-2 font-medium text-foreground mb-1">
+                    <Info className="h-4 w-4 text-primary" />
+                    Cum o deblochezi?
+                  </p>
+                  {lockedInfo?.previousTitle ? (
+                    <p>
+                      Termină mai întâi lecția anterioară: <span className="font-semibold text-foreground">„{lockedInfo.previousTitle}"</span>.
+                    </p>
+                  ) : (
+                    <p>Termină lecția anterioară pentru a continua.</p>
+                  )}
+                  <p className="mt-2 text-muted-foreground">
+                    Alternativ, poți încerca o <span className="font-medium text-yellow-500">provocare de skip</span> — răspunzi corect la câteva întrebări și deblochezi lecția fără să o parcurgi pe cea anterioară.
+                  </p>
+                </div>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Înțeles</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (!lockedInfo) return;
+                const info = lockedInfo;
+                setLockedInfo(null);
+                setSkipDialog({ lessonId: info.lessonId, title: info.title, cooldownMs: info.cooldownMs });
+              }}
+              className="gap-1.5"
+            >
+              <Zap className="h-4 w-4" /> Încearcă skip challenge
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
