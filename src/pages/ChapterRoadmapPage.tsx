@@ -13,7 +13,7 @@ const ChapterRoadmapPage = () => {
   const navigate = useNavigate();
   const { data: chapters, isLoading } = useChapters();
   const { progress } = useProgress();
-  const nextLessonRef = useRef<HTMLDivElement>(null);
+  const nextLessonRef = useRef<HTMLButtonElement>(null);
 
   const chapter = chapters?.find((c) => c.id === chapterId);
 
