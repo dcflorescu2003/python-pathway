@@ -484,6 +484,43 @@ const AccountProfileTab = ({
         </>
       )}
 
+      {/* Privacy / GDPR consent management — only on native platforms */}
+      {isNative && (
+        <Card className="border-border">
+          <CardContent className="p-4 space-y-2">
+            <div className="flex items-center gap-2">
+              <ShieldCheck className="h-4 w-4 text-primary" />
+              <span className="text-sm font-medium text-foreground">Confidențialitate & reclame</span>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Gestionează consimțământul pentru reclame personalizate (GDPR). Poți retrage sau modifica oricând acordul.
+            </p>
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full gap-2"
+              disabled={privacyLoading}
+              onClick={async () => {
+                setPrivacyLoading(true);
+                try {
+                  const shown = await showPrivacyOptions();
+                  if (!shown) {
+                    toast.info("Nu există opțiuni de confidențialitate disponibile pentru regiunea ta.");
+                  }
+                } catch {
+                  toast.error("Nu am putut deschide preferințele de confidențialitate.");
+                } finally {
+                  setPrivacyLoading(false);
+                }
+              }}
+            >
+              <ShieldCheck className="h-4 w-4" />
+              {privacyLoading ? "Se deschide..." : "Gestionează preferințele de confidențialitate"}
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
       <PremiumDialog open={showPremiumDialog} onOpenChange={setShowPremiumDialog} />
       <TeacherPremiumDialog open={showTeacherPremiumDialog} onOpenChange={setShowTeacherPremiumDialog} />
     </div>
