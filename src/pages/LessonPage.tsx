@@ -52,7 +52,7 @@ const LessonPage = () => {
 
   const [currentIndex, setCurrentIndex] = useState(0);
   const [correctCount, setCorrectCount] = useState(0);
-  const [lives, setLives] = useState(5);
+  const lives = progress.isPremium ? 5 : progress.lives;
   const [isFinished, setIsFinished] = useState(false);
   const [feedback, setFeedback] = useState<"correct" | "wrong" | null>(null);
   const [lastExplanation, setLastExplanation] = useState<string | null>(null);
@@ -84,7 +84,6 @@ const LessonPage = () => {
           recordActivity();
         }
       } else {
-        setLives((l) => l - 1);
         loseLife();
         setFeedback("wrong");
         setLastExplanation(exercise?.explanation || null);
@@ -135,7 +134,6 @@ const LessonPage = () => {
                   isPremium={progress.isPremium}
                   onLivesGranted={(newLives, livesUpdatedAt) => {
                     setLivesFromReward(newLives, livesUpdatedAt);
-                    setLives(newLives);
                   }}
                 />
               </div>
