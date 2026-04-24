@@ -1,5 +1,4 @@
-import { useState, useCallback, useRef, useEffect } from "react";
-import { toast } from "@/hooks/use-toast";
+import { useState, useCallback, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useChapters, type Exercise } from "@/hooks/useChapters";
 import { useProgress } from "@/hooks/useProgress";
