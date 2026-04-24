@@ -421,12 +421,19 @@ const AuthPage = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    e.stopPropagation();
+    // Hard guard: never run the login form while the recovery modal is open.
+    if (showForgot) {
+      console.warn("[auth] submit blocked: forgot-password modal is open");
+      return;
+    }
     if (!email.trim() || !password.trim()) return;
     if (!isLogin && !displayName.trim()) { toast.error("Introdu un nume de afișare."); return; }
 
     setLoading(true);
     try {
       if (isLogin) {
+        console.info("[auth] action=signInWithPassword", { email });
         const { error } = await signIn(email, password);
         if (error) {
           toast.error(error.message === "Invalid login credentials" ? "Email sau parolă greșită." : error.message);
@@ -436,6 +443,7 @@ const AuthPage = () => {
           navigate("/", { replace: true });
         }
       } else {
+        console.info("[auth] action=signUp", { email });
         const { error } = await signUp(email, password, displayName);
         if (error) { toast.error(error.message); }
         else { toast.success("Cont creat! Verifică-ți emailul pentru confirmare. 📬"); }
