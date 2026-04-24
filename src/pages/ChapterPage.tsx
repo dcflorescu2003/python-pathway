@@ -38,6 +38,19 @@ const ChapterPage = () => {
   const { data: chapters, isLoading } = useChapters();
 
   const chapter = chapters?.find((c) => c.id === chapterId);
+  const chapterIdx = chapters?.findIndex((c) => c.id === chapterId) ?? -1;
+
+  // Capitolul este blocat dacă elevul nu a terminat ≥50% din capitolul anterior (excluzând „Practică:")
+  const chapterLock = useMemo(() => {
+    if (!chapters || chapterIdx <= 0) return null;
+    const prev = chapters[chapterIdx - 1];
+    const prevNonPractice = prev.lessons.filter((l) => !l.title.startsWith("Practică:"));
+    if (prevNonPractice.length === 0) return null;
+    const prevCompleted = prevNonPractice.filter((l) => progress.completedLessons[l.id]?.completed).length;
+    const required = Math.ceil(prevNonPractice.length * 0.5);
+    if (prevCompleted >= required) return null;
+    return { prevTitle: prev.title, prevCompleted, required, total: prevNonPractice.length };
+  }, [chapters, chapterIdx, progress.completedLessons]);
 
   const allDone = useMemo(
     () => !!chapter && chapter.lessons.length > 0 && chapter.lessons.every(l => progress.completedLessons[l.id]?.completed),
@@ -81,6 +94,51 @@ const ChapterPage = () => {
 
   if (isLoading || !chapters) return <LoadingScreen />;
   if (!chapter) return <div className="p-8 text-center text-foreground">Capitol negăsit</div>;
+
+  // Cazul special: capitolul în sine este blocat (utilizatorul a ajuns aici prin deep-link / istoric)
+  if (chapterLock) {
+    return (
+      <div className="min-h-screen bg-background flex flex-col">
+        <OfflineBanner />
+        <header className="sticky top-0 z-40 border-b border-border bg-background/80 backdrop-blur-md pt-[calc(env(safe-area-inset-top)+8px)]">
+          <div className="flex items-center gap-3 px-4 py-3">
+            <Button variant="ghost" size="icon" className="touch-target" onClick={() => navigate("/")}>
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-mono text-muted-foreground uppercase tracking-wider">Capitol {chapter.number}</p>
+              <h1 className="text-lg font-bold text-foreground truncate">{chapter.title}</h1>
+            </div>
+          </div>
+        </header>
+        <main className="flex-1 px-4 py-10 flex items-start justify-center">
+          <div className="w-full max-w-md rounded-2xl border-2 border-yellow-500/40 bg-card p-6 text-center shadow-[0_0_28px_hsl(48_100%_50%/0.15)]">
+            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-yellow-500/15 border-2 border-yellow-500/40">
+              <Lock className="h-7 w-7 text-yellow-500" />
+            </div>
+            <h2 className="text-xl font-bold text-foreground mb-2">Capitol blocat</h2>
+            <p className="text-sm text-muted-foreground mb-4">
+              Pentru a începe <span className="font-semibold text-foreground">„{chapter.title}"</span>, trebuie să termini mai întâi cel puțin{" "}
+              <span className="font-semibold text-foreground">{chapterLock.required} din {chapterLock.total}</span> lecții din capitolul anterior:{" "}
+              <span className="font-semibold text-foreground">„{chapterLock.prevTitle}"</span>.
+            </p>
+            <div className="rounded-lg border border-border bg-muted/40 p-3 text-sm mb-4">
+              <p className="flex items-center justify-center gap-2 text-foreground">
+                <Info className="h-4 w-4 text-primary" />
+                Progres curent: <span className="font-mono font-semibold">{chapterLock.prevCompleted}/{chapterLock.required}</span>
+              </p>
+            </div>
+            <Button onClick={() => navigate(`/chapter/${chapters[chapterIdx - 1].id}`)} className="w-full gap-2 touch-target">
+              <ArrowLeft className="h-4 w-4" /> Mergi la capitolul anterior
+            </Button>
+            <Button variant="ghost" onClick={() => navigate("/")} className="w-full mt-2 touch-target">
+              Înapoi la harta
+            </Button>
+          </div>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
