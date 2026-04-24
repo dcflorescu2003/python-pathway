@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { useChapters } from "@/hooks/useChapters";
 import { useProgress } from "@/hooks/useProgress";
 import LoadingScreen from "@/components/states/LoadingScreen";
+const MotionButton = motion.button;
 
 const ChapterRoadmapPage = () => {
   const { chapterId } = useParams();
