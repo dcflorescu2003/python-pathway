@@ -38,6 +38,19 @@ const ChapterPage = () => {
   const { data: chapters, isLoading } = useChapters();
 
   const chapter = chapters?.find((c) => c.id === chapterId);
+  const chapterIdx = chapters?.findIndex((c) => c.id === chapterId) ?? -1;
+
+  // Capitolul este blocat dacă elevul nu a terminat ≥50% din capitolul anterior (excluzând „Practică:")
+  const chapterLock = useMemo(() => {
+    if (!chapters || chapterIdx <= 0) return null;
+    const prev = chapters[chapterIdx - 1];
+    const prevNonPractice = prev.lessons.filter((l) => !l.title.startsWith("Practică:"));
+    if (prevNonPractice.length === 0) return null;
+    const prevCompleted = prevNonPractice.filter((l) => progress.completedLessons[l.id]?.completed).length;
+    const required = Math.ceil(prevNonPractice.length * 0.5);
+    if (prevCompleted >= required) return null;
+    return { prevTitle: prev.title, prevCompleted, required, total: prevNonPractice.length };
+  }, [chapters, chapterIdx, progress.completedLessons]);
 
   const allDone = useMemo(
     () => !!chapter && chapter.lessons.length > 0 && chapter.lessons.every(l => progress.completedLessons[l.id]?.completed),
