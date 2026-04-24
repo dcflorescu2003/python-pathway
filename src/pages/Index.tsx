@@ -29,12 +29,13 @@ import LoadingScreen from "@/components/states/LoadingScreen";
 import LevelUpDialog from "@/components/LevelUpDialog";
 import StreakDialog from "@/components/StreakDialog";
 import PersonalizedSummary from "@/components/PersonalizedSummary";
+import RefillLivesDialog from "@/components/RefillLivesDialog";
 import { Capacitor } from "@capacitor/core";
 
 const Index = (): JSX.Element => {
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
-  const { progress } = useProgress();
+  const { progress, setLivesFromReward } = useProgress();
   const { data: chapters, isLoading: chaptersLoading } = useChapters();
   const { challenges, isChallenge } = useChallenges();
   
@@ -46,6 +47,7 @@ const Index = (): JSX.Element => {
   const [showPremium, setShowPremium] = useState(false);
   const [showChallenges, setShowChallenges] = useState(false);
   const [showRoadmap, setShowRoadmap] = useState(false);
+  const [showRefillLives, setShowRefillLives] = useState(false);
   const { isInstalled } = useInstallPrompt();
   const { couponExpired, couponType, dismissCouponExpired, startCheckout } = useSubscription();
   const [schoolSearch, setSchoolSearch] = useState("");
@@ -283,10 +285,25 @@ const Index = (): JSX.Element => {
               )}
               <span className={`text-sm font-bold ${progress.streak > 0 ? "text-orange-500" : "text-muted-foreground"}`}>{progress.streak}</span>
             </button>
-            <div className="flex items-center gap-1 text-destructive">
+            <button
+              type="button"
+              onClick={() => {
+                if (progress.isPremium) {
+                  toast({ title: "Ai inimi nelimitate ✨", description: "Beneficiu Premium." });
+                  return;
+                }
+                if (progress.lives >= 5) {
+                  toast({ title: "Inimile sunt pline ❤️", description: "Ai deja maxim de inimi." });
+                  return;
+                }
+                setShowRefillLives(true);
+              }}
+              className="flex items-center gap-1 text-destructive touch-target px-1 -mx-1 rounded-md hover:bg-destructive/10 active:scale-95 transition-all"
+              aria-label="Reîncarcă inimile"
+            >
               <Heart className="h-5 w-5" />
               <span className="text-sm font-bold">{progress.isPremium ? "∞" : progress.lives}</span>
-            </div>
+            </button>
             <div className="flex items-center gap-1 text-xp">
               <Zap className="h-5 w-5" />
               <span className="text-sm font-bold">{progress.xp}</span>
