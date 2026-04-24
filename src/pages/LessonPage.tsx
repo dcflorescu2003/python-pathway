@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useChapters, type Exercise } from "@/hooks/useChapters";
 import { useProgress } from "@/hooks/useProgress";
@@ -43,7 +43,8 @@ class ExerciseErrorBoundary extends React.Component<
 const LessonPage = () => {
   const { lessonId } = useParams();
   const navigate = useNavigate();
-  const { progress, completeLesson, loseLife, setLivesFromReward, streakJustIncreased, newStreakCount, dismissStreakCelebration } = useProgress();
+  const { progress, completeLesson, loseLife, setLivesFromReward, recordActivity, streakJustIncreased, newStreakCount, dismissStreakCelebration } = useProgress();
+  const activityRecordedRef = useRef(false);
   const { data: chapters, isLoading } = useChapters();
 
   const lesson = chapters?.flatMap((c) => c.lessons).find((l) => l.id === lessonId);
@@ -78,6 +79,10 @@ const LessonPage = () => {
         setCorrectCount((c) => c + 1);
         setFeedback("correct");
         setLastExplanation(exercise?.explanation || null);
+        if (!activityRecordedRef.current) {
+          activityRecordedRef.current = true;
+          recordActivity();
+        }
       } else {
         setLives((l) => l - 1);
         loseLife();
@@ -85,7 +90,7 @@ const LessonPage = () => {
         setLastExplanation(exercise?.explanation || null);
       }
     },
-    [currentIndex, lesson, loseLife, correctCount, completeLesson]
+    [currentIndex, lesson, loseLife, correctCount, completeLesson, recordActivity]
   );
 
   const handleContinue = useCallback(() => {
