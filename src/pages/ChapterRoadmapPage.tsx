@@ -88,16 +88,16 @@ const ChapterRoadmapPage = () => {
 
                 return (
                   <li key={lesson.id} className="relative">
-                    <div className={`flex items-center gap-3 ${side === "right" ? "flex-row-reverse" : ""}`}>
-                      <div className="flex-1">
+                    <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
+                      {side === "left" ? (
                         <motion.button
-                          initial={{ opacity: 0, x: side === "left" ? -16 : 16 }}
+                          initial={{ opacity: 0, x: -16 }}
                           animate={{ opacity: 1, x: 0 }}
                           transition={{ delay: idx * 0.04 }}
                           onClick={() => { if (!isLocked) navigate(`/lesson/${lesson.id}`); }}
                           disabled={isLocked}
                           ref={isNext ? nextLessonRef : undefined}
-                          className={`w-full text-${side === "left" ? "right" : "left"} rounded-2xl border-2 p-3 transition-all active:scale-[0.98] ${
+                          className={`text-right rounded-2xl border-2 p-3 transition-all active:scale-[0.98] ${
                             isCompleted
                               ? "border-primary/30 bg-primary/5 opacity-80"
                               : isNext
