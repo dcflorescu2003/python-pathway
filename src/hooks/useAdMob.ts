@@ -97,5 +97,28 @@ export function useAdMob() {
     }
   }, [isNative]);
 
-  return { isNative, initialized, showRewarded };
+  /**
+   * Re-open the GDPR / privacy consent form so the user can change or
+   * revoke their previously given consent. Resolves to true if the form
+   * was shown successfully.
+   */
+  const showPrivacyOptions = useCallback(async (): Promise<boolean> => {
+    if (!isNative) return false;
+    try {
+      const { AdMob } = await import("@capacitor-community/admob");
+      // Refresh consent info so the SDK knows whether a privacy options
+      // form is available for this user (region-dependent).
+      const info = await AdMob.requestConsentInfo();
+      if (info.isConsentFormAvailable) {
+        await AdMob.showConsentForm();
+        return true;
+      }
+      return false;
+    } catch (err) {
+      console.error("Privacy options form failed:", err);
+      return false;
+    }
+  }, [isNative]);
+
+  return { isNative, initialized, showRewarded, showPrivacyOptions };
 }
