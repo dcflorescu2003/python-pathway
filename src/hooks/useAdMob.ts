@@ -143,13 +143,20 @@ export function useAdMob() {
     if (!isNative) return false;
     try {
       const { AdMob } = await import("@capacitor-community/admob");
-      // Refresh consent info so the SDK knows whether a privacy options
-      // form is available for this user (region-dependent).
+      // The plugin does not expose UMP's `showPrivacyOptionsForm` directly.
+      // To let the user re-open and modify their previously given consent,
+      // we reset the UMP state and request the consent form again.
+      try {
+        await AdMob.resetConsentInfo();
+      } catch (err) {
+        console.warn("resetConsentInfo failed (continuing):", err);
+      }
       const info = await AdMob.requestConsentInfo();
       if (info.isConsentFormAvailable) {
         await AdMob.showConsentForm();
         return true;
       }
+      // No form available for this region (e.g. user is outside EEA/UK).
       return false;
     } catch (err) {
       console.error("Privacy options form failed:", err);
