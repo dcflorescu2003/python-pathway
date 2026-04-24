@@ -572,7 +572,7 @@ const AuthPage = () => {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-center justify-center px-6"
-          onClick={() => setShowForgot(false)}
+          onClick={() => { setShowForgot(false); setForgotEmail(""); }}
         >
           <motion.div
             initial={{ scale: 0.9, opacity: 0 }}
@@ -589,14 +589,21 @@ const AuthPage = () => {
                 <form
                   onSubmit={async (e) => {
                     e.preventDefault();
-                    if (!forgotEmail.trim()) return;
+                    e.stopPropagation();
+                    const target = forgotEmail.trim();
+                    if (!target) return;
+                    console.info("[auth] action=resetPasswordForEmail", { email: target });
                     setForgotLoading(true);
-                    const { error } = await supabase.auth.resetPasswordForEmail(forgotEmail, {
+                    const { error } = await supabase.auth.resetPasswordForEmail(target, {
                       redirectTo: `${window.location.origin}/reset-password`,
                     });
                     setForgotLoading(false);
                     if (error) { toast.error(error.message); }
-                    else { toast.success("Email trimis! Verifică inbox-ul. 📬"); setShowForgot(false); }
+                    else {
+                      toast.success("Email trimis! Verifică inbox-ul. 📬");
+                      setShowForgot(false);
+                      setForgotEmail("");
+                    }
                   }}
                   className="space-y-3"
                 >
@@ -608,7 +615,7 @@ const AuthPage = () => {
                     {forgotLoading ? "Se trimite..." : "Trimite linkul"}
                   </Button>
                 </form>
-                <button onClick={() => setShowForgot(false)} className="text-xs text-muted-foreground hover:underline w-full text-center">
+                <button type="button" onClick={() => { setShowForgot(false); setForgotEmail(""); }} className="text-xs text-muted-foreground hover:underline w-full text-center">
                   Înapoi
                 </button>
               </CardContent>
