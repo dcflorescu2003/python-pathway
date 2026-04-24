@@ -68,6 +68,9 @@ const ChapterPage = () => {
             <p className="text-xs font-mono text-muted-foreground uppercase tracking-wider">Capitol {chapter.number}</p>
             <h1 className="text-lg font-bold text-foreground truncate">{chapter.title}</h1>
           </div>
+          <Button variant="outline" size="sm" onClick={() => navigate(`/chapter/${chapter.id}/roadmap`)} className="gap-1.5 touch-target">
+            <Map className="h-4 w-4" /> Roadmap
+          </Button>
           <Button variant="outline" size="sm" onClick={() => navigate(`/chapter/${chapter.id}/theory`)} className="gap-1.5 touch-target">
             <BookOpen className="h-4 w-4" /> Teorie
           </Button>

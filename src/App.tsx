@@ -18,6 +18,7 @@ import { PushNotificationsProvider } from "@/hooks/usePushNotifications";
 
 const Index = lazy(() => import("./pages/Index"));
 const ChapterPage = lazy(() => import("./pages/ChapterPage"));
+const ChapterRoadmapPage = lazy(() => import("./pages/ChapterRoadmapPage"));
 const ChapterTheoryPage = lazy(() => import("./pages/ChapterTheoryPage"));
 const LessonPage = lazy(() => import("./pages/LessonPage"));
 const LeaderboardPage = lazy(() => import("./pages/LeaderboardPage"));
@@ -52,6 +53,7 @@ const AppRoutes = () => {
           <Route path="/" element={<Index />} />
           <Route path="/auth" element={<AuthPage />} />
           <Route path="/chapter/:chapterId" element={<ChapterPage />} />
+          <Route path="/chapter/:chapterId/roadmap" element={<ChapterRoadmapPage />} />
           <Route path="/chapter/:chapterId/theory" element={<ChapterTheoryPage />} />
           <Route path="/lesson/:lessonId" element={<LessonPage />} />
           <Route path="/leaderboard" element={<LeaderboardPage />} />
