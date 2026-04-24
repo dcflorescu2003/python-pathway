@@ -48,6 +48,8 @@ const AccountProfileTab = ({
   const { data: chapters } = useChapters();
   const { subscribed, subscriptionEnd, source, openPortal } = useSubscription();
   const { data: referralCodes = [] } = useTeacherReferralCodes();
+  const { isNative, showPrivacyOptions } = useAdMob();
+  const [privacyLoading, setPrivacyLoading] = useState(false);
   const [showPremiumDialog, setShowPremiumDialog] = useState(false);
   const [showTeacherPremiumDialog, setShowTeacherPremiumDialog] = useState(false);
   const [showVerificationForm, setShowVerificationForm] = useState(false);
