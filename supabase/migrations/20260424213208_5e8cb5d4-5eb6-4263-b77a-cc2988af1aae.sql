@@ -1,0 +1,1 @@
+UPDATE public.profiles SET lives = 0, ads_watched_today = 0, ads_last_reset = CURRENT_DATE, lives_updated_at = now() WHERE user_id = '0350f48f-d07b-40e0-9741-433c1d6edeb3';
