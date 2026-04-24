@@ -86,72 +86,87 @@ const ChapterRoadmapPage = () => {
                 const isNext = lesson.id === nextLessonId;
                 const side = idx % 2 === 0 ? "left" : "right";
 
+                const cardClasses = `rounded-2xl border-2 p-3 transition-all active:scale-[0.98] w-full ${
+                  isCompleted
+                    ? "border-primary/30 bg-primary/5 opacity-80"
+                    : isNext
+                    ? "border-primary bg-primary/10 shadow-[0_0_24px_hsl(var(--primary)/0.35)]"
+                    : isLocked
+                    ? "border-border bg-card opacity-60 cursor-not-allowed"
+                    : "border-border bg-card hover:border-primary/50"
+                }`;
+
+                const card = (
+                  <motion.button
+                    initial={{ opacity: 0, x: side === "left" ? -16 : 16 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: idx * 0.04 }}
+                    onClick={() => { if (!isLocked) navigate(`/lesson/${lesson.id}`); }}
+                    disabled={isLocked}
+                    ref={isNext ? nextLessonRef : undefined}
+                    className={`${cardClasses} ${side === "left" ? "text-right" : "text-left"}`}
+                  >
+                    <p className="text-xs font-mono text-muted-foreground uppercase tracking-wider mb-0.5">
+                      Lecția {idx + 1}
+                    </p>
+                    <p className={`text-sm font-bold ${isCompleted ? "text-muted-foreground" : "text-foreground"}`}>
+                      {lesson.title}
+                    </p>
+                    <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5">{lesson.description}</p>
+                    {isCompleted && (
+                      <p className="text-[11px] text-primary font-mono mt-1">
+                        {score === 100 ? "🏆 100%" : `★ ${score}%`}
+                      </p>
+                    )}
+                    {isNext && (
+                      <p className="text-[11px] text-primary font-mono mt-1">▶ Continuă aici</p>
+                    )}
+                    {skipUnlocked && !isCompleted && !previousDone && (
+                      <p className="text-[11px] text-yellow-500 font-mono mt-1 inline-flex items-center gap-1">
+                        <Zap className="h-3 w-3" /> Sărită
+                      </p>
+                    )}
+                  </motion.button>
+                );
+
+                const node = (
+                  <div className="relative z-10 flex h-12 w-12 shrink-0 items-center justify-center rounded-full border-4 bg-background"
+                    style={{
+                      borderColor: isCompleted
+                        ? "hsl(var(--primary) / 0.5)"
+                        : isNext
+                        ? "hsl(var(--primary))"
+                        : isLocked
+                        ? "hsl(var(--border))"
+                        : "hsl(var(--primary) / 0.6)",
+                      color: isCompleted
+                        ? "hsl(var(--primary))"
+                        : isNext
+                        ? "hsl(var(--primary))"
+                        : "hsl(var(--muted-foreground))",
+                      boxShadow: isNext ? "0 0 18px hsl(var(--primary) / 0.6)" : undefined,
+                    }}
+                  >
+                    {isCompleted ? <Check className="h-5 w-5" /> : isLocked ? <Lock className="h-4 w-4" /> : <Play className="h-5 w-5 ml-0.5" />}
+                  </div>
+                );
+
                 return (
                   <li key={lesson.id} className="relative">
-                    <div className={`flex items-center gap-3 ${side === "right" ? "flex-row-reverse" : ""}`}>
-                      <div className="flex-1">
-                        <motion.button
-                          initial={{ opacity: 0, x: side === "left" ? -16 : 16 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          transition={{ delay: idx * 0.04 }}
-                          onClick={() => { if (!isLocked) navigate(`/lesson/${lesson.id}`); }}
-                          disabled={isLocked}
-                          ref={isNext ? nextLessonRef : undefined}
-                          className={`w-full text-${side === "left" ? "right" : "left"} rounded-2xl border-2 p-3 transition-all active:scale-[0.98] ${
-                            isCompleted
-                              ? "border-primary/30 bg-primary/5 opacity-80"
-                              : isNext
-                              ? "border-primary bg-primary/10 shadow-[0_0_24px_hsl(var(--primary)/0.35)]"
-                              : isLocked
-                              ? "border-border bg-card opacity-60 cursor-not-allowed"
-                              : "border-border bg-card hover:border-primary/50"
-                          }`}
-                        >
-                          <p className="text-xs font-mono text-muted-foreground uppercase tracking-wider mb-0.5">
-                            Lecția {idx + 1}
-                          </p>
-                          <p className={`text-sm font-bold ${isCompleted ? "text-muted-foreground" : "text-foreground"}`}>
-                            {lesson.title}
-                          </p>
-                          <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5">{lesson.description}</p>
-                          {isCompleted && (
-                            <p className="text-[11px] text-primary font-mono mt-1">
-                              {score === 100 ? "🏆 100%" : `★ ${score}%`}
-                            </p>
-                          )}
-                          {isNext && (
-                            <p className="text-[11px] text-primary font-mono mt-1">▶ Continuă aici</p>
-                          )}
-                          {skipUnlocked && !isCompleted && !previousDone && (
-                            <p className="text-[11px] text-yellow-500 font-mono mt-1 inline-flex items-center gap-1">
-                              <Zap className="h-3 w-3" /> Sărită
-                            </p>
-                          )}
-                        </motion.button>
-                      </div>
-
-                      {/* node */}
-                      <div className="relative z-10 flex h-12 w-12 shrink-0 items-center justify-center rounded-full border-4 bg-background"
-                        style={{
-                          borderColor: isCompleted
-                            ? "hsl(var(--primary) / 0.5)"
-                            : isNext
-                            ? "hsl(var(--primary))"
-                            : isLocked
-                            ? "hsl(var(--border))"
-                            : "hsl(var(--primary) / 0.6)",
-                          color: isCompleted
-                            ? "hsl(var(--primary))"
-                            : isNext
-                            ? "hsl(var(--primary))"
-                            : "hsl(var(--muted-foreground))",
-                          boxShadow: isNext ? "0 0 18px hsl(var(--primary) / 0.6)" : undefined,
-                        }}
-                      >
-                        {isCompleted ? <Check className="h-5 w-5" /> : isLocked ? <Lock className="h-4 w-4" /> : <Play className="h-5 w-5 ml-0.5" />}
-                      </div>
-
-                      <div className="flex-1" aria-hidden />
+                    <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
+                      {side === "left" ? (
+                        <>
+                          {card}
+                          {node}
+                          <div aria-hidden />
+                        </>
+                      ) : (
+                        <>
+                          <div aria-hidden />
+                          {node}
+                          {card}
+                        </>
+                      )}
                     </div>
                   </li>
                 );
