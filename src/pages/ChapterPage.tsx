@@ -127,7 +127,7 @@ const ChapterPage = () => {
             };
 
             return (
-              <div key={lesson.id} className="flex flex-col items-center" ref={isCurrent ? currentLessonRef : undefined}>
+              <div key={lesson.id} className="flex flex-col items-center" ref={lesson.id === firstUncompletedId ? currentLessonRef : undefined}>
                 {idx > 0 && <div className={`h-8 w-0.5 ${isCompleted ? "bg-primary/40" : "bg-border"}`} />}
                 {(() => {
                   const hueShift = idx * 30;
