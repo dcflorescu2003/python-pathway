@@ -1,35 +1,23 @@
-## Probleme identificate
+## Problema
 
-**1. Reclama vizionată dar inimile nu s-au acordat.** În `useAdMob.ts`, `showRewardVideoAd()` se rezolvă când utilizatorul închide reclama, dar evenimentul `Rewarded` poate sosi *înainte sau imediat după* dismiss. Listener-ul `Rewarded` este detașat imediat, ceea ce produce un race condition și uneori `rewarded` rămâne `false` chiar dacă utilizatorul a vizionat complet.
+În `LessonPage.tsx` linia 55: `const [lives, setLives] = useState(5);` — viețile sunt state local inițializat mereu la 5. Când greșești, scade doar local; când reintri în lecție pornești iar de la 5. `loseLife()` actualizează totuși DB, dar UI-ul nu citește din `progress.lives`.
 
-**2. Inima din header (Index.tsx) e statică** — un simplu `<div>` care doar afișează numărul, fără click handler.
+Mai există un bug colateral: la „heart granted" se apela `setLives(newLives)`, dar acum nu mai există acel state local.
 
 ## Soluție
 
-### Fix 1: `src/hooks/useAdMob.ts` — race condition la rewarded ads
-Refactor `showRewarded` să aștepte explicit fie evenimentul `Rewarded` (succes), fie `Dismissed` (eșec/skip), prin Promise:
+În `src/pages/LessonPage.tsx`:
 
-- Atașez listeneri pentru `Rewarded`, `Dismissed`, `FailedToLoad`, `FailedToShow`.
-- `showRewarded` returnează un Promise care se rezolvă pe primul eveniment terminal.
-- Curăț toți listenerii la final.
-- Adaug un mic delay de siguranță (200ms) după `Dismissed` ca să prind un `Rewarded` întârziat.
+1. Elimin state-ul local `lives`. Folosesc direct `progress.lives` (sau `5` dacă e Premium):
+   ```ts
+   const lives = progress.isPremium ? 5 : progress.lives;
+   ```
 
-### Fix 2: Inima din header devine clickabilă
-- În `src/pages/Index.tsx`, transform `<div>`-ul cu inimă într-un `<button>` care, dacă utilizatorul nu e Premium și `lives < 5`, deschide un dialog nou.
-- Pentru Premium (∞) sau lives = 5, butonul nu face nimic (sau afișează scurt un toast „Ai deja maxim de inimi").
+2. La greșeală, scot `setLives((l) => l - 1)` și păstrez doar `loseLife()` (care actualizează deja `progress.lives` în Supabase + state global).
 
-### Componentă nouă: `src/components/RefillLivesDialog.tsx`
-Dialog (shadcn) care:
-- Afișează inimile curente (X / 5) și mesajul „O inimă se reumple automat la fiecare 20 de minute".
-- Include butonul `WatchAdForLivesButton` existent (deja gestionează nativ vs web și limita zilnică).
-- Pe web (non-native) afișează doar mesajul de regenerare automată.
-- La succes, actualizează progress prin callback și închide dialogul.
+3. La refill prin reclamă, scot `setLives(newLives)` din callback — `setLivesFromReward` actualizează deja `progress.lives` și UI-ul reflectează automat.
 
-### Cont de testare
-Resetez din nou contul `florescu.cosmin.tr@gmail.com` la 0 inimi pentru un nou test (migrație SQL).
+4. Dacă utilizatorul intră în lecție cu `progress.lives === 0` și nu e Premium, redirecționez instant la pagina capitolului cu un toast „Nu ai inimi. Așteaptă 20 min sau vizionează o reclamă". Asta previne situația în care lecția pornește deja terminată cu „Ai rămas fără vieți".
 
-## Fișiere modificate
-- `src/hooks/useAdMob.ts` — fix race condition rewarded
-- `src/pages/Index.tsx` — fac inima din header clickabilă
-- `src/components/RefillLivesDialog.tsx` — nou
-- migrație nouă pentru reset profil de test
+## Fișier modificat
+- `src/pages/LessonPage.tsx`
