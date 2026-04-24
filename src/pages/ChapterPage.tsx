@@ -44,11 +44,27 @@ const ChapterPage = () => {
     [chapter, progress.completedLessons]
   );
 
-  useEffect(() => {
-    if (currentLessonRef.current) {
-      currentLessonRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+  // Compute first uncompleted (and unlocked) lesson — focus target on chapter entry
+  const firstUncompletedId = useMemo(() => {
+    if (!chapter) return null;
+    for (let i = 0; i < chapter.lessons.length; i++) {
+      const l = chapter.lessons[i];
+      const done = !!progress.completedLessons[l.id]?.completed;
+      const prevDone = i === 0 || !!progress.completedLessons[chapter.lessons[i - 1].id]?.completed;
+      const skipUnlocked = !!progress.skipUnlockedLessons?.[l.id];
+      if (!done && (prevDone || skipUnlocked)) return l.id;
     }
-  }, [chapterId]);
+    return null;
+  }, [chapter, progress.completedLessons, progress.skipUnlockedLessons]);
+
+  // Scroll to first uncompleted lesson once data is ready (re-runs if chapter changes)
+  useEffect(() => {
+    if (!firstUncompletedId) return;
+    const t = window.setTimeout(() => {
+      currentLessonRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 80);
+    return () => window.clearTimeout(t);
+  }, [chapterId, firstUncompletedId]);
 
   useEffect(() => {
     if (!allDone || !chapter) return;
@@ -103,13 +119,14 @@ const ChapterPage = () => {
             const handleClick = () => {
               if (isPremiumLocked) { setShowPremium(true); return; }
               if (!isLocked) { navigate(`/lesson/${lesson.id}`); return; }
-              // Locked → offer skip challenge
+              // Locked → show confirmation with explanation; user can choose to try skip challenge
               let cooldownMs = 0;
               try {
                 const stored = localStorage.getItem(`${COOLDOWN_KEY_PREFIX}${lesson.id}`);
                 if (stored) cooldownMs = Math.max(0, parseInt(stored, 10) - Date.now());
               } catch {}
-              setSkipDialog({ lessonId: lesson.id, title: lesson.title, cooldownMs });
+              const previousTitle = idx > 0 ? chapter.lessons[idx - 1].title : null;
+              setLockedInfo({ lessonId: lesson.id, title: lesson.title, previousTitle, cooldownMs });
             };
 
             return (
