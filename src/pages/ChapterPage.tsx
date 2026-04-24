@@ -228,6 +228,53 @@ const ChapterPage = () => {
           cooldownRemainingMs={skipDialog.cooldownMs}
         />
       )}
+      <AlertDialog open={!!lockedInfo} onOpenChange={(o) => { if (!o) setLockedInfo(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <Lock className="h-5 w-5 text-yellow-500" />
+              Lecție blocată
+            </AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-3 text-left">
+                <p>
+                  Lecția <span className="font-semibold text-foreground">„{lockedInfo?.title}"</span> nu este încă disponibilă.
+                </p>
+                <div className="rounded-lg border border-border bg-muted/40 p-3 text-sm">
+                  <p className="flex items-center gap-2 font-medium text-foreground mb-1">
+                    <Info className="h-4 w-4 text-primary" />
+                    Cum o deblochezi?
+                  </p>
+                  {lockedInfo?.previousTitle ? (
+                    <p>
+                      Termină mai întâi lecția anterioară: <span className="font-semibold text-foreground">„{lockedInfo.previousTitle}"</span>.
+                    </p>
+                  ) : (
+                    <p>Termină lecția anterioară pentru a continua.</p>
+                  )}
+                  <p className="mt-2 text-muted-foreground">
+                    Alternativ, poți încerca o <span className="font-medium text-yellow-500">provocare de skip</span> — răspunzi corect la câteva întrebări și deblochezi lecția fără să o parcurgi pe cea anterioară.
+                  </p>
+                </div>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Înțeles</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (!lockedInfo) return;
+                const info = lockedInfo;
+                setLockedInfo(null);
+                setSkipDialog({ lessonId: info.lessonId, title: info.title, cooldownMs: info.cooldownMs });
+              }}
+              className="gap-1.5"
+            >
+              <Zap className="h-4 w-4" /> Încearcă skip challenge
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
