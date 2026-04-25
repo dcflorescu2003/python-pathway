@@ -208,6 +208,7 @@ const AppComponent = () => {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
+        <StartupReadyMarker />
         <PushNotificationsProvider>
         <TooltipProvider>
           <Toaster />
