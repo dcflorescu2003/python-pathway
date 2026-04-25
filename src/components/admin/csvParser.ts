@@ -194,7 +194,7 @@ function rowToExercise(row: Record<string, string>): ParsedExercise {
       break;
     }
     case "truefalse": {
-      ex.statement = row.statement || row.question || "";
+      ex.statement = preserveLineBreaks(row.statement || row.question || "");
       ex.question = row.question?.trim() || ex.statement;
       if (!ex.statement) { ex.error = "Afirmație lipsă"; break; }
       const val = row.is_true?.toLowerCase().trim();
