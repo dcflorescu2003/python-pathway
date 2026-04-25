@@ -277,7 +277,7 @@ const ClassAnalytics = ({ classId, className: clsName }: Props) => {
         .from("test_assignments")
         .select("id, test_id, tests(title)")
         .eq("class_id", classId);
-      if (!assignments || assignments.length === 0) return { submissions: [], answers: [] };
+      if (!assignments || assignments.length === 0) return { submissions: [], answers: [], sourceTitles: {} as Record<string, string> };
 
       const assignmentIds = assignments.map((a) => a.id);
       const { data: submissions } = await supabase
@@ -286,7 +286,7 @@ const ClassAnalytics = ({ classId, className: clsName }: Props) => {
         .in("assignment_id", assignmentIds)
         .not("submitted_at", "is", null);
 
-      if (!submissions || submissions.length === 0) return { submissions: [], answers: [] };
+      if (!submissions || submissions.length === 0) return { submissions: [], answers: [], sourceTitles: {} as Record<string, string> };
 
       const submissionIds = submissions.map((s) => s.id);
       const { data: answers } = await supabase
@@ -294,12 +294,45 @@ const ClassAnalytics = ({ classId, className: clsName }: Props) => {
         .select("*, test_items(source_type, source_id, custom_data)")
         .in("submission_id", submissionIds);
 
+      // Resolve real titles for items coming from lessons (exercise / eval_exercise) and problems
+      const exerciseIds = new Set<string>();
+      const problemIds = new Set<string>();
+      (answers || []).forEach((a: any) => {
+        const it = a.test_items;
+        if (!it || !it.source_id) return;
+        if (it.source_type === "exercise") exerciseIds.add(it.source_id);
+        else if (it.source_type === "problem") problemIds.add(it.source_id);
+      });
+
+      const sourceTitles: Record<string, string> = {};
+      if (exerciseIds.size > 0) {
+        const ids = Array.from(exerciseIds);
+        const [{ data: exData }, { data: evalData }] = await Promise.all([
+          supabase.from("exercises").select("id, question, statement").in("id", ids),
+          supabase.from("eval_exercises").select("id, question, statement").in("id", ids),
+        ]);
+        [...(exData || []), ...(evalData || [])].forEach((e: any) => {
+          const txt = (e.question || e.statement || "").trim();
+          if (txt) sourceTitles[e.id] = txt;
+        });
+      }
+      if (problemIds.size > 0) {
+        const { data: pData } = await supabase
+          .from("problems")
+          .select("id, title, description")
+          .in("id", Array.from(problemIds));
+        (pData || []).forEach((p: any) => {
+          sourceTitles[p.id] = (p.title || p.description || "").trim();
+        });
+      }
+
       return {
         submissions: submissions.map((s) => ({
           ...s,
           test_title: assignments.find((a) => a.id === s.assignment_id)?.tests?.title || "Test",
         })),
         answers: answers || [],
+        sourceTitles,
       };
     },
     enabled: studentIds.length > 0,
@@ -307,6 +340,7 @@ const ClassAnalytics = ({ classId, className: clsName }: Props) => {
 
   const submissions = testData?.submissions || [];
   const answers = testData?.answers || [];
+  const sourceTitles = testData?.sourceTitles || {};
 
   // Build a map of lesson_id -> exercise count for score normalization
   const exerciseCountMap = useMemo(() => {
