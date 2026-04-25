@@ -376,17 +376,13 @@ const ClassAnalytics = ({ classId, className: clsName }: Props) => {
     return Object.values(lessonScores)
       .map((ls) => {
         const avg = Math.round(ls.total / ls.count);
-        let name = ls.id;
-        for (const ch of chapters) {
-          const lesson = ch.lessons.find((l) => l.id === ls.id);
-          if (lesson) { name = lesson.title; break; }
-        }
+        const name = resolveLessonTitle(ls.id, chapters, manualLessonTitles);
         return { name, avgScore: avg, attempts: ls.count, id: ls.id };
       })
       .filter((l) => l.avgScore < 80)
       .sort((a, b) => a.avgScore - b.avgScore)
       .slice(0, 8);
-  }, [completedLessons, chapters]);
+  }, [completedLessons, chapters, manualLessonTitles]);
 
   const testPerformance = useMemo(() => {
     const testMap: Record<string, { title: string; scores: number[] }> = {};
