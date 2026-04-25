@@ -12,6 +12,7 @@ import { supabase } from "@/integrations/supabase/client";
 import ChallengeAssigner from "./ChallengeAssigner";
 import ClassAnalytics from "./ClassAnalytics";
 import TestResults from "./TestResults";
+import StudentCompetencyView from "./StudentCompetencyView";
 import { ArrowLeft, Copy, Trash2, Target, BookOpen, Code, Zap, Flame, CheckCircle, XCircle, ChevronDown, ChevronRight, BarChart3, FileText, Clock, Users } from "lucide-react";
 import { toast } from "sonner";
 import { sortByDisplayName } from "@/lib/sortStudents";
