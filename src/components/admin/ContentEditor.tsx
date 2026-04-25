@@ -206,10 +206,15 @@ const ContentEditor = () => {
 
   const createLesson = async (chapterId: string) => {
     if (!lessonForm.title.trim()) return;
-    const chapter = chapters?.find(c => c.id === chapterId);
-    const realLessons = chapter ? chapter.lessons.filter(l => !l.id.endsWith("f")) : [];
-    const maxSort = realLessons.length > 0 ? Math.max(...realLessons.map(l => (l as any).sortOrder ?? 0)) : -1;
-    const sortOrder = maxSort + 1;
+    // Compute next sort_order from DB (cached chapter data doesn't expose sort_order)
+    const { data: maxRow } = await supabase
+      .from("lessons")
+      .select("sort_order")
+      .eq("chapter_id", chapterId)
+      .order("sort_order", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    const sortOrder = ((maxRow?.sort_order as number | undefined) ?? -1) + 1;
     const newId = `${chapterId}-l${Date.now()}`;
     const { error } = await supabase.from("lessons").insert({
       id: newId, chapter_id: chapterId, title: lessonForm.title.trim(), description: lessonForm.description.trim(),
