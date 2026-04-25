@@ -1,39 +1,46 @@
-## Plan
+## Problemă
 
-1. Audit and harden the email/password auth flow
-- Keep the normal login path strictly separated from the forgot-password path.
-- Refactor the auth screen so the recovery modal has its own explicit submit handler and cannot be triggered by any implicit form submission, autofill side effect, or stale state.
-- Add defensive resets when the recovery modal opens/closes so the recovery email action only runs after a deliberate click on the recovery submit button.
+Când utilizatorul deschide tab-ul **Cont** imediat după un update (sau cold start), ecranul rămâne negru. Dacă revine ulterior, totul funcționează normal.
 
-2. Add temporary diagnostics around auth actions
-- Instrument the login and recovery handlers so we can see exactly which action fires at runtime: sign-in vs password recovery.
-- Log the auth event locally in a safe way during testing so we can confirm whether a login tap is incorrectly reaching the recovery code.
-- Remove or reduce the extra diagnostics after confirming the fix.
+## Cauza
 
-3. Verify backend auth email routing
-- Inspect the project’s managed auth email configuration and confirm that password recovery emails are only mapped to recovery events.
-- If there is a custom auth email hook/template issue, correct that mapping so sign-in attempts never generate recovery emails.
-- If the project is still using default auth emails, verify the backend auth settings for any unexpected recovery-trigger behavior.
+În `src/pages/AuthPage.tsx`:
 
-4. Validate end-to-end
-- Test three cases separately:
-  - normal email/password login
-  - wrong password login
-  - explicit forgot-password flow
-- Confirm that only the explicit forgot-password flow sends a recovery email and that normal login sends none.
+```ts
+const { user, loading: authLoading } = useAuth(); // authLoading e ignorat!
+const wasLoggedInOnMount = useState(() => !!user)[0];
 
-## What I already confirmed
-- The current frontend login code uses `signInWithPassword(...)` in `src/hooks/useAuth.tsx`.
-- The only place that calls `resetPasswordForEmail(...)` is the forgot-password form in `src/pages/AuthPage.tsx`.
-- I did not find any second recovery trigger elsewhere in the app code.
-- That means there is very likely either:
-  - an unintended UI/runtime trigger reaching the forgot-password handler, or
-  - a backend auth email-routing/configuration issue.
+useEffect(() => {
+  if (user && !wasLoggedInOnMount) {
+    navigate("/", { replace: true }); // ⚠ redirect spre Acasă
+  }
+}, [user, wasLoggedInOnMount, navigate]);
 
-## Technical details
-- Files most likely involved:
-  - `src/pages/AuthPage.tsx`
-  - `src/hooks/useAuth.tsx`
-  - managed auth email configuration in Lovable Cloud
-- No database schema changes should be needed.
-- The fix will focus on auth flow isolation, runtime tracing, and auth email configuration verification.
+if (user && wasLoggedInOnMount) return <AccountView />;
+// altfel cade în formularul de login
+```
+
+La un cold start după update, `useAuth` returnează inițial `user: null, loading: true` (sesiunea încă se restaurează). În acest moment:
+
+1. `wasLoggedInOnMount` se „îngheață" pe `false`.
+2. Componenta începe să randeze formularul de login (`motion.div` cu `initial opacity:0`).
+3. Câteva sute de ms mai târziu, sesiunea se restaurează → `user` devine truthy → effect-ul redirectează la `/`.
+4. Între timp `AnimatePresence` din `App.tsx` joacă tranziția de exit pe formular cu opacity 0 → ecran negru până când Acasă termină de încărcat.
+
+În plus, intenția utilizatorului (să vadă Contul) se pierde — e trimis la Acasă în loc să vadă `AccountView`.
+
+## Soluție
+
+În `src/pages/AuthPage.tsx`:
+
+1. **Așteaptă `authLoading`** înainte de a decide ce să randezi. Cât timp `authLoading === true`, returnează `<LoadingScreen />` (folosit deja în `Index.tsx`) în loc să cazi pe formularul de login.
+2. **Înlocuiește euristica `wasLoggedInOnMount`** cu o regulă simplă bazată pe starea curentă rezolvată:
+   - dacă `user` există → `<AccountView />`
+   - altfel → formularul de login
+3. **Mută redirect-ul după login** (de la formular spre Acasă) într-un `useEffect` separat care se declanșează doar la tranziția `null → user` provocată de submit-ul formularului (ținem un flag local `justSignedIn`), nu la simpla restaurare a sesiunii. Astfel intrarea pe `/auth` cu sesiune validă rămâne pe pagina Cont, iar login-ul nou tot redirectează spre Acasă, păstrând comportamentul actual.
+
+Rezultat: indiferent dacă sesiunea e deja încărcată sau încă se restaurează după update, utilizatorul vede mai întâi loaderul și apoi direct ecranul „Contul meu", fără flash negru și fără redirect nedorit la Acasă.
+
+## Fișiere afectate
+
+- `src/pages/AuthPage.tsx` — singurul fișier modificat.

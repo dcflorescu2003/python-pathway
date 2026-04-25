@@ -408,16 +408,21 @@ const AuthPage = () => {
   const [displayName, setDisplayName] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [justSignedIn, setJustSignedIn] = useState(false);
 
-  const wasLoggedInOnMount = useState(() => !!user)[0];
-
+  // After a fresh sign-in via the form, redirect to Home.
   useEffect(() => {
-    if (user && !wasLoggedInOnMount) {
+    if (user && justSignedIn) {
       navigate("/", { replace: true });
     }
-  }, [user, wasLoggedInOnMount, navigate]);
+  }, [user, justSignedIn, navigate]);
 
-  if (user && wasLoggedInOnMount) return <AccountView />;
+  // While auth is restoring (e.g. cold start after an app update), show a
+  // loader instead of flashing the login form / a black screen.
+  if (authLoading) return <LoadingScreen />;
+
+  // Session restored → show the account view directly.
+  if (user) return <AccountView />;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
