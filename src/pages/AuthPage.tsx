@@ -19,6 +19,7 @@ import AccountProfileTab from "@/components/account/AccountProfileTab";
 import StudentTab from "@/components/account/StudentTab";
 import TeacherClassesTab from "@/components/account/TeacherClassesTab";
 import TeacherTestsTab from "@/components/account/TeacherTestsTab";
+import LoadingScreen from "@/components/states/LoadingScreen";
 
 const AccountView = () => {
   const navigate = useNavigate();
