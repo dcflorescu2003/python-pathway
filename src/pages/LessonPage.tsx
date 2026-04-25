@@ -45,8 +45,10 @@ class ExerciseErrorBoundary extends React.Component<
 const LessonPage = () => {
   const { lessonId } = useParams();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const { progress, completeLesson, loseLife, setLivesFromReward, recordActivity, streakJustIncreased, newStreakCount, dismissStreakCelebration } = useProgress();
   const activityRecordedRef = useRef(false);
+  const competencyResultsRef = useRef<CompetencyItemResult[]>([]);
   const { data: chapters, isLoading } = useChapters();
 
   const lesson = chapters?.flatMap((c) => c.lessons).find((l) => l.id === lessonId);
