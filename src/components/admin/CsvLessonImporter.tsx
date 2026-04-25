@@ -2,9 +2,10 @@ import { useState, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { Upload, FileText, AlertCircle, Check, Download } from "lucide-react";
+import { Upload, FileText, AlertCircle, Check, Download, BookOpen } from "lucide-react";
 import { toast } from "sonner";
 import { parseLessonCSV, exerciseToDbRow, getLessonTemplateCSV, getContentLessonTemplateCSV, downloadCSV, CONTENT_TYPES, EVAL_TYPES, type ParsedExercise } from "./csvParser";
+import MicrocompetenciesReference from "./MicrocompetenciesReference";
 
 interface CsvLessonImporterProps {
   /** "content" for lessons+exercises tables, "eval" for eval_lessons+eval_exercises */
@@ -21,6 +22,7 @@ const typeLabels: Record<string, string> = {
 
 export default function CsvLessonImporter({ mode, chapterId, existingLessonCount, onSuccess }: CsvLessonImporterProps) {
   const [open, setOpen] = useState(false);
+  const [refOpen, setRefOpen] = useState(false);
   const [meta, setMeta] = useState<{ title: string; description?: string; xp_reward?: number } | null>(null);
   const [parsed, setParsed] = useState<ParsedExercise[]>([]);
   const [errors, setErrors] = useState<string[]>([]);
@@ -45,6 +47,7 @@ export default function CsvLessonImporter({ mode, chapterId, existingLessonCount
   const validExercises = parsed.filter(ex => !ex.error);
   const importableExercises = validExercises.filter(ex => allowedTypes.includes(ex.type));
   const skippedExercises = validExercises.filter(ex => !allowedTypes.includes(ex.type));
+  const totalCompetencyTags = importableExercises.reduce((acc, ex) => acc + (ex.competencies?.length || 0), 0);
 
   const handleImport = async () => {
     if (!meta || importableExercises.length === 0) return;
@@ -69,17 +72,20 @@ export default function CsvLessonImporter({ mode, chapterId, existingLessonCount
         if (error) throw error;
       }
 
-      // Create exercises
+      // Build exercise rows + capture id ↔ competency codes
       const table = mode === "eval" ? "eval_exercises" : "exercises";
       const prefix = mode === "eval" ? "eval-" : `${lessonId}-`;
-      const rows = importableExercises.map((ex, i) => exerciseToDbRow(ex, lessonId, i, prefix));
+      const rows = importableExercises.map((ex, i) => {
+        const dbRow = exerciseToDbRow(ex, lessonId, i, prefix);
+        return { dbRow, competencies: ex.competencies || [] };
+      });
 
-      const cleaned = rows.map(r => {
+      const cleaned = rows.map(({ dbRow }) => {
         if (mode === "content") {
-          const { solution, test_cases, ...rest } = r;
+          const { solution, test_cases, ...rest } = dbRow;
           return { ...rest, pairs: null };
         }
-        return r;
+        return dbRow;
       });
 
       if (cleaned.length > 0) {
@@ -87,7 +93,59 @@ export default function CsvLessonImporter({ mode, chapterId, existingLessonCount
         if (error) throw error;
       }
 
-      toast.success(`Lecție "${meta.title}" creată cu ${importableExercises.length} exerciții!`);
+      // ===== Map competency codes → microcompetency UUIDs and insert item_competencies =====
+      let mappingsCreated = 0;
+      const unknownCodes = new Set<string>();
+      const allCodes = Array.from(new Set(rows.flatMap(r => r.competencies)));
+
+      if (allCodes.length > 0) {
+        const { data: micros, error: microErr } = await supabase
+          .from("microcompetencies")
+          .select("id, code")
+          .in("code", allCodes);
+
+        if (microErr) {
+          toast.warning("Lecția a fost creată, dar nu am putut căuta competențele: " + microErr.message);
+        } else {
+          const codeToId = new Map((micros || []).map(m => [m.code.toUpperCase(), m.id]));
+          for (const c of allCodes) {
+            if (!codeToId.has(c.toUpperCase())) unknownCodes.add(c);
+          }
+
+          const mappingRows: { item_type: string; item_id: string; microcompetency_id: string; weight: number }[] = [];
+          for (const { dbRow, competencies } of rows) {
+            for (const code of competencies) {
+              const microId = codeToId.get(code.toUpperCase());
+              if (microId) {
+                mappingRows.push({
+                  item_type: "exercise",
+                  item_id: dbRow.id,
+                  microcompetency_id: microId,
+                  weight: 1.0,
+                });
+              }
+            }
+          }
+
+          if (mappingRows.length > 0) {
+            const { error: mapErr } = await supabase.from("item_competencies").insert(mappingRows);
+            if (mapErr) {
+              toast.warning("Exercițiile au fost create, dar maparea competențelor a eșuat: " + mapErr.message);
+            } else {
+              mappingsCreated = mappingRows.length;
+            }
+          }
+        }
+      }
+
+      let successMsg = `Lecție "${meta.title}" creată cu ${importableExercises.length} exerciții`;
+      if (mappingsCreated > 0) successMsg += ` și ${mappingsCreated} mapări de competențe`;
+      toast.success(successMsg + "!");
+
+      if (unknownCodes.size > 0) {
+        toast.warning(`Coduri necunoscute (ignorate): ${Array.from(unknownCodes).join(", ")}`);
+      }
+
       setOpen(false);
       setMeta(null);
       setParsed([]);
@@ -107,11 +165,12 @@ export default function CsvLessonImporter({ mode, chapterId, existingLessonCount
       </Button>
 
       <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) { setMeta(null); setParsed([]); setErrors([]); } }}>
-        <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
+        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Import lecție din CSV</DialogTitle>
             <DialogDescription>
-              Fișierul trebuie să conțină [META] și [EXERCISES].
+              Fișierul trebuie să conțină secțiunile <code className="text-primary">[META]</code> și <code className="text-primary">[EXERCISES]</code>.
+              Poți include și competențele direct în CSV.
             </DialogDescription>
           </DialogHeader>
 
@@ -132,11 +191,14 @@ export default function CsvLessonImporter({ mode, chapterId, existingLessonCount
             <div className="space-y-3">
               <div className="text-sm text-foreground font-medium">
                 {importableExercises.length} exerciții importabile / {parsed.length} total
+                {totalCompetencyTags > 0 && (
+                  <span className="ml-2 text-primary">• {totalCompetencyTags} mapări de competențe</span>
+                )}
               </div>
 
               {skippedExercises.length > 0 && (
                 <div className="text-xs text-amber-400 bg-amber-400/10 border border-amber-400/30 rounded p-2">
-                  ⚠ {skippedExercises.length} exerciții excluse (tipuri nepermise pentru lecții: {skippedExercises.map(e => typeLabels[e.type] || e.type).join(", ")})
+                  ⚠ {skippedExercises.length} exerciții excluse (tipuri nepermise: {skippedExercises.map(e => typeLabels[e.type] || e.type).join(", ")})
                 </div>
               )}
 
@@ -152,8 +214,13 @@ export default function CsvLessonImporter({ mode, chapterId, existingLessonCount
                     ) : (
                       <>
                         <Check className="h-3 w-3 text-primary shrink-0" />
-                        <span className="px-1.5 py-0.5 rounded bg-primary/10 text-primary font-medium">{typeLabels[ex.type] || ex.type}</span>
-                        <span className="truncate text-foreground">{ex.question}</span>
+                        <span className="px-1.5 py-0.5 rounded bg-primary/10 text-primary font-medium shrink-0">{typeLabels[ex.type] || ex.type}</span>
+                        <span className="truncate text-foreground flex-1">{ex.question}</span>
+                        {ex.competencies && ex.competencies.length > 0 && (
+                          <span className="font-mono text-[10px] text-primary/80 bg-primary/5 border border-primary/20 px-1 rounded shrink-0">
+                            {ex.competencies.join(",")}
+                          </span>
+                        )}
                       </>
                     )}
                   </div>
@@ -172,19 +239,45 @@ export default function CsvLessonImporter({ mode, chapterId, existingLessonCount
             </div>
           )}
 
-          <div className="text-[10px] text-muted-foreground space-y-2 border-t border-border pt-3">
-            <div className="flex items-center justify-between">
-              <p className="font-medium">Format: [META] + [EXERCISES]</p>
-              <Button variant="link" size="sm" className="text-[10px] h-auto p-0" onClick={() => downloadCSV(mode === "content" ? getContentLessonTemplateCSV() : getLessonTemplateCSV(), "template-lectie.csv")}>
-                <Download className="h-3 w-3 mr-1" />Descarcă template
-              </Button>
+          <div className="text-xs text-muted-foreground space-y-2 border-t border-border pt-3">
+            <div className="flex items-center justify-between gap-2">
+              <p className="font-medium text-foreground">Format CSV</p>
+              <div className="flex gap-1">
+                <Button variant="link" size="sm" className="text-[10px] h-auto p-0" onClick={() => setRefOpen(true)}>
+                  <BookOpen className="h-3 w-3 mr-1" />Vezi microcompetențele
+                </Button>
+                <Button variant="link" size="sm" className="text-[10px] h-auto p-0" onClick={() => downloadCSV(mode === "content" ? getContentLessonTemplateCSV() : getLessonTemplateCSV(), "template-lectie.csv")}>
+                  <Download className="h-3 w-3 mr-1" />Template
+                </Button>
+              </div>
             </div>
-            <p>[META] conține: title, description, xp_reward</p>
-            <p>[EXERCISES] conține exercițiile (quiz, truefalse, fill, order, card, open_answer, problem)</p>
-            <p className="text-amber-400/80 font-medium">⚠ Dacă un câmp conține virgulă, încadrați-l cu ghilimele: "text cu, virgulă"</p>
+
+            <ul className="list-disc pl-4 space-y-1 text-[11px]">
+              <li><code className="text-primary">[META]</code>: <code>title</code>, <code>description</code>, <code>xp_reward</code></li>
+              <li><code className="text-primary">[EXERCISES]</code>: tipuri permise — quiz, truefalse, fill, order, card{mode === "eval" ? ", open_answer, problem" : ""}</li>
+              <li>
+                <strong className="text-foreground">Coloana <code className="text-primary">competencies</code></strong> (opțională): coduri de microcompetențe separate prin <code className="text-primary">;</code>
+                <br />
+                <span className="ml-0">Exemplu: <code className="text-primary">M61;M21;M29</code></span>
+              </li>
+              <li>Codurile necunoscute sunt ignorate cu avertisment — restul importului continuă.</li>
+              <li className="text-amber-400/80">Dacă un câmp conține virgulă, încadrează-l cu ghilimele: <code>"text cu, virgulă"</code></li>
+            </ul>
+
+            <div className="bg-secondary/30 border border-border rounded p-2 mt-2">
+              <p className="text-[10px] font-medium text-foreground mb-1">Exemplu rând cu competențe:</p>
+              <pre className="text-[10px] font-mono text-muted-foreground whitespace-pre-wrap break-all leading-tight">
+quiz,"Ce este o listă?",a,b,c,d,b,"explicație",,,,,,,,,M61;M21
+              </pre>
+              <p className="text-[10px] text-muted-foreground mt-1">
+                Ultima coloană = două competențe (M61 și M21) cu pondere egală.
+              </p>
+            </div>
           </div>
         </DialogContent>
       </Dialog>
+
+      <MicrocompetenciesReference open={refOpen} onOpenChange={setRefOpen} />
     </>
   );
 }

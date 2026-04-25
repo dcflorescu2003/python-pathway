@@ -14,6 +14,7 @@ export interface ParsedExercise {
   solution?: string | null;
   test_cases?: { input: string; expected_output: string; hidden: boolean }[] | null;
   xp?: number;
+  competencies?: string[];
   error?: string;
 }
 
@@ -147,6 +148,13 @@ function rowToExercise(row: Record<string, string>): ParsedExercise {
   const ex: ParsedExercise = { type, question: row.question || "" };
   ex.explanation = row.explanation || null;
   ex.xp = row.xp ? parseInt(row.xp) : 5;
+  // Parse competencies (codes separated by ;)
+  if (row.competencies) {
+    ex.competencies = row.competencies
+      .split(";")
+      .map(c => c.trim().toUpperCase())
+      .filter(c => c.length > 0);
+  }
 
   switch (type) {
     case "quiz": {
@@ -277,7 +285,7 @@ export function exerciseToDbRow(ex: ParsedExercise, lessonId: string, sortOrder:
 }
 
 export function generateExportCSV(exercises: any[]): string {
-  const headers = ["type", "question", "option_a", "option_b", "option_c", "option_d", "correct", "explanation", "code_template", "blanks", "lines", "statement", "is_true", "groups", "solution", "test_cases"];
+  const headers = ["type", "question", "option_a", "option_b", "option_c", "option_d", "correct", "explanation", "code_template", "blanks", "lines", "statement", "is_true", "groups", "solution", "test_cases", "competencies"];
   const escape = (v: string) => v.includes(",") || v.includes('"') || v.includes("\n") ? `"${v.replace(/"/g, '""')}"` : v;
 
   const rows = exercises.map(ex => {
@@ -301,6 +309,9 @@ export function generateExportCSV(exercises: any[]): string {
     if (ex.test_cases && Array.isArray(ex.test_cases)) {
       r.test_cases = ex.test_cases.map((tc: any) => `${tc.input}:${tc.expected_output}`).join("|");
     }
+    if (ex.competencies && Array.isArray(ex.competencies)) {
+      r.competencies = ex.competencies.join(";");
+    }
     return headers.map(h => escape(r[h] || "")).join(",");
   });
 
@@ -308,46 +319,46 @@ export function generateExportCSV(exercises: any[]): string {
 }
 
 export function getExercisesTemplateCSV(): string {
-  const headers = "type,question,option_a,option_b,option_c,option_d,correct,explanation,code_template,blanks,lines,statement,is_true,groups,solution,test_cases";
+  const headers = "type,question,option_a,option_b,option_c,option_d,correct,explanation,code_template,blanks,lines,statement,is_true,groups,solution,test_cases,competencies";
   const rows = [
-    'quiz,"Ce tip de date este 3.14?",int,float,str,bool,b,"3.14 este un număr zecimal, deci float",,,,,,,,',
-    'truefalse,,,,,,,"Python este un limbaj interpretat",,,,"Python este un limbaj interpretat",True,,,',
-    'fill,"Completează codul pentru a afișa mesajul:",,,,,,,"Se folosește funcția print()","print(___)",...print(\'Salut\')...;...print(\"Bună\")...,,,,,',
-    'order,"Ordonează pașii pentru a citi un fișier:",,,,,,,"f = open(\'date.txt\')|continut = f.read()|print(continut)|f.close()",,,,,1|2|3|4,',
-    'card,"**Liste în Python**\n\nListele sunt colecții ordonate de elemente.\n\n```python\nfructe = [\'măr\', \'pară\', \'banană\']\n```",,,,,,,,,,,,,,',
-    'open_answer,"Explică diferența dintre o listă și un tuplu în Python.",,,,,,"Răspunsul trebuie să menționeze mutabilitatea",,,,,,,,',
-    'problem,"Scrie o funcție care returnează suma numerelor pare dintr-o listă.",,,,,,,,"def suma_pare(lista):\n    return sum(x for x in lista if x % 2 == 0)",,,,,"[1,2,3,4]:6|[2,4,6]:12|[1,3,5]:0"',
+    'quiz,"Ce tip de date este 3.14?",int,float,str,bool,b,"3.14 este un număr zecimal, deci float",,,,,,,,,M21',
+    'truefalse,,,,,,,"Python este un limbaj interpretat",,,,"Python este un limbaj interpretat",True,,,,M21',
+    'fill,"Completează codul pentru a afișa mesajul:",,,,,,,"Se folosește funcția print()","print(___)",...print(\'Salut\')...;...print(\"Bună\")...,,,,,,M18',
+    'order,"Ordonează pașii pentru a citi un fișier:",,,,,,,"f = open(\'date.txt\')|continut = f.read()|print(continut)|f.close()",,,,,1|2|3|4,,M10',
+    'card,"**Liste în Python**\n\nListele sunt colecții ordonate de elemente.\n\n```python\nfructe = [\'măr\', \'pară\', \'banană\']\n```",,,,,,,,,,,,,,,M61',
+    'open_answer,"Explică diferența dintre o listă și un tuplu în Python.",,,,,,"Răspunsul trebuie să menționeze mutabilitatea",,,,,,,,,M61;M21',
+    'problem,"Scrie o funcție care returnează suma numerelor pare dintr-o listă.",,,,,,,,"def suma_pare(lista):\n    return sum(x for x in lista if x % 2 == 0)",,,,,"[1,2,3,4]:6|[2,4,6]:12|[1,3,5]:0",M61;M82',
   ];
   return [headers, ...rows].join("\n");
 }
 
 export function getContentLessonTemplateCSV(): string {
   return `[META]
-title,Introducere în Python
-description,Lecție introductivă despre bazele limbajului Python
+title,Liste în Python
+description,Lecție introductivă despre liste
 xp_reward,25
 [EXERCISES]
-type,question,option_a,option_b,option_c,option_d,correct,explanation,code_template,blanks,lines,statement,is_true,groups,solution,test_cases
-quiz,"Care este extensia fișierelor Python?",.java,.py,.js,.cpp,b,"Fișierele Python au extensia .py",,,,,,,,
-truefalse,,,,,,,"Python folosește indentarea pentru blocuri de cod",,,,Python folosește indentarea pentru a delimita blocurile de cod,True,,,
-fill,"Completează pentru a defini o variabilă:",,,,,,"Variabilele se definesc prin atribuire","___ = 10",x;numar;n,,,,,
-order,"Ordonează pașii unui program simplu:",,,,,,,,"x = 5|y = 3|suma = x + y|print(suma)",,,1|2|3|4,
-card,"**Tipuri de date de bază**\\n\\n- **int** – numere întregi\\n- **float** – numere zecimale\\n- **str** – șiruri de caractere\\n- **bool** – True / False",,,,,,,,,,,,,,`;
+type,question,option_a,option_b,option_c,option_d,correct,explanation,code_template,blanks,lines,statement,is_true,groups,solution,test_cases,competencies
+quiz,"Ce este o listă în Python?",Un șir,O colecție ordonată,Un dicționar,Un tuplu,b,"Listele sunt colecții ordonate și mutabile",,,,,,,,,M61
+truefalse,,,,,,,"Listele sunt mutabile în Python",,,,Listele sunt mutabile,True,,,,M61;M21
+fill,"Adaugă un element la listă:",,,,,,"append() adaugă la sfârșit","l.___(5)",append,,,,,,,M61
+order,"Ordonează pașii pentru a parcurge o listă:",,,,,,,,"l = [1,2,3]|for x in l:|    print(x)",,,1|2|3,,,M61
+card,"**Listele în Python**\\n\\nListele sunt colecții ordonate, mutabile, care pot conține orice tip de date.",,,,,,,,,,,,,,,M61`;
 }
 
 export function getLessonTemplateCSV(): string {
   return `[META]
-title,Introducere în Python
-description,Lecție introductivă despre bazele limbajului Python
+title,Liste în Python
+description,Lecție introductivă despre liste
 xp_reward,25
 [EXERCISES]
-type,question,option_a,option_b,option_c,option_d,correct,explanation,code_template,blanks,lines,statement,is_true,groups,solution,test_cases
-quiz,"Care este extensia fișierelor Python?",.java,.py,.js,.cpp,b,"Fișierele Python au extensia .py",,,,,,,,
-truefalse,,,,,,,"Python folosește indentarea pentru blocuri de cod",,,,Python folosește indentarea pentru a delimita blocurile de cod,True,,,
-fill,"Completează pentru a defini o variabilă:",,,,,,"Variabilele se definesc prin atribuire","___ = 10",x;numar;n,,,,,
-order,"Ordonează pașii unui program simplu:",,,,,,,,"x = 5|y = 3|suma = x + y|print(suma)",,,1|2|3|4,
-card,"**Tipuri de date de bază**\\n\\n- **int** – numere întregi\\n- **float** – numere zecimale\\n- **str** – șiruri de caractere\\n- **bool** – True / False",,,,,,,,,,,,,,
-open_answer,"De ce crezi că Python este popular printre începători?",,,,,,,,,,,,,,`;
+type,question,option_a,option_b,option_c,option_d,correct,explanation,code_template,blanks,lines,statement,is_true,groups,solution,test_cases,competencies
+quiz,"Ce este o listă în Python?",Un șir,O colecție ordonată,Un dicționar,Un tuplu,b,"Listele sunt colecții ordonate și mutabile",,,,,,,,,M61
+truefalse,,,,,,,"Listele sunt mutabile în Python",,,,Listele sunt mutabile,True,,,,M61;M21
+fill,"Adaugă un element la listă:",,,,,,"append() adaugă la sfârșit","l.___(5)",append,,,,,,,M61
+order,"Ordonează pașii pentru a parcurge o listă:",,,,,,,,"l = [1,2,3]|for x in l:|    print(x)",,,1|2|3,,,M61
+card,"**Listele în Python**\\n\\nListele sunt colecții ordonate, mutabile, care pot conține orice tip de date.",,,,,,,,,,,,,,,M61
+open_answer,"De ce sunt utile listele într-un program Python?",,,,,,,,,,,,,,,M61`;
 }
 
 export function downloadCSV(content: string, filename: string) {
