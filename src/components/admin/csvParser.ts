@@ -143,14 +143,35 @@ function parseCSVRows(text: string): { headers: string[]; rows: Record<string, s
   return { headers, rows };
 }
 
+/**
+ * Preserve single line breaks from CSV cells when rendering as Markdown.
+ * Markdown collapses single \n into spaces, so we convert each \n into
+ * a hard line break ("  \n"), unless the line is already part of a
+ * fenced code block (```), to avoid breaking ```python ... ```.
+ */
+function preserveLineBreaks(text: string): string {
+  if (!text) return text;
+  // Normalize \r\n
+  let t = text.replace(/\r\n/g, "\n");
+  // Split by fenced code blocks so we don't touch their internals
+  const parts = t.split(/(```[\s\S]*?```)/g);
+  return parts
+    .map((part, i) => {
+      if (i % 2 === 1) return part; // inside ``` block, keep as-is
+      // Add two spaces before each \n that isn't already preceded by spaces
+      return part.replace(/([^ \n])\n(?!\n)/g, "$1  \n");
+    })
+    .join("");
+}
+
 function rowToExercise(row: Record<string, string>): ParsedExercise {
   const type = row.type?.toLowerCase().trim();
   if (!type || !VALID_TYPES.includes(type)) {
-    return { type: type || "unknown", question: row.question || "", error: `Tip invalid: "${type}"` };
+    return { type: type || "unknown", question: preserveLineBreaks(row.question || ""), error: `Tip invalid: "${type}"` };
   }
 
-  const ex: ParsedExercise = { type, question: row.question || "" };
-  ex.explanation = row.explanation || null;
+  const ex: ParsedExercise = { type, question: preserveLineBreaks(row.question || "") };
+  ex.explanation = row.explanation ? preserveLineBreaks(row.explanation) : null;
   ex.xp = row.xp ? parseInt(row.xp) : 5;
   // Parse competencies (codes separated by ;)
   if (row.competencies) {
@@ -173,7 +194,7 @@ function rowToExercise(row: Record<string, string>): ParsedExercise {
       break;
     }
     case "truefalse": {
-      ex.statement = row.statement || row.question || "";
+      ex.statement = preserveLineBreaks(row.statement || row.question || "");
       ex.question = row.question?.trim() || ex.statement;
       if (!ex.statement) { ex.error = "Afirmație lipsă"; break; }
       const val = row.is_true?.toLowerCase().trim();

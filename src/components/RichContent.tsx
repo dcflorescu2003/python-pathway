@@ -1,5 +1,6 @@
 import ReactMarkdown from "react-markdown";
 import rehypeRaw from "rehype-raw";
+import remarkBreaks from "remark-breaks";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { vscDarkPlus } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { cn } from "@/lib/utils";
@@ -33,6 +34,7 @@ const RichContent = ({ children, className, inline }: RichContentProps) => {
       )}
     >
       <ReactMarkdown
+        remarkPlugins={[remarkBreaks]}
         rehypePlugins={[rehypeRaw]}
         components={{
           // react-markdown v9+: no `inline` prop. Detect block via language-* class or newline.
