@@ -243,6 +243,47 @@ export default function CsvLessonImporter({ mode, chapterId, existingLessonCount
                 </div>
               )}
 
+              {competencyAggregate.length > 0 && (
+                <div className="rounded border border-primary/20 bg-primary/5 p-2.5 space-y-1.5">
+                  <p className="text-[11px] font-medium text-foreground flex items-center gap-1">
+                    <Sparkles className="h-3 w-3 text-primary" />
+                    Competențe detectate în această lecție
+                    <span className="text-muted-foreground font-normal">
+                      ({competencyAggregate.length} unice
+                      {unknownCodesPreview.length > 0 && `, ${unknownCodesPreview.length} necunoscute`})
+                    </span>
+                  </p>
+                  <TooltipProvider delayDuration={150}>
+                    <div className="flex flex-wrap gap-1">
+                      {competencyAggregate.map(([code, count]) => {
+                        const info = microInfo.get(code);
+                        const known = !!info;
+                        return (
+                          <Tooltip key={code}>
+                            <TooltipTrigger asChild>
+                              <span
+                                className={`font-mono text-[10px] px-1.5 py-0.5 rounded border cursor-help ${
+                                  known
+                                    ? "bg-primary/10 border-primary/30 text-primary"
+                                    : "bg-destructive/10 border-destructive/40 text-destructive"
+                                }`}
+                              >
+                                {code} <span className="opacity-60">×{count}</span>
+                              </span>
+                            </TooltipTrigger>
+                            <TooltipContent side="top" className="max-w-xs">
+                              {known
+                                ? <span className="text-xs">{info.title}</span>
+                                : <span className="text-xs text-destructive">Cod necunoscut — va fi ignorat la import</span>}
+                            </TooltipContent>
+                          </Tooltip>
+                        );
+                      })}
+                    </div>
+                  </TooltipProvider>
+                </div>
+              )}
+
               <div className="space-y-1 max-h-48 overflow-y-auto">
                 {parsed.map((ex, i) => (
                   <div key={i} className={`flex items-center gap-2 text-xs p-2 rounded border ${ex.error ? "border-destructive/50 bg-destructive/5" : "border-border bg-secondary/20"}`}>
@@ -258,9 +299,35 @@ export default function CsvLessonImporter({ mode, chapterId, existingLessonCount
                         <span className="px-1.5 py-0.5 rounded bg-primary/10 text-primary font-medium shrink-0">{typeLabels[ex.type] || ex.type}</span>
                         <span className="truncate text-foreground flex-1">{ex.question}</span>
                         {ex.competencies && ex.competencies.length > 0 && (
-                          <span className="font-mono text-[10px] text-primary/80 bg-primary/5 border border-primary/20 px-1 rounded shrink-0">
-                            {ex.competencies.join(",")}
-                          </span>
+                          <TooltipProvider delayDuration={150}>
+                            <div className="flex gap-0.5 shrink-0">
+                              {ex.competencies.map((c) => {
+                                const code = c.toUpperCase();
+                                const info = microInfo.get(code);
+                                const known = !!info;
+                                return (
+                                  <Tooltip key={code}>
+                                    <TooltipTrigger asChild>
+                                      <span
+                                        className={`font-mono text-[10px] px-1 rounded border cursor-help ${
+                                          known
+                                            ? "text-primary/80 bg-primary/5 border-primary/20"
+                                            : "text-destructive bg-destructive/10 border-destructive/30"
+                                        }`}
+                                      >
+                                        {code}
+                                      </span>
+                                    </TooltipTrigger>
+                                    <TooltipContent side="top" className="max-w-xs">
+                                      {known
+                                        ? <span className="text-xs">{info.title}</span>
+                                        : <span className="text-xs text-destructive">Cod necunoscut — va fi ignorat</span>}
+                                    </TooltipContent>
+                                  </Tooltip>
+                                );
+                              })}
+                            </div>
+                          </TooltipProvider>
                         )}
                       </>
                     )}
