@@ -78,10 +78,23 @@ const LessonPage = () => {
           const total = lesson.exercises.filter((e) => e.type !== "card").length;
           const percent = total === 0 ? 100 : Math.round((correctCount / total) * 100);
           completeLesson(lesson.id, lesson.xpReward, percent);
+          if (user && competencyResultsRef.current.length > 0) {
+            recordCompetencyScores(user.id, competencyResultsRef.current);
+            competencyResultsRef.current = [];
+          }
         } else {
           setCurrentIndex((i) => i + 1);
         }
         return;
+      }
+      // Track per-exercise result for competency scoring (skip cards)
+      if (exercise && exercise.id) {
+        competencyResultsRef.current.push({
+          item_type: "exercise",
+          item_id: exercise.id,
+          score: isCorrect ? 1 : 0,
+          max_score: 1,
+        });
       }
       if (isCorrect) {
         setCorrectCount((c) => c + 1);
@@ -101,7 +114,7 @@ const LessonPage = () => {
         }
       }
     },
-    [currentIndex, lesson, loseLife, correctCount, completeLesson, recordActivity]
+    [currentIndex, lesson, loseLife, correctCount, completeLesson, recordActivity, user, progress.isPremium, progress.lives]
   );
 
   const handleContinue = useCallback(() => {
