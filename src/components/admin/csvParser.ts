@@ -165,6 +165,9 @@ function rowToExercise(row: Record<string, string>): ParsedExercise {
 
   const ex: ParsedExercise = { type, question: preserveLineBreaks(row.question || "") };
   ex.explanation = row.explanation ? preserveLineBreaks(row.explanation) : null;
+  if (row.__col_warn) {
+    ex.error = `Număr greșit de coloane (${row.__col_warn}). Verifică virgulele extra/lipsă.`;
+  }
   ex.xp = row.xp ? parseInt(row.xp) : 5;
   // Parse competencies (codes separated by ;)
   if (row.competencies) {
