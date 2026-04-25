@@ -50,6 +50,39 @@ export default function CsvLessonImporter({ mode, chapterId, existingLessonCount
   const skippedExercises = validExercises.filter(ex => !allowedTypes.includes(ex.type));
   const totalCompetencyTags = importableExercises.reduce((acc, ex) => acc + (ex.competencies?.length || 0), 0);
 
+  // Aggregate competency codes for preview
+  const competencyAggregate = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const ex of importableExercises) {
+      for (const c of ex.competencies || []) {
+        const key = c.toUpperCase();
+        counts.set(key, (counts.get(key) || 0) + 1);
+      }
+    }
+    return Array.from(counts.entries()).sort((a, b) => b[1] - a[1]);
+  }, [importableExercises]);
+
+  // Fetch microcompetency titles for preview tooltips & "unknown" marking
+  const [microInfo, setMicroInfo] = useState<Map<string, { title: string; id: string }>>(new Map());
+  useEffect(() => {
+    const codes = competencyAggregate.map(([c]) => c);
+    if (codes.length === 0) { setMicroInfo(new Map()); return; }
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase
+        .from("microcompetencies")
+        .select("id, code, title")
+        .in("code", codes);
+      if (cancelled) return;
+      const m = new Map<string, { title: string; id: string }>();
+      (data || []).forEach((r: any) => m.set(r.code.toUpperCase(), { title: r.title, id: r.id }));
+      setMicroInfo(m);
+    })();
+    return () => { cancelled = true; };
+  }, [competencyAggregate]);
+
+  const unknownCodesPreview = competencyAggregate.filter(([c]) => !microInfo.has(c)).map(([c]) => c);
+
   const handleImport = async () => {
     if (!meta || importableExercises.length === 0) return;
     setImporting(true);
