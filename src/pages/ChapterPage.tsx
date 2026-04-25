@@ -25,6 +25,68 @@ import ConfettiCanvas from "@/components/ConfettiCanvas";
 const COOLDOWN_KEY_PREFIX = "pyro-skip-cooldown:";
 const CHAPTER_DONE_KEY_PREFIX = "pyro-chapter-done-celebrated:";
 
+type LessonSection = "start" | "build" | "master";
+
+const getSectionBoundaries = (total: number) => {
+  const startEnd = Math.ceil(total / 3);
+  const buildEnd = startEnd + Math.ceil((total - startEnd) / 2);
+  return { startEnd, buildEnd };
+};
+
+const SECTION_META: Record<LessonSection, { label: string; subtitle: string; Icon: typeof Sparkles; colorClass: string; glowClass: string; borderClass: string }> = {
+  start: {
+    label: "Start",
+    subtitle: "Primii pași în capitol",
+    Icon: Sparkles,
+    colorClass: "text-primary",
+    glowClass: "bg-primary/15",
+    borderClass: "border-primary/40",
+  },
+  build: {
+    label: "Build",
+    subtitle: "Construim pe ce am învățat",
+    Icon: Hammer,
+    colorClass: "text-accent",
+    glowClass: "bg-accent/15",
+    borderClass: "border-accent/40",
+  },
+  master: {
+    label: "Master",
+    subtitle: "Provocarea finală",
+    Icon: Crown,
+    colorClass: "text-yellow-500",
+    glowClass: "bg-yellow-500/15",
+    borderClass: "border-yellow-500/40",
+  },
+};
+
+const SectionDivider = ({ section, isFirst }: { section: LessonSection; isFirst: boolean }) => {
+  const meta = SECTION_META[section];
+  const Icon = meta.Icon;
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: -8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.35 }}
+      className={`w-full max-w-md ${isFirst ? "mt-2 mb-3" : "mt-10 mb-3"}`}
+    >
+      <div className="flex items-center gap-3">
+        <div className="h-px flex-1 bg-gradient-to-r from-transparent to-border" />
+        <div className={`flex h-11 w-11 items-center justify-center rounded-full border-2 ${meta.borderClass} ${meta.glowClass}`}>
+          <Icon className={`h-5 w-5 ${meta.colorClass}`} />
+        </div>
+        <div className="h-px flex-1 bg-gradient-to-l from-transparent to-border" />
+      </div>
+      <div className="mt-2 text-center">
+        <p className={`text-xs font-mono uppercase tracking-[0.25em] font-bold ${meta.colorClass}`}>
+          {meta.label}
+        </p>
+        <p className="text-xs text-muted-foreground mt-0.5">{meta.subtitle}</p>
+      </div>
+    </motion.div>
+  );
+};
+
 const ChapterPage = () => {
   const { chapterId } = useParams();
   const navigate = useNavigate();
