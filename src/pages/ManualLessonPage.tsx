@@ -1,8 +1,10 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 import type { Exercise } from "@/hooks/useChapters";
+import { useAuth } from "@/hooks/useAuth";
+import { recordCompetencyScores, type CompetencyItemResult } from "@/lib/competencyTracking";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
