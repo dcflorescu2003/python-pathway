@@ -86,22 +86,18 @@ function parseCSVLine(line: string, sep: string): string[] {
 
 /**
  * Auto-repair a CSV row that has more fields than headers.
- * Strategy: merge excess fields back into the longest text column
- * (likely question, explanation, or statement that contained unquoted commas).
+ * Strategy: merge excess fields back into the most likely text column.
+ * Priority order (least destructive first): explanation, question, statement, code_template.
+ * code_template is last because merging code with commas breaks syntax.
  */
 function autoRepairRow(values: string[], headerCount: number, headers: string[]): string[] {
   if (values.length <= headerCount) return values;
 
-  const textCols = ["question", "explanation", "statement", "code_template"];
-  // Find the rightmost text column index — that's the most likely split point
-  let bestIdx = -1;
-  for (const col of textCols) {
-    const idx = headers.indexOf(col);
-    if (idx !== -1 && idx > bestIdx) bestIdx = idx;
-  }
+  // Try in this order — explanation/question are most often the culprit
+  // for unquoted commas. code_template is last (would corrupt code).
+  const tryOrder = ["explanation", "question", "statement", "code_template"];
 
-  // Try each text column from right to left: merge excess fields at that position
-  for (const col of [...textCols].reverse()) {
+  for (const col of tryOrder) {
     const idx = headers.indexOf(col);
     if (idx === -1 || idx >= values.length) continue;
 
@@ -110,13 +106,6 @@ function autoRepairRow(values: string[], headerCount: number, headers: string[])
     const merged = values.slice(idx, idx + excess + 1).join(",");
     const repaired = [...values.slice(0, idx), merged, ...values.slice(idx + excess + 1)];
     if (repaired.length === headerCount) return repaired;
-  }
-
-  // Fallback: just merge all excess into the last known text column
-  if (bestIdx !== -1) {
-    const excess = values.length - headerCount;
-    const merged = values.slice(bestIdx, bestIdx + excess + 1).join(",");
-    return [...values.slice(0, bestIdx), merged, ...values.slice(bestIdx + excess + 1)];
   }
 
   return values;
@@ -133,11 +122,15 @@ function parseCSVRows(text: string): { headers: string[]; rows: Record<string, s
   const headers = parseCSVLine(lines[0], sep).map(h => h.toLowerCase().trim());
   const rows = lines.slice(1).map(line => {
     let values = parseCSVLine(line, sep);
+    const originalLen = values.length;
     if (values.length > headers.length) {
       values = autoRepairRow(values, headers.length, headers);
     }
     const obj: Record<string, string> = {};
     headers.forEach((h, i) => { obj[h] = values[i] || ""; });
+    if (originalLen !== headers.length) {
+      obj.__col_warn = `${originalLen} coloane găsite, ${headers.length} așteptate`;
+    }
     return obj;
   });
   return { headers, rows };
@@ -172,6 +165,9 @@ function rowToExercise(row: Record<string, string>): ParsedExercise {
 
   const ex: ParsedExercise = { type, question: preserveLineBreaks(row.question || "") };
   ex.explanation = row.explanation ? preserveLineBreaks(row.explanation) : null;
+  if (row.__col_warn) {
+    ex.error = `Număr greșit de coloane (${row.__col_warn}). Verifică virgulele extra/lipsă.`;
+  }
   ex.xp = row.xp ? parseInt(row.xp) : 5;
   // Parse competencies (codes separated by ;)
   if (row.competencies) {
