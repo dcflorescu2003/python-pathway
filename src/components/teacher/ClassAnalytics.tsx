@@ -245,6 +245,17 @@ const ClassAnalytics = ({ classId, className: clsName }: Props) => {
   const { data: chapters = [] } = useChapters();
   const studentIds = useMemo(() => members.map((m) => m.student_id), [members]);
 
+  const { data: manualLessonTitles = {} } = useQuery({
+    queryKey: ["manual-lesson-titles"],
+    queryFn: async () => {
+      const { data } = await supabase.from("manual_lessons").select("id, title");
+      const map: Record<string, string> = {};
+      (data || []).forEach((l: any) => { map[l.id] = l.title; });
+      return map;
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+
   const { data: completedLessons = [] } = useQuery({
     queryKey: ["analytics-completed", classId, studentIds],
     queryFn: async () => {
