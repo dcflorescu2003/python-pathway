@@ -19,6 +19,7 @@ import AccountProfileTab from "@/components/account/AccountProfileTab";
 import StudentTab from "@/components/account/StudentTab";
 import TeacherClassesTab from "@/components/account/TeacherClassesTab";
 import TeacherTestsTab from "@/components/account/TeacherTestsTab";
+import LoadingScreen from "@/components/states/LoadingScreen";
 
 const AccountView = () => {
   const navigate = useNavigate();
@@ -408,16 +409,22 @@ const AuthPage = () => {
   const [displayName, setDisplayName] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [justSignedIn, setJustSignedIn] = useState(false);
 
-  const wasLoggedInOnMount = useState(() => !!user)[0];
-
+  // After a fresh sign-in via the form, redirect to Home.
   useEffect(() => {
-    if (user && !wasLoggedInOnMount) {
+    if (user && justSignedIn) {
       navigate("/", { replace: true });
     }
-  }, [user, wasLoggedInOnMount, navigate]);
+  }, [user, justSignedIn, navigate]);
 
-  if (user && wasLoggedInOnMount) return <AccountView />;
+  // While auth is restoring (e.g. cold start after an app update), show a
+  // loader instead of flashing the login form / a black screen.
+  if (authLoading) return <LoadingScreen />;
+
+  // Session restored → show the account view directly.
+  // (Skip during a fresh form sign-in — that flow redirects to Home instead.)
+  if (user && !justSignedIn) return <AccountView />;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -438,6 +445,7 @@ const AuthPage = () => {
         if (error) {
           toast.error(error.message === "Invalid login credentials" ? "Email sau parolă greșită." : error.message);
         } else {
+          setJustSignedIn(true);
           toast.success("Bine ai revenit! 👋");
           await new Promise(r => setTimeout(r, 300));
           navigate("/", { replace: true });
