@@ -15,6 +15,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import LoadingScreen from "@/components/states/LoadingScreen";
 import StreakCelebrationDialog from "@/components/StreakCelebrationDialog";
+import { useAuth } from "@/hooks/useAuth";
+import { recordCompetencyScores } from "@/lib/competencyTracking";
 
 const ProblemSolvePage = () => {
   const { problemId } = useParams();
