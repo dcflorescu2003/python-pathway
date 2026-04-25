@@ -1,70 +1,45 @@
-## Refactorizare import CSV lecții cu suport pentru competențe
+# Plan: CSV exemplu complet + competențe vizibile + fix erori frecvente
 
-### Scop
-La importul unei lecții din CSV, fiecare exercițiu poate include o listă de coduri de microcompetențe (ex: `M61;M21`). După inserarea exercițiilor în DB, se vor crea automat și mapările în `item_competencies` (greutate 1.0 pentru fiecare).
+## 1. Model CSV complet (toate tipurile de itemi)
 
-### Format CSV (nou)
+Înlocuiesc `getLessonTemplateCSV()` în `src/components/admin/csvParser.ts` cu un exemplu COMPLET care conține câte un rând valid pentru fiecare tip suportat: `card`, `quiz`, `truefalse`, `fill`, `order`, `match`*, `open_answer`, `problem`. Fiecare rând are:
 
-Adăugăm o **nouă coloană opțională** `competencies` în secțiunea `[EXERCISES]`:
-- Conține coduri de microcompetențe separate prin `;` (ex: `M61;M21;M29`)
-- Codurile invalide sunt afișate ca avertisment, dar nu blochează importul
-- Coloana lipsă sau goală = exercițiu fără mapare (comportament actual)
+- toate coloanele relevante completate corect,
+- comentarii inline (linii prefixate `#` care vor fi ignorate la parsare — adaug suport pentru asta în parser),
+- coloana `competencies` populată cu coduri reale (M1, M21, M61, M82, …),
+- exemple de blanks cu mai multe variante (`print('Salut')|print("Salut");valoare2`),
+- `order` cu `groups` (pentru linii interschimbabile),
+- `problem` cu `code_template`, `solution` și `test_cases`.
 
-Exemplu rând:
-```
-quiz,"Care e tipul lui 3.14?",int,float,str,bool,b,"...",,,,,,,,M21;M29
-```
+Apoi:
+- adaug în `CsvLessonImporter.tsx` un buton secundar **„Descarcă exemplu complet”** lângă „Vezi microcompetențele”, care livrează acest CSV.
+- afișez modelul și sub formă de bloc preformatat scurt în panoul de instrucțiuni (cu scroll), ca utilizatorul să-l vadă fără descărcare.
 
-### Modificări pe componente
+*Notă: `match` nu e încă în parser — dacă vrei suport, îl adăugăm separat. În exemplu îl includ doar dacă confirmi. Implicit îl exclud.
 
-**1. `src/components/admin/csvParser.ts`**
-- Adaug câmpul `competencies?: string[]` în `ParsedExercise`
-- În `rowToExercise`: parsez `row.competencies` → split pe `;`, trim, uppercase, filtrare gol
-- Adaug `competencies` în lista headers din `getContentLessonTemplateCSV`, `getLessonTemplateCSV`, `generateExportCSV`
-- Actualizez exemplele din template să includă coduri reale (M21, M29, M61 etc.)
+## 2. Afișarea competențelor detectate
 
-**2. `src/components/admin/CsvLessonImporter.tsx`**
-- După `INSERT` în `exercises`/`eval_exercises`: colectez perechile `(exercise_id, competency_codes[])`
-- Fac `SELECT id, code FROM microcompetencies WHERE code IN (...)` pentru a rezolva codurile la UUID-uri
-- `INSERT` în `item_competencies` cu `item_type='exercise'`, `weight=1.0`
-- Avertizez în toast cu numărul de mapări create + codurile necunoscute
-- În UI, în lista de exerciții parsate, afișez badge-uri cu codurile de competențe detectate (ex: `M21 M29`)
+În `CsvLessonImporter.tsx`:
+- după parsare, sub bara de sumar, adaug o secțiune compactă **„Competențe detectate în această lecție”** care listează codurile unice agregate (cu count exerciții pentru fiecare cod), ex: `M61 (3) · M21 (2) · M82 (1)`.
+- în lista de previzualizare a exercițiilor, badge-urile existente devin clickabile (tooltip cu denumirea microcompetenței, încărcată odată din `microcompetencies`).
+- coduri necunoscute (care nu există în DB) primesc badge roșu cu warning tooltip; deja le tratam în toast — acum sunt vizibile și inline înainte de import.
+- în mesajul toast de succes adaug rezumat: „X mapări create pentru Y microcompetențe distincte (Z coduri ignorate)”.
 
-**3. UI — instrucțiuni vizibile în dialog**
-Înlocuiesc footer-ul actual cu un panou explicativ care conține:
-- Format coloană `competencies`: `M21;M29;M61`
-- Linkul pentru descărcare template (rămâne)
-- Un buton secundar nou: **„Vezi lista microcompetențelor"** care deschide un sub-dialog cu tabel filtrabil (`cod | titlu | competență specifică`) — preluat din `microcompetencies`
-- Notă: codurile necunoscute sunt ignorate cu avertisment
+## 3. Fix „Erori frecvente în teste” (afișează slug-uri precum `c2-l2-e4`, `sum-two`)
 
-### Detalii tehnice
+Cauza: în `ClassAnalytics.tsx::frequentErrors`, când `source_type !== "custom"`, fallback-ul folosește `source_id` (slug intern) ca text al întrebării. Pentru itemii din lecții (`exercise`), eval bank (`exercise` în `eval_exercises`) și probleme (`problem`), nu se încarcă textul real.
 
-**Validare coduri**:
-- La parsing nu validăm (nu avem acces la DB), doar la submit
-- La submit: un singur SELECT pentru toate codurile unice din toată lecția
-- Codurile necunoscute apar într-un toast warning separat, dar importul continuă
+Fix:
+- modific query-ul `analytics-tests` ca după ce am `answers` cu `test_items(source_type, source_id, custom_data)`, să fac un al doilea fetch:
+  - `exercises` și `eval_exercises` pentru `source_id`-urile cu `source_type='exercise'` → folosesc `question` sau `statement`.
+  - `problems` pentru `source_type='problem'` → folosesc `title` (mai scurt decât description).
+- construiesc un map `{source_id → questionText}` și îl folosesc în `frequentErrors` în locul fallback-ului pe `source_id`.
+- dacă tot nu se găsește (item șters), afișez `"Item șters"` în loc de slug.
+- aplic același tratament în `exportPDF` (`frequentErrors` deja primește textul curățat, deci nu mai e nevoie de modificări acolo).
 
-**Mode `eval`**: aceeași logică, dar cu `item_type='exercise'` (mapările sunt pe ID-ul exercițiului din `eval_exercises`).
+## Rezumat fișiere modificate
+- `src/components/admin/csvParser.ts` — template CSV complet + suport linii comentariu (`#`)
+- `src/components/admin/CsvLessonImporter.tsx` — buton „Descarcă exemplu complet”, panou „Competențe detectate”, badge tooltips
+- `src/components/teacher/ClassAnalytics.tsx` — îmbogățire `answers` cu textul real al întrebărilor (lecție/eval/problemă)
 
-**ID-uri**: păstrez logica actuală — ID-ul exercițiului este generat înainte de insert, deci am perechile direct fără re-query.
-
-### Exemplu CSV complet (va fi în template descărcabil)
-
-```
-[META]
-title,Liste în Python
-description,Introducere în liste
-xp_reward,25
-[EXERCISES]
-type,question,option_a,option_b,option_c,option_d,correct,explanation,code_template,blanks,lines,statement,is_true,groups,solution,test_cases,competencies
-quiz,"Ce este o listă?",Un șir,O colecție ordonată,Un dicționar,Un tuplu,b,"Listele sunt colecții ordonate",,,,,,,,,M61
-truefalse,,,,,,,"Listele sunt mutabile",,,,Listele sunt mutabile,True,,,,M61;M21
-fill,"Adaugă un element:",,,,,,"append() adaugă la sfârșit","l.___(5)",append,,,,,,,M61
-```
-
-### Rezultat așteptat
-- La import, exercițiile primesc automat mapări de competențe
-- Profilul de competențe al elevului se umple corect după parcurgerea lecției
-- Profesorii pot vedea exact ce competențe acoperă fiecare lecție importată
-
-Confirmă-mi dacă formatul `M21;M29` e ce vrei (separator `;`, fără ponderi). Dacă e ok, aplic.
+Confirmă și aplic.
