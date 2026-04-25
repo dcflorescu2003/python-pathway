@@ -334,31 +334,31 @@ export function getExercisesTemplateCSV(): string {
 
 export function getContentLessonTemplateCSV(): string {
   return `[META]
-title,Introducere în Python
-description,Lecție introductivă despre bazele limbajului Python
+title,Liste în Python
+description,Lecție introductivă despre liste
 xp_reward,25
 [EXERCISES]
-type,question,option_a,option_b,option_c,option_d,correct,explanation,code_template,blanks,lines,statement,is_true,groups,solution,test_cases
-quiz,"Care este extensia fișierelor Python?",.java,.py,.js,.cpp,b,"Fișierele Python au extensia .py",,,,,,,,
-truefalse,,,,,,,"Python folosește indentarea pentru blocuri de cod",,,,Python folosește indentarea pentru a delimita blocurile de cod,True,,,
-fill,"Completează pentru a defini o variabilă:",,,,,,"Variabilele se definesc prin atribuire","___ = 10",x;numar;n,,,,,
-order,"Ordonează pașii unui program simplu:",,,,,,,,"x = 5|y = 3|suma = x + y|print(suma)",,,1|2|3|4,
-card,"**Tipuri de date de bază**\\n\\n- **int** – numere întregi\\n- **float** – numere zecimale\\n- **str** – șiruri de caractere\\n- **bool** – True / False",,,,,,,,,,,,,,`;
+type,question,option_a,option_b,option_c,option_d,correct,explanation,code_template,blanks,lines,statement,is_true,groups,solution,test_cases,competencies
+quiz,"Ce este o listă în Python?",Un șir,O colecție ordonată,Un dicționar,Un tuplu,b,"Listele sunt colecții ordonate și mutabile",,,,,,,,,M61
+truefalse,,,,,,,"Listele sunt mutabile în Python",,,,Listele sunt mutabile,True,,,,M61;M21
+fill,"Adaugă un element la listă:",,,,,,"append() adaugă la sfârșit","l.___(5)",append,,,,,,,M61
+order,"Ordonează pașii pentru a parcurge o listă:",,,,,,,,"l = [1,2,3]|for x in l:|    print(x)",,,1|2|3,,,M61
+card,"**Listele în Python**\\n\\nListele sunt colecții ordonate, mutabile, care pot conține orice tip de date.",,,,,,,,,,,,,,,M61`;
 }
 
 export function getLessonTemplateCSV(): string {
   return `[META]
-title,Introducere în Python
-description,Lecție introductivă despre bazele limbajului Python
+title,Liste în Python
+description,Lecție introductivă despre liste
 xp_reward,25
 [EXERCISES]
-type,question,option_a,option_b,option_c,option_d,correct,explanation,code_template,blanks,lines,statement,is_true,groups,solution,test_cases
-quiz,"Care este extensia fișierelor Python?",.java,.py,.js,.cpp,b,"Fișierele Python au extensia .py",,,,,,,,
-truefalse,,,,,,,"Python folosește indentarea pentru blocuri de cod",,,,Python folosește indentarea pentru a delimita blocurile de cod,True,,,
-fill,"Completează pentru a defini o variabilă:",,,,,,"Variabilele se definesc prin atribuire","___ = 10",x;numar;n,,,,,
-order,"Ordonează pașii unui program simplu:",,,,,,,,"x = 5|y = 3|suma = x + y|print(suma)",,,1|2|3|4,
-card,"**Tipuri de date de bază**\\n\\n- **int** – numere întregi\\n- **float** – numere zecimale\\n- **str** – șiruri de caractere\\n- **bool** – True / False",,,,,,,,,,,,,,
-open_answer,"De ce crezi că Python este popular printre începători?",,,,,,,,,,,,,,`;
+type,question,option_a,option_b,option_c,option_d,correct,explanation,code_template,blanks,lines,statement,is_true,groups,solution,test_cases,competencies
+quiz,"Ce este o listă în Python?",Un șir,O colecție ordonată,Un dicționar,Un tuplu,b,"Listele sunt colecții ordonate și mutabile",,,,,,,,,M61
+truefalse,,,,,,,"Listele sunt mutabile în Python",,,,Listele sunt mutabile,True,,,,M61;M21
+fill,"Adaugă un element la listă:",,,,,,"append() adaugă la sfârșit","l.___(5)",append,,,,,,,M61
+order,"Ordonează pașii pentru a parcurge o listă:",,,,,,,,"l = [1,2,3]|for x in l:|    print(x)",,,1|2|3,,,M61
+card,"**Listele în Python**\\n\\nListele sunt colecții ordonate, mutabile, care pot conține orice tip de date.",,,,,,,,,,,,,,,M61
+open_answer,"De ce sunt utile listele într-un program Python?",,,,,,,,,,,,,,,M61`;
 }
 
 export function downloadCSV(content: string, filename: string) {
