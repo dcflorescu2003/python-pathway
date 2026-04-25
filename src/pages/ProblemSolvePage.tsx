@@ -76,6 +76,13 @@ const ProblemSolvePage = () => {
     const passed = testResults.filter((r) => r.passed).length;
     const total = testResults.length;
 
+    // Track competency mastery (proportional to passed tests)
+    if (user && total > 0) {
+      recordCompetencyScores(user.id, [
+        { item_type: "problem", item_id: problem.id, score: passed, max_score: total },
+      ]);
+    }
+
     if (passed === total) {
       const isRedo = solved;
       const xpGained = isRedo ? 3 : problem.xpReward;
