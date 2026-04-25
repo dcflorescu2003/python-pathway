@@ -209,7 +209,14 @@ export default function CsvImporter({ targetTable, lessonId, existingCount, exis
                       <>
                         <Check className="h-3 w-3 text-primary shrink-0" />
                         <span className="px-1.5 py-0.5 rounded bg-primary/10 text-primary font-medium">{typeLabels[ex.type] || ex.type}</span>
-                        <span className="truncate text-foreground">{ex.question}</span>
+                        <span className="truncate text-foreground flex-1">{ex.question}</span>
+                        {ex.competencies && ex.competencies.length > 0 && (
+                          <span className="flex flex-wrap gap-0.5 shrink-0">
+                            {ex.competencies.map((c) => (
+                              <span key={c} className="px-1 py-0.5 rounded bg-accent/30 text-accent-foreground text-[9px] font-mono">{c}</span>
+                            ))}
+                          </span>
+                        )}
                       </>
                     )}
                   </div>
