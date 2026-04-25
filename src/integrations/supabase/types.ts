@@ -123,6 +123,74 @@ export type Database = {
           },
         ]
       }
+      competencies_general: {
+        Row: {
+          code: string
+          created_at: string
+          description: string
+          id: string
+          sort_order: number
+          title: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          description?: string
+          id?: string
+          sort_order?: number
+          title: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          description?: string
+          id?: string
+          sort_order?: number
+          title?: string
+        }
+        Relationships: []
+      }
+      competencies_specific: {
+        Row: {
+          code: string
+          created_at: string
+          description: string
+          general_id: string
+          grade: number
+          id: string
+          sort_order: number
+          title: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          description?: string
+          general_id: string
+          grade?: number
+          id?: string
+          sort_order?: number
+          title: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          description?: string
+          general_id?: string
+          grade?: number
+          id?: string
+          sort_order?: number
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "competencies_specific_general_id_fkey"
+            columns: ["general_id"]
+            isOneToOne: false
+            referencedRelation: "competencies_general"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       completed_lessons: {
         Row: {
           completed_at: string
@@ -503,6 +571,44 @@ export type Database = {
           },
         ]
       }
+      item_competencies: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          item_id: string
+          item_type: string
+          microcompetency_id: string
+          weight: number
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          item_id: string
+          item_type: string
+          microcompetency_id: string
+          weight?: number
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          item_id?: string
+          item_type?: string
+          microcompetency_id?: string
+          weight?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "item_competencies_microcompetency_id_fkey"
+            columns: ["microcompetency_id"]
+            isOneToOne: false
+            referencedRelation: "microcompetencies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       lessons: {
         Row: {
           chapter_id: string
@@ -635,6 +741,50 @@ export type Database = {
           title?: string
         }
         Relationships: []
+      }
+      microcompetencies: {
+        Row: {
+          category: string
+          code: string
+          created_at: string
+          description: string
+          grade: number
+          id: string
+          sort_order: number
+          specific_id: string
+          title: string
+        }
+        Insert: {
+          category?: string
+          code: string
+          created_at?: string
+          description?: string
+          grade?: number
+          id?: string
+          sort_order?: number
+          specific_id: string
+          title: string
+        }
+        Update: {
+          category?: string
+          code?: string
+          created_at?: string
+          description?: string
+          grade?: number
+          id?: string
+          sort_order?: number
+          specific_id?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "microcompetencies_specific_id_fkey"
+            columns: ["specific_id"]
+            isOneToOne: false
+            referencedRelation: "competencies_specific"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       notifications: {
         Row: {
@@ -945,6 +1095,83 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      student_competency_notes: {
+        Row: {
+          created_at: string
+          id: string
+          manual_level: number | null
+          note: string
+          student_id: string
+          target_id: string
+          target_type: string
+          teacher_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          manual_level?: number | null
+          note?: string
+          student_id: string
+          target_id: string
+          target_type: string
+          teacher_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          manual_level?: number | null
+          note?: string
+          student_id?: string
+          target_id?: string
+          target_type?: string
+          teacher_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      student_competency_scores: {
+        Row: {
+          attempts: number
+          correct: number
+          id: string
+          last_updated: string
+          max_sum: number
+          microcompetency_id: string
+          score_sum: number
+          user_id: string
+        }
+        Insert: {
+          attempts?: number
+          correct?: number
+          id?: string
+          last_updated?: string
+          max_sum?: number
+          microcompetency_id: string
+          score_sum?: number
+          user_id: string
+        }
+        Update: {
+          attempts?: number
+          correct?: number
+          id?: string
+          last_updated?: string
+          max_sum?: number
+          microcompetency_id?: string
+          score_sum?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "student_competency_scores_microcompetency_id_fkey"
+            columns: ["microcompetency_id"]
+            isOneToOne: false
+            referencedRelation: "microcompetencies"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       suppressed_emails: {
         Row: {
@@ -1424,6 +1651,10 @@ export type Database = {
         Args: { p_notes?: string; p_request_id: string }
         Returns: undefined
       }
+      can_teacher_view_student: {
+        Args: { p_student_id: string; p_teacher_id: string }
+        Returns: boolean
+      }
       deactivate_teacher_mode: { Args: never; Returns: undefined }
       delete_email: {
         Args: { message_id: number; queue_name: string }
@@ -1434,6 +1665,21 @@ export type Database = {
         Returns: number
       }
       get_problem_solution: { Args: { p_id: string }; Returns: string }
+      get_student_competency_profile: {
+        Args: { p_user_id: string }
+        Returns: {
+          attempts: number
+          general_code: string
+          general_id: string
+          general_title: string
+          mastery: number
+          max_sum: number
+          score_sum: number
+          specific_code: string
+          specific_id: string
+          specific_title: string
+        }[]
+      }
       get_test_items_for_student: {
         Args: { p_assignment_id: string; p_variant: string }
         Returns: {
@@ -1478,6 +1724,10 @@ export type Database = {
           read_ct: number
         }[]
       }
+      recalculate_competency_scores: {
+        Args: { p_items: Json; p_user_id: string }
+        Returns: undefined
+      }
       reject_teacher_request: {
         Args: { p_notes?: string; p_request_id: string }
         Returns: undefined
@@ -1488,6 +1738,10 @@ export type Database = {
       submit_teacher_verification: {
         Args: { p_data?: Json; p_method: string }
         Returns: Json
+      }
+      teacher_owns_test_item: {
+        Args: { p_teacher_id: string; p_test_item_id: string }
+        Returns: boolean
       }
     }
     Enums: {
