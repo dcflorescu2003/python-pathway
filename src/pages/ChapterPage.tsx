@@ -3,7 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useChapters } from "@/hooks/useChapters";
 import { useProgress } from "@/hooks/useProgress";
 import { useAuth } from "@/hooks/useAuth";
-import { motion } from "framer-motion";
+import { motion, type Variants } from "framer-motion";
 import { ArrowLeft, Check, Lock, Play, BookOpen, Crown, Zap, Trophy, ArrowRight, Map, Info, Sparkles, Hammer } from "lucide-react";
 import {
   AlertDialog,
@@ -63,26 +63,78 @@ const SECTION_META: Record<LessonSection, { label: string; subtitle: string; Ico
 const SectionDivider = ({ section, isFirst }: { section: LessonSection; isFirst: boolean }) => {
   const meta = SECTION_META[section];
   const Icon = meta.Icon;
+  // Pentru prima secțiune animăm imediat (e deasupra fold-ului);
+  // pentru următoarele animăm când intră în viewport.
+  const animationProps = isFirst
+    ? { initial: "hidden" as const, animate: "visible" as const }
+    : {
+        initial: "hidden" as const,
+        whileInView: "visible" as const,
+        viewport: { once: true, margin: "-15% 0px -15% 0px" },
+      };
+
+  const containerVariants: Variants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: { duration: 0.5, ease: [0.16, 1, 0.3, 1], staggerChildren: 0.12, delayChildren: 0.05 },
+    },
+  };
+  const lineVariants: Variants = {
+    hidden: { scaleX: 0, opacity: 0 },
+    visible: { scaleX: 1, opacity: 1, transition: { duration: 0.6, ease: [0.16, 1, 0.3, 1] } },
+  };
+  const iconVariants: Variants = {
+    hidden: { scale: 0.4, opacity: 0, rotate: -25 },
+    visible: {
+      scale: 1,
+      opacity: 1,
+      rotate: 0,
+      transition: { type: "spring", stiffness: 260, damping: 16 },
+    },
+  };
+  const textVariants: Variants = {
+    hidden: { opacity: 0, y: 8 },
+    visible: { opacity: 1, y: 0, transition: { duration: 0.4, ease: [0.16, 1, 0.3, 1] } },
+  };
+
   return (
     <motion.div
-      initial={{ opacity: 0, y: -8 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.35 }}
+      {...animationProps}
+      variants={containerVariants}
       className={`w-full max-w-md ${isFirst ? "mt-2 mb-3" : "mt-10 mb-3"}`}
     >
       <div className="flex items-center gap-3">
-        <div className="h-px flex-1 bg-gradient-to-r from-transparent to-border" />
-        <div className={`flex h-11 w-11 items-center justify-center rounded-full border-2 ${meta.borderClass} ${meta.glowClass}`}>
+        <motion.div
+          variants={lineVariants}
+          style={{ originX: 1 }}
+          className="h-px flex-1 bg-gradient-to-r from-transparent to-border"
+        />
+        <motion.div
+          variants={iconVariants}
+          className={`relative flex h-11 w-11 items-center justify-center rounded-full border-2 ${meta.borderClass} ${meta.glowClass}`}
+        >
+          <motion.span
+            aria-hidden
+            className={`absolute inset-0 rounded-full ${meta.borderClass} border-2`}
+            initial={{ opacity: 0.6, scale: 1 }}
+            animate={{ opacity: 0, scale: 1.6 }}
+            transition={{ duration: 1.4, ease: "easeOut", delay: 0.25 }}
+          />
           <Icon className={`h-5 w-5 ${meta.colorClass}`} />
-        </div>
-        <div className="h-px flex-1 bg-gradient-to-l from-transparent to-border" />
+        </motion.div>
+        <motion.div
+          variants={lineVariants}
+          style={{ originX: 0 }}
+          className="h-px flex-1 bg-gradient-to-l from-transparent to-border"
+        />
       </div>
-      <div className="mt-2 text-center">
+      <motion.div variants={textVariants} className="mt-2 text-center">
         <p className={`text-xs font-mono uppercase tracking-[0.25em] font-bold ${meta.colorClass}`}>
           {meta.label}
         </p>
         <p className="text-xs text-muted-foreground mt-0.5">{meta.subtitle}</p>
-      </div>
+      </motion.div>
     </motion.div>
   );
 };
