@@ -39,7 +39,7 @@ const emptyExercise = (lessonId: string, index: number): Exercise => ({
   explanation: "",
 });
 
-const ExerciseEditor = ({ exercise, onSave, onCancel, lessonId, nextIndex }: Props) => {
+const ExerciseEditor = ({ exercise, onSave, onCancel, lessonId, nextIndex, competencyItemType }: Props) => {
   const [data, setData] = useState<Exercise>(
     exercise || emptyExercise(lessonId, nextIndex)
   );
