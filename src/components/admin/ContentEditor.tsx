@@ -409,7 +409,7 @@ const ContentEditor = () => {
                                               </DndContext>
 
                                               {editingExercise?.lessonId === lesson.id ? (
-                                                <ExerciseEditor exercise={editingExercise.exercise} onSave={handleSaveExercise} onCancel={() => setEditingExercise(null)} lessonId={lesson.id} nextIndex={lesson.exercises.length + 1} />
+                                                <ExerciseEditor exercise={editingExercise.exercise} onSave={handleSaveExercise} onCancel={() => setEditingExercise(null)} lessonId={lesson.id} nextIndex={lesson.exercises.length + 1} competencyItemType="exercise" />
                                               ) : (
                                                 <div className="flex items-center gap-2">
                                                   <Button variant="outline" size="sm" className="flex-1" onClick={() => setEditingExercise({ lessonId: lesson.id })}><Plus className="h-4 w-4 mr-1" /> Adaugă exercițiu</Button>
