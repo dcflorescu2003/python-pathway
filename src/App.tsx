@@ -10,11 +10,24 @@ import { App as CapApp } from "@capacitor/app";
 import { Browser } from "@capacitor/browser";
 import { SplashScreen as CapSplashScreen } from "@capacitor/splash-screen";
 import { supabase } from "@/integrations/supabase/client";
-import { AuthProvider } from "@/hooks/useAuth";
+import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import MobileLayout from "@/components/layout/MobileLayout";
 import LoadingScreen from "@/components/states/LoadingScreen";
 import SplashScreen from "@/components/states/SplashScreen";
 import { PushNotificationsProvider } from "@/hooks/usePushNotifications";
+
+// Mic component intern: marchează app-ul ca "ready" când auth a terminat de inițializat,
+// astfel încât watchdog-ul de pornire să nu mai declanșeze un reload de siguranță.
+const StartupReadyMarker = () => {
+  const { loading } = useAuth();
+  useEffect(() => {
+    if (!loading) {
+      sessionStorage.setItem("pyro-startup-ready", "1");
+      sessionStorage.removeItem("pyro-startup-reload-attempt");
+    }
+  }, [loading]);
+  return null;
+};
 
 const Index = lazy(() => import("./pages/Index"));
 const ChapterPage = lazy(() => import("./pages/ChapterPage"));
@@ -158,8 +171,8 @@ const AppComponent = () => {
     return () => clearTimeout(watchdog);
   }, []);
 
-  // Marcăm app-ul ca "ready" odată ce trecem de splash, ca watchdog-ul să nu mai dea reload
-  // la încărcările următoare din aceeași sesiune.
+  // Marcăm app-ul ca "ready" doar când trecem de splash ȘI nu suntem în plin reload.
+  // Marcajul real (legat de auth) se face în <StartupReadyMarker /> de mai jos.
   useEffect(() => {
     if (!showSplash) {
       sessionStorage.setItem("pyro-startup-ready", "1");
