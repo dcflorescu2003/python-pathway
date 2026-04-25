@@ -17,6 +17,8 @@ import LoadingScreen from "@/components/states/LoadingScreen";
 import StreakCelebrationDialog from "@/components/StreakCelebrationDialog";
 import RichContent from "@/components/RichContent";
 import WatchAdForLivesButton from "@/components/WatchAdForLivesButton";
+import { useAuth } from "@/hooks/useAuth";
+import { recordCompetencyScores, type CompetencyItemResult } from "@/lib/competencyTracking";
 
 import React from "react";
 
@@ -43,8 +45,10 @@ class ExerciseErrorBoundary extends React.Component<
 const LessonPage = () => {
   const { lessonId } = useParams();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const { progress, completeLesson, loseLife, setLivesFromReward, recordActivity, streakJustIncreased, newStreakCount, dismissStreakCelebration } = useProgress();
   const activityRecordedRef = useRef(false);
+  const competencyResultsRef = useRef<CompetencyItemResult[]>([]);
   const { data: chapters, isLoading } = useChapters();
 
   const lesson = chapters?.flatMap((c) => c.lessons).find((l) => l.id === lessonId);
@@ -74,10 +78,23 @@ const LessonPage = () => {
           const total = lesson.exercises.filter((e) => e.type !== "card").length;
           const percent = total === 0 ? 100 : Math.round((correctCount / total) * 100);
           completeLesson(lesson.id, lesson.xpReward, percent);
+          if (user && competencyResultsRef.current.length > 0) {
+            recordCompetencyScores(user.id, competencyResultsRef.current);
+            competencyResultsRef.current = [];
+          }
         } else {
           setCurrentIndex((i) => i + 1);
         }
         return;
+      }
+      // Track per-exercise result for competency scoring (skip cards)
+      if (exercise && exercise.id) {
+        competencyResultsRef.current.push({
+          item_type: "exercise",
+          item_id: exercise.id,
+          score: isCorrect ? 1 : 0,
+          max_score: 1,
+        });
       }
       if (isCorrect) {
         setCorrectCount((c) => c + 1);
@@ -97,7 +114,7 @@ const LessonPage = () => {
         }
       }
     },
-    [currentIndex, lesson, loseLife, correctCount, completeLesson, recordActivity]
+    [currentIndex, lesson, loseLife, correctCount, completeLesson, recordActivity, user, progress.isPremium, progress.lives]
   );
 
   const handleContinue = useCallback(() => {
@@ -111,11 +128,15 @@ const LessonPage = () => {
         const total = lesson.exercises.filter((e) => e.type !== "card").length;
         const percent = total === 0 ? 100 : Math.round((correctCount / total) * 100);
         completeLesson(lesson.id, lesson.xpReward, percent);
+        if (user && competencyResultsRef.current.length > 0) {
+          recordCompetencyScores(user.id, competencyResultsRef.current);
+          competencyResultsRef.current = [];
+        }
       }
     } else {
       setCurrentIndex((i) => i + 1);
     }
-  }, [currentIndex, correctCount, lives, lesson, feedback, completeLesson]);
+  }, [currentIndex, correctCount, lives, lesson, feedback, completeLesson, user]);
 
   if (isLoading || !chapters) return <LoadingScreen />;
   if (!lesson || !chapter) return <div className="p-8 text-center text-foreground">Lecție negăsită</div>;

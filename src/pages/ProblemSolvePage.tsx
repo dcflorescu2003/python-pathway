@@ -15,6 +15,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import LoadingScreen from "@/components/states/LoadingScreen";
 import StreakCelebrationDialog from "@/components/StreakCelebrationDialog";
+import { useAuth } from "@/hooks/useAuth";
+import { recordCompetencyScores } from "@/lib/competencyTracking";
 
 const ProblemSolvePage = () => {
   const { problemId } = useParams();
@@ -24,7 +26,7 @@ const ProblemSolvePage = () => {
   const { loading, running, runCode } = usePyodide();
   const { progress, completeLesson, recordActivity, streakJustIncreased, newStreakCount, dismissStreakCelebration } = useProgress();
   const { subscribed } = useSubscription();
-
+  const { user } = useAuth();
   const [code, setCode] = useState("");
   const [results, setResults] = useState<TestResult[] | null>(null);
   const [showHint, setShowHint] = useState(false);
@@ -73,6 +75,13 @@ const ProblemSolvePage = () => {
 
     const passed = testResults.filter((r) => r.passed).length;
     const total = testResults.length;
+
+    // Track competency mastery (proportional to passed tests)
+    if (user && total > 0) {
+      recordCompetencyScores(user.id, [
+        { item_type: "problem", item_id: problem.id, score: passed, max_score: total },
+      ]);
+    }
 
     if (passed === total) {
       const isRedo = solved;
