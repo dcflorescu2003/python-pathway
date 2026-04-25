@@ -122,11 +122,15 @@ function parseCSVRows(text: string): { headers: string[]; rows: Record<string, s
   const headers = parseCSVLine(lines[0], sep).map(h => h.toLowerCase().trim());
   const rows = lines.slice(1).map(line => {
     let values = parseCSVLine(line, sep);
+    const originalLen = values.length;
     if (values.length > headers.length) {
       values = autoRepairRow(values, headers.length, headers);
     }
     const obj: Record<string, string> = {};
     headers.forEach((h, i) => { obj[h] = values[i] || ""; });
+    if (originalLen !== headers.length) {
+      obj.__col_warn = `${originalLen} coloane găsite, ${headers.length} așteptate`;
+    }
     return obj;
   });
   return { headers, rows };
