@@ -90,19 +90,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
+    let resolved = false;
+    const markResolved = () => {
+      resolved = true;
+      setLoading(false);
+    };
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
       setUser(session?.user ?? null);
-      setLoading(false);
+      markResolved();
     });
 
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
-      setLoading(false);
-    });
+      markResolved();
+    }).catch(() => markResolved());
 
-    return () => subscription.unsubscribe();
+    // Plasă de siguranță: dacă restaurarea sesiunii rămâne blocată (rețea / storage),
+    // marcăm auth ca „gata" după 4s ca să nu rămână UI-ul în loading infinit.
+    const safety = setTimeout(() => {
+      if (!resolved) markResolved();
+    }, 4000);
+
+    return () => {
+      clearTimeout(safety);
+      subscription.unsubscribe();
+    };
   }, []);
 
   const signUp = async (email: string, password: string, displayName?: string) => {

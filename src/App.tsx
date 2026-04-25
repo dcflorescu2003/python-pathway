@@ -10,11 +10,24 @@ import { App as CapApp } from "@capacitor/app";
 import { Browser } from "@capacitor/browser";
 import { SplashScreen as CapSplashScreen } from "@capacitor/splash-screen";
 import { supabase } from "@/integrations/supabase/client";
-import { AuthProvider } from "@/hooks/useAuth";
+import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import MobileLayout from "@/components/layout/MobileLayout";
 import LoadingScreen from "@/components/states/LoadingScreen";
 import SplashScreen from "@/components/states/SplashScreen";
 import { PushNotificationsProvider } from "@/hooks/usePushNotifications";
+
+// Mic component intern: marchează app-ul ca "ready" când auth a terminat de inițializat,
+// astfel încât watchdog-ul de pornire să nu mai declanșeze un reload de siguranță.
+const StartupReadyMarker = () => {
+  const { loading } = useAuth();
+  useEffect(() => {
+    if (!loading) {
+      sessionStorage.setItem("pyro-startup-ready", "1");
+      sessionStorage.removeItem("pyro-startup-reload-attempt");
+    }
+  }, [loading]);
+  return null;
+};
 
 const Index = lazy(() => import("./pages/Index"));
 const ChapterPage = lazy(() => import("./pages/ChapterPage"));
@@ -114,9 +127,16 @@ const AppComponent = () => {
   });
 
   useEffect(() => {
-    // Hide native splash as soon as React mounts (covers black-screen gap on cold start / after update)
+    // Hide native splash as soon as React mounts (covers black-screen gap on cold start / after update).
+    // Apelăm de două ori: imediat și după un mic delay, ca să acoperim cazurile când pluginul
+    // nu e încă pregătit la primul tick.
     if (Capacitor.isNativePlatform()) {
       CapSplashScreen.hide({ fadeOutDuration: 250 }).catch(() => undefined);
+      const t = setTimeout(() => {
+        CapSplashScreen.hide({ fadeOutDuration: 250 }).catch(() => undefined);
+      }, 800);
+      // best-effort, nu returnăm clean-up (timeout scurt)
+      void t;
     }
 
     if (showSplash) {
@@ -127,6 +147,33 @@ const AppComponent = () => {
       return () => clearTimeout(timer);
     }
   }, [showSplash]);
+
+  // Watchdog de pornire: dacă după 7s aplicația încă nu a depășit splash-ul/loading-ul
+  // inițial, facem un singur reload controlat. Flag-ul previne bucle infinite.
+  useEffect(() => {
+    const RELOAD_FLAG = "pyro-startup-reload-attempt";
+    const READY_FLAG = "pyro-startup-ready";
+
+    // Marcăm că am pornit; flag-ul de reload este șters odată ce app-ul ajunge "ready".
+    const watchdog = setTimeout(() => {
+      const alreadyReloaded = sessionStorage.getItem(RELOAD_FLAG);
+      const isReady = sessionStorage.getItem(READY_FLAG);
+      if (isReady) return;
+      if (alreadyReloaded) return; // nu intrăm în buclă
+      sessionStorage.setItem(RELOAD_FLAG, String(Date.now()));
+      try {
+        window.location.reload();
+      } catch {
+        // ignore
+      }
+    }, 7000);
+
+    return () => clearTimeout(watchdog);
+  }, []);
+
+  // Marcajul de "ready" este făcut de <StartupReadyMarker /> când auth a terminat.
+  // Astfel watchdog-ul declanșează un reload doar dacă pornirea (auth/restore) este blocată,
+  // nu și pentru splash-ul vizual.
 
   // Listen for deep link events on native platforms
   useEffect(() => {
@@ -156,6 +203,7 @@ const AppComponent = () => {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
+        <StartupReadyMarker />
         <PushNotificationsProvider>
         <TooltipProvider>
           <Toaster />
