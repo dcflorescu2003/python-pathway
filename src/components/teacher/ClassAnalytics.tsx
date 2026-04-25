@@ -14,6 +14,7 @@ import {
   Download, FileText, FileSpreadsheet,
 } from "lucide-react";
 import { toast } from "sonner";
+import { resolveLessonTitle } from "@/lib/lessonTitles";
 
 interface Props {
   classId: string;
