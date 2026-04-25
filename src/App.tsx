@@ -171,14 +171,9 @@ const AppComponent = () => {
     return () => clearTimeout(watchdog);
   }, []);
 
-  // Marcăm app-ul ca "ready" doar când trecem de splash ȘI nu suntem în plin reload.
-  // Marcajul real (legat de auth) se face în <StartupReadyMarker /> de mai jos.
-  useEffect(() => {
-    if (!showSplash) {
-      sessionStorage.setItem("pyro-startup-ready", "1");
-      sessionStorage.removeItem("pyro-startup-reload-attempt");
-    }
-  }, [showSplash]);
+  // Marcajul de "ready" este făcut de <StartupReadyMarker /> când auth a terminat.
+  // Astfel watchdog-ul declanșează un reload doar dacă pornirea (auth/restore) este blocată,
+  // nu și pentru splash-ul vizual.
 
   // Listen for deep link events on native platforms
   useEffect(() => {
