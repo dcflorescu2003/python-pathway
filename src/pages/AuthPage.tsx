@@ -423,7 +423,8 @@ const AuthPage = () => {
   if (authLoading) return <LoadingScreen />;
 
   // Session restored → show the account view directly.
-  if (user) return <AccountView />;
+  // (Skip during a fresh form sign-in — that flow redirects to Home instead.)
+  if (user && !justSignedIn) return <AccountView />;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
