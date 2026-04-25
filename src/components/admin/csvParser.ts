@@ -337,33 +337,74 @@ export function getExercisesTemplateCSV(): string {
   return [headers, ...rows].join("\n");
 }
 
+/**
+ * Template lecție pentru capitole de conținut (lessons + exercises).
+ * Conține exemplu COMPLET cu fiecare tip permis: card, quiz, truefalse, fill, order.
+ * Liniile care încep cu # sunt comentarii și sunt ignorate la import.
+ */
 export function getContentLessonTemplateCSV(): string {
-  return `[META]
+  return `# ============================================================
+# TEMPLATE LECȚIE DE CONȚINUT (capitol normal)
+# Liniile care încep cu # sunt comentarii și sunt ignorate.
+# Coloana "competencies" e opțională: coduri micro separate prin ;
+# Exemple coduri: M21, M61, M82 (vezi butonul "Vezi microcompetențele")
+# ============================================================
+
+[META]
 title,Liste în Python
-description,Lecție introductivă despre liste
+description,Lecție introductivă despre liste — creare, accesare, modificare
 xp_reward,25
+
 [EXERCISES]
 type,question,option_a,option_b,option_c,option_d,correct,explanation,code_template,blanks,lines,statement,is_true,groups,solution,test_cases,competencies
-quiz,"Ce este o listă în Python?",Un șir,O colecție ordonată,Un dicționar,Un tuplu,b,"Listele sunt colecții ordonate și mutabile",,,,,,,,,M61
-truefalse,,,,,,,"Listele sunt mutabile în Python",,,,Listele sunt mutabile,True,,,,M61;M21
-fill,"Adaugă un element la listă:",,,,,,"append() adaugă la sfârșit","l.___(5)",append,,,,,,,M61
-order,"Ordonează pașii pentru a parcurge o listă:",,,,,,,,"l = [1,2,3]|for x in l:|    print(x)",,,1|2|3,,,M61
-card,"**Listele în Python**\\n\\nListele sunt colecții ordonate, mutabile, care pot conține orice tip de date.",,,,,,,,,,,,,,,M61`;
+# --- 1) CARD: teorie/explicație. Doar "question" contează, suportă Markdown. ---
+card,"**Listele în Python**\\n\\nListele sunt colecții ordonate, mutabile, care pot conține orice tip de date.\\n\\n\`\`\`python\\nfructe = ['măr', 'pară', 'banană']\\n\`\`\`",,,,,,,,,,,,,,,M61
+# --- 2) QUIZ: 4 opțiuni a-d, "correct" indică litera răspunsului corect. ---
+quiz,"Ce este o listă în Python?",Un șir imutabil,O colecție ordonată mutabilă,Un dicționar,Un tuplu,b,"Listele sunt ordonate și mutabile.",,,,,,,,,M61
+# --- 3) TRUEFALSE: completează "statement" și "is_true" (True/False). ---
+truefalse,,,,,,,"Listele permit modificarea elementelor după creare.",,,,Listele sunt mutabile,True,,,,M61;M21
+# --- 4) FILL: "code_template" cu ___ pentru spații; "blanks" = răspunsuri separate prin ; ---
+#       Variante alternative pentru același spațiu se separă prin | (ex: append|adauga).
+fill,"Adaugă elementul 5 la sfârșitul listei l:",,,,,,"Metoda append() adaugă la sfârșit.","l.___(5)",append,,,,,,,M61
+# --- 5) ORDER: "lines" separate prin |, ordinea corectă e cea scrisă. ---
+#       "groups" (opțional) marchează linii interschimbabile (același număr = orice ordine OK).
+order,"Ordonează pașii pentru a parcurge o listă:",,,,,,"Prima linie creează lista, apoi for, apoi print.",,,"l = [1,2,3]|for x in l:|    print(x)",,,1|2|3,,,M61`;
 }
 
+/**
+ * Template lecție pentru bancă de evaluare (eval_lessons + eval_exercises).
+ * Include în plus open_answer și problem.
+ */
 export function getLessonTemplateCSV(): string {
-  return `[META]
-title,Liste în Python
-description,Lecție introductivă despre liste
+  return `# ============================================================
+# TEMPLATE LECȚIE BANCĂ DE EVALUARE
+# Tipuri permise: quiz, truefalse, fill, order, card, open_answer, problem
+# Coloana "competencies" e opțională (coduri micro separate prin ;).
+# Liniile care încep cu # sunt comentarii.
+# ============================================================
+
+[META]
+title,Liste — Bancă evaluare
+description,Itemi de evaluare pentru capitolul Liste
 xp_reward,25
+
 [EXERCISES]
 type,question,option_a,option_b,option_c,option_d,correct,explanation,code_template,blanks,lines,statement,is_true,groups,solution,test_cases,competencies
-quiz,"Ce este o listă în Python?",Un șir,O colecție ordonată,Un dicționar,Un tuplu,b,"Listele sunt colecții ordonate și mutabile",,,,,,,,,M61
-truefalse,,,,,,,"Listele sunt mutabile în Python",,,,Listele sunt mutabile,True,,,,M61;M21
-fill,"Adaugă un element la listă:",,,,,,"append() adaugă la sfârșit","l.___(5)",append,,,,,,,M61
-order,"Ordonează pașii pentru a parcurge o listă:",,,,,,,,"l = [1,2,3]|for x in l:|    print(x)",,,1|2|3,,,M61
-card,"**Listele în Python**\\n\\nListele sunt colecții ordonate, mutabile, care pot conține orice tip de date.",,,,,,,,,,,,,,,M61
-open_answer,"De ce sunt utile listele într-un program Python?",,,,,,,,,,,,,,,M61`;
+# --- CARD (teorie scurtă, suportă Markdown) ---
+card,"**Recapitulare liste**\\n\\nO listă este ordonată și mutabilă.",,,,,,,,,,,,,,,M61
+# --- QUIZ ---
+quiz,"Ce returnează len([1,2,3])?",1,2,3,4,c,"len() returnează numărul de elemente.",,,,,,,,,M61
+# --- TRUEFALSE ---
+truefalse,,,,,,,"Tuplurile sunt mutabile.",,,,Tuplurile sunt mutabile,False,,,,M21
+# --- FILL: variante alternative separate prin | (ex: print('Salut')|print(\"Salut\")) ---
+fill,"Afișează pe ecran textul Salut:",,,,,,"Folosește funcția print().","___(\"Salut\")",print,,,,,,,M18
+# --- ORDER cu groups: liniile cu același group sunt interschimbabile ---
+order,"Ordonează deschiderea, citirea și închiderea unui fișier:",,,,,,,"f = open('date.txt')|continut = f.read()|f.close()",,,1|2|3,,,M10
+# --- OPEN_ANSWER: răspuns liber (corectare manuală sau AI) ---
+open_answer,"Explică, în 2-3 fraze, diferența dintre o listă și un tuplu.",,,,,,"Răspunsul ideal menționează mutabilitatea și sintaxa.",,,,,,,,,M61;M21
+# --- PROBLEM: cod Python, "solution" = referință, "test_cases" = input:output|input2:output2 ---
+#       Inputul poate fi reprezentare Python a argumentului (ex: [1,2,3,4]).
+problem,"Scrie funcția suma_pare(lista) care returnează suma numerelor pare din listă.",,,,,,,,"def suma_pare(lista):\\n    return sum(x for x in lista if x % 2 == 0)",,,,,"[1,2,3,4]:6|[2,4,6]:12|[1,3,5]:0",M61;M82`;
 }
 
 export function downloadCSV(content: string, filename: string) {
