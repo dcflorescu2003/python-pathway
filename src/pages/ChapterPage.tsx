@@ -4,7 +4,7 @@ import { useChapters } from "@/hooks/useChapters";
 import { useProgress } from "@/hooks/useProgress";
 import { useAuth } from "@/hooks/useAuth";
 import { motion } from "framer-motion";
-import { ArrowLeft, Check, Lock, Play, BookOpen, Crown, Zap, Trophy, ArrowRight, Map, Info } from "lucide-react";
+import { ArrowLeft, Check, Lock, Play, BookOpen, Crown, Zap, Trophy, ArrowRight, Map, Info, Sparkles, Hammer } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
