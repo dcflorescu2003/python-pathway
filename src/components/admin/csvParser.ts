@@ -237,7 +237,8 @@ export function parseExercisesCSV(text: string): { exercises: ParsedExercise[]; 
 }
 
 export function parseLessonCSV(text: string): { meta: ParsedLessonMeta | null; exercises: ParsedExercise[]; errors: string[] } {
-  const lines = splitLogicalLines(text);
+  // Strip comment lines (#) before searching for sections
+  const lines = splitLogicalLines(text).filter(l => !l.trim().startsWith("#"));
   const metaStart = lines.findIndex(l => l.trim().toUpperCase() === "[META]");
   const exStart = lines.findIndex(l => l.trim().toUpperCase() === "[EXERCISES]");
 
