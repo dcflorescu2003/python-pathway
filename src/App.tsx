@@ -114,9 +114,16 @@ const AppComponent = () => {
   });
 
   useEffect(() => {
-    // Hide native splash as soon as React mounts (covers black-screen gap on cold start / after update)
+    // Hide native splash as soon as React mounts (covers black-screen gap on cold start / after update).
+    // Apelăm de două ori: imediat și după un mic delay, ca să acoperim cazurile când pluginul
+    // nu e încă pregătit la primul tick.
     if (Capacitor.isNativePlatform()) {
       CapSplashScreen.hide({ fadeOutDuration: 250 }).catch(() => undefined);
+      const t = setTimeout(() => {
+        CapSplashScreen.hide({ fadeOutDuration: 250 }).catch(() => undefined);
+      }, 800);
+      // best-effort, nu returnăm clean-up (timeout scurt)
+      void t;
     }
 
     if (showSplash) {
@@ -125,6 +132,38 @@ const AppComponent = () => {
         sessionStorage.setItem("pyro-splash-shown", "true");
       }, 1500);
       return () => clearTimeout(timer);
+    }
+  }, [showSplash]);
+
+  // Watchdog de pornire: dacă după 7s aplicația încă nu a depășit splash-ul/loading-ul
+  // inițial, facem un singur reload controlat. Flag-ul previne bucle infinite.
+  useEffect(() => {
+    const RELOAD_FLAG = "pyro-startup-reload-attempt";
+    const READY_FLAG = "pyro-startup-ready";
+
+    // Marcăm că am pornit; flag-ul de reload este șters odată ce app-ul ajunge "ready".
+    const watchdog = setTimeout(() => {
+      const alreadyReloaded = sessionStorage.getItem(RELOAD_FLAG);
+      const isReady = sessionStorage.getItem(READY_FLAG);
+      if (isReady) return;
+      if (alreadyReloaded) return; // nu intrăm în buclă
+      sessionStorage.setItem(RELOAD_FLAG, String(Date.now()));
+      try {
+        window.location.reload();
+      } catch {
+        // ignore
+      }
+    }, 7000);
+
+    return () => clearTimeout(watchdog);
+  }, []);
+
+  // Marcăm app-ul ca "ready" odată ce trecem de splash, ca watchdog-ul să nu mai dea reload
+  // la încărcările următoare din aceeași sesiune.
+  useEffect(() => {
+    if (!showSplash) {
+      sessionStorage.setItem("pyro-startup-ready", "1");
+      sessionStorage.removeItem("pyro-startup-reload-attempt");
     }
   }, [showSplash]);
 

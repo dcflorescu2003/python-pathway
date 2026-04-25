@@ -14,8 +14,9 @@ const config: CapacitorConfig = {
       },
     },
     SplashScreen: {
-      launchShowDuration: 3000,
-      launchAutoHide: false,
+      // Auto-hide nativ după 2.5s ca plasă de siguranță, în caz că JS nu apucă să apeleze hide()
+      launchShowDuration: 2500,
+      launchAutoHide: true,
       backgroundColor: "#0f1219",
       androidSplashResourceName: "splash",
       androidScaleType: "CENTER_CROP",
