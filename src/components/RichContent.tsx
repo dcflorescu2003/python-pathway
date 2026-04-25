@@ -34,6 +34,7 @@ const RichContent = ({ children, className, inline }: RichContentProps) => {
       )}
     >
       <ReactMarkdown
+        remarkPlugins={[remarkBreaks]}
         rehypePlugins={[rehypeRaw]}
         components={{
           // react-markdown v9+: no `inline` prop. Detect block via language-* class or newline.
