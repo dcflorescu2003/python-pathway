@@ -289,6 +289,60 @@ Deno.serve(async (req) => {
       .update({ total_score: totalScore, max_score: maxScore, auto_graded: true })
       .eq("id", submission_id);
 
+    // Record competency scores from this test (silent failure)
+    try {
+      // Re-read final answer scores (some were updated after AI review)
+      const { data: finalAnswers } = await supabase
+        .from("test_answers")
+        .select("score, max_points, test_items(id, source_type, source_id)")
+        .eq("submission_id", submission_id);
+
+      const competencyItems = (finalAnswers ?? [])
+        .map((a: any) => {
+          const ti = a.test_items;
+          if (!ti) return null;
+          let item_type: string;
+          let item_id: string;
+          if (ti.source_type === "custom") {
+            item_type = "test_item";
+            item_id = ti.id;
+          } else if (ti.source_type === "predefined") {
+            item_type = "predefined_test_item";
+            item_id = ti.source_id ?? "";
+          } else if (
+            ti.source_type === "exercise" ||
+            ti.source_type === "eval_exercise" ||
+            ti.source_type === "manual_exercise" ||
+            ti.source_type === "problem"
+          ) {
+            item_type = ti.source_type;
+            item_id = ti.source_id ?? "";
+          } else {
+            return null;
+          }
+          if (!item_id) return null;
+          return {
+            item_type,
+            item_id,
+            score: Number(a.score ?? 0),
+            max_score: Number(a.max_points ?? 0),
+          };
+        })
+        .filter(Boolean);
+
+      if (competencyItems.length > 0) {
+        const { error: rpcError } = await supabase.rpc("recalculate_competency_scores", {
+          p_user_id: submission.student_id,
+          p_items: competencyItems as any,
+        });
+        if (rpcError) {
+          console.warn("[grade-submission] competency RPC failed:", rpcError.message);
+        }
+      }
+    } catch (err) {
+      console.warn("[grade-submission] competency tracking error:", err);
+    }
+
     return new Response(
       JSON.stringify({ total_score: totalScore, max_score: maxScore, ai_reviewed: itemsForAI.length > 0 }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }

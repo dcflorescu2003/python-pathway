@@ -12,6 +12,7 @@ import { supabase } from "@/integrations/supabase/client";
 import ChallengeAssigner from "./ChallengeAssigner";
 import ClassAnalytics from "./ClassAnalytics";
 import TestResults from "./TestResults";
+import StudentCompetencyView from "./StudentCompetencyView";
 import { ArrowLeft, Copy, Trash2, Target, BookOpen, Code, Zap, Flame, CheckCircle, XCircle, ChevronDown, ChevronRight, BarChart3, FileText, Clock, Users } from "lucide-react";
 import { toast } from "sonner";
 import { sortByDisplayName } from "@/lib/sortStudents";
@@ -35,6 +36,7 @@ const ClassDetail = ({ classId, className: clsName, joinCode, onBack }: ClassDet
   const [expandedChallenge, setExpandedChallenge] = useState<string | null>(null);
   const [viewingResultsTestId, setViewingResultsTestId] = useState<string | null>(null);
   const [viewingResultsTitle, setViewingResultsTitle] = useState<string>("");
+  const [expandedStudentId, setExpandedStudentId] = useState<string | null>(null);
 
   const [studentsOpen, setStudentsOpen] = useState(false);
   const [testsOpen, setTestsOpen] = useState(false);
@@ -170,23 +172,43 @@ const ClassDetail = ({ classId, className: clsName, joinCode, onBack }: ClassDet
                 <p className="text-sm text-muted-foreground px-1">Niciun elev înscris încă.</p>
               ) : (
                 <div className="space-y-2">
-                  {sortedMembers.map((m) => (
-                    <Card key={m.id}>
-                      <CardContent className="p-3 flex items-center justify-between">
-                        <span className="text-sm font-medium text-foreground">
-                          {m.profile?.display_name || "Elev"}
-                        </span>
-                        <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                          <span className="flex items-center gap-1">
-                            <Zap className="h-3 w-3 text-xp" /> {m.profile?.xp ?? 0}
+                  {sortedMembers.map((m) => {
+                    const isOpen = expandedStudentId === m.student_id;
+                    return (
+                      <Card key={m.id}>
+                        <button
+                          type="button"
+                          onClick={() => setExpandedStudentId(isOpen ? null : m.student_id)}
+                          className="w-full p-3 flex items-center justify-between text-left"
+                        >
+                          <span className="text-sm font-medium text-foreground">
+                            {m.profile?.display_name || "Elev"}
                           </span>
-                          <span className="flex items-center gap-1">
-                            <Flame className="h-3 w-3 text-warning" /> {m.profile?.streak ?? 0}
-                          </span>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
+                          <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                            <span className="flex items-center gap-1">
+                              <Zap className="h-3 w-3 text-xp" /> {m.profile?.xp ?? 0}
+                            </span>
+                            <span className="flex items-center gap-1">
+                              <Flame className="h-3 w-3 text-warning" /> {m.profile?.streak ?? 0}
+                            </span>
+                            {isOpen ? (
+                              <ChevronDown className="h-3.5 w-3.5" />
+                            ) : (
+                              <ChevronRight className="h-3.5 w-3.5" />
+                            )}
+                          </div>
+                        </button>
+                        {isOpen && (
+                          <div className="px-3 pb-3">
+                            <StudentCompetencyView
+                              studentId={m.student_id}
+                              studentName={m.profile?.display_name || undefined}
+                            />
+                          </div>
+                        )}
+                      </Card>
+                    );
+                  })}
                 </div>
               )}
             </CollapsibleContent>

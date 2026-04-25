@@ -9,6 +9,8 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { motion, AnimatePresence } from "framer-motion";
 
+export type CompetencyMode = "blended" | "tests_only" | "self_only";
+
 type Row = {
   general_id: string;
   general_code: string;
@@ -30,22 +32,43 @@ const masteryLabel = (m: number | null) => {
   return { label: "Necesită exersare", tone: "destructive" as const };
 };
 
-const CompetencyProfileCard = () => {
+interface CompetencyProfileCardProps {
+  /** When provided, view this student's profile (teacher mode). Defaults to current user. */
+  studentId?: string;
+  /** Scoring mode. Defaults to 'blended' (60/40). */
+  mode?: CompetencyMode;
+  /** Override default header label. */
+  title?: string;
+  /** Override default subtitle. */
+  subtitle?: string;
+  /** Start expanded. */
+  defaultExpanded?: boolean;
+}
+
+const CompetencyProfileCard = ({
+  studentId,
+  mode = "blended",
+  title = "Profil de competențe",
+  subtitle = "Programa școlară · CG & CS",
+  defaultExpanded = false,
+}: CompetencyProfileCardProps) => {
   const { user } = useAuth();
-  const [expanded, setExpanded] = useState(false);
+  const targetId = studentId ?? user?.id;
+  const [expanded, setExpanded] = useState(defaultExpanded);
   const [openCG, setOpenCG] = useState<string | null>(null);
 
   const { data, isLoading } = useQuery({
-    queryKey: ["competency-profile", user?.id],
+    queryKey: ["competency-profile", targetId, mode],
     queryFn: async () => {
-      if (!user?.id) return [] as Row[];
+      if (!targetId) return [] as Row[];
       const { data, error } = await supabase.rpc("get_student_competency_profile", {
-        p_user_id: user.id,
-      });
+        p_user_id: targetId,
+        p_mode: mode,
+      } as any);
       if (error) throw error;
       return (data ?? []) as Row[];
     },
-    enabled: !!user?.id && expanded,
+    enabled: !!targetId && expanded,
     staleTime: 60_000,
   });
 
@@ -87,10 +110,8 @@ const CompetencyProfileCard = () => {
             <Target className="h-4 w-4 text-primary" />
           </div>
           <div className="min-w-0">
-            <div className="text-sm font-semibold text-foreground">Profil de competențe</div>
-            <div className="text-[11px] text-muted-foreground truncate">
-              Programa școlară · CG &amp; CS
-            </div>
+            <div className="text-sm font-semibold text-foreground">{title}</div>
+            <div className="text-[11px] text-muted-foreground truncate">{subtitle}</div>
           </div>
         </div>
         <div className="flex items-center gap-2 shrink-0">
@@ -127,7 +148,7 @@ const CompetencyProfileCard = () => {
 
               {!isLoading && generals.length === 0 && (
                 <div className="text-xs text-muted-foreground text-center py-4">
-                  Profilul tău se va popula pe măsură ce rezolvi exerciții și teste.
+                  Profilul se va popula pe măsură ce sunt rezolvate exerciții și teste.
                 </div>
               )}
 
