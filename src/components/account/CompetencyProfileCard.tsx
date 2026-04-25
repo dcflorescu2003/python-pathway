@@ -1,13 +1,15 @@
-import { useState, useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { ChevronDown, ChevronUp, Target, Sparkles } from "lucide-react";
+import { useState, useMemo, useEffect, useRef } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { ChevronDown, ChevronUp, Target, Sparkles, RefreshCw } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
+import { toast } from "@/hooks/use-toast";
 
 export type CompetencyMode = "blended" | "tests_only" | "self_only";
 
