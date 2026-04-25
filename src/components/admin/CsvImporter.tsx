@@ -49,12 +49,13 @@ export default function CsvImporter({ targetTable, lessonId, existingCount, exis
     setImporting(true);
     try {
       const prefix = targetTable === "eval_exercises" ? "eval-" : `${lessonId}-`;
-      const rows = importableExercises.map((ex, i) =>
-        exerciseToDbRow(ex, lessonId, existingCount + i, prefix)
-      );
+      const rowsWithComp = importableExercises.map((ex, i) => ({
+        dbRow: exerciseToDbRow(ex, lessonId, existingCount + i, prefix),
+        competencies: ex.competencies || [],
+      }));
 
       // Remove/add fields based on target table
-      const cleaned = rows.map(r => {
+      const cleaned = rowsWithComp.map(({ dbRow: r }) => {
         if (targetTable === "exercises") {
           const { solution, test_cases, ...rest } = r;
           return { ...rest, pairs: null };
@@ -67,7 +68,69 @@ export default function CsvImporter({ targetTable, lessonId, existingCount, exis
 
       const { error } = await supabase.from(targetTable).insert(cleaned as any);
       if (error) throw error;
-      toast.success(`${importableExercises.length} exerciții importate!`);
+
+      // ===== Map competency codes → microcompetency UUIDs =====
+      let mappingsCreated = 0;
+      const unknownCodes = new Set<string>();
+      const allCodes = Array.from(new Set(
+        rowsWithComp.flatMap(r => r.competencies.map(c => c.toUpperCase()))
+      ));
+
+      if (allCodes.length > 0) {
+        const { data: micros, error: microErr } = await supabase
+          .from("microcompetencies")
+          .select("id, code")
+          .in("code", allCodes);
+
+        if (microErr) {
+          toast.warning("Exercițiile au fost create, dar nu am putut căuta competențele: " + microErr.message);
+        } else {
+          const codeToId = new Map((micros || []).map(m => [m.code.toUpperCase(), m.id]));
+          for (const c of allCodes) {
+            if (!codeToId.has(c)) unknownCodes.add(c);
+          }
+
+          // Determine item_type from target table
+          const itemType =
+            targetTable === "exercises" ? "exercise"
+            : targetTable === "eval_exercises" ? "eval_exercise"
+            : "manual_exercise";
+
+          const mappingRows: { item_type: string; item_id: string; microcompetency_id: string; weight: number }[] = [];
+          for (const { dbRow, competencies } of rowsWithComp) {
+            for (const code of competencies) {
+              const microId = codeToId.get(code.toUpperCase());
+              if (microId) {
+                mappingRows.push({
+                  item_type: itemType,
+                  item_id: dbRow.id,
+                  microcompetency_id: microId,
+                  weight: 1.0,
+                });
+              }
+            }
+          }
+
+          if (mappingRows.length > 0) {
+            const { error: mapErr } = await supabase.from("item_competencies").insert(mappingRows);
+            if (mapErr) {
+              toast.warning("Exercițiile create, dar maparea competențelor a eșuat: " + mapErr.message);
+            } else {
+              mappingsCreated = mappingRows.length;
+            }
+          }
+        }
+      }
+
+      const knownDistinct = allCodes.length - unknownCodes.size;
+      let msg = `${importableExercises.length} exerciții importate`;
+      if (mappingsCreated > 0) msg += ` · ${mappingsCreated} mapări către ${knownDistinct} microcompetențe`;
+      if (unknownCodes.size > 0) msg += ` · ${unknownCodes.size} coduri ignorate`;
+      toast.success(msg + "!");
+      if (unknownCodes.size > 0) {
+        toast.warning(`Coduri necunoscute: ${Array.from(unknownCodes).join(", ")}`);
+      }
+
       setOpen(false);
       setParsed([]);
       setErrors([]);
