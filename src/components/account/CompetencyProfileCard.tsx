@@ -197,20 +197,44 @@ const CompetencyProfileCard = ({
                 </div>
               )}
 
-              {!isLoading && generals.length === 0 && (
-                <div className="text-xs text-muted-foreground text-center py-4">
-                  Profilul se va popula pe măsură ce sunt rezolvate exerciții și teste.
+              {!isLoading && (generals.length === 0 || generals.every((g) => g.max === 0)) && (
+                <div className="text-xs text-muted-foreground text-center py-4 space-y-3">
+                  <p>
+                    {backfilling
+                      ? "Se recalculează profilul din istoric…"
+                      : "Profilul se va popula pe măsură ce sunt rezolvate exerciții și teste."}
+                  </p>
+                  {isOwnProfile && !backfilling && (
+                    <Button size="sm" variant="outline" onClick={runBackfill} className="gap-1.5">
+                      <RefreshCw className="h-3 w-3" />
+                      Recalculează din istoric
+                    </Button>
+                  )}
                 </div>
               )}
 
-              {!isLoading && generals.length > 0 && (
+              {!isLoading && generals.length > 0 && generals.some((g) => g.max > 0) && (
                 <>
-                  <p className="text-[11px] text-muted-foreground flex items-start gap-1.5">
-                    <Sparkles className="h-3 w-3 mt-0.5 shrink-0 text-primary" />
-                    <span>
-                      Vezi pe scurt cum stai pe fiecare competență generală (CG). Apasă pentru detalii pe competențe specifice (CS).
-                    </span>
-                  </p>
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-[11px] text-muted-foreground flex items-start gap-1.5 flex-1">
+                      <Sparkles className="h-3 w-3 mt-0.5 shrink-0 text-primary" />
+                      <span>
+                        Vezi pe scurt cum stai pe fiecare competență generală (CG). Apasă pentru detalii pe competențe specifice (CS).
+                      </span>
+                    </p>
+                    {isOwnProfile && (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={runBackfill}
+                        disabled={backfilling}
+                        className="h-6 px-2 gap-1 text-[10px] shrink-0"
+                        title="Recalculează din întreg istoricul"
+                      >
+                        <RefreshCw className={`h-3 w-3 ${backfilling ? "animate-spin" : ""}`} />
+                      </Button>
+                    )}
+                  </div>
 
                   <div className="space-y-2">
                     {generals.map((g) => {
