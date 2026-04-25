@@ -261,8 +261,9 @@ const ChapterPage = () => {
             };
 
             return (
-              <div key={lesson.id} className="flex flex-col items-center" ref={lesson.id === firstUncompletedId ? currentLessonRef : undefined}>
-                {idx > 0 && <div className={`h-8 w-0.5 ${isCompleted ? "bg-primary/40" : "bg-border"}`} />}
+              <div key={lesson.id} className="flex flex-col items-center w-full" ref={lesson.id === firstUncompletedId ? currentLessonRef : undefined}>
+                {isSectionStart && <SectionDivider section={section} isFirst={idx === 0} />}
+                {idx > 0 && !isSectionStart && <div className={`h-8 w-0.5 ${isCompleted ? "bg-primary/40" : "bg-border"}`} />}
                 {(() => {
                   const hueShift = idx * 30;
                   const baseHue = parseInt(chapter.color) + hueShift;
@@ -312,7 +313,8 @@ const ChapterPage = () => {
                 </div>
               </div>
             );
-          })}
+          });
+          })()}
           {(() => {
             const allDone = chapter.lessons.length > 0 && chapter.lessons.every(l => progress.completedLessons[l.id]?.completed);
             if (!allDone) return null;
