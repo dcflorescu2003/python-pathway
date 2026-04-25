@@ -1,8 +1,10 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 import type { Exercise } from "@/hooks/useChapters";
+import { useAuth } from "@/hooks/useAuth";
+import { recordCompetencyScores, type CompetencyItemResult } from "@/lib/competencyTracking";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
@@ -127,8 +129,17 @@ const ManualLessonPage = () => {
   const [isFinished, setIsFinished] = useState(false);
   const [feedback, setFeedback] = useState<"correct" | "wrong" | null>(null);
   const [lastExplanation, setLastExplanation] = useState<string | null>(null);
+  const { user } = useAuth();
+  const competencyResultsRef = useRef<CompetencyItemResult[]>([]);
 
   const goToAuth = () => navigate("/auth");
+
+  const flushCompetencies = useCallback(() => {
+    if (user && competencyResultsRef.current.length > 0) {
+      recordCompetencyScores(user.id, competencyResultsRef.current);
+      competencyResultsRef.current = [];
+    }
+  }, [user]);
 
   const handleAnswer = useCallback(
     (isCorrect: boolean) => {
@@ -139,10 +150,20 @@ const ManualLessonPage = () => {
         setLastExplanation(null);
         if (currentIndex + 1 >= lesson.exercises.length) {
           setIsFinished(true);
+          flushCompetencies();
         } else {
           setCurrentIndex(i => i + 1);
         }
         return;
+      }
+      // Track per-exercise result
+      if (exercise && exercise.id) {
+        competencyResultsRef.current.push({
+          item_type: "manual_exercise",
+          item_id: exercise.id,
+          score: isCorrect ? 1 : 0,
+          max_score: 1,
+        });
       }
       if (isCorrect) {
         setCorrectCount(c => c + 1);
@@ -152,7 +173,7 @@ const ManualLessonPage = () => {
       }
       setLastExplanation(exercise?.explanation || null);
     },
-    [currentIndex, lesson]
+    [currentIndex, lesson, flushCompetencies]
   );
 
   const handleContinue = useCallback(() => {
@@ -161,10 +182,11 @@ const ManualLessonPage = () => {
     if (!lesson) return;
     if (currentIndex + 1 >= lesson.exercises.length) {
       setIsFinished(true);
+      flushCompetencies();
     } else {
       setCurrentIndex(i => i + 1);
     }
-  }, [currentIndex, lesson]);
+  }, [currentIndex, lesson, flushCompetencies]);
 
   if (isLoading) return <LoadingScreen />;
   if (!lesson) return <div className="p-8 text-center text-foreground">Lecție negăsită</div>;

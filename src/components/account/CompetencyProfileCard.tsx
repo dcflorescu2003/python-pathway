@@ -1,13 +1,15 @@
-import { useState, useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { ChevronDown, ChevronUp, Target, Sparkles } from "lucide-react";
+import { useState, useMemo, useEffect, useRef } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { ChevronDown, ChevronUp, Target, Sparkles, RefreshCw } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
+import { toast } from "@/hooks/use-toast";
 
 export type CompetencyMode = "blended" | "tests_only" | "self_only";
 
@@ -56,6 +58,9 @@ const CompetencyProfileCard = ({
   const targetId = studentId ?? user?.id;
   const [expanded, setExpanded] = useState(defaultExpanded);
   const [openCG, setOpenCG] = useState<string | null>(null);
+  const [backfilling, setBackfilling] = useState(false);
+  const autoBackfillTriedRef = useRef(false);
+  const qc = useQueryClient();
 
   const { data, isLoading } = useQuery({
     queryKey: ["competency-profile", targetId, mode],
@@ -71,6 +76,52 @@ const CompetencyProfileCard = ({
     enabled: !!targetId && expanded,
     staleTime: 60_000,
   });
+
+  const isOwnProfile = !studentId || studentId === user?.id;
+
+  const runBackfill = async () => {
+    if (!targetId || backfilling) return;
+    setBackfilling(true);
+    try {
+      const { data: res, error } = await supabase.rpc("backfill_competency_scores", {
+        p_user_id: targetId,
+      } as any);
+      if (error) throw error;
+      const items = (res as any)?.items_processed ?? 0;
+      toast({ title: "Profil recalculat", description: `${items} elemente procesate.` });
+      qc.invalidateQueries({ queryKey: ["competency-profile", targetId] });
+    } catch (e: any) {
+      toast({ title: "Eroare", description: e?.message ?? "Recalcularea a eșuat.", variant: "destructive" });
+    } finally {
+      setBackfilling(false);
+    }
+  };
+
+  // Auto-backfill once if profile is empty but user has completed lessons
+  useEffect(() => {
+    if (!expanded || !isOwnProfile || !user?.id || isLoading || !data) return;
+    if (autoBackfillTriedRef.current) return;
+    const flagKey = `competency-backfill-v1-${user.id}`;
+    if (localStorage.getItem(flagKey)) return;
+    const hasAnyData = data.some((r) => Number(r.max_sum) > 0);
+    if (hasAnyData) {
+      localStorage.setItem(flagKey, "1");
+      return;
+    }
+    autoBackfillTriedRef.current = true;
+    (async () => {
+      const { count } = await supabase
+        .from("completed_lessons")
+        .select("*", { count: "exact", head: true })
+        .eq("user_id", user.id);
+      if ((count ?? 0) > 0) {
+        await runBackfill();
+        localStorage.setItem(flagKey, "1");
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [expanded, isOwnProfile, user?.id, isLoading, data]);
+
 
   const generals = useMemo(() => {
     if (!data) return [];
@@ -146,20 +197,44 @@ const CompetencyProfileCard = ({
                 </div>
               )}
 
-              {!isLoading && generals.length === 0 && (
-                <div className="text-xs text-muted-foreground text-center py-4">
-                  Profilul se va popula pe măsură ce sunt rezolvate exerciții și teste.
+              {!isLoading && (generals.length === 0 || generals.every((g) => g.max === 0)) && (
+                <div className="text-xs text-muted-foreground text-center py-4 space-y-3">
+                  <p>
+                    {backfilling
+                      ? "Se recalculează profilul din istoric…"
+                      : "Profilul se va popula pe măsură ce sunt rezolvate exerciții și teste."}
+                  </p>
+                  {isOwnProfile && !backfilling && (
+                    <Button size="sm" variant="outline" onClick={runBackfill} className="gap-1.5">
+                      <RefreshCw className="h-3 w-3" />
+                      Recalculează din istoric
+                    </Button>
+                  )}
                 </div>
               )}
 
-              {!isLoading && generals.length > 0 && (
+              {!isLoading && generals.length > 0 && generals.some((g) => g.max > 0) && (
                 <>
-                  <p className="text-[11px] text-muted-foreground flex items-start gap-1.5">
-                    <Sparkles className="h-3 w-3 mt-0.5 shrink-0 text-primary" />
-                    <span>
-                      Vezi pe scurt cum stai pe fiecare competență generală (CG). Apasă pentru detalii pe competențe specifice (CS).
-                    </span>
-                  </p>
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-[11px] text-muted-foreground flex items-start gap-1.5 flex-1">
+                      <Sparkles className="h-3 w-3 mt-0.5 shrink-0 text-primary" />
+                      <span>
+                        Vezi pe scurt cum stai pe fiecare competență generală (CG). Apasă pentru detalii pe competențe specifice (CS).
+                      </span>
+                    </p>
+                    {isOwnProfile && (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={runBackfill}
+                        disabled={backfilling}
+                        className="h-6 px-2 gap-1 text-[10px] shrink-0"
+                        title="Recalculează din întreg istoricul"
+                      >
+                        <RefreshCw className={`h-3 w-3 ${backfilling ? "animate-spin" : ""}`} />
+                      </Button>
+                    )}
+                  </div>
 
                   <div className="space-y-2">
                     {generals.map((g) => {

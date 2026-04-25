@@ -1924,7 +1924,7 @@ function transformExercise(ex: Exercise, index: number): Exercise {
 }
 
 // Auto-generate "Fixare" lessons after each non-practice, non-test lesson
-function addFixareLessons(chs: Chapter[]): Chapter[] {
+export function addFixareLessons(chs: Chapter[]): Chapter[] {
   return chs.map(ch => {
     const newLessons: Lesson[] = [];
     const nonPracticeLessons = ch.lessons.filter(l =>

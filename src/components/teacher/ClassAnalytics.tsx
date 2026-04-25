@@ -14,6 +14,7 @@ import {
   Download, FileText, FileSpreadsheet,
 } from "lucide-react";
 import { toast } from "sonner";
+import { resolveLessonTitle } from "@/lib/lessonTitles";
 
 interface Props {
   classId: string;
@@ -245,6 +246,17 @@ const ClassAnalytics = ({ classId, className: clsName }: Props) => {
   const { data: chapters = [] } = useChapters();
   const studentIds = useMemo(() => members.map((m) => m.student_id), [members]);
 
+  const { data: manualLessonTitles = {} } = useQuery({
+    queryKey: ["manual-lesson-titles"],
+    queryFn: async () => {
+      const { data } = await supabase.from("manual_lessons").select("id, title");
+      const map: Record<string, string> = {};
+      (data || []).forEach((l: any) => { map[l.id] = l.title; });
+      return map;
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+
   const { data: completedLessons = [] } = useQuery({
     queryKey: ["analytics-completed", classId, studentIds],
     queryFn: async () => {
@@ -365,17 +377,13 @@ const ClassAnalytics = ({ classId, className: clsName }: Props) => {
     return Object.values(lessonScores)
       .map((ls) => {
         const avg = Math.round(ls.total / ls.count);
-        let name = ls.id;
-        for (const ch of chapters) {
-          const lesson = ch.lessons.find((l) => l.id === ls.id);
-          if (lesson) { name = lesson.title; break; }
-        }
+        const name = resolveLessonTitle(ls.id, chapters, manualLessonTitles);
         return { name, avgScore: avg, attempts: ls.count, id: ls.id };
       })
       .filter((l) => l.avgScore < 80)
       .sort((a, b) => a.avgScore - b.avgScore)
       .slice(0, 8);
-  }, [completedLessons, chapters]);
+  }, [completedLessons, chapters, manualLessonTitles]);
 
   const testPerformance = useMemo(() => {
     const testMap: Record<string, { title: string; scores: number[] }> = {};

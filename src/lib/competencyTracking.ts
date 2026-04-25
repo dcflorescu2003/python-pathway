@@ -22,10 +22,19 @@ export async function recordCompetencyScores(
 ): Promise<void> {
   if (!userId || items.length === 0) return;
 
+  // Normalize "Fixare" exercise ids (suffix `f`) to their base exercise id so
+  // that competency mappings on the original exercise are credited.
+  const normalized = items.map((it) => {
+    if (it.item_type === "exercise" && it.item_id.endsWith("f")) {
+      return { ...it, item_id: it.item_id.slice(0, -1) };
+    }
+    return it;
+  });
+
   try {
     const { error } = await supabase.rpc("recalculate_competency_scores", {
       p_user_id: userId,
-      p_items: items as unknown as never,
+      p_items: normalized as unknown as never,
     });
     if (error) {
       console.warn("[competencyTracking] RPC failed:", error.message);
