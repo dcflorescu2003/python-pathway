@@ -444,6 +444,7 @@ const AuthPage = () => {
         if (error) {
           toast.error(error.message === "Invalid login credentials" ? "Email sau parolă greșită." : error.message);
         } else {
+          setJustSignedIn(true);
           toast.success("Bine ai revenit! 👋");
           await new Promise(r => setTimeout(r, 300));
           navigate("/", { replace: true });
