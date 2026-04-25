@@ -1,8 +1,9 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { Upload, FileText, AlertCircle, Check, Download, BookOpen } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Upload, FileText, AlertCircle, Check, Download, BookOpen, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { parseLessonCSV, exerciseToDbRow, getLessonTemplateCSV, getContentLessonTemplateCSV, downloadCSV, CONTENT_TYPES, EVAL_TYPES, type ParsedExercise } from "./csvParser";
 import MicrocompetenciesReference from "./MicrocompetenciesReference";
@@ -48,6 +49,39 @@ export default function CsvLessonImporter({ mode, chapterId, existingLessonCount
   const importableExercises = validExercises.filter(ex => allowedTypes.includes(ex.type));
   const skippedExercises = validExercises.filter(ex => !allowedTypes.includes(ex.type));
   const totalCompetencyTags = importableExercises.reduce((acc, ex) => acc + (ex.competencies?.length || 0), 0);
+
+  // Aggregate competency codes for preview
+  const competencyAggregate = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const ex of importableExercises) {
+      for (const c of ex.competencies || []) {
+        const key = c.toUpperCase();
+        counts.set(key, (counts.get(key) || 0) + 1);
+      }
+    }
+    return Array.from(counts.entries()).sort((a, b) => b[1] - a[1]);
+  }, [importableExercises]);
+
+  // Fetch microcompetency titles for preview tooltips & "unknown" marking
+  const [microInfo, setMicroInfo] = useState<Map<string, { title: string; id: string }>>(new Map());
+  useEffect(() => {
+    const codes = competencyAggregate.map(([c]) => c);
+    if (codes.length === 0) { setMicroInfo(new Map()); return; }
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase
+        .from("microcompetencies")
+        .select("id, code, title")
+        .in("code", codes);
+      if (cancelled) return;
+      const m = new Map<string, { title: string; id: string }>();
+      (data || []).forEach((r: any) => m.set(r.code.toUpperCase(), { title: r.title, id: r.id }));
+      setMicroInfo(m);
+    })();
+    return () => { cancelled = true; };
+  }, [competencyAggregate]);
+
+  const unknownCodesPreview = competencyAggregate.filter(([c]) => !microInfo.has(c)).map(([c]) => c);
 
   const handleImport = async () => {
     if (!meta || importableExercises.length === 0) return;
@@ -138,8 +172,15 @@ export default function CsvLessonImporter({ mode, chapterId, existingLessonCount
         }
       }
 
+      const distinctCodes = new Set(rows.flatMap(r => r.competencies.map(c => c.toUpperCase())));
+      const knownDistinct = distinctCodes.size - unknownCodes.size;
       let successMsg = `Lecție "${meta.title}" creată cu ${importableExercises.length} exerciții`;
-      if (mappingsCreated > 0) successMsg += ` și ${mappingsCreated} mapări de competențe`;
+      if (mappingsCreated > 0) {
+        successMsg += ` și ${mappingsCreated} mapări către ${knownDistinct} microcompetențe`;
+      }
+      if (unknownCodes.size > 0) {
+        successMsg += ` (${unknownCodes.size} coduri ignorate)`;
+      }
       toast.success(successMsg + "!");
 
       if (unknownCodes.size > 0) {
@@ -202,6 +243,47 @@ export default function CsvLessonImporter({ mode, chapterId, existingLessonCount
                 </div>
               )}
 
+              {competencyAggregate.length > 0 && (
+                <div className="rounded border border-primary/20 bg-primary/5 p-2.5 space-y-1.5">
+                  <p className="text-[11px] font-medium text-foreground flex items-center gap-1">
+                    <Sparkles className="h-3 w-3 text-primary" />
+                    Competențe detectate în această lecție
+                    <span className="text-muted-foreground font-normal">
+                      ({competencyAggregate.length} unice
+                      {unknownCodesPreview.length > 0 && `, ${unknownCodesPreview.length} necunoscute`})
+                    </span>
+                  </p>
+                  <TooltipProvider delayDuration={150}>
+                    <div className="flex flex-wrap gap-1">
+                      {competencyAggregate.map(([code, count]) => {
+                        const info = microInfo.get(code);
+                        const known = !!info;
+                        return (
+                          <Tooltip key={code}>
+                            <TooltipTrigger asChild>
+                              <span
+                                className={`font-mono text-[10px] px-1.5 py-0.5 rounded border cursor-help ${
+                                  known
+                                    ? "bg-primary/10 border-primary/30 text-primary"
+                                    : "bg-destructive/10 border-destructive/40 text-destructive"
+                                }`}
+                              >
+                                {code} <span className="opacity-60">×{count}</span>
+                              </span>
+                            </TooltipTrigger>
+                            <TooltipContent side="top" className="max-w-xs">
+                              {known
+                                ? <span className="text-xs">{info.title}</span>
+                                : <span className="text-xs text-destructive">Cod necunoscut — va fi ignorat la import</span>}
+                            </TooltipContent>
+                          </Tooltip>
+                        );
+                      })}
+                    </div>
+                  </TooltipProvider>
+                </div>
+              )}
+
               <div className="space-y-1 max-h-48 overflow-y-auto">
                 {parsed.map((ex, i) => (
                   <div key={i} className={`flex items-center gap-2 text-xs p-2 rounded border ${ex.error ? "border-destructive/50 bg-destructive/5" : "border-border bg-secondary/20"}`}>
@@ -217,9 +299,35 @@ export default function CsvLessonImporter({ mode, chapterId, existingLessonCount
                         <span className="px-1.5 py-0.5 rounded bg-primary/10 text-primary font-medium shrink-0">{typeLabels[ex.type] || ex.type}</span>
                         <span className="truncate text-foreground flex-1">{ex.question}</span>
                         {ex.competencies && ex.competencies.length > 0 && (
-                          <span className="font-mono text-[10px] text-primary/80 bg-primary/5 border border-primary/20 px-1 rounded shrink-0">
-                            {ex.competencies.join(",")}
-                          </span>
+                          <TooltipProvider delayDuration={150}>
+                            <div className="flex gap-0.5 shrink-0">
+                              {ex.competencies.map((c) => {
+                                const code = c.toUpperCase();
+                                const info = microInfo.get(code);
+                                const known = !!info;
+                                return (
+                                  <Tooltip key={code}>
+                                    <TooltipTrigger asChild>
+                                      <span
+                                        className={`font-mono text-[10px] px-1 rounded border cursor-help ${
+                                          known
+                                            ? "text-primary/80 bg-primary/5 border-primary/20"
+                                            : "text-destructive bg-destructive/10 border-destructive/30"
+                                        }`}
+                                      >
+                                        {code}
+                                      </span>
+                                    </TooltipTrigger>
+                                    <TooltipContent side="top" className="max-w-xs">
+                                      {known
+                                        ? <span className="text-xs">{info.title}</span>
+                                        : <span className="text-xs text-destructive">Cod necunoscut — va fi ignorat</span>}
+                                    </TooltipContent>
+                                  </Tooltip>
+                                );
+                              })}
+                            </div>
+                          </TooltipProvider>
                         )}
                       </>
                     )}
@@ -246,8 +354,8 @@ export default function CsvLessonImporter({ mode, chapterId, existingLessonCount
                 <Button variant="link" size="sm" className="text-[10px] h-auto p-0" onClick={() => setRefOpen(true)}>
                   <BookOpen className="h-3 w-3 mr-1" />Vezi microcompetențele
                 </Button>
-                <Button variant="link" size="sm" className="text-[10px] h-auto p-0" onClick={() => downloadCSV(mode === "content" ? getContentLessonTemplateCSV() : getLessonTemplateCSV(), "template-lectie.csv")}>
-                  <Download className="h-3 w-3 mr-1" />Template
+                <Button variant="link" size="sm" className="text-[10px] h-auto p-0" onClick={() => downloadCSV(mode === "content" ? getContentLessonTemplateCSV() : getLessonTemplateCSV(), `template-lectie-${mode === "content" ? "continut" : "evaluare"}.csv`)}>
+                  <Download className="h-3 w-3 mr-1" />Descarcă exemplu complet
                 </Button>
               </div>
             </div>
