@@ -3,7 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useChapters } from "@/hooks/useChapters";
 import { useProgress } from "@/hooks/useProgress";
 import { useAuth } from "@/hooks/useAuth";
-import { motion } from "framer-motion";
+import { motion, type Variants } from "framer-motion";
 import { ArrowLeft, Check, Lock, Play, BookOpen, Crown, Zap, Trophy, ArrowRight, Map, Info, Sparkles, Hammer } from "lucide-react";
 import {
   AlertDialog,
@@ -73,29 +73,29 @@ const SectionDivider = ({ section, isFirst }: { section: LessonSection; isFirst:
         viewport: { once: true, margin: "-15% 0px -15% 0px" },
       };
 
-  const containerVariants = {
+  const containerVariants: Variants = {
     hidden: { opacity: 0 },
     visible: {
       opacity: 1,
-      transition: { duration: 0.5, ease: "easeOut", staggerChildren: 0.12, delayChildren: 0.05 },
+      transition: { duration: 0.5, ease: [0.16, 1, 0.3, 1], staggerChildren: 0.12, delayChildren: 0.05 },
     },
   };
-  const lineVariants = {
+  const lineVariants: Variants = {
     hidden: { scaleX: 0, opacity: 0 },
-    visible: { scaleX: 1, opacity: 1, transition: { duration: 0.6, ease: "easeOut" } },
+    visible: { scaleX: 1, opacity: 1, transition: { duration: 0.6, ease: [0.16, 1, 0.3, 1] } },
   };
-  const iconVariants = {
+  const iconVariants: Variants = {
     hidden: { scale: 0.4, opacity: 0, rotate: -25 },
     visible: {
       scale: 1,
       opacity: 1,
       rotate: 0,
-      transition: { type: "spring" as const, stiffness: 260, damping: 16 },
+      transition: { type: "spring", stiffness: 260, damping: 16 },
     },
   };
-  const textVariants = {
+  const textVariants: Variants = {
     hidden: { opacity: 0, y: 8 },
-    visible: { opacity: 1, y: 0, transition: { duration: 0.4, ease: "easeOut" } },
+    visible: { opacity: 1, y: 0, transition: { duration: 0.4, ease: [0.16, 1, 0.3, 1] } },
   };
 
   return (
