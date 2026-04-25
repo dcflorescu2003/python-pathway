@@ -27,6 +27,7 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { CompetencyTagger } from "./CompetencyTagger";
 
 const typeLabels: Record<string, string> = { quiz: "Quiz", fill: "Completare", order: "Ordonare", truefalse: "A/F", problem: "Problemă", open_answer: "Răspuns deschis" };
 
@@ -584,6 +585,14 @@ function EvalExerciseEditor({ exercise, lessonId, nextIndex, onSave, onCancel }:
       {type !== "problem" && (
         <div><Label className="text-xs text-foreground">Explicație (opțional)</Label><RichTextEditor value={explanation} onChange={setExplanation} rows={3} /></div>
       )}
+
+      <div className="rounded-md border border-border bg-muted/30 p-3">
+        <CompetencyTagger
+          itemType="eval_exercise"
+          itemId={exercise?.id ?? null}
+          emptyHint="Salvează exercițiul, apoi revino aici pentru a atașa microcompetențe."
+        />
+      </div>
 
       <div className="flex gap-2">
         <Button size="sm" onClick={handleSave}><Save className="h-4 w-4 mr-1" />Salvează</Button>

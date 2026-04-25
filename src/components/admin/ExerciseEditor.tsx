@@ -9,6 +9,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Trash2, Plus } from "lucide-react";
 import RichTextEditor from "./RichTextEditor";
 import CodeBlockEditor from "./CodeBlockEditor";
+import { CompetencyTagger } from "./CompetencyTagger";
+import type { ItemType as CompetencyItemType } from "@/hooks/useCompetencies";
 
 interface Props {
   exercise?: Exercise;
@@ -16,6 +18,8 @@ interface Props {
   onCancel: () => void;
   lessonId: string;
   nextIndex: number;
+  /** Optional: enables CompetencyTagger UI under the form for the matching item type. */
+  competencyItemType?: CompetencyItemType;
 }
 
 const generateId = (lessonId: string, _index: number) => `${lessonId}-e${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
@@ -35,7 +39,7 @@ const emptyExercise = (lessonId: string, index: number): Exercise => ({
   explanation: "",
 });
 
-const ExerciseEditor = ({ exercise, onSave, onCancel, lessonId, nextIndex }: Props) => {
+const ExerciseEditor = ({ exercise, onSave, onCancel, lessonId, nextIndex, competencyItemType }: Props) => {
   const [data, setData] = useState<Exercise>(
     exercise || emptyExercise(lessonId, nextIndex)
   );
@@ -507,6 +511,16 @@ const ExerciseEditor = ({ exercise, onSave, onCancel, lessonId, nextIndex }: Pro
           rows={data.type === "card" ? 6 : 3}
         />
       </div>
+
+      {competencyItemType && (
+        <div className="rounded-lg border border-border bg-muted/30 p-3">
+          <CompetencyTagger
+            itemType={competencyItemType}
+            itemId={exercise ? data.id : null}
+            emptyHint="Salvează exercițiul, apoi revino aici pentru a atașa microcompetențe."
+          />
+        </div>
+      )}
 
       <div className="flex gap-3 pt-2">
         <Button onClick={() => onSave(data)} className="flex-1">

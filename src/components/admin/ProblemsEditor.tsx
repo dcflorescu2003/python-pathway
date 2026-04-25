@@ -23,6 +23,7 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { CompetencyTagger } from "./CompetencyTagger";
 
 // --- Sortable wrappers ---
 function SortableProblemChapter({ id, children }: { id: string; children: React.ReactNode }) {
@@ -286,6 +287,14 @@ const ProblemsEditor = () => {
         <Button variant="outline" size="sm" className="mt-2" onClick={addTestCase}>
           <Plus className="h-4 w-4 mr-1" /> Adaugă caz de test
         </Button>
+      </div>
+
+      <div className="rounded-md border border-border bg-muted/30 p-3">
+        <CompetencyTagger
+          itemType="problem"
+          itemId={editingProblem}
+          emptyHint="Salvează problema, apoi revino aici pentru a atașa microcompetențe."
+        />
       </div>
 
       <div className="flex gap-2 pt-2">
