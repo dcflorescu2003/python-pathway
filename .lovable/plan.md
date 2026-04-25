@@ -1,54 +1,114 @@
-Voi trata problema ca pe o combinație de două lucruri: splash-ul nativ poate rămâne blocat dacă React/auth se inițializează greu, iar un simplu restart după 7 secunde ar trebui să fie doar plasă de siguranță, nu soluția principală.
+# Profil de competențe pentru elev (CG → CS → Microcompetențe)
 
-## Ce voi modifica
+Idee: fiecare item (exercițiu din lecție, problemă, item dintr-un test) poate fi etichetat cu una sau mai multe microcompetențe (M1–M100). Fiecare microcompetență aparține unei competențe specifice (CS), care aparține unei competențe generale (CG). Pe baza scorurilor obținute la itemii etichetați se generează automat un **profil personalizat** vizibil de elev și de profesor (cu posibilitate de notițe și ajustări manuale din partea profesorului).
 
-1. **Voi adăuga un watchdog de pornire pentru aplicația nativă**
-   - La startup, aplicația va porni un timer de 7 secunde.
-   - Dacă după 7 secunde încă nu a trecut de splash/loading-ul inițial, va face automat un reload controlat al WebView-ului.
-   - Pentru a evita bucle infinite, reload-ul se va face o singură dată per pornire/interval scurt, folosind un flag în `sessionStorage`.
+---
 
-2. **Voi face ascunderea splash-ului nativ mai robustă**
-   - În `App.tsx`, voi încerca să ascund splash-ul nativ imediat ce React se montează, dar și încă o dată după un mic delay.
-   - Astfel acoperim cazurile în care pluginul de splash nu e pregătit exact în primul moment.
+## 1. Model de date (3 nivele ierarhice)
 
-3. **Voi schimba configurația Capacitor SplashScreen**
-   - În `capacitor.config.ts`, `launchAutoHide: false` poate lăsa splash-ul nativ blocat dacă apelul JS de hide nu rulează.
-   - Voi seta o variantă mai sigură: auto-hide nativ după un timp scurt, cu fallback prin JS.
-   - Păstrez branding-ul și fundalul actual, dar reduc riscul ca ecranul nativ să rămână permanent blocat.
+Trei tabele de catalog (read-only pentru utilizatori, editabile de admin):
 
-4. **Voi întări inițializarea auth**
-   - În `useAuth.tsx`, `getSession()` nu are fallback de timeout; dacă promisiunea rămâne blocată, `loading` rămâne `true` și anumite ecrane pot părea înghețate.
-   - Voi adăuga un timeout sigur care marchează auth ca „gata” după câteva secunde dacă restaurarea sesiunii nu răspunde, fără să afișeze flash de login înainte de timp.
-   - Evenimentele ulterioare de auth vor putea actualiza în continuare sesiunea corect.
+- `competencies_general` — CG1..CG6 (cod, titlu, descriere)
+- `competencies_specific` — CS 1.1..CS 6.5 (cod, titlu, descriere, `general_id`, `grade` — clasa IX/X/XI…)
+- `microcompetencies` — M1..M100 (cod, titlu, descriere, `specific_id`, `category` A–H, `sort_order`)
 
-5. **Voi adăuga teste automate pentru startup blocat**
-   - Voi crea/actualiza teste care simulează:
-     - prima deschidere cu splash vizibil;
-     - auth restore care întârzie;
-     - trecerea peste 7 secunde;
-     - reload-ul de siguranță fără buclă infinită.
+Tabel de **mapare item → microcompetențe** (many-to-many, un item poate atinge mai multe M):
 
-## Rezultatul așteptat
+- `item_competencies` cu coloane: `id`, `item_type` (`exercise` | `eval_exercise` | `manual_exercise` | `problem` | `test_item` | `predefined_test_item`), `item_id` (text), `microcompetency_id`, `weight` (default 1.0 — un item poate contribui mai mult la o M decât la alta), `created_by` (admin/profesor).
 
-- Dacă totul pornește normal, utilizatorul vede splash-ul scurt și apoi aplicația.
-- Dacă startup-ul rămâne blocat, aplicația se reîncarcă automat după 7 secunde.
-- Dacă problema este doar splash-ul nativ rămas agățat, acesta va fi ascuns și de fallback-ul nativ/JS.
-- Nu ar trebui să reapară flash-ul de login la utilizatorii autentificați.
+Tabel de **rezultate agregate per elev** (recalculat la fiecare submit/lecție):
 
-## Detalii tehnice
+- `student_competency_scores`: `user_id`, `microcompetency_id`, `attempts`, `correct`, `score_sum`, `max_sum`, `mastery` (0..1, calculat: `score_sum/max_sum` cu un factor de încredere bazat pe `attempts`), `last_updated`.
 
-Fișiere vizate:
-- `src/App.tsx`
-- `src/hooks/useAuth.tsx`
-- `capacitor.config.ts`
-- eventual un test nou pentru `App`/startup, plus ajustări la testele existente dacă e nevoie
+Tabel de **notițe profesor** pe profilul unui elev (profesorul poate adăuga observații și ajusta manual nivelul perceput la o competență):
 
-După implementare, pentru Android/iOS va trebui sincronizat proiectul nativ:
+- `student_competency_notes`: `student_id`, `teacher_id`, `target_type` (`microcompetency` | `specific` | `general`), `target_id`, `manual_level` (nullable, 0..1 sau null = automat), `note` (text), `updated_at`.
+RLS: profesorul scrie/citește doar pentru elevii din propriile clase; elevul citește doar notițele despre el.
+
+---
+
+## 2. UI — etichetarea itemilor (admin + profesor)
+
+În editorul existent al fiecărui tip de item (ExerciseEditor, ProblemsEditor, EvalBankEditor, ManualEditor, TestBuilder custom items) se adaugă o secțiune nouă:
+
+> **Microcompetențe vizate** — multi-select cu căutare, grupat pe categorii A–H.
+> Fiecare microcompetență aleasă apare ca un chip cu pondere implicită 1.0, editabilă (0.25 / 0.5 / 1.0).
+
+Componentă reutilizabilă: `CompetencyTagger` care primește `(itemType, itemId)` și gestionează inserțiile/ștergerile în `item_competencies`.
+
+Pentru itemii deja existenți: pagină admin „Etichetare în masă” care afișează lista exercițiilor + microcompetențele propuse, pentru completare rapidă.
+
+---
+
+## 3. Algoritm de generare a profilului
+
+La fiecare finalizare de lecție / problemă / test se rulează un trigger (sau funcție RPC apelată din client) care:
+
+1. Pentru fiecare item rezolvat, ia microcompetențele asociate cu pondere `w`.
+2. Pentru fiecare M actualizează: `attempts += 1`, `score_sum += score_obținut * w`, `max_sum += max_punctaj * w`, `correct += (score == max ? 1 : 0)`.
+3. Recalculează `mastery = score_sum / max_sum`.
+4. Agregare CS = media ponderată a M-urilor copil cu `attempts > 0`.
+5. Agregare CG = media CS-urilor copil.
+6. Etichete calitative pe baza `mastery` + `attempts`:
+  - `attempts < 2` → „Insuficiente date”
+  - `mastery ≥ 0.85` → „Stăpânește”
+  - `0.6 ≤ mastery < 0.85` → „În dezvoltare”
+  - `mastery < 0.6` → „De recuperat”
+
+Algoritmul de **recomandare**: pentru fiecare M cu mastery < 0.6 sau insuficiente date, sistemul propune lecții/exerciții/probleme etichetate cu acea M (top 3, sortate după dificultate crescătoare).
+
+---
+
+## 4. Pagina „Profil de competențe”
+
+Rută nouă: `/profile/competencies` (vizibilă elevului) și `/teacher/student/:id/competencies` (vizibilă profesorului pentru elevii din clasele lui).
+
+Layout (3 nivele expandabile, accordion):
+
 ```text
-npm run build
-npx cap sync android
+CG1 Identifică...                              [bar 72%]
+  └ CS 1.1 Identifică organizarea datelor      [bar 80%]
+      └ M61 Recunoaște lista                   [Stăpânește • 12/14]
+      └ M67 Listă de frecvențe                 [De recuperat • 2/8]
+  └ CS 1.2 Algoritmi specializați              [bar 64%]
+      └ ...
 ```
-Pentru iOS similar:
-```text
-npx cap sync ios
-```
+
+Pentru profesor, fiecare nod are buton „Adaugă observație” și „Setează nivel manual” (override). Ajustările manuale apar marcate vizual și nu sunt suprascrise de algoritm.
+
+Secțiune jos: **Recomandări personalizate** — listă de exerciții/lecții/probleme propuse pentru a acoperi golurile.
+
+Pentru profesor în `ClassDetail` se adaugă un buton „Vezi profil de competențe” lângă fiecare elev și un raport agregat la nivel de clasă (heatmap CS × elev).
+
+---
+
+## 5. Integrare în fluxul existent
+
+- `LessonPage`, `ProblemSolvePage`, `TakeTestPage` la submit apelează o funcție `updateCompetencyScores(userId, items)` care procesează scorurile.
+- Pentru testele profesorilor, edge-ul `grade-submission` primește deja itemii și scorurile — adăugăm acolo apelul de actualizare.
+- Notificare opțională: când elevul atinge prima dată „Stăpânește” pe o CS, primește o notificare in-app.
+
+---
+
+## 6. Etape de implementare propuse
+
+1. **Migrare DB**: cele 3 tabele de catalog + 3 tabele operaționale, RLS, seed cu CG/CS/M din document.
+2. **Componenta `CompetencyTagger**` + integrare în toate editoarele (admin + TestBuilder).
+3. **Funcție RPC `recalculate_competency_scores**` + cârlige în submit-urile de lecții/probleme/teste.
+4. **Pagina „Profil de competențe”** pentru elev (read-only).
+5. **Vizualizare profesor + notițe + override manual + heatmap pe clasă**.
+6. **Recomandări personalizate** (lecții/exerciții propuse pe baza golurilor).
+7. **Etichetare în masă** (UI admin) pentru itemii existenți.
+
+---
+
+## 7. Întrebări înainte de implementare
+
+- Vrei ca **elevul să vadă** profilul integral sau doar o variantă simplificată (doar CS și CG, fără M-uri brute)?
+- Etichetarea itemilor: **doar admin** sau și profesorii pot eticheta itemii custom din testele lor?
+- Vrei și o **export PDF** al profilului de competențe (util pentru părinți / portofoliu școlar)?
+- Începem cu seed complet pentru clasa a IX-a (toate CG/CS/M de mai sus) sau scalăm progresiv?
+- Mențin scopul doar pentru clasa IX acum, sau pregătim schema cu câmp `grade` ca să adăugăm ulterior X/XI/XII?  
+  
+Momentan nu afisam nimic decatin faza de admin. O sa vreau ca elevul sa vada o varianta prelucrata, adica pe baza compententelor dobandite sa se genereze un sumar cu puncte forte, unde mai trebuie lucrat. Sau ce stii, ce mai ai de invatat.   
+Vreau sa pregatim pentru toate clasele. Si o sa vreau si export pdf. Creeaza toate toolurile dar sa o sa testam inainte de a publica
