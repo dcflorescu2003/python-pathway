@@ -1,8 +1,9 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { Upload, FileText, AlertCircle, Check, Download, BookOpen } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Upload, FileText, AlertCircle, Check, Download, BookOpen, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { parseLessonCSV, exerciseToDbRow, getLessonTemplateCSV, getContentLessonTemplateCSV, downloadCSV, CONTENT_TYPES, EVAL_TYPES, type ParsedExercise } from "./csvParser";
 import MicrocompetenciesReference from "./MicrocompetenciesReference";
