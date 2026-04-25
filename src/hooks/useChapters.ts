@@ -175,7 +175,7 @@ async function fetchChapters(): Promise<Chapter[]> {
     });
   }
 
-  return chaptersData.map(ch => ({
+  const result = chaptersData.map(ch => ({
     id: ch.id,
     number: ch.number,
     title: ch.title,
@@ -184,6 +184,10 @@ async function fetchChapters(): Promise<Chapter[]> {
     color: ch.color,
     lessons: lessonsByChapter[ch.id] || [],
   }));
+
+  // Apply same "Fixare" auto-generation as the static fallback so DB-loaded
+  // chapters also expose the recap lessons (ids ending in `f`).
+  return addFixareLessons(result as any) as Chapter[];
 }
 
 export function useChapters() {
