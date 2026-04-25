@@ -1141,6 +1141,10 @@ export type Database = {
           max_sum: number
           microcompetency_id: string
           score_sum: number
+          self_max_sum: number
+          self_score_sum: number
+          test_max_sum: number
+          test_score_sum: number
           user_id: string
         }
         Insert: {
@@ -1151,6 +1155,10 @@ export type Database = {
           max_sum?: number
           microcompetency_id: string
           score_sum?: number
+          self_max_sum?: number
+          self_score_sum?: number
+          test_max_sum?: number
+          test_score_sum?: number
           user_id: string
         }
         Update: {
@@ -1161,6 +1169,10 @@ export type Database = {
           max_sum?: number
           microcompetency_id?: string
           score_sum?: number
+          self_max_sum?: number
+          self_score_sum?: number
+          test_max_sum?: number
+          test_score_sum?: number
           user_id?: string
         }
         Relationships: [
@@ -1665,21 +1677,37 @@ export type Database = {
         Returns: number
       }
       get_problem_solution: { Args: { p_id: string }; Returns: string }
-      get_student_competency_profile: {
-        Args: { p_user_id: string }
-        Returns: {
-          attempts: number
-          general_code: string
-          general_id: string
-          general_title: string
-          mastery: number
-          max_sum: number
-          score_sum: number
-          specific_code: string
-          specific_id: string
-          specific_title: string
-        }[]
-      }
+      get_student_competency_profile:
+        | {
+            Args: { p_user_id: string }
+            Returns: {
+              attempts: number
+              general_code: string
+              general_id: string
+              general_title: string
+              mastery: number
+              max_sum: number
+              score_sum: number
+              specific_code: string
+              specific_id: string
+              specific_title: string
+            }[]
+          }
+        | {
+            Args: { p_mode?: string; p_user_id: string }
+            Returns: {
+              attempts: number
+              general_code: string
+              general_id: string
+              general_title: string
+              mastery: number
+              max_sum: number
+              score_sum: number
+              specific_code: string
+              specific_id: string
+              specific_title: string
+            }[]
+          }
       get_test_items_for_student: {
         Args: { p_assignment_id: string; p_variant: string }
         Returns: {

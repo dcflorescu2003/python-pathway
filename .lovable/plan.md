@@ -1,75 +1,70 @@
-# Profil de competențe — plan aprobat (CG → CS → Microcompetențe)
+## Obiectiv
 
-## Decizii confirmate
+1. **Tracking competențe din testele profesorilor** — la finalul `grade-submission`, înregistrăm scorurile per item în `student_competency_scores` cu pondere **×1.5** (testele cântăresc 60% vs 40% pentru exerciții/probleme, raport 3:2 ⇒ multiplicator 1.5 pentru testele profesorului).
+2. **Sursa scorului** — separăm contribuția testelor de cea a auto-învățării și permitem profesorului să comute între moduri în profilul elevului.
 
-- **Vizibilitate elev:** doar CG + CS. Microcompetențele M1-M100 rămân interne pentru calcul.
-- **Etichetare:** admin pe catalog global; profesori doar pe `test_items` cu `source_type='custom'` din testele lor.
-- **Export PDF:** amânat (după lansarea in-app).
-- **Seed:** programa clasei a IX-a complet (CG1-6, toate CS, M1-M100). Schemă pregătită cu `grade` pentru extindere ulterioară X/XI/XII.
+## Calcul ponderii (60/40)
 
----
+Pentru a respecta raportul 60% teste / 40% lecții pe agregare:
+- Scorurile din **exerciții, probleme, exerciții manuale, eval** se înregistrează cu `weight × 1.0` (cum este acum).
+- Scorurile din **`test_item` și `predefined_test_item`** se înregistrează cu `weight × 1.5` (=3/2). Astfel, dacă un elev face același „volum" în teste vs auto-învățare, contribuția testelor în media ponderată ajunge la 1.5/(1+1.5) = 60%.
 
-## Etapa 1 — Migrare DB (urmează acum)
+Stocăm **separat** sumele „teste" vs „self" pentru a permite filtrarea/toggle în UI fără a sacrifica datele.
 
-6 tabele noi:
+## Modificări DB (migration)
 
-1. `competencies_general` — CG1..CG6 (`code`, `title`, `description`).
-2. `competencies_specific` — CS x.y (`code`, `title`, `description`, `general_id` FK, `grade` smallint default 9).
-3. `microcompetencies` — M1..M100 (`code`, `title`, `description`, `specific_id` FK, `category` text A-H, `grade`, `sort_order`).
-4. `item_competencies` — mapare item ↔ M (`item_type`, `item_id` text, `microcompetency_id` FK, `weight` numeric default 1.0, `created_by`, `created_at`). Unique pe `(item_type, item_id, microcompetency_id)`.
-5. `student_competency_scores` — agregat per elev × M (`user_id`, `microcompetency_id`, `attempts`, `correct`, `score_sum`, `max_sum`, `mastery` generated, `last_updated`). Unique pe `(user_id, microcompetency_id)`.
-6. `student_competency_notes` — observații + override profesor (`student_id`, `teacher_id`, `target_type` enum {`general`,`specific`,`microcompetency`}, `target_id`, `manual_level` numeric nullable, `note`, `updated_at`).
+1. **`student_competency_scores`**: adăugăm 4 coloane noi:
+   - `test_score_sum NUMERIC NOT NULL DEFAULT 0`
+   - `test_max_sum NUMERIC NOT NULL DEFAULT 0`
+   - `self_score_sum NUMERIC NOT NULL DEFAULT 0`
+   - `self_max_sum NUMERIC NOT NULL DEFAULT 0`
+   
+   Coloanele existente `score_sum`/`max_sum` rămân (= self + 1.5×test) pentru compatibilitate.
 
-**RLS:**
-- Cataloagele (1, 2, 3): SELECT pentru `authenticated`, ALL doar pentru admini.
-- `item_competencies`: SELECT autenticat; INSERT/UPDATE/DELETE pentru admini pe orice item, pentru profesori doar dacă `item_type='test_item'` și itemul aparține unui test al lor.
-- `student_competency_scores`: elevul își citește propriile rânduri; profesorul vede rândurile elevilor din clasele lui (via `class_members` + `teacher_classes`); scrierea doar prin RPC `recalculate_competency_scores` (SECURITY DEFINER).
-- `student_competency_notes`: elevul citește notițele despre el; profesorul scrie/citește doar pentru elevii din propriile clase.
+2. **`recalculate_competency_scores(p_user_id, p_items)`** actualizat:
+   - Acceptă `item_type ∈ {exercise, manual_exercise, eval_exercise, problem, test_item, predefined_test_item}`.
+   - Pentru `test_item`/`predefined_test_item` aplică multiplicator 1.5 la `score_sum`/`max_sum` și incrementează `test_*` (cu valoarea brută).
+   - Pentru celelalte: incrementează `self_*` și `score_sum`/`max_sum` (1×).
 
-**RPC noi:**
-- `recalculate_competency_scores(p_user_id uuid, p_items jsonb)` — primește lista `[{item_type, item_id, score, max_score}]` și actualizează agregatul.
-- `get_student_competency_profile(p_user_id uuid)` — întoarce ierarhia CG → CS cu mastery agregat (folosit de pagina de profil).
+3. **`get_student_competency_profile(p_user_id, p_mode TEXT DEFAULT 'blended')`** — al doilea parametru:
+   - `'blended'` → folosește `score_sum`/`max_sum` (60/40, ce e azi).
+   - `'tests_only'` → folosește `test_score_sum`/`test_max_sum` (brut, fără multiplicator).
+   - `'self_only'` → folosește `self_score_sum`/`self_max_sum`.
 
----
+4. **Backfill**: pentru rândurile existente, copiem `score_sum`→`self_score_sum`, `max_sum`→`self_max_sum` (toate provin din auto-învățare până acum).
 
-## Etapa 2 — Seed catalog
+## Modificări backend (edge function)
 
-Insert idempotent pentru CG1-6, CS 1.1-6.5 (toate cu `grade=9`), M1-M100 cu maparea corectă pe CS și categorie A-H din document.
+**`supabase/functions/grade-submission/index.ts`** — după `update test_submissions`:
+- Construim arrayul `items` din `answers` joinat cu `test_items`, mapând `source_type`:
+  - `custom` → `item_type: 'test_item'`, `item_id: test_item.id` (UUID)
+  - `predefined` → `item_type: 'predefined_test_item'`, `item_id: source_id`
+  - `exercise`/`eval_exercise`/`problem`/`manual_exercise` → `item_type: <source_type>`, `item_id: source_id`
+- Apelăm `supabase.rpc('recalculate_competency_scores', { p_user_id: student_id, p_items: items })`.
+- Eșec silențios (try/catch + log) — nu blochează grading-ul.
 
----
+## Modificări frontend
 
-## Etapa 3 — Componenta `CompetencyTagger`
+1. **`CompetencyTagger`** — deja suportă `test_item` și `predefined_test_item` (verificat în `useCompetencies.ts`). Verificăm că este integrat în `TestBuilder` (pt. itemi custom) și `PredefinedTestEditor` (pt. itemi predefiniți). Dacă lipsește, îl adăugăm la editorul de item custom.
 
-Componentă reutilizabilă (Combobox cu căutare, grupat pe categorii A-H). Integrată în:
-- `ExerciseEditor`, `EvalBankEditor`, `ProblemsEditor`, `ManualEditor` (admin)
-- `TestBuilder` doar pentru itemii custom (profesor)
+2. **`CompetencyProfileCard`** (elev) — fără schimbări (rămâne `blended`).
 
----
+3. **Vedere profesor** — în `ClassDetail` (sau echivalent — locul unde profesorul vede un elev), adăugăm un nou card `StudentCompetencyView` cu:
+   - Toggle (`Switch`/3 butoane): `Doar teste` / `Mediu (60/40)` / `Doar auto-învățare`
+   - Default: `Doar teste` (cum a cerut userul).
+   - Reutilizează vizualul din `CompetencyProfileCard` (drilldown CG → CS), dar trimite `p_mode` la RPC și folosește cheia query distinctă.
+   - Acceptă `studentId` ca prop.
 
-## Etapa 4 — Cârlige de calcul
+## Detalii tehnice
 
-La submit lecție/problemă/test apel `recalculate_competency_scores`. Pentru testele profesorilor — apel din edge `grade-submission` după corectare.
+- Tipurile generate Supabase (`types.ts`) vor reflecta noul parametru `p_mode` automat după migration.
+- Pentru itemii `custom` din `test_items`, mappingul în `item_competencies` folosește `item_id = test_items.id::text`. Politica RLS existentă „Teachers can insert competencies for own custom test items" permite deja acest lucru.
+- Pentru `predefined_test_item`, `item_id = predefined_test_items.id::text`; admin-only management (RLS existent OK).
+- `recordCompetencyScores` din `competencyTracking.ts` rămâne neschimbat (frontend trimite la fel; doar serverul aplică multiplicatorul).
 
----
+## Ordine de implementare
 
-## Etapa 5 — Pagina elev `/profile/competencies`
-
-Două nivele expandabile (CG → CS), bară de progres + etichetă calitativă pe fiecare nod. Microcompetențele NU sunt expuse elevului. Sub listă: secțiune „Recomandări” (lecții/probleme propuse pentru CS-urile slabe).
-
-## Etapa 6 — Vedere profesor
-
-Rută `/teacher/student/:id/competencies`: aceeași ierarhie + buton „Notiță” / „Setează nivel manual” pe fiecare nod (CG / CS / M). Aici profesorul vede și nivelul granular M.
-În `ClassDetail` — buton „Profil competențe” lângă fiecare elev + heatmap CS × elev pentru întreaga clasă.
-
-## Etapa 7 — Etichetare în masă (admin)
-
-Pagină admin `/admin/competency-tagging` cu listă de itemi + filtru pe capitol/tip + multi-select rapid de M-uri pentru completarea retroactivă a catalogului existent.
-
----
-
-## Iterații viitoare (după launch)
-
-- Export PDF al profilului.
-- Sugestii AI pentru etichetare automată.
-- Seed CG/CS/M pentru clasele X/XI/XII.
-- Notificare in-app la prima atingere a „Stăpânește” pe o CS.
+1. Migration: schemă + RPC update + backfill.
+2. Edge function `grade-submission`: apel RPC la finalul grading-ului.
+3. UI profesor: card cu toggle în vederea elevului.
+4. Verificare integrare `CompetencyTagger` în `TestBuilder` (item custom) + `PredefinedTestEditor`.
