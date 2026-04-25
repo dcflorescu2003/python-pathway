@@ -17,6 +17,8 @@ import LoadingScreen from "@/components/states/LoadingScreen";
 import StreakCelebrationDialog from "@/components/StreakCelebrationDialog";
 import RichContent from "@/components/RichContent";
 import WatchAdForLivesButton from "@/components/WatchAdForLivesButton";
+import { useAuth } from "@/hooks/useAuth";
+import { recordCompetencyScores, type CompetencyItemResult } from "@/lib/competencyTracking";
 
 import React from "react";
 
