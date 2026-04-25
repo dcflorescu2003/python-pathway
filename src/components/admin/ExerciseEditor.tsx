@@ -9,6 +9,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Trash2, Plus } from "lucide-react";
 import RichTextEditor from "./RichTextEditor";
 import CodeBlockEditor from "./CodeBlockEditor";
+import { CompetencyTagger } from "./CompetencyTagger";
+import type { ItemType as CompetencyItemType } from "@/hooks/useCompetencies";
 
 interface Props {
   exercise?: Exercise;
@@ -16,6 +18,8 @@ interface Props {
   onCancel: () => void;
   lessonId: string;
   nextIndex: number;
+  /** Optional: enables CompetencyTagger UI under the form for the matching item type. */
+  competencyItemType?: CompetencyItemType;
 }
 
 const generateId = (lessonId: string, _index: number) => `${lessonId}-e${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
