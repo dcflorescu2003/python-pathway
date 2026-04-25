@@ -1,55 +1,70 @@
+## Refactorizare import CSV lecții cu suport pentru competențe
 
-## Problema 1 — Titluri „ciudate" în rapoarte (ex: `c1-l1f`, `ch1-l1776...`)
+### Scop
+La importul unei lecții din CSV, fiecare exercițiu poate include o listă de coduri de microcompetențe (ex: `M61;M21`). După inserarea exercițiilor în DB, se vor crea automat și mapările în `item_competencies` (greutate 1.0 pentru fiecare).
 
-### Cauză
-În `ClassAnalytics.tsx → weakestLessons`, când nu găsește lecția în lista de capitole, afișează direct `lesson_id`. Două surse de ID-uri „crude":
-- `c1-l1f`, `c1-l3f` etc. → lecții de **„Fixare"** auto-generate din `courses.ts` (sufix `f`). Sunt prezente doar în fallback-ul static, nu și în DB încărcat de `useChapters`, deci lookup-ul eșuează.
-- `ch1-l1776...` → lecții **manuale/publice** create de admin, ținute într-un alt store (`useManualLessons`), nu în `chapters`.
+### Format CSV (nou)
 
-### Soluție
-1. În `useChapters.ts`: aplică aceeași transformare „Fixare" pe rezultatul din DB (refolosește `addFixareLessons` din `courses.ts` exportându-l), astfel încât lecțiile `*f` să fie cunoscute peste tot în app.
-2. În `ClassAnalytics.tsx → weakestLessons`:
-   - Încarcă în paralel `manual_lessons` (titlu) și mapează `ch1-l...` → titlu lecție manuală.
-   - Dacă tot nu găsim, afișează un fallback uman: numele capitolului + „(lecție arhivată)" în loc de ID brut.
-3. Aplică același helper de „rezolvare titlu lecție" și în:
-   - `PersonalizedSummary.tsx` (sumar elev)
-   - oricare alt loc care iterează `completed_lessons` și afișează ID-uri (verific la implementare).
+Adăugăm o **nouă coloană opțională** `competencies` în secțiunea `[EXERCISES]`:
+- Conține coduri de microcompetențe separate prin `;` (ex: `M61;M21;M29`)
+- Codurile invalide sunt afișate ca avertisment, dar nu blochează importul
+- Coloana lipsă sau goală = exercițiu fără mapare (comportament actual)
 
-## Problema 2 — Toate competențele apar neevaluate pe profilul curent
+Exemplu rând:
+```
+quiz,"Care e tipul lui 3.14?",int,float,str,bool,b,"...",,,,,,,,M21;M29
+```
 
-### Diagnostic
-- `item_competencies` are **1512 maparări** — ok.
-- `student_competency_scores` are **0 rânduri** pentru toți utilizatorii, deși sunt 73 lecții finalizate în ultimele 2h.
-- `recordCompetencyScores` e apelat în `LessonPage.tsx`, dar pentru acest cont specific nu s-a finalizat nicio lecție de când integrarea a fost adăugată (sau există o tăcere de eroare).
+### Modificări pe componente
 
-Două probleme reale identificate:
-1. **Niciun backfill**: lecțiile finalizate înainte de integrare nu sunt punctate niciodată → utilizatorii activi văd „neevaluat" peste tot.
-2. **Tracking lipsă pentru anumite căi**:
-   - Lecțiile de „Fixare" (`*f`) au ID-uri de exerciții cu sufix `f` (ex: `c1-l1-e1f`) generate în `transformExercise` — nu există maparări `item_competencies` pentru ele, deci nu produc scor.
-   - `ManualLessonPage` (lecții publice) nu apelează deloc `recordCompetencyScores`.
+**1. `src/components/admin/csvParser.ts`**
+- Adaug câmpul `competencies?: string[]` în `ParsedExercise`
+- În `rowToExercise`: parsez `row.competencies` → split pe `;`, trim, uppercase, filtrare gol
+- Adaug `competencies` în lista headers din `getContentLessonTemplateCSV`, `getLessonTemplateCSV`, `generateExportCSV`
+- Actualizez exemplele din template să includă coduri reale (M21, M29, M61 etc.)
 
-### Soluție
-1. **RPC de backfill** `backfill_competency_scores(p_user_id uuid)`:
-   - Iterează `completed_lessons` ale userului → pentru fiecare lecție recuperează exercițiile și calculează `score = round((cl.score/100) * total_exercises)`, `max = total_exercises`, apoi cheamă logica internă de `recalculate` cu `item_type='exercise'`.
-   - Iterează `problem_attempts` (sau echivalent) → punctaj proporțional pe `item_type='problem'`.
-   - Iterează `test_submissions` finalizate → `test_item` / `predefined_test_item`.
-   - Securizat: doar pentru `auth.uid() = p_user_id` sau admin.
-2. **Trigger automat la login / la deschiderea profilului de competențe**:
-   - În `CompetencyProfileCard`, dacă `student_competency_scores` e gol pentru user dar `completed_lessons` nu e → apelează backfill o singură dată (flag în `localStorage`: `competency-backfill-v1-<userId>`).
-3. **Mapare ID-uri „Fixare" → exercițiu părinte**:
-   - În `competencyTracking.ts`: dacă `item_id` se termină cu `f`, trimite și varianta fără `f` ca fallback (sau curățăm sufixul înainte de RPC). Astfel maparările existente acoperă și sesiunile de fixare.
-4. **`ManualLessonPage`**: adaugă același pattern de tracking ca `LessonPage` cu `item_type='manual_exercise'`.
+**2. `src/components/admin/CsvLessonImporter.tsx`**
+- După `INSERT` în `exercises`/`eval_exercises`: colectez perechile `(exercise_id, competency_codes[])`
+- Fac `SELECT id, code FROM microcompetencies WHERE code IN (...)` pentru a rezolva codurile la UUID-uri
+- `INSERT` în `item_competencies` cu `item_type='exercise'`, `weight=1.0`
+- Avertizez în toast cu numărul de mapări create + codurile necunoscute
+- În UI, în lista de exerciții parsate, afișez badge-uri cu codurile de competențe detectate (ex: `M21 M29`)
 
-## Files to change
+**3. UI — instrucțiuni vizibile în dialog**
+Înlocuiesc footer-ul actual cu un panou explicativ care conține:
+- Format coloană `competencies`: `M21;M29;M61`
+- Linkul pentru descărcare template (rămâne)
+- Un buton secundar nou: **„Vezi lista microcompetențelor"** care deschide un sub-dialog cu tabel filtrabil (`cod | titlu | competență specifică`) — preluat din `microcompetencies`
+- Notă: codurile necunoscute sunt ignorate cu avertisment
 
-- `supabase/migrations/...` — nou RPC `backfill_competency_scores`
-- `src/data/courses.ts` — exportă `addFixareLessons`
-- `src/hooks/useChapters.ts` — aplică `addFixareLessons` și pe datele din DB
-- `src/components/teacher/ClassAnalytics.tsx` — rezolvă titluri lecții (manual + fixare + fallback uman)
-- `src/components/PersonalizedSummary.tsx` — același helper de titluri
-- `src/lib/competencyTracking.ts` — normalizează sufix `f` pe `item_id`
-- `src/components/account/CompetencyProfileCard.tsx` — declanșează backfill la primul deschis
-- `src/pages/ManualLessonPage.tsx` — integrează `recordCompetencyScores`
+### Detalii tehnice
 
-## Notă pentru utilizator
-Sufixul `f` vine de la lecțiile auto-generate de „Fixare" (recapitulare după fiecare lecție) — sunt reale, doar că titlurile nu erau rezolvate în rapoarte. După fix vei vedea „Fixare: <titlu lecție>" în loc de `c1-l1f`.
+**Validare coduri**:
+- La parsing nu validăm (nu avem acces la DB), doar la submit
+- La submit: un singur SELECT pentru toate codurile unice din toată lecția
+- Codurile necunoscute apar într-un toast warning separat, dar importul continuă
+
+**Mode `eval`**: aceeași logică, dar cu `item_type='exercise'` (mapările sunt pe ID-ul exercițiului din `eval_exercises`).
+
+**ID-uri**: păstrez logica actuală — ID-ul exercițiului este generat înainte de insert, deci am perechile direct fără re-query.
+
+### Exemplu CSV complet (va fi în template descărcabil)
+
+```
+[META]
+title,Liste în Python
+description,Introducere în liste
+xp_reward,25
+[EXERCISES]
+type,question,option_a,option_b,option_c,option_d,correct,explanation,code_template,blanks,lines,statement,is_true,groups,solution,test_cases,competencies
+quiz,"Ce este o listă?",Un șir,O colecție ordonată,Un dicționar,Un tuplu,b,"Listele sunt colecții ordonate",,,,,,,,,M61
+truefalse,,,,,,,"Listele sunt mutabile",,,,Listele sunt mutabile,True,,,,M61;M21
+fill,"Adaugă un element:",,,,,,"append() adaugă la sfârșit","l.___(5)",append,,,,,,,M61
+```
+
+### Rezultat așteptat
+- La import, exercițiile primesc automat mapări de competențe
+- Profilul de competențe al elevului se umple corect după parcurgerea lecției
+- Profesorii pot vedea exact ce competențe acoperă fiecare lecție importată
+
+Confirmă-mi dacă formatul `M21;M29` e ce vrei (separator `;`, fără ponderi). Dacă e ok, aplic.

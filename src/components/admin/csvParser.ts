@@ -14,6 +14,7 @@ export interface ParsedExercise {
   solution?: string | null;
   test_cases?: { input: string; expected_output: string; hidden: boolean }[] | null;
   xp?: number;
+  competencies?: string[];
   error?: string;
 }
 
