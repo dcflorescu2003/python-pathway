@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { chapters as localChapters } from "@/data/courses";
+import { chapters as localChapters, addFixareLessons } from "@/data/courses";
 import { Capacitor } from "@capacitor/core";
 import { useAuth } from "@/hooks/useAuth";
 
