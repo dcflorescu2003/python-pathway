@@ -58,6 +58,9 @@ const CompetencyProfileCard = ({
   const targetId = studentId ?? user?.id;
   const [expanded, setExpanded] = useState(defaultExpanded);
   const [openCG, setOpenCG] = useState<string | null>(null);
+  const [backfilling, setBackfilling] = useState(false);
+  const autoBackfillTriedRef = useRef(false);
+  const qc = useQueryClient();
 
   const { data, isLoading } = useQuery({
     queryKey: ["competency-profile", targetId, mode],
@@ -73,6 +76,52 @@ const CompetencyProfileCard = ({
     enabled: !!targetId && expanded,
     staleTime: 60_000,
   });
+
+  const isOwnProfile = !studentId || studentId === user?.id;
+
+  const runBackfill = async () => {
+    if (!targetId || backfilling) return;
+    setBackfilling(true);
+    try {
+      const { data: res, error } = await supabase.rpc("backfill_competency_scores", {
+        p_user_id: targetId,
+      } as any);
+      if (error) throw error;
+      const items = (res as any)?.items_processed ?? 0;
+      toast({ title: "Profil recalculat", description: `${items} elemente procesate.` });
+      qc.invalidateQueries({ queryKey: ["competency-profile", targetId] });
+    } catch (e: any) {
+      toast({ title: "Eroare", description: e?.message ?? "Recalcularea a eșuat.", variant: "destructive" });
+    } finally {
+      setBackfilling(false);
+    }
+  };
+
+  // Auto-backfill once if profile is empty but user has completed lessons
+  useEffect(() => {
+    if (!expanded || !isOwnProfile || !user?.id || isLoading || !data) return;
+    if (autoBackfillTriedRef.current) return;
+    const flagKey = `competency-backfill-v1-${user.id}`;
+    if (localStorage.getItem(flagKey)) return;
+    const hasAnyData = data.some((r) => Number(r.max_sum) > 0);
+    if (hasAnyData) {
+      localStorage.setItem(flagKey, "1");
+      return;
+    }
+    autoBackfillTriedRef.current = true;
+    (async () => {
+      const { count } = await supabase
+        .from("completed_lessons")
+        .select("*", { count: "exact", head: true })
+        .eq("user_id", user.id);
+      if ((count ?? 0) > 0) {
+        await runBackfill();
+        localStorage.setItem(flagKey, "1");
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [expanded, isOwnProfile, user?.id, isLoading, data]);
+
 
   const generals = useMemo(() => {
     if (!data) return [];
