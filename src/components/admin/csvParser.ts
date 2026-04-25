@@ -285,7 +285,7 @@ export function exerciseToDbRow(ex: ParsedExercise, lessonId: string, sortOrder:
 }
 
 export function generateExportCSV(exercises: any[]): string {
-  const headers = ["type", "question", "option_a", "option_b", "option_c", "option_d", "correct", "explanation", "code_template", "blanks", "lines", "statement", "is_true", "groups", "solution", "test_cases"];
+  const headers = ["type", "question", "option_a", "option_b", "option_c", "option_d", "correct", "explanation", "code_template", "blanks", "lines", "statement", "is_true", "groups", "solution", "test_cases", "competencies"];
   const escape = (v: string) => v.includes(",") || v.includes('"') || v.includes("\n") ? `"${v.replace(/"/g, '""')}"` : v;
 
   const rows = exercises.map(ex => {
@@ -309,6 +309,9 @@ export function generateExportCSV(exercises: any[]): string {
     if (ex.test_cases && Array.isArray(ex.test_cases)) {
       r.test_cases = ex.test_cases.map((tc: any) => `${tc.input}:${tc.expected_output}`).join("|");
     }
+    if (ex.competencies && Array.isArray(ex.competencies)) {
+      r.competencies = ex.competencies.join(";");
+    }
     return headers.map(h => escape(r[h] || "")).join(",");
   });
 
@@ -316,7 +319,7 @@ export function generateExportCSV(exercises: any[]): string {
 }
 
 export function getExercisesTemplateCSV(): string {
-  const headers = "type,question,option_a,option_b,option_c,option_d,correct,explanation,code_template,blanks,lines,statement,is_true,groups,solution,test_cases";
+  const headers = "type,question,option_a,option_b,option_c,option_d,correct,explanation,code_template,blanks,lines,statement,is_true,groups,solution,test_cases,competencies";
   const rows = [
     'quiz,"Ce tip de date este 3.14?",int,float,str,bool,b,"3.14 este un număr zecimal, deci float",,,,,,,,',
     'truefalse,,,,,,,"Python este un limbaj interpretat",,,,"Python este un limbaj interpretat",True,,,',
