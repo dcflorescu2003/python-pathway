@@ -223,7 +223,28 @@ function rowToExercise(row: Record<string, string>): ParsedExercise {
       }));
       break;
     }
-    case "card":
+    case "card": {
+      if (!ex.question) { ex.error = "Întrebare lipsă"; break; }
+      // Auto-split: dacă explanation lipsește dar question conține un titlu (bold pe primul rând non-gol)
+      // urmat de mai mult conținut, mutăm restul în explanation.
+      if (!ex.explanation) {
+        const raw = (row.question || "").replace(/\r\n/g, "\n");
+        const lines = raw.split("\n");
+        // găsește primul rând non-gol
+        let i = 0;
+        while (i < lines.length && lines[i].trim() === "") i++;
+        const firstLine = (lines[i] || "").trim();
+        const isBoldTitle = /^\*\*.+\*\*$/.test(firstLine) || /^#{1,6}\s+/.test(firstLine);
+        if (isBoldTitle && i + 1 < lines.length) {
+          const rest = lines.slice(i + 1).join("\n").replace(/^\n+/, "").trimEnd();
+          if (rest.length > 0) {
+            ex.question = preserveLineBreaks(firstLine.replace(/^\*\*|\*\*$/g, "").replace(/^#{1,6}\s+/, ""));
+            ex.explanation = preserveLineBreaks(rest);
+          }
+        }
+      }
+      break;
+    }
     case "open_answer":
       if (!ex.question) ex.error = "Întrebare lipsă";
       break;
