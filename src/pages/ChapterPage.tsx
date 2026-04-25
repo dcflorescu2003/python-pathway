@@ -223,7 +223,18 @@ const ChapterPage = () => {
 
       <main className="px-4 py-8">
         <div className="flex flex-col items-center">
-          {chapter.lessons.map((lesson, idx) => {
+          {(() => {
+            const total = chapter.lessons.length;
+            const { startEnd, buildEnd } = getSectionBoundaries(total);
+            const showSections = total >= 3;
+
+            const sectionForIndex = (idx: number): LessonSection => {
+              if (idx < startEnd) return "start";
+              if (idx < buildEnd) return "build";
+              return "master";
+            };
+
+            return chapter.lessons.map((lesson, idx) => {
             const isCompleted = progress.completedLessons[lesson.id]?.completed;
             const score = progress.completedLessons[lesson.id]?.score ?? 0;
             const previousDone = idx === 0 || progress.completedLessons[chapter.lessons[idx - 1].id]?.completed;
@@ -232,6 +243,9 @@ const ChapterPage = () => {
             const isCurrent = !isCompleted && !isLocked;
             const isPremiumLocked = false;
             const showSkipBadge = skipUnlocked && !isCompleted && !previousDone;
+
+            const section = sectionForIndex(idx);
+            const isSectionStart = showSections && (idx === 0 || idx === startEnd || idx === buildEnd);
 
             const handleClick = () => {
               if (isPremiumLocked) { setShowPremium(true); return; }
