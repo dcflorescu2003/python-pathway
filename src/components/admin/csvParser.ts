@@ -148,6 +148,13 @@ function rowToExercise(row: Record<string, string>): ParsedExercise {
   const ex: ParsedExercise = { type, question: row.question || "" };
   ex.explanation = row.explanation || null;
   ex.xp = row.xp ? parseInt(row.xp) : 5;
+  // Parse competencies (codes separated by ;)
+  if (row.competencies) {
+    ex.competencies = row.competencies
+      .split(";")
+      .map(c => c.trim().toUpperCase())
+      .filter(c => c.length > 0);
+  }
 
   switch (type) {
     case "quiz": {
