@@ -1663,6 +1663,7 @@ export type Database = {
         Args: { p_notes?: string; p_request_id: string }
         Returns: undefined
       }
+      backfill_competency_scores: { Args: { p_user_id: string }; Returns: Json }
       can_teacher_view_student: {
         Args: { p_student_id: string; p_teacher_id: string }
         Returns: boolean
