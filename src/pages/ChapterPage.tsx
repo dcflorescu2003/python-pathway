@@ -4,7 +4,7 @@ import { useChapters } from "@/hooks/useChapters";
 import { useProgress } from "@/hooks/useProgress";
 import { useAuth } from "@/hooks/useAuth";
 import { motion } from "framer-motion";
-import { ArrowLeft, Check, Lock, Play, BookOpen, Crown, Zap, Trophy, ArrowRight, Map, Info } from "lucide-react";
+import { ArrowLeft, Check, Lock, Play, BookOpen, Crown, Zap, Trophy, ArrowRight, Map, Info, Sparkles, Hammer } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -24,6 +24,68 @@ import ConfettiCanvas from "@/components/ConfettiCanvas";
 
 const COOLDOWN_KEY_PREFIX = "pyro-skip-cooldown:";
 const CHAPTER_DONE_KEY_PREFIX = "pyro-chapter-done-celebrated:";
+
+type LessonSection = "start" | "build" | "master";
+
+const getSectionBoundaries = (total: number) => {
+  const startEnd = Math.ceil(total / 3);
+  const buildEnd = startEnd + Math.ceil((total - startEnd) / 2);
+  return { startEnd, buildEnd };
+};
+
+const SECTION_META: Record<LessonSection, { label: string; subtitle: string; Icon: typeof Sparkles; colorClass: string; glowClass: string; borderClass: string }> = {
+  start: {
+    label: "Start",
+    subtitle: "Primii pași în capitol",
+    Icon: Sparkles,
+    colorClass: "text-primary",
+    glowClass: "bg-primary/15",
+    borderClass: "border-primary/40",
+  },
+  build: {
+    label: "Build",
+    subtitle: "Construim pe ce am învățat",
+    Icon: Hammer,
+    colorClass: "text-accent",
+    glowClass: "bg-accent/15",
+    borderClass: "border-accent/40",
+  },
+  master: {
+    label: "Master",
+    subtitle: "Provocarea finală",
+    Icon: Crown,
+    colorClass: "text-yellow-500",
+    glowClass: "bg-yellow-500/15",
+    borderClass: "border-yellow-500/40",
+  },
+};
+
+const SectionDivider = ({ section, isFirst }: { section: LessonSection; isFirst: boolean }) => {
+  const meta = SECTION_META[section];
+  const Icon = meta.Icon;
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: -8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.35 }}
+      className={`w-full max-w-md ${isFirst ? "mt-2 mb-3" : "mt-10 mb-3"}`}
+    >
+      <div className="flex items-center gap-3">
+        <div className="h-px flex-1 bg-gradient-to-r from-transparent to-border" />
+        <div className={`flex h-11 w-11 items-center justify-center rounded-full border-2 ${meta.borderClass} ${meta.glowClass}`}>
+          <Icon className={`h-5 w-5 ${meta.colorClass}`} />
+        </div>
+        <div className="h-px flex-1 bg-gradient-to-l from-transparent to-border" />
+      </div>
+      <div className="mt-2 text-center">
+        <p className={`text-xs font-mono uppercase tracking-[0.25em] font-bold ${meta.colorClass}`}>
+          {meta.label}
+        </p>
+        <p className="text-xs text-muted-foreground mt-0.5">{meta.subtitle}</p>
+      </div>
+    </motion.div>
+  );
+};
 
 const ChapterPage = () => {
   const { chapterId } = useParams();
@@ -161,7 +223,18 @@ const ChapterPage = () => {
 
       <main className="px-4 py-8">
         <div className="flex flex-col items-center">
-          {chapter.lessons.map((lesson, idx) => {
+          {(() => {
+            const total = chapter.lessons.length;
+            const { startEnd, buildEnd } = getSectionBoundaries(total);
+            const showSections = total >= 3;
+
+            const sectionForIndex = (idx: number): LessonSection => {
+              if (idx < startEnd) return "start";
+              if (idx < buildEnd) return "build";
+              return "master";
+            };
+
+            return chapter.lessons.map((lesson, idx) => {
             const isCompleted = progress.completedLessons[lesson.id]?.completed;
             const score = progress.completedLessons[lesson.id]?.score ?? 0;
             const previousDone = idx === 0 || progress.completedLessons[chapter.lessons[idx - 1].id]?.completed;
@@ -170,6 +243,9 @@ const ChapterPage = () => {
             const isCurrent = !isCompleted && !isLocked;
             const isPremiumLocked = false;
             const showSkipBadge = skipUnlocked && !isCompleted && !previousDone;
+
+            const section = sectionForIndex(idx);
+            const isSectionStart = showSections && (idx === 0 || idx === startEnd || idx === buildEnd);
 
             const handleClick = () => {
               if (isPremiumLocked) { setShowPremium(true); return; }
@@ -185,8 +261,9 @@ const ChapterPage = () => {
             };
 
             return (
-              <div key={lesson.id} className="flex flex-col items-center" ref={lesson.id === firstUncompletedId ? currentLessonRef : undefined}>
-                {idx > 0 && <div className={`h-8 w-0.5 ${isCompleted ? "bg-primary/40" : "bg-border"}`} />}
+              <div key={lesson.id} className="flex flex-col items-center w-full" ref={lesson.id === firstUncompletedId ? currentLessonRef : undefined}>
+                {isSectionStart && <SectionDivider section={section} isFirst={idx === 0} />}
+                {idx > 0 && !isSectionStart && <div className={`h-8 w-0.5 ${isCompleted ? "bg-primary/40" : "bg-border"}`} />}
                 {(() => {
                   const hueShift = idx * 30;
                   const baseHue = parseInt(chapter.color) + hueShift;
@@ -236,7 +313,8 @@ const ChapterPage = () => {
                 </div>
               </div>
             );
-          })}
+          });
+          })()}
           {(() => {
             const allDone = chapter.lessons.length > 0 && chapter.lessons.every(l => progress.completedLessons[l.id]?.completed);
             if (!allDone) return null;
