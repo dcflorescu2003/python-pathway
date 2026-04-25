@@ -438,10 +438,16 @@ const ClassAnalytics = ({ classId, className: clsName }: Props) => {
       const item = a.test_items;
       if (!item) return;
       const key = item.source_id || a.test_item_id;
-      const question =
-        item.source_type === "custom" && item.custom_data?.question
-          ? item.custom_data.question
-          : key;
+
+      let question = "";
+      if (item.source_type === "custom" && item.custom_data?.question) {
+        question = item.custom_data.question;
+      } else if (item.source_id && sourceTitles[item.source_id]) {
+        question = sourceTitles[item.source_id];
+      } else {
+        question = "Item șters";
+      }
+
       if (!errorMap[key]) errorMap[key] = { question, wrongCount: 0, totalCount: 0 };
       errorMap[key].totalCount++;
       if (Number(a.score) < Number(a.max_points)) errorMap[key].wrongCount++;
@@ -449,13 +455,13 @@ const ClassAnalytics = ({ classId, className: clsName }: Props) => {
     return Object.values(errorMap)
       .filter((e) => e.wrongCount > 0)
       .map((e) => ({
-        question: e.question.length > 50 ? e.question.slice(0, 50) + "…" : e.question,
+        question: e.question.length > 60 ? e.question.slice(0, 60) + "…" : e.question,
         errorRate: Math.round((e.wrongCount / e.totalCount) * 100),
         total: e.totalCount,
       }))
       .sort((a, b) => b.errorRate - a.errorRate)
       .slice(0, 6);
-  }, [answers]);
+  }, [answers, sourceTitles]);
 
   const classAvg = studentStats.length > 0
     ? Math.round(studentStats.reduce((s, st) => s + st.avgScore, 0) / studentStats.length)
