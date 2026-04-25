@@ -26,7 +26,7 @@ const ProblemSolvePage = () => {
   const { loading, running, runCode } = usePyodide();
   const { progress, completeLesson, recordActivity, streakJustIncreased, newStreakCount, dismissStreakCelebration } = useProgress();
   const { subscribed } = useSubscription();
-
+  const { user } = useAuth();
   const [code, setCode] = useState("");
   const [results, setResults] = useState<TestResult[] | null>(null);
   const [showHint, setShowHint] = useState(false);
