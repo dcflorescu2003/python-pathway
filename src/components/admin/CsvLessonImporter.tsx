@@ -172,8 +172,15 @@ export default function CsvLessonImporter({ mode, chapterId, existingLessonCount
         }
       }
 
+      const distinctCodes = new Set(rows.flatMap(r => r.competencies.map(c => c.toUpperCase())));
+      const knownDistinct = distinctCodes.size - unknownCodes.size;
       let successMsg = `Lecție "${meta.title}" creată cu ${importableExercises.length} exerciții`;
-      if (mappingsCreated > 0) successMsg += ` și ${mappingsCreated} mapări de competențe`;
+      if (mappingsCreated > 0) {
+        successMsg += ` și ${mappingsCreated} mapări către ${knownDistinct} microcompetențe`;
+      }
+      if (unknownCodes.size > 0) {
+        successMsg += ` (${unknownCodes.size} coduri ignorate)`;
+      }
       toast.success(successMsg + "!");
 
       if (unknownCodes.size > 0) {
