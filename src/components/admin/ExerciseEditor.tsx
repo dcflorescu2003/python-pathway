@@ -512,6 +512,16 @@ const ExerciseEditor = ({ exercise, onSave, onCancel, lessonId, nextIndex, compe
         />
       </div>
 
+      {competencyItemType && (
+        <div className="rounded-lg border border-border bg-muted/30 p-3">
+          <CompetencyTagger
+            itemType={competencyItemType}
+            itemId={exercise ? data.id : null}
+            emptyHint="Salvează exercițiul, apoi revino aici pentru a atașa microcompetențe."
+          />
+        </div>
+      )}
+
       <div className="flex gap-3 pt-2">
         <Button onClick={() => onSave(data)} className="flex-1">
           💾 Salvează
