@@ -124,7 +124,11 @@ function autoRepairRow(values: string[], headerCount: number, headers: string[])
 
 function parseCSVRows(text: string): { headers: string[]; rows: Record<string, string>[] } {
   const sep = detectSeparator(text);
-  const lines = splitLogicalLines(text).filter(l => l.trim());
+  // Filter out empty lines AND comment lines starting with # (after trim)
+  const lines = splitLogicalLines(text).filter(l => {
+    const t = l.trim();
+    return t.length > 0 && !t.startsWith("#");
+  });
   if (lines.length < 2) return { headers: [], rows: [] };
   const headers = parseCSVLine(lines[0], sep).map(h => h.toLowerCase().trim());
   const rows = lines.slice(1).map(line => {
