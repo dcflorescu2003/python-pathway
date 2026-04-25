@@ -13,6 +13,7 @@ import { useTeacherReferralCodes } from "@/hooks/useTeacher";
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from "@/components/ui/alert-dialog";
 import CouponRedemption from "@/components/CouponRedemption";
 import PremiumDialog from "@/components/PremiumDialog";
+import CompetencyProfileCard from "./CompetencyProfileCard";
 import TeacherPremiumDialog from "@/components/TeacherPremiumDialog";
 import TeacherVerificationForm from "@/components/teacher/TeacherVerificationForm";
 import VerificationChat from "@/components/teacher/VerificationChat";
