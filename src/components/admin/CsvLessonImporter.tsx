@@ -354,8 +354,8 @@ export default function CsvLessonImporter({ mode, chapterId, existingLessonCount
                 <Button variant="link" size="sm" className="text-[10px] h-auto p-0" onClick={() => setRefOpen(true)}>
                   <BookOpen className="h-3 w-3 mr-1" />Vezi microcompetențele
                 </Button>
-                <Button variant="link" size="sm" className="text-[10px] h-auto p-0" onClick={() => downloadCSV(mode === "content" ? getContentLessonTemplateCSV() : getLessonTemplateCSV(), "template-lectie.csv")}>
-                  <Download className="h-3 w-3 mr-1" />Template
+                <Button variant="link" size="sm" className="text-[10px] h-auto p-0" onClick={() => downloadCSV(mode === "content" ? getContentLessonTemplateCSV() : getLessonTemplateCSV(), `template-lectie-${mode === "content" ? "continut" : "evaluare"}.csv`)}>
+                  <Download className="h-3 w-3 mr-1" />Descarcă exemplu complet
                 </Button>
               </div>
             </div>
