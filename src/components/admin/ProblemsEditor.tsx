@@ -23,6 +23,7 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { CompetencyTagger } from "./CompetencyTagger";
 
 // --- Sortable wrappers ---
 function SortableProblemChapter({ id, children }: { id: string; children: React.ReactNode }) {
