@@ -233,6 +233,8 @@ const AccountProfileTab = ({
 
       <CouponRedemption />
 
+      <CompetencyProfileCard />
+
       {/* Teacher section */}
       {teacherStatus ? (
         <div className="space-y-2">
