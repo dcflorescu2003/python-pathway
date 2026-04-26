@@ -1,45 +1,29 @@
-# Plan: CSV exemplu complet + competențe vizibile + fix erori frecvente
+## Problema
 
-## 1. Model CSV complet (toate tipurile de itemi)
+După ce userul vizionează complet reclama, apelul către `reward-life` întoarce non-2xx și apare toast-ul „Nu s-au putut acorda viețile". Nu există loguri pentru funcția `reward-life`, ceea ce indică faptul că request-ul este respins la gateway înainte să intre în handler — cauza tipică: funcția nu are `verify_jwt = false` în `supabase/config.toml`, deci gateway-ul cere JWT semnat cu vechiul secret. Funcția deja își validează singură token-ul cu `auth.getClaims()`, deci validarea la gateway trebuie dezactivată.
 
-Înlocuiesc `getLessonTemplateCSV()` în `src/components/admin/csvParser.ts` cu un exemplu COMPLET care conține câte un rând valid pentru fiecare tip suportat: `card`, `quiz`, `truefalse`, `fill`, `order`, `match`*, `open_answer`, `problem`. Fiecare rând are:
+## Cauza tehnică
 
-- toate coloanele relevante completate corect,
-- comentarii inline (linii prefixate `#` care vor fi ignorate la parsare — adaug suport pentru asta în parser),
-- coloana `competencies` populată cu coduri reale (M1, M21, M61, M82, …),
-- exemple de blanks cu mai multe variante (`print('Salut')|print("Salut");valoare2`),
-- `order` cu `groups` (pentru linii interschimbabile),
-- `problem` cu `code_template`, `solution` și `test_cases`.
+- `supabase/config.toml` nu are intrare pentru `[functions.reward-life]`. 
+- Pe sistemul nou de signing keys din Lovable Cloud, funcțiile fără `verify_jwt = false` explicit pot eșua la verificarea JWT din gateway → răspuns non-2xx fără să se logheze nimic în funcție.
+- În plus, în handler validarea token-ului poate eșua silențios dacă `getClaims` întoarce undefined în loc de eroare; vom adăuga loguri și răspunsuri mai clare.
 
-Apoi:
-- adaug în `CsvLessonImporter.tsx` un buton secundar **„Descarcă exemplu complet”** lângă „Vezi microcompetențele”, care livrează acest CSV.
-- afișez modelul și sub formă de bloc preformatat scurt în panoul de instrucțiuni (cu scroll), ca utilizatorul să-l vadă fără descărcare.
+## Soluție
 
-*Notă: `match` nu e încă în parser — dacă vrei suport, îl adăugăm separat. În exemplu îl includ doar dacă confirmi. Implicit îl exclud.
+1. **`supabase/config.toml`** — adaug:
+   ```toml
+   [functions.reward-life]
+   verify_jwt = false
+   ```
+   Astfel funcția primește request-ul și validează JWT-ul intern (cum face deja).
 
-## 2. Afișarea competențelor detectate
+2. **`supabase/functions/reward-life/index.ts`** — îmbunătățiri minore:
+   - Adaug loguri (`[REWARD-LIFE] ...`) la fiecare pas (start, auth, profile fetch, update) pentru debugging viitor.
+   - Returnez mesaj de eroare clar la fiecare cale de eșec.
+   - Verific că `Authorization` header începe cu `Bearer ` înainte de a-l procesa.
 
-În `CsvLessonImporter.tsx`:
-- după parsare, sub bara de sumar, adaug o secțiune compactă **„Competențe detectate în această lecție”** care listează codurile unice agregate (cu count exerciții pentru fiecare cod), ex: `M61 (3) · M21 (2) · M82 (1)`.
-- în lista de previzualizare a exercițiilor, badge-urile existente devin clickabile (tooltip cu denumirea microcompetenței, încărcată odată din `microcompetencies`).
-- coduri necunoscute (care nu există în DB) primesc badge roșu cu warning tooltip; deja le tratam în toast — acum sunt vizibile și inline înainte de import.
-- în mesajul toast de succes adaug rezumat: „X mapări create pentru Y microcompetențe distincte (Z coduri ignorate)”.
+Nu sunt necesare schimbări de schemă (coloanele `lives`, `ads_watched_today`, `ads_last_reset`, `lives_updated_at` există deja în `profiles`).
 
-## 3. Fix „Erori frecvente în teste” (afișează slug-uri precum `c2-l2-e4`, `sum-two`)
+## Verificare după deploy
 
-Cauza: în `ClassAnalytics.tsx::frequentErrors`, când `source_type !== "custom"`, fallback-ul folosește `source_id` (slug intern) ca text al întrebării. Pentru itemii din lecții (`exercise`), eval bank (`exercise` în `eval_exercises`) și probleme (`problem`), nu se încarcă textul real.
-
-Fix:
-- modific query-ul `analytics-tests` ca după ce am `answers` cu `test_items(source_type, source_id, custom_data)`, să fac un al doilea fetch:
-  - `exercises` și `eval_exercises` pentru `source_id`-urile cu `source_type='exercise'` → folosesc `question` sau `statement`.
-  - `problems` pentru `source_type='problem'` → folosesc `title` (mai scurt decât description).
-- construiesc un map `{source_id → questionText}` și îl folosesc în `frequentErrors` în locul fallback-ului pe `source_id`.
-- dacă tot nu se găsește (item șters), afișez `"Item șters"` în loc de slug.
-- aplic același tratament în `exportPDF` (`frequentErrors` deja primește textul curățat, deci nu mai e nevoie de modificări acolo).
-
-## Rezumat fișiere modificate
-- `src/components/admin/csvParser.ts` — template CSV complet + suport linii comentariu (`#`)
-- `src/components/admin/CsvLessonImporter.tsx` — buton „Descarcă exemplu complet”, panou „Competențe detectate”, badge tooltips
-- `src/components/teacher/ClassAnalytics.tsx` — îmbogățire `answers` cu textul real al întrebărilor (lecție/eval/problemă)
-
-Confirmă și aplic.
+După aplicare, dacă userul mai întâlnește eroarea, logurile din `reward-life` vor arăta exact unde pică (auth invalid, profil lipsă, sau update eșuat), și putem corecta rapid.
