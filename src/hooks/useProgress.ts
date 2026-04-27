@@ -455,7 +455,24 @@ export function useProgress() {
     [user]
   );
 
-  return { progress, completeLesson, loseLife, resetLives, setLivesFromReward, setPremium, recordActivity, unlockLessonViaSkip, streakJustIncreased, newStreakCount, dismissStreakCelebration };
+  const markLessonStarted = useCallback(
+    (lessonId: string) => {
+      setProgress((prev) => {
+        // dacă lecția e deja completă sau deja marcată ca începută, nu facem nimic
+        if (prev.completedLessons[lessonId]?.completed) return prev;
+        if (prev.startedLessons[lessonId]) return prev;
+        const newProgress: UserProgress = {
+          ...prev,
+          startedLessons: { ...prev.startedLessons, [lessonId]: true },
+        };
+        saveLocalProgress(newProgress, user?.id);
+        return newProgress;
+      });
+    },
+    [user]
+  );
+
+  return { progress, completeLesson, loseLife, resetLives, setLivesFromReward, setPremium, recordActivity, unlockLessonViaSkip, markLessonStarted, streakJustIncreased, newStreakCount, dismissStreakCelebration };
 }
 
 function mergeProgress(a: UserProgress, b: UserProgress): UserProgress {
