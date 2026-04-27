@@ -29,6 +29,7 @@ function createDefaultProgress(): UserProgress {
     streak: 0,
     lives: MAX_LIVES,
     completedLessons: {},
+    startedLessons: {},
     skipUnlockedLessons: {},
     lastActivityDate: "",
     isPremium: false,
