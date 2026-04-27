@@ -112,6 +112,11 @@ const LessonPage = () => {
           max_score: 1,
         });
       }
+      // Marcăm lecția ca începută la primul răspuns (pentru iconița Replay în ChapterPage)
+      if (!lessonStartedRef.current && lesson) {
+        lessonStartedRef.current = true;
+        markLessonStarted(lesson.id);
+      }
       if (isCorrect) {
         setCorrectCount((c) => c + 1);
         setFeedback("correct");
@@ -121,16 +126,16 @@ const LessonPage = () => {
           recordActivity();
         }
       } else {
-        loseLife();
+        // Scădem inima locală pentru toți (inclusiv Premium); pentru non-Premium scădem și inima reală.
+        setLocalLives((l) => Math.max(0, l - 1));
+        if (!progress.isPremium) {
+          loseLife();
+        }
         setFeedback("wrong");
         setLastExplanation(exercise?.explanation || null);
-        // Dacă era ultima inimă, marcăm lecția ca terminată după ce userul vede feedback-ul
-        if (!progress.isPremium && progress.lives <= 1) {
-          // setIsFinished se va declanșa când userul apasă „Vezi rezultatul"
-        }
       }
     },
-    [currentIndex, lesson, loseLife, correctCount, completeLesson, recordActivity, user, progress.isPremium, progress.lives]
+    [currentIndex, lesson, loseLife, recordActivity, markLessonStarted, progress.isPremium]
   );
 
   const handleContinue = useCallback(() => {
