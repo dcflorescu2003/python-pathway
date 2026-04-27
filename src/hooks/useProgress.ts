@@ -292,6 +292,16 @@ export function useProgress() {
         const alreadyCompleted = !!previousEntry?.completed;
         const finalXP = Math.round((alreadyCompleted ? 3 : xpEarned) * bonusMultiplier);
 
+        // Diagnostic temporar: să vedem când și de ce se acordă 3 XP
+        console.log("[completeLesson]", {
+          lessonId,
+          xpRewardSetat: xpEarned,
+          alreadyCompleted,
+          previousEntry,
+          finalXP,
+          bonusMultiplier,
+        });
+
         const today = getTodayDate();
         const isFirstActivityToday = prev.lastActivityDate !== today;
         const newStreak = computeNewStreak(prev.streak, prev.lastActivityDate);
@@ -304,6 +314,10 @@ export function useProgress() {
         // Keep best score across redos — never lower a previously achieved score
         const bestScore = Math.max(previousEntry?.score ?? 0, score);
 
+        // Lecția devine completă, deci o scoatem din "started"
+        const newStarted = { ...prev.startedLessons };
+        delete newStarted[lessonId];
+
         const newProgress: UserProgress = {
           ...prev,
           xp: prev.xp + finalXP,
@@ -313,6 +327,7 @@ export function useProgress() {
             ...prev.completedLessons,
             [lessonId]: { score: bestScore, completed: true },
           },
+          startedLessons: newStarted,
         };
 
         saveLocalProgress(newProgress, user?.id);
