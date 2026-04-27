@@ -185,9 +185,9 @@ async function fetchChapters(): Promise<Chapter[]> {
     lessons: lessonsByChapter[ch.id] || [],
   }));
 
-  // Apply same "Fixare" auto-generation as the static fallback so DB-loaded
-  // chapters also expose the recap lessons (ids ending in `f`).
-  return addFixareLessons(result as any) as Chapter[];
+  // DB is the single source of truth — no auto-generated "Fixare" duplicates here.
+  // Native offline fallback (`getNativeFallbackChapters`) still includes them via courses.ts.
+  return result as Chapter[];
 }
 
 export function useChapters() {

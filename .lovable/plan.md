@@ -1,37 +1,23 @@
-## Modificări lecții: inimi Premium și logică XP
+## Problema
 
-### Problema 1 — Premium rămâne cu 5 inimi în lecție
+În `src/hooks/useChapters.ts` se aplică `addFixareLessons()` peste lecțiile încărcate din baza de date, ceea ce generează automat un duplicat „Fixare: …" (cu id `<id>f`) după fiecare lecție din DB. Vrem ca DB-ul să fie sursa unică de adevăr.
 
-În prezent `loseLife()` în `useProgress.ts` returnează imediat dacă userul e Premium (`if (prev.isPremium) return prev`), iar în `LessonPage.tsx` afișarea folosește `lives = progress.isPremium ? 5 : progress.lives`. Deci Premium nu pierde niciodată inimi — nici măcar local pe durata lecției.
+## Modificări
 
-**Soluție:** introducem un contor de inimi **local lecției** (state în `LessonPage`), inițializat la 5, care scade pentru toți userii la fiecare răspuns greșit. Inimile reale din `progress.lives` (sincronizate cu DB) **rămân neatinse pentru Premium**. Când contorul local ajunge la 0:
+### 1. `src/hooks/useChapters.ts`
+- Eliminăm apelul `addFixareLessons(result)` și returnăm direct `result`.
+- Eliminăm importul `addFixareLessons` din `@/data/courses` (păstrăm `chapters as localChapters` pentru fallback-ul nativ).
 
-- se afișează ecranul „Ai rămas fără vieți” (același UI ca la non-premium, dar fără reclama AdMob — pentru Premium punem un buton „Reîncepe lecția”)
-- butonul **Reîncepe** resetează: `currentIndex=0`, `correctCount=0`, contor local de inimi=5, `feedback=null`, `isFinished=false` și permite reluarea lecției imediat
-- pentru non-premium rămâne fluxul actual (await 20 min sau watch ad)
+### 2. Fallback nativ (`getNativeFallbackChapters`)
+- Rămâne `localChapters` din `courses.ts`, care deja are Fixare aplicat la export (`export const chapters = addFixareLessons(rawChapters)`). Fallback-ul offline pe Android va continua să funcționeze identic.
 
-Pentru non-premium, scăderea inimilor reale din DB se face în continuare prin `loseLife()` (păstrăm comportamentul actual). Astfel inimile vizibile în header devin = `min(localLives, progress.lives)` pentru non-premium și `localLives` pentru Premium.
+### 3. Compatibilitate cu lecții vechi „Fixare" deja completate
+- Păstrăm `addFixareLessons` exportat din `courses.ts` (folosit la fallback și de adminul `ContentEditor`).
+- Păstrăm logica din `src/lib/lessonTitles.ts` care rezolvă id-urile vechi terminate în `f` la titlu „Fixare: …" — astfel, în istoricul `completed_lessons`, intrările vechi cu sufix `f` continuă să afișeze un titlu lizibil.
+- Păstrăm normalizarea din `src/lib/competencyTracking.ts` (sufix `f` → id de bază) din același motiv de retrocompatibilitate.
 
-### Problema 2 — XP greșit la prima finalizare
+## Rezultat
 
-În `useProgress.ts` `completeLesson()` calculează `alreadyCompleted = !!previousEntry?.completed`, deci dă XP-ul setat la prima finalizare reușită. Bug-ul observat (3 XP la prima finalizare) provine cel mai probabil din faptul că în `LessonPage.tsx` valoarea `wasFirstTime` se citește **înainte** ca lecția să fie completată, dar `xpEarned` afișat în ecranul final folosește `lesson.xpReward` doar dacă `wasFirstTime`, altfel hardcodat `3`. Dacă userul a mai deschis lecția anterior și `completedLessons[lessonId].completed` a ajuns cumva la `true` fără finalizare reală, primește 3.  
-  
-As vrea sa avem si un UI o alta iconita pentru lectiile pe care le-ai facut, dar nu le-ai terminat, semnul de Replay de la muzica
-
-**Decizie agreată:** păstrăm regula actuală — *3 XP dacă lecția este deja marcată completă, XP-ul setat al lecției la prima finalizare reușită*. Modificările:
-
-1. **Eliminăm complet componenta XP per-exercițiu** din calcul. În `LessonPage.tsx` apelul `completeLesson(lesson.id, lesson.xpReward, percent)` deja folosește `lesson.xpReward` (corect). Verificăm și înlăturăm orice acumulare de XP din exerciții individuale (există `xp` per exercițiu în DB dar nu este însumat în flux — doar confirmăm).
-2. **Sursa unică de adevăr** pentru XP devine `lesson.xpReward` (XP-ul setat al lecției). Editorul admin pentru XP/exercițiu rămâne în DB pentru retro-compat dar nu e folosit în calcul.
-3. **Asigurăm că marcajul `completed=true**` se setează **doar** când lecția se termină cu inimi rămase (= cazul în care `completeLesson` e apelat). Codul actual deja face asta — confirmăm că nu există cale prin care lecția să fie marcată completă fără finalizare. Dacă nu există bug aici, atunci 3 XP-ul vine din faptul că ai mai terminat lecția înainte (pe alt device / sincronizare cloud) — nu e bug, e logica corectă.
-
-Vom adăuga un log de debug temporar pentru a vedea în consolă ce valoare are `previousEntry` la momentul `completeLesson`, ca să confirmăm exact ce s-a întâmplat în cazul descris.
-
-### Fișiere modificate
-
-- `src/pages/LessonPage.tsx` — contor local de inimi, ecran „fără vieți” pentru Premium cu buton Reîncepe, reset state la reîncepere
-- `src/hooks/useProgress.ts` — fără modificări la logica XP; doar log de diagnostic în `completeLesson` pentru a confirma `previousEntry`
-
-### Out of scope
-
-- Modificarea sistemului de XP per-exercițiu din editorul admin (rămâne în DB, doar nu e folosit la totalul lecției)
-- Schimbarea comportamentului non-premium (rămâne cu reclamă AdMob și await 20 min)
+- Pe web și pe orice platformă cu DB disponibilă: lecțiile apar exact așa cum sunt în Supabase, fără duplicate „Fixare".
+- Pe nativ fără rețea: fallback-ul local continuă să afișeze Fixare auto-generat din `courses.ts` (curriculum static).
+- Istoricul vechi cu id-uri `<id>f` rămâne afișabil corect în profil/leaderboard.
