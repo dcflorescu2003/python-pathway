@@ -247,7 +247,7 @@ const Index = (): JSX.Element => {
           transition={{ duration: 0.4, ease: "easeOut" }}
           className="min-h-screen bg-background"
         >
-      <header className={`sticky top-0 z-40 border-b backdrop-blur-md pt-[env(safe-area-inset-top)] ${
+      <header className={`sticky top-0 z-40 border-b backdrop-blur-md pt-[var(--sat)] ${
         progress.isPremium 
           ? "border-yellow-500/30 bg-gradient-to-r from-yellow-500/10 via-background/90 to-yellow-500/10" 
           : "border-border bg-background/80"

@@ -1,29 +1,74 @@
-## Problema
+## Problemă identificată
 
-După ce userul vizionează complet reclama, apelul către `reward-life` întoarce non-2xx și apare toast-ul „Nu s-au putut acorda viețile". Nu există loguri pentru funcția `reward-life`, ceea ce indică faptul că request-ul este respins la gateway înainte să intre în handler — cauza tipică: funcția nu are `verify_jwt = false` în `supabase/config.toml`, deci gateway-ul cere JWT semnat cu vechiul secret. Funcția deja își validează singură token-ul cu `auth.getClaims()`, deci validarea la gateway trebuie dezactivată.
+Aplicația folosește deja `env(safe-area-inset-*)` în multe pagini, dar:
 
-## Cauza tehnică
-
-- `supabase/config.toml` nu are intrare pentru `[functions.reward-life]`. 
-- Pe sistemul nou de signing keys din Lovable Cloud, funcțiile fără `verify_jwt = false` explicit pot eșua la verificarea JWT din gateway → răspuns non-2xx fără să se logheze nimic în funcție.
-- În plus, în handler validarea token-ului poate eșua silențios dacă `getClaims` întoarce undefined în loc de eroare; vom adăuga loguri și răspunsuri mai clare.
+1. **Android**: deși `MainActivity.java` activează edge-to-edge (`setDecorFitsSystemWindows(false)`), WebView-ul Android **nu populează automat** `env(safe-area-inset-*)` în CSS. Rezultă inseturi `0px` → conținutul intră sub status bar și sub bara de navigație software (3 butoane). E nevoie de plugin-ul oficial `@capacitor/status-bar` + setare programatică a `--safe-area-inset-*` ca CSS variables.
+2. **iOS fără notch (SE, iPhone 8)**: `env(safe-area-inset-bottom)` = `0px` → BottomNav-ul lipit de marginea de jos, fără respirație. Lipsește un minim de siguranță.
+3. **Android cu butoane software**: bara de navigație acoperă BottomNav-ul (16px insetul nu e suficient pentru 48px de butoane).
+4. Header-uri inconsistente: unele folosesc `pt-[env(safe-area-inset-top)]` fără minim, altele cu `+8px` — variabil.
 
 ## Soluție
 
-1. **`supabase/config.toml`** — adaug:
-   ```toml
-   [functions.reward-life]
-   verify_jwt = false
-   ```
-   Astfel funcția primește request-ul și validează JWT-ul intern (cum face deja).
+### A. Injectare safe-area pe Android (la nivel nativ)
 
-2. **`supabase/functions/reward-life/index.ts`** — îmbunătățiri minore:
-   - Adaug loguri (`[REWARD-LIFE] ...`) la fiecare pas (start, auth, profile fetch, update) pentru debugging viitor.
-   - Returnez mesaj de eroare clar la fiecare cale de eșec.
-   - Verific că `Authorization` header începe cu `Bearer ` înainte de a-l procesa.
+Adăugăm un mic snippet în `MainActivity.java` care citește `WindowInsets` (status bar + navigation bar) și le injectează în WebView ca CSS custom properties:
 
-Nu sunt necesare schimbări de schemă (coloanele `lives`, `ads_watched_today`, `ads_last_reset`, `lives_updated_at` există deja în `profiles`).
+```text
+--safe-area-inset-top
+--safe-area-inset-right
+--safe-area-inset-bottom
+--safe-area-inset-left
+```
 
-## Verificare după deploy
+Se actualizează la `onCreate` și pe `setOnApplyWindowInsetsListener` (rotire, schimbare bară).
 
-După aplicare, dacă userul mai întâlnește eroarea, logurile din `reward-life` vor arăta exact unde pică (auth invalid, profil lipsă, sau update eșuat), și putem corecta rapid.
+### B. CSS: fallback unificat cu minim garantat
+
+Definim în `src/index.css` variabile globale care folosesc fie `env(safe-area-inset-*)` (iOS) fie `var(--safe-area-inset-*)` (Android, injectat nativ), cu un **minim de siguranță**:
+
+```text
+--sat: max(env(safe-area-inset-top),  var(--safe-area-inset-top, 0px), 12px)
+--sab: max(env(safe-area-inset-bottom), var(--safe-area-inset-bottom, 0px), 16px)
+```
+
+Pe device-uri fără notch/home indicator (iPhone SE, multe Androids vechi) → minim 12px sus / 16px jos.
+Pe iPhone cu notch → folosește notch-ul real (47px).
+Pe Android cu navbar software → folosește înălțimea reală a barei (≈48px).
+
+### C. Refactor componente comune
+
+- **`BottomNav.tsx`**: înlocuim `pb-[env(safe-area-inset-bottom)]` cu `pb-[var(--sab)]`. Mărim înălțimea efectivă cu min. 16px față de margine.
+- **`MobileLayout.tsx`**: schimbăm `pb-20` în `pb-[calc(5rem+var(--sab))]` ca lista din spatele BottomNav-ului să nu fie acoperită.
+- **Header-uri** (Index, AuthPage, ChapterPage, LeaderboardPage, ProblemsPage, etc.): înlocuim variantele inconsistente cu `pt-[var(--sat)]` (sau `+8px` unde e nevoie de aer suplimentar).
+- **`SkipChallengePage` + `LessonPage` + `ManualLessonPage`**: bara de jos cu butoane „Verifică / Continuă" → `pb-[var(--sab)]` în loc de `pb-[max(env(...),16px)]`.
+
+### D. Android theme
+
+În `android/app/src/main/res/values/styles.xml` ne asigurăm că tema NU are `windowTranslucentNavigation` care ar interfera, și adăugăm `android:fitsSystemWindows="false"` ca să forțăm edge-to-edge corect.
+
+### E. Verificare manuală (după build)
+
+Testăm pe:
+- iPhone cu notch (Dynamic Island) — header-ul evită notch-ul, BottomNav peste home indicator.
+- iPhone SE / 8 — header are min. 12px aer, BottomNav are min. 16px aer.
+- Android cu gesture bar — BottomNav peste gesture bar, conținut nu e tăiat.
+- Android cu 3 butoane software — BottomNav vizibil **deasupra** butoanelor.
+
+## Fișiere modificate
+
+- `android/app/src/main/java/ro/pythonpathway/app/MainActivity.java` — injectare WindowInsets în CSS
+- `src/index.css` — definire `--sat`, `--sab`, `--sal`, `--sar`
+- `src/components/layout/BottomNav.tsx`
+- `src/components/layout/MobileLayout.tsx`
+- ~14 pagini cu header sticky → unificare la `var(--sat)`
+- `android/app/src/main/res/values/styles.xml` — verificare/fixe edge-to-edge
+
+## Notă
+
+Nu e nevoie de instalare de pachete noi. Tot ce avem nevoie există în `androidx.core` (deja inclus prin Capacitor 8). După merge:
+
+```bash
+npx cap sync
+```
+
+Și un build nou (Android Studio + Xcode). Nu trebuie reîncărcat în store decât la următoarea versiune planificată.

@@ -78,13 +78,23 @@
     font-variant-ligatures: none;
   }
 
+  /* Safe area variables — unified for iOS (env) + Android (injected via MainActivity)
+     with a guaranteed minimum so devices without notch / home indicator
+     (iPhone SE, older Androids) still get breathing room from edges. */
+  :root {
+    --sat: max(env(safe-area-inset-top, 0px), var(--android-sait, 0px), 12px);
+    --sab: max(env(safe-area-inset-bottom, 0px), var(--android-saib, 0px), 16px);
+    --sal: max(env(safe-area-inset-left, 0px), var(--android-sail, 0px), 0px);
+    --sar: max(env(safe-area-inset-right, 0px), var(--android-sair, 0px), 0px);
+  }
+
   /* Safe area utilities */
   .safe-top {
-    padding-top: env(safe-area-inset-top);
+    padding-top: var(--sat);
   }
 
   .safe-bottom {
-    padding-bottom: env(safe-area-inset-bottom);
+    padding-bottom: var(--sab);
   }
 }
 
