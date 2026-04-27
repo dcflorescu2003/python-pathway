@@ -57,7 +57,10 @@ const LessonPage = () => {
 
   const [currentIndex, setCurrentIndex] = useState(0);
   const [correctCount, setCorrectCount] = useState(0);
-  const lives = progress.isPremium ? 5 : progress.lives;
+  const [localLives, setLocalLives] = useState(5);
+  // Inimi afișate în lecție: pentru Premium folosim contor local (nu se sincronizează cu DB);
+  // pentru non-Premium e minimul dintre contor local și inimile reale (DB).
+  const lives = progress.isPremium ? localLives : Math.min(localLives, progress.lives);
   const [isFinished, setIsFinished] = useState(false);
   const [feedback, setFeedback] = useState<"correct" | "wrong" | null>(null);
   const [lastExplanation, setLastExplanation] = useState<string | null>(null);
@@ -66,6 +69,18 @@ const LessonPage = () => {
   // Lecția nu poate începe sau continua dacă userul nu are inimi (excepție: Premium)
   const noLives = !progress.isPremium && progress.lives <= 0;
   const lessonStarted = currentIndex > 0 || feedback !== null || correctCount > 0;
+
+  const restartLesson = useCallback(() => {
+    setCurrentIndex(0);
+    setCorrectCount(0);
+    setLocalLives(5);
+    setFeedback(null);
+    setLastExplanation(null);
+    setIsFinished(false);
+    activityRecordedRef.current = false;
+    lessonStartedRef.current = false;
+    competencyResultsRef.current = [];
+  }, []);
 
   const handleAnswer = useCallback(
     (isCorrect: boolean) => {
