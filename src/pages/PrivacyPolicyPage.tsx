@@ -12,7 +12,7 @@ const PrivacyPolicyPage = () => {
       exit={{ opacity: 0, y: -20 }}
       className="min-h-screen bg-background"
     >
-      <header className="sticky top-0 z-40 border-b border-border bg-background/80 backdrop-blur-md pt-[calc(env(safe-area-inset-top)+8px)]">
+      <header className="sticky top-0 z-40 border-b border-border bg-background/80 backdrop-blur-md pt-[calc(var(--sat)+8px)]">
         <div className="flex items-center gap-3 px-4 py-3">
           <button onClick={() => navigate(-1)} className="active:scale-90 transition-transform">
             <ArrowLeft className="h-6 w-6 text-foreground" />

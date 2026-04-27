@@ -4,7 +4,7 @@ const LoadingScreen = () => {
   return (
     <div className="min-h-screen bg-background">
       {/* Header skeleton */}
-      <div className="sticky top-0 z-40 border-b border-border bg-background/80 backdrop-blur-md pt-[env(safe-area-inset-top)]">
+      <div className="sticky top-0 z-40 border-b border-border bg-background/80 backdrop-blur-md pt-[var(--sat)]">
         <div className="flex items-center justify-between px-4 py-3">
           <Skeleton className="h-7 w-24 rounded-md" />
           <div className="flex items-center gap-3">

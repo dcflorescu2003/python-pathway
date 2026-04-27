@@ -210,7 +210,7 @@ const LessonPage = () => {
 
   return (
     <div className="fixed inset-0 bg-background flex flex-col">
-      <header className="border-b border-border bg-background/80 backdrop-blur-md px-4 py-3 pt-[max(env(safe-area-inset-top),12px)]">
+      <header className="border-b border-border bg-background/80 backdrop-blur-md px-4 py-3 pt-[var(--sat)]">
         <div className="flex items-center gap-3">
           <button onClick={() => navigate(`/chapter/${chapter.id}`)} className="touch-target flex items-center justify-center">
             <X className="h-6 w-6 text-muted-foreground" />
@@ -253,7 +253,7 @@ const LessonPage = () => {
       <AnimatePresence>
         {feedback && (
           <motion.div initial={{ y: 100 }} animate={{ y: 0 }} exit={{ y: 100 }}
-            className={`border-t px-4 py-4 pb-[max(env(safe-area-inset-bottom),16px)] ${
+            className={`border-t px-4 py-4 pb-[var(--sab)] ${
               feedback === "correct" ? "bg-primary/10 border-primary/30" : "bg-destructive/10 border-destructive/30"
             }`}>
             <div className="max-w-lg mx-auto">

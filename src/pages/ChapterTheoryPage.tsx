@@ -21,7 +21,7 @@ const ChapterTheoryPage = () => {
   return (
     <div className="min-h-screen bg-background">
       <OfflineBanner />
-      <header className="sticky top-0 z-40 border-b border-border bg-background/80 backdrop-blur-md pt-[calc(env(safe-area-inset-top)+8px)]">
+      <header className="sticky top-0 z-40 border-b border-border bg-background/80 backdrop-blur-md pt-[calc(var(--sat)+8px)]">
         <div className="flex items-center gap-3 px-4 py-3">
           <Button variant="ghost" size="icon" className="touch-target" onClick={() => navigate(`/chapter/${chapter.id}`)}>
             <ArrowLeft className="h-5 w-5" />
