@@ -339,7 +339,7 @@ const ChapterPage = () => {
                       } ${isLocked && !isPremiumLocked ? "border-yellow-500/40 bg-card text-muted-foreground hover:border-yellow-500/70 hover:opacity-90 opacity-60 cursor-pointer" : ""} ${isCurrent && !isPremiumLocked ? "animate-pulse-glow" : ""} ${completedFade}`}
                       style={!isLocked && !isPremiumLocked ? { borderColor: lessonColorBorder, backgroundColor: lessonColorBg, color: lessonColor, ...currentGlow } : undefined}
                     >
-                      {isPremiumLocked ? <Crown className="h-6 w-6 text-yellow-500" /> : isCompleted ? <Check className="h-7 w-7" /> : isLocked ? <Lock className="h-6 w-6" /> : <Play className={`${isCurrent ? "h-8 w-8" : "h-7 w-7"} ml-1`} />}
+                      {isPremiumLocked ? <Crown className="h-6 w-6 text-yellow-500" /> : isCompleted ? <Check className="h-7 w-7" /> : isLocked ? <Lock className="h-6 w-6" /> : isStarted ? <RotateCcw className={`${isCurrent ? "h-7 w-7" : "h-6 w-6"}`} /> : <Play className={`${isCurrent ? "h-8 w-8" : "h-7 w-7"} ml-1`} />}
                       {isLocked && !isPremiumLocked && (
                         <span className="absolute -top-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full bg-yellow-500 text-black shadow-md">
                           <Zap className="h-3.5 w-3.5" />
