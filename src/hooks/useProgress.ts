@@ -186,6 +186,7 @@ export function useProgress() {
           isPremium: profile?.is_premium ?? false,
           lastActivityDate: profile?.last_activity_date ?? getTodayDate(),
           completedLessons: cloudCompleted,
+          startedLessons: {},
           skipUnlockedLessons: cloudSkipUnlocks,
           livesUpdatedAt: profile?.lives_updated_at ?? new Date().toISOString(),
         };
