@@ -3,8 +3,12 @@ package ro.pythonpathway.app;
 import android.content.Intent;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.View;
 
+import androidx.core.graphics.Insets;
+import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowCompat;
+import androidx.core.view.WindowInsetsCompat;
 import androidx.core.view.WindowInsetsControllerCompat;
 
 import com.getcapacitor.BridgeActivity;
@@ -26,6 +30,37 @@ public class MainActivity extends BridgeActivity implements ModifiedMainActivity
             WindowCompat.getInsetsController(getWindow(), getWindow().getDecorView());
         controller.setAppearanceLightStatusBars(false);
         controller.setAppearanceLightNavigationBars(false);
+
+        // Inject system bar insets into the WebView as CSS variables so the
+        // web layer can avoid status bar / navigation bar / gesture areas
+        // on devices where env(safe-area-inset-*) returns 0 (most Androids).
+        final View root = getWindow().getDecorView();
+        ViewCompat.setOnApplyWindowInsetsListener(root, (v, windowInsets) -> {
+            Insets bars = windowInsets.getInsets(
+                WindowInsetsCompat.Type.systemBars()
+                | WindowInsetsCompat.Type.displayCutout()
+            );
+            float density = getResources().getDisplayMetrics().density;
+            int topPx = Math.round(bars.top / density);
+            int rightPx = Math.round(bars.right / density);
+            int bottomPx = Math.round(bars.bottom / density);
+            int leftPx = Math.round(bars.left / density);
+            applySafeAreaToWebView(topPx, rightPx, bottomPx, leftPx);
+            return windowInsets;
+        });
+    }
+
+    private void applySafeAreaToWebView(int top, int right, int bottom, int left) {
+        if (getBridge() == null || getBridge().getWebView() == null) return;
+        final String js =
+            "(function(){var s=document.documentElement.style;" +
+            "s.setProperty('--android-sait','" + top + "px');" +
+            "s.setProperty('--android-sair','" + right + "px');" +
+            "s.setProperty('--android-saib','" + bottom + "px');" +
+            "s.setProperty('--android-sail','" + left + "px');})();";
+        getBridge().getWebView().post(() ->
+            getBridge().getWebView().evaluateJavascript(js, null)
+        );
     }
 
     @Override

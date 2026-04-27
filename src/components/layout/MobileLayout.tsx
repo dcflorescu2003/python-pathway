@@ -10,7 +10,7 @@ const MobileLayout = ({ children }: MobileLayoutProps) => {
   return (
     <div className="min-h-screen bg-background">
       <OfflineBanner />
-      <div className="pb-20">{children}</div>
+      <div className="pb-[calc(4rem+var(--sab))]">{children}</div>
       <BottomNav />
     </div>
   );
