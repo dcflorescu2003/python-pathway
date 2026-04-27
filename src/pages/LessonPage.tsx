@@ -204,21 +204,30 @@ const LessonPage = () => {
             <>
               <div className="text-5xl mb-4">💔</div>
               <h2 className="text-xl font-bold text-foreground mb-2">Ai rămas fără vieți!</h2>
-              <p className="text-sm text-muted-foreground mb-4">Încearcă din nou mai târziu sau vizionează o reclamă pentru a primi 5 inimi.</p>
-              <div className="mb-4">
-                <WatchAdForLivesButton
-                  isPremium={progress.isPremium}
-                  onLivesGranted={(newLives, livesUpdatedAt) => {
-                    setLivesFromReward(newLives, livesUpdatedAt);
-                  }}
-                />
-              </div>
+              {progress.isPremium ? (
+                <p className="text-sm text-muted-foreground mb-4">Reîncepe lecția cu 5 inimi noi.</p>
+              ) : (
+                <>
+                  <p className="text-sm text-muted-foreground mb-4">Încearcă din nou mai târziu sau vizionează o reclamă pentru a primi 5 inimi.</p>
+                  <div className="mb-4">
+                    <WatchAdForLivesButton
+                      isPremium={progress.isPremium}
+                      onLivesGranted={(newLives, livesUpdatedAt) => {
+                        setLivesFromReward(newLives, livesUpdatedAt);
+                      }}
+                    />
+                  </div>
+                </>
+              )}
             </>
           )}
           <div className="flex gap-3">
             <Button variant="outline" className="flex-1 touch-target" onClick={() => navigate(`/chapter/${chapter.id}`)}>Înapoi</Button>
-              {lives > 0 && <Button className="flex-1 touch-target" onClick={() => navigate(`/chapter/${chapter.id}`)}>Continuă</Button>}
-            </div>
+            {lives > 0 && <Button className="flex-1 touch-target" onClick={() => navigate(`/chapter/${chapter.id}`)}>Continuă</Button>}
+            {lives <= 0 && progress.isPremium && (
+              <Button className="flex-1 touch-target" onClick={restartLesson}>Reîncepe</Button>
+            )}
+          </div>
             <StreakCelebrationDialog open={streakJustIncreased} streakCount={newStreakCount} onClose={dismissStreakCelebration} />
         </motion.div>
       </div>
