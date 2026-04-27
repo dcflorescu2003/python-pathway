@@ -470,6 +470,7 @@ function mergeProgress(a: UserProgress, b: UserProgress): UserProgress {
     isPremium: a.isPremium || b.isPremium,
     lastActivityDate: mergedDate,
     completedLessons: mergedLessons,
+    startedLessons: { ...a.startedLessons, ...b.startedLessons },
     skipUnlockedLessons: mergedSkipUnlocks,
     livesUpdatedAt: a.livesUpdatedAt > b.livesUpdatedAt ? a.livesUpdatedAt : b.livesUpdatedAt,
   };
