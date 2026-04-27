@@ -46,8 +46,9 @@ const LessonPage = () => {
   const { lessonId } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { progress, completeLesson, loseLife, setLivesFromReward, recordActivity, streakJustIncreased, newStreakCount, dismissStreakCelebration } = useProgress();
+  const { progress, completeLesson, loseLife, setLivesFromReward, recordActivity, markLessonStarted, streakJustIncreased, newStreakCount, dismissStreakCelebration } = useProgress();
   const activityRecordedRef = useRef(false);
+  const lessonStartedRef = useRef(false);
   const competencyResultsRef = useRef<CompetencyItemResult[]>([]);
   const { data: chapters, isLoading } = useChapters();
 
@@ -56,7 +57,10 @@ const LessonPage = () => {
 
   const [currentIndex, setCurrentIndex] = useState(0);
   const [correctCount, setCorrectCount] = useState(0);
-  const lives = progress.isPremium ? 5 : progress.lives;
+  const [localLives, setLocalLives] = useState(5);
+  // Inimi afișate în lecție: pentru Premium folosim contor local (nu se sincronizează cu DB);
+  // pentru non-Premium e minimul dintre contor local și inimile reale (DB).
+  const lives = progress.isPremium ? localLives : Math.min(localLives, progress.lives);
   const [isFinished, setIsFinished] = useState(false);
   const [feedback, setFeedback] = useState<"correct" | "wrong" | null>(null);
   const [lastExplanation, setLastExplanation] = useState<string | null>(null);
@@ -65,6 +69,18 @@ const LessonPage = () => {
   // Lecția nu poate începe sau continua dacă userul nu are inimi (excepție: Premium)
   const noLives = !progress.isPremium && progress.lives <= 0;
   const lessonStarted = currentIndex > 0 || feedback !== null || correctCount > 0;
+
+  const restartLesson = useCallback(() => {
+    setCurrentIndex(0);
+    setCorrectCount(0);
+    setLocalLives(5);
+    setFeedback(null);
+    setLastExplanation(null);
+    setIsFinished(false);
+    activityRecordedRef.current = false;
+    lessonStartedRef.current = false;
+    competencyResultsRef.current = [];
+  }, []);
 
   const handleAnswer = useCallback(
     (isCorrect: boolean) => {
@@ -96,6 +112,11 @@ const LessonPage = () => {
           max_score: 1,
         });
       }
+      // Marcăm lecția ca începută la primul răspuns (pentru iconița Replay în ChapterPage)
+      if (!lessonStartedRef.current && lesson) {
+        lessonStartedRef.current = true;
+        markLessonStarted(lesson.id);
+      }
       if (isCorrect) {
         setCorrectCount((c) => c + 1);
         setFeedback("correct");
@@ -105,16 +126,16 @@ const LessonPage = () => {
           recordActivity();
         }
       } else {
-        loseLife();
+        // Scădem inima locală pentru toți (inclusiv Premium); pentru non-Premium scădem și inima reală.
+        setLocalLives((l) => Math.max(0, l - 1));
+        if (!progress.isPremium) {
+          loseLife();
+        }
         setFeedback("wrong");
         setLastExplanation(exercise?.explanation || null);
-        // Dacă era ultima inimă, marcăm lecția ca terminată după ce userul vede feedback-ul
-        if (!progress.isPremium && progress.lives <= 1) {
-          // setIsFinished se va declanșa când userul apasă „Vezi rezultatul"
-        }
       }
     },
-    [currentIndex, lesson, loseLife, correctCount, completeLesson, recordActivity, user, progress.isPremium, progress.lives]
+    [currentIndex, lesson, loseLife, recordActivity, markLessonStarted, progress.isPremium]
   );
 
   const handleContinue = useCallback(() => {
@@ -183,21 +204,30 @@ const LessonPage = () => {
             <>
               <div className="text-5xl mb-4">💔</div>
               <h2 className="text-xl font-bold text-foreground mb-2">Ai rămas fără vieți!</h2>
-              <p className="text-sm text-muted-foreground mb-4">Încearcă din nou mai târziu sau vizionează o reclamă pentru a primi 5 inimi.</p>
-              <div className="mb-4">
-                <WatchAdForLivesButton
-                  isPremium={progress.isPremium}
-                  onLivesGranted={(newLives, livesUpdatedAt) => {
-                    setLivesFromReward(newLives, livesUpdatedAt);
-                  }}
-                />
-              </div>
+              {progress.isPremium ? (
+                <p className="text-sm text-muted-foreground mb-4">Reîncepe lecția cu 5 inimi noi.</p>
+              ) : (
+                <>
+                  <p className="text-sm text-muted-foreground mb-4">Încearcă din nou mai târziu sau vizionează o reclamă pentru a primi 5 inimi.</p>
+                  <div className="mb-4">
+                    <WatchAdForLivesButton
+                      isPremium={progress.isPremium}
+                      onLivesGranted={(newLives, livesUpdatedAt) => {
+                        setLivesFromReward(newLives, livesUpdatedAt);
+                      }}
+                    />
+                  </div>
+                </>
+              )}
             </>
           )}
           <div className="flex gap-3">
             <Button variant="outline" className="flex-1 touch-target" onClick={() => navigate(`/chapter/${chapter.id}`)}>Înapoi</Button>
-              {lives > 0 && <Button className="flex-1 touch-target" onClick={() => navigate(`/chapter/${chapter.id}`)}>Continuă</Button>}
-            </div>
+            {lives > 0 && <Button className="flex-1 touch-target" onClick={() => navigate(`/chapter/${chapter.id}`)}>Continuă</Button>}
+            {lives <= 0 && progress.isPremium && (
+              <Button className="flex-1 touch-target" onClick={restartLesson}>Reîncepe</Button>
+            )}
+          </div>
             <StreakCelebrationDialog open={streakJustIncreased} streakCount={newStreakCount} onClose={dismissStreakCelebration} />
         </motion.div>
       </div>

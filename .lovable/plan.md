@@ -1,74 +1,37 @@
-## Problemă identificată
+## Modificări lecții: inimi Premium și logică XP
 
-Aplicația folosește deja `env(safe-area-inset-*)` în multe pagini, dar:
+### Problema 1 — Premium rămâne cu 5 inimi în lecție
 
-1. **Android**: deși `MainActivity.java` activează edge-to-edge (`setDecorFitsSystemWindows(false)`), WebView-ul Android **nu populează automat** `env(safe-area-inset-*)` în CSS. Rezultă inseturi `0px` → conținutul intră sub status bar și sub bara de navigație software (3 butoane). E nevoie de plugin-ul oficial `@capacitor/status-bar` + setare programatică a `--safe-area-inset-*` ca CSS variables.
-2. **iOS fără notch (SE, iPhone 8)**: `env(safe-area-inset-bottom)` = `0px` → BottomNav-ul lipit de marginea de jos, fără respirație. Lipsește un minim de siguranță.
-3. **Android cu butoane software**: bara de navigație acoperă BottomNav-ul (16px insetul nu e suficient pentru 48px de butoane).
-4. Header-uri inconsistente: unele folosesc `pt-[env(safe-area-inset-top)]` fără minim, altele cu `+8px` — variabil.
+În prezent `loseLife()` în `useProgress.ts` returnează imediat dacă userul e Premium (`if (prev.isPremium) return prev`), iar în `LessonPage.tsx` afișarea folosește `lives = progress.isPremium ? 5 : progress.lives`. Deci Premium nu pierde niciodată inimi — nici măcar local pe durata lecției.
 
-## Soluție
+**Soluție:** introducem un contor de inimi **local lecției** (state în `LessonPage`), inițializat la 5, care scade pentru toți userii la fiecare răspuns greșit. Inimile reale din `progress.lives` (sincronizate cu DB) **rămân neatinse pentru Premium**. Când contorul local ajunge la 0:
 
-### A. Injectare safe-area pe Android (la nivel nativ)
+- se afișează ecranul „Ai rămas fără vieți” (același UI ca la non-premium, dar fără reclama AdMob — pentru Premium punem un buton „Reîncepe lecția”)
+- butonul **Reîncepe** resetează: `currentIndex=0`, `correctCount=0`, contor local de inimi=5, `feedback=null`, `isFinished=false` și permite reluarea lecției imediat
+- pentru non-premium rămâne fluxul actual (await 20 min sau watch ad)
 
-Adăugăm un mic snippet în `MainActivity.java` care citește `WindowInsets` (status bar + navigation bar) și le injectează în WebView ca CSS custom properties:
+Pentru non-premium, scăderea inimilor reale din DB se face în continuare prin `loseLife()` (păstrăm comportamentul actual). Astfel inimile vizibile în header devin = `min(localLives, progress.lives)` pentru non-premium și `localLives` pentru Premium.
 
-```text
---safe-area-inset-top
---safe-area-inset-right
---safe-area-inset-bottom
---safe-area-inset-left
-```
+### Problema 2 — XP greșit la prima finalizare
 
-Se actualizează la `onCreate` și pe `setOnApplyWindowInsetsListener` (rotire, schimbare bară).
+În `useProgress.ts` `completeLesson()` calculează `alreadyCompleted = !!previousEntry?.completed`, deci dă XP-ul setat la prima finalizare reușită. Bug-ul observat (3 XP la prima finalizare) provine cel mai probabil din faptul că în `LessonPage.tsx` valoarea `wasFirstTime` se citește **înainte** ca lecția să fie completată, dar `xpEarned` afișat în ecranul final folosește `lesson.xpReward` doar dacă `wasFirstTime`, altfel hardcodat `3`. Dacă userul a mai deschis lecția anterior și `completedLessons[lessonId].completed` a ajuns cumva la `true` fără finalizare reală, primește 3.  
+  
+As vrea sa avem si un UI o alta iconita pentru lectiile pe care le-ai facut, dar nu le-ai terminat, semnul de Replay de la muzica
 
-### B. CSS: fallback unificat cu minim garantat
+**Decizie agreată:** păstrăm regula actuală — *3 XP dacă lecția este deja marcată completă, XP-ul setat al lecției la prima finalizare reușită*. Modificările:
 
-Definim în `src/index.css` variabile globale care folosesc fie `env(safe-area-inset-*)` (iOS) fie `var(--safe-area-inset-*)` (Android, injectat nativ), cu un **minim de siguranță**:
+1. **Eliminăm complet componenta XP per-exercițiu** din calcul. În `LessonPage.tsx` apelul `completeLesson(lesson.id, lesson.xpReward, percent)` deja folosește `lesson.xpReward` (corect). Verificăm și înlăturăm orice acumulare de XP din exerciții individuale (există `xp` per exercițiu în DB dar nu este însumat în flux — doar confirmăm).
+2. **Sursa unică de adevăr** pentru XP devine `lesson.xpReward` (XP-ul setat al lecției). Editorul admin pentru XP/exercițiu rămâne în DB pentru retro-compat dar nu e folosit în calcul.
+3. **Asigurăm că marcajul `completed=true**` se setează **doar** când lecția se termină cu inimi rămase (= cazul în care `completeLesson` e apelat). Codul actual deja face asta — confirmăm că nu există cale prin care lecția să fie marcată completă fără finalizare. Dacă nu există bug aici, atunci 3 XP-ul vine din faptul că ai mai terminat lecția înainte (pe alt device / sincronizare cloud) — nu e bug, e logica corectă.
 
-```text
---sat: max(env(safe-area-inset-top),  var(--safe-area-inset-top, 0px), 12px)
---sab: max(env(safe-area-inset-bottom), var(--safe-area-inset-bottom, 0px), 16px)
-```
+Vom adăuga un log de debug temporar pentru a vedea în consolă ce valoare are `previousEntry` la momentul `completeLesson`, ca să confirmăm exact ce s-a întâmplat în cazul descris.
 
-Pe device-uri fără notch/home indicator (iPhone SE, multe Androids vechi) → minim 12px sus / 16px jos.
-Pe iPhone cu notch → folosește notch-ul real (47px).
-Pe Android cu navbar software → folosește înălțimea reală a barei (≈48px).
+### Fișiere modificate
 
-### C. Refactor componente comune
+- `src/pages/LessonPage.tsx` — contor local de inimi, ecran „fără vieți” pentru Premium cu buton Reîncepe, reset state la reîncepere
+- `src/hooks/useProgress.ts` — fără modificări la logica XP; doar log de diagnostic în `completeLesson` pentru a confirma `previousEntry`
 
-- **`BottomNav.tsx`**: înlocuim `pb-[env(safe-area-inset-bottom)]` cu `pb-[var(--sab)]`. Mărim înălțimea efectivă cu min. 16px față de margine.
-- **`MobileLayout.tsx`**: schimbăm `pb-20` în `pb-[calc(5rem+var(--sab))]` ca lista din spatele BottomNav-ului să nu fie acoperită.
-- **Header-uri** (Index, AuthPage, ChapterPage, LeaderboardPage, ProblemsPage, etc.): înlocuim variantele inconsistente cu `pt-[var(--sat)]` (sau `+8px` unde e nevoie de aer suplimentar).
-- **`SkipChallengePage` + `LessonPage` + `ManualLessonPage`**: bara de jos cu butoane „Verifică / Continuă" → `pb-[var(--sab)]` în loc de `pb-[max(env(...),16px)]`.
+### Out of scope
 
-### D. Android theme
-
-În `android/app/src/main/res/values/styles.xml` ne asigurăm că tema NU are `windowTranslucentNavigation` care ar interfera, și adăugăm `android:fitsSystemWindows="false"` ca să forțăm edge-to-edge corect.
-
-### E. Verificare manuală (după build)
-
-Testăm pe:
-- iPhone cu notch (Dynamic Island) — header-ul evită notch-ul, BottomNav peste home indicator.
-- iPhone SE / 8 — header are min. 12px aer, BottomNav are min. 16px aer.
-- Android cu gesture bar — BottomNav peste gesture bar, conținut nu e tăiat.
-- Android cu 3 butoane software — BottomNav vizibil **deasupra** butoanelor.
-
-## Fișiere modificate
-
-- `android/app/src/main/java/ro/pythonpathway/app/MainActivity.java` — injectare WindowInsets în CSS
-- `src/index.css` — definire `--sat`, `--sab`, `--sal`, `--sar`
-- `src/components/layout/BottomNav.tsx`
-- `src/components/layout/MobileLayout.tsx`
-- ~14 pagini cu header sticky → unificare la `var(--sat)`
-- `android/app/src/main/res/values/styles.xml` — verificare/fixe edge-to-edge
-
-## Notă
-
-Nu e nevoie de instalare de pachete noi. Tot ce avem nevoie există în `androidx.core` (deja inclus prin Capacitor 8). După merge:
-
-```bash
-npx cap sync
-```
-
-Și un build nou (Android Studio + Xcode). Nu trebuie reîncărcat în store decât la următoarea versiune planificată.
+- Modificarea sistemului de XP per-exercițiu din editorul admin (rămâne în DB, doar nu e folosit la totalul lecției)
+- Schimbarea comportamentului non-premium (rămâne cu reclamă AdMob și await 20 min)

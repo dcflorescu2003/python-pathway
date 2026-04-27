@@ -7,6 +7,7 @@ export interface UserProgress {
   streak: number;
   lives: number;
   completedLessons: Record<string, { score: number; completed: boolean }>;
+  startedLessons: Record<string, true>;
   skipUnlockedLessons: Record<string, true>;
   lastActivityDate: string;
   isPremium: boolean;
@@ -28,6 +29,7 @@ function createDefaultProgress(): UserProgress {
     streak: 0,
     lives: MAX_LIVES,
     completedLessons: {},
+    startedLessons: {},
     skipUnlockedLessons: {},
     lastActivityDate: "",
     isPremium: false,
@@ -184,6 +186,7 @@ export function useProgress() {
           isPremium: profile?.is_premium ?? false,
           lastActivityDate: profile?.last_activity_date ?? getTodayDate(),
           completedLessons: cloudCompleted,
+          startedLessons: {},
           skipUnlockedLessons: cloudSkipUnlocks,
           livesUpdatedAt: profile?.lives_updated_at ?? new Date().toISOString(),
         };
@@ -289,6 +292,16 @@ export function useProgress() {
         const alreadyCompleted = !!previousEntry?.completed;
         const finalXP = Math.round((alreadyCompleted ? 3 : xpEarned) * bonusMultiplier);
 
+        // Diagnostic temporar: să vedem când și de ce se acordă 3 XP
+        console.log("[completeLesson]", {
+          lessonId,
+          xpRewardSetat: xpEarned,
+          alreadyCompleted,
+          previousEntry,
+          finalXP,
+          bonusMultiplier,
+        });
+
         const today = getTodayDate();
         const isFirstActivityToday = prev.lastActivityDate !== today;
         const newStreak = computeNewStreak(prev.streak, prev.lastActivityDate);
@@ -301,6 +314,10 @@ export function useProgress() {
         // Keep best score across redos — never lower a previously achieved score
         const bestScore = Math.max(previousEntry?.score ?? 0, score);
 
+        // Lecția devine completă, deci o scoatem din "started"
+        const newStarted = { ...prev.startedLessons };
+        delete newStarted[lessonId];
+
         const newProgress: UserProgress = {
           ...prev,
           xp: prev.xp + finalXP,
@@ -310,6 +327,7 @@ export function useProgress() {
             ...prev.completedLessons,
             [lessonId]: { score: bestScore, completed: true },
           },
+          startedLessons: newStarted,
         };
 
         saveLocalProgress(newProgress, user?.id);
@@ -437,7 +455,24 @@ export function useProgress() {
     [user]
   );
 
-  return { progress, completeLesson, loseLife, resetLives, setLivesFromReward, setPremium, recordActivity, unlockLessonViaSkip, streakJustIncreased, newStreakCount, dismissStreakCelebration };
+  const markLessonStarted = useCallback(
+    (lessonId: string) => {
+      setProgress((prev) => {
+        // dacă lecția e deja completă sau deja marcată ca începută, nu facem nimic
+        if (prev.completedLessons[lessonId]?.completed) return prev;
+        if (prev.startedLessons[lessonId]) return prev;
+        const newProgress: UserProgress = {
+          ...prev,
+          startedLessons: { ...prev.startedLessons, [lessonId]: true },
+        };
+        saveLocalProgress(newProgress, user?.id);
+        return newProgress;
+      });
+    },
+    [user]
+  );
+
+  return { progress, completeLesson, loseLife, resetLives, setLivesFromReward, setPremium, recordActivity, unlockLessonViaSkip, markLessonStarted, streakJustIncreased, newStreakCount, dismissStreakCelebration };
 }
 
 function mergeProgress(a: UserProgress, b: UserProgress): UserProgress {
@@ -467,6 +502,7 @@ function mergeProgress(a: UserProgress, b: UserProgress): UserProgress {
     isPremium: a.isPremium || b.isPremium,
     lastActivityDate: mergedDate,
     completedLessons: mergedLessons,
+    startedLessons: { ...a.startedLessons, ...b.startedLessons },
     skipUnlockedLessons: mergedSkipUnlocks,
     livesUpdatedAt: a.livesUpdatedAt > b.livesUpdatedAt ? a.livesUpdatedAt : b.livesUpdatedAt,
   };
