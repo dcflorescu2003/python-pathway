@@ -562,6 +562,13 @@ const AuthPage = () => {
                 {isLogin ? "Creează unul" : "Conectează-te"}
               </button>
             </p>
+
+            {isLogin && (
+              <p className="text-center text-xs text-muted-foreground border-t border-border pt-3">
+                Te-ai logat cu Apple sau Google pe telefon? Setează o parolă din{" "}
+                <span className="font-mono text-foreground">Cont → Profil</span> ca să te poți loga și aici.
+              </p>
+            )}
           </CardContent>
         </Card>
 
