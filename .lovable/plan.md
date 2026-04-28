@@ -1,48 +1,38 @@
-## Problema reală
+## Implementare Opțiunea B — APNs direct din edge function
 
-Setup-ul push pe iOS este 95% complet, dar **tokenul salvat în `device_tokens` pentru iOS este token APNs brut** (ex: `826A955E0F6044DBDCF4C9C24EFDEF...`), NU token FCM. Edge function-ul `send-push` îl trimite spre FCM HTTP v1, iar FCM îl respinge pentru că nu e un token Firebase valid — el rutează către APNs **doar dacă** tokenul a fost emis de Firebase iOS SDK.
+### Secrete de adăugat (4)
+- `APNS_AUTH_KEY` = conținutul `.p8` (BEGIN/END PRIVATE KEY inclus)
+- `APNS_KEY_ID` = `7WU73F592A`
+- `APNS_TEAM_ID` = `6FAUMS27V7`
+- `APNS_BUNDLE_ID` = `ro.pythonpathway.app`
 
-Pe Android merge pentru că `@capacitor/push-notifications` returnează direct token FCM (Firebase e integrat prin `google-services.json` + plugin gradle). Pe iOS nu există echivalent integrat → returnează tokenul APNs brut de la Apple.
+### Modificări `supabase/functions/send-push/index.ts`
 
-## Soluție: integrare Firebase iOS SDK
+1. Selectăm și `platform` din `device_tokens`, nu doar `token`.
+2. Pentru fiecare token:
+   - Dacă `platform === 'ios'` → trimitem direct la APNs:
+     - Generăm JWT ES256 semnat cu cheia `.p8` (header: `alg: ES256`, `kid: APNS_KEY_ID`; payload: `iss: APNS_TEAM_ID`, `iat: now`). Cache-ul JWT-ului ~50 min în memoria function-ului.
+     - POST la `https://api.push.apple.com/3/device/{token}` cu headere:
+       - `authorization: bearer <JWT>`
+       - `apns-topic: ro.pythonpathway.app`
+       - `apns-push-type: alert`
+       - `apns-priority: 10`
+     - Body: `{ aps: { alert: { title, body }, sound: "default", badge: 1 } }`
+     - Dacă răspunsul e 410 (`Unregistered`) sau 400 `BadDeviceToken` → adăugăm tokenul la lista de șters.
+   - Dacă `platform === 'android'` (sau lipsește) → flow-ul existent FCM.
+3. Numărător `sent` incrementat în ambele căi.
+4. Cleanup token-uri invalide rămâne identic (șterge după `token`).
 
-Adăugăm `FirebaseMessaging` în iOS pod, iar în `AppDelegate` interceptăm tokenul APNs, îl pasăm la Firebase, apoi expunem tokenul FCM rezultat către pluginul Capacitor printr-un eveniment custom (sau direct salvare).
+### Detalii tehnice JWT ES256 în Deno
 
-### Pași tehnici
+- `crypto.subtle.importKey("pkcs8", pemBytes, { name: "ECDSA", namedCurve: "P-256" }, false, ["sign"])`
+- Semnăm `header.payload`, convertim semnătura DER→raw (64 bytes IEEE P1363) — folosim direct rezultatul `subtle.sign` care în WebCrypto returnează deja format raw pentru ECDSA, deci no-op.
+- Base64url encode header + payload + signature.
 
-1. **`ios/App/Podfile`** — adăugăm:
-   ```ruby
-   pod 'Firebase/Messaging'
-   ```
+### Test final
+După deploy, trimitem o notificare test către `cosmin.florescu.tr@gmail.com` (apel direct la `send-push` cu `student_ids = [<user_id>]`, title="Test iOS APNs", body="Funcționează direct prin Apple"). Verificăm log-urile edge function și status-ul HTTP de la Apple (200 = livrat la APNs).
 
-2. **`ios/App/App/AppDelegate.swift`** — adaptări:
-   - `import Firebase` și `import FirebaseMessaging`
-   - În `didFinishLaunchingWithOptions`: `FirebaseApp.configure()`
-   - Implementăm `MessagingDelegate` și în `didRegisterForRemoteNotificationsWithDeviceToken`:
-     - setăm `Messaging.messaging().apnsToken = deviceToken`
-     - cerem token FCM cu `Messaging.messaging().token { ... }`
-     - postăm notificarea `capacitorDidRegisterForRemoteNotifications` cu **tokenul FCM** (string convertit în Data) în loc de tokenul APNs brut
-   - Fallback pentru `messaging:didReceiveRegistrationToken:` ca să prindem refresh-urile.
-
-3. **`ios/App/App/GoogleService-Info.plist`** — deja există, verificăm că `BUNDLE_ID = ro.pythonpathway.app` corespunde cu Xcode project.
-
-4. **Cleanup token-uri vechi APNs**: ștergem manual din `device_tokens` rândul iOS curent (`826A955E...`) ca la următorul login să se salveze tokenul FCM corect. Edge function-ul deja face cleanup automat la `UNREGISTERED`/`NOT_FOUND` de la FCM, dar curățăm preventiv.
-
-5. **`pod install`** se rulează automat la build-ul iOS de către Capacitor (`npx cap sync ios`).
-
-### Ce NU se modifică
-
-- `usePushNotifications.tsx` — rămâne identic (pluginul va primi acum tokenul FCM, salvat la fel în `device_tokens`).
-- `send-push` edge function — rămâne identic (deja trimite payload corect cu blocul `apns` pentru sound + badge).
-- `device_tokens` schema + RLS — corecte.
-- Entitlements + Info.plist — deja au `aps-environment` și `remote-notification`.
-
-### Verificare după deploy
-
-1. Build iOS nou → reinstalare app pe device
-2. Login → `device_tokens` ar trebui să conțină acum un token de forma `xxx:APA91b...` (format FCM) pentru `platform=ios`
-3. Trigger un push (ex. notificare de la profesor) → ar trebui să sosească pe iPhone chiar și cu app închisă
-
-### Notă
-
-În Firebase Console → Project Settings → Cloud Messaging → iOS app, trebuie încărcată **APNs Authentication Key (.p8)** (sau certificat APNs) ca Firebase să poată reda mai departe la APNs. Dacă nu e încă încărcată, push-urile vor pleca dar nu vor ajunge. Te anunț după deploy să verifici și asta în Firebase Console (singurul pas care nu se poate face din cod).
+### Ce NU se schimbă
+- Nu se rebuild iOS app — tokenii APNs hex deja stocați devin valizi.
+- `usePushNotifications.tsx` rămâne identic.
+- Schema DB rămâne identică.
