@@ -24,6 +24,34 @@ allprojects {
     }
 }
 
+// Fix for AGP 9 / Gradle 9: some Capacitor plugins (e.g. @capacitor-community/admob)
+// still reference the deprecated `proguard-android.txt` (which contains -dontoptimize)
+// inside their own build.gradle. Rewrite it to `proguard-android-optimize.txt`
+// at configuration time so we don't have to patch node_modules.
+subprojects { subproject ->
+    subproject.afterEvaluate {
+        if (subproject.hasProperty('android')) {
+            try {
+                def androidExt = subproject.android
+                androidExt.buildTypes.all { bt ->
+                    def needsFix = bt.proguardFiles.any { it.name == 'proguard-android.txt' }
+                    if (needsFix) {
+                        def fixed = bt.proguardFiles.collect { f ->
+                            f.name == 'proguard-android.txt'
+                                ? androidExt.getDefaultProguardFile('proguard-android-optimize.txt')
+                                : f
+                        }
+                        bt.proguardFiles.clear()
+                        bt.proguardFiles.addAll(fixed)
+                    }
+                }
+            } catch (Exception e) {
+                logger.warn("Could not patch proguard files for ${subproject.name}: ${e.message}")
+            }
+        }
+    }
+}
+
 task clean(type: Delete) {
     delete rootProject.buildDir
 }
