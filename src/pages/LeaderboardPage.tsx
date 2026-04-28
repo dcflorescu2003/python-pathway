@@ -3,6 +3,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getSelectedSchool, setSelectedSchool, schools } from "@/data/schools";
+import { matchesSearch } from "@/lib/searchUtils";
 import { Flame, Zap, Medal, Loader2, Search } from "lucide-react";
 import { motion } from "framer-motion";
 import { Input } from "@/components/ui/input";
@@ -40,8 +41,7 @@ const LeaderboardPage = () => {
 
   const filteredSchools = useMemo(() => {
     if (!schoolSearch.trim()) return [];
-    const q = schoolSearch.toLowerCase();
-    return schools.filter(s => s.name.toLowerCase().includes(q) || s.city.toLowerCase().includes(q)).slice(0, 8);
+    return schools.filter(s => matchesSearch(s.name, schoolSearch) || matchesSearch(s.city, schoolSearch)).slice(0, 8);
   }, [schoolSearch]);
 
   const handleSelectSchool = useCallback(async (schoolId: string) => {
