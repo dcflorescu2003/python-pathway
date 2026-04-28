@@ -1,38 +1,52 @@
-## Implementare Opțiunea B — APNs direct din edge function
+## Obiectiv
 
-### Secrete de adăugat (4)
-- `APNS_AUTH_KEY` = conținutul `.p8` (BEGIN/END PRIVATE KEY inclus)
-- `APNS_KEY_ID` = `7WU73F592A`
-- `APNS_TEAM_ID` = `6FAUMS27V7`
-- `APNS_BUNDLE_ID` = `ro.pythonpathway.app`
+Permite utilizatorilor logați cu Apple să-și seteze o parolă pentru a se putea loga și pe web (PC) folosind email + parolă, păstrând același cont.
 
-### Modificări `supabase/functions/send-push/index.ts`
+## Cum funcționează
 
-1. Selectăm și `platform` din `device_tokens`, nu doar `token`.
-2. Pentru fiecare token:
-   - Dacă `platform === 'ios'` → trimitem direct la APNs:
-     - Generăm JWT ES256 semnat cu cheia `.p8` (header: `alg: ES256`, `kid: APNS_KEY_ID`; payload: `iss: APNS_TEAM_ID`, `iat: now`). Cache-ul JWT-ului ~50 min în memoria function-ului.
-     - POST la `https://api.push.apple.com/3/device/{token}` cu headere:
-       - `authorization: bearer <JWT>`
-       - `apns-topic: ro.pythonpathway.app`
-       - `apns-push-type: alert`
-       - `apns-priority: 10`
-     - Body: `{ aps: { alert: { title, body }, sound: "default", badge: 1 } }`
-     - Dacă răspunsul e 410 (`Unregistered`) sau 400 `BadDeviceToken` → adăugăm tokenul la lista de șters.
-   - Dacă `platform === 'android'` (sau lipsește) → flow-ul existent FCM.
-3. Numărător `sent` incrementat în ambele căi.
-4. Cleanup token-uri invalide rămâne identic (șterge după `token`).
+Apple Sign-In creează un user în Supabase cu:
+- `provider: "apple"` în `app_metadata`
+- `email`: fie email-ul real, fie un alias `xxxxx@privaterelay.appleid.com` (dacă user-ul a ales "Hide My Email")
 
-### Detalii tehnice JWT ES256 în Deno
+Supabase permite `auth.updateUser({ password })` pe orice user autentificat — chiar și pe cei creați prin OAuth. După setare, user-ul are 2 metode de login active simultan, ambele duc la același cont (același user_id, același progres, același Premium).
 
-- `crypto.subtle.importKey("pkcs8", pemBytes, { name: "ECDSA", namedCurve: "P-256" }, false, ["sign"])`
-- Semnăm `header.payload`, convertim semnătura DER→raw (64 bytes IEEE P1363) — folosim direct rezultatul `subtle.sign` care în WebCrypto returnează deja format raw pentru ECDSA, deci no-op.
-- Base64url encode header + payload + signature.
+## Modificări
 
-### Test final
-După deploy, trimitem o notificare test către `cosmin.florescu.tr@gmail.com` (apel direct la `send-push` cu `student_ids = [<user_id>]`, title="Test iOS APNs", body="Funcționează direct prin Apple"). Verificăm log-urile edge function și status-ul HTTP de la Apple (200 = livrat la APNs).
+### 1. Hook nou: `useAuthMethods` (`src/hooks/useAuthMethods.ts`)
+Returnează:
+- `hasApple` — dacă user-ul s-a logat vreodată cu Apple (din `user.identities` sau `app_metadata.providers`)
+- `hasPassword` — dacă user-ul are parolă setată (deducem din `user.identities` — există identity de tip `email`)
+- `email` — email-ul efectiv folosit la login (real sau alias `@privaterelay.appleid.com`)
+- `isPrivateRelay` — boolean dacă e alias Apple
 
-### Ce NU se schimbă
-- Nu se rebuild iOS app — tokenii APNs hex deja stocați devin valizi.
-- `usePushNotifications.tsx` rămâne identic.
-- Schema DB rămâne identică.
+### 2. Componentă nouă: `WebLoginSetupCard` (`src/components/account/WebLoginSetupCard.tsx`)
+Card vizibil în Account → tab Profil, DOAR dacă `hasApple && !hasPassword`. Conține:
+- Titlu: „Activează login pe web"
+- Explicație scurtă: „Te-ai logat cu Apple. Setează o parolă pentru a te putea loga și de pe PC."
+- Email afișat (cu mențiune dacă e alias Apple privat)
+- Buton „Setează parolă" → deschide dialog cu 2 inputuri (parolă + confirmare, min 8 caractere) → apel `supabase.auth.updateUser({ password })`
+- După succes: toast + card devine „Login web activ ✓" cu badge verde și instrucțiuni: „Loghează-te pe PC cu: {email} + parola setată"
+
+### 3. Avertisment pentru email privat (în același card)
+Dacă `isPrivateRelay`, adăugăm o notă: „Email-ul tău Apple este privat (`xxx@privaterelay.appleid.com`). Apple va redirecționa email-urile către adresa ta reală. Folosește exact acest email la login pe web."
+
+Opțional (faza 2, dacă cere): buton „Schimbă email-ul" care folosește `auth.updateUser({ email })` + flow de confirmare. NU e inclus acum pentru a păstra scope-ul mic.
+
+### 4. Schimbare parolă (bonus, pentru toți userii)
+În același card, dacă `hasPassword === true`, afișează un buton mai discret „Schimbă parola" care reutilizează același dialog. Util pentru toți userii, nu doar cei Apple.
+
+### 5. Pe AuthPage — niciun cod nou
+Tab-ul „Login cu email" deja există și funcționează. Doar adăugăm o mică notă sub el: „Te-ai logat cu Apple pe iPhone? Poți seta o parolă din Cont → Profil pentru a te loga și aici."
+
+## Detalii tehnice
+
+- `user.identities` (din Supabase) e un array cu provider-ele conectate. Dacă există unul cu `provider === "email"` și are timestamp, înseamnă că parola e setată. Altfel, doar OAuth.
+- `supabase.auth.updateUser({ password: "..." })` funcționează fără re-autentificare deoarece sesiunea e deja activă.
+- După setare, refresh la `user` via `supabase.auth.getUser()` pentru a actualiza `identities` în UI.
+- Validare client: parolă minim 8 caractere, confirmarea trebuie să corespundă. Server-side validarea e făcută automat de Supabase.
+
+## Ce nu se schimbă
+
+- Configurația Apple Sign-In rămâne identică (BYOC cu Bundle ID).
+- Edge functions, RLS, alte fluxuri — neatinse.
+- Datele user-ului (progres, XP, Premium) sunt legate de `user_id`, deci rămân identice indiferent de metoda de login.

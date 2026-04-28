@@ -14,6 +14,7 @@ import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, A
 import CouponRedemption from "@/components/CouponRedemption";
 import PremiumDialog from "@/components/PremiumDialog";
 import CompetencyProfileCard from "./CompetencyProfileCard";
+import WebLoginSetupCard from "./WebLoginSetupCard";
 import TeacherPremiumDialog from "@/components/TeacherPremiumDialog";
 import TeacherVerificationForm from "@/components/teacher/TeacherVerificationForm";
 import VerificationChat from "@/components/teacher/VerificationChat";
@@ -158,6 +159,9 @@ const AccountProfileTab = ({
           </div>
         </CardContent>
       </Card>
+
+      {/* Web login (set/change password) */}
+      <WebLoginSetupCard />
 
       {/* Stats */}
       {!teacherStatus && (
