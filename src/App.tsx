@@ -44,6 +44,8 @@ const PrivacyPolicyPage = lazy(() => import("./pages/PrivacyPolicyPage"));
 const DeleteAccountPage = lazy(() => import("./pages/DeleteAccountPage"));
 const SupportPage = lazy(() => import("./pages/SupportPage"));
 
+import RealEmailReminderDialog from "@/components/RealEmailReminderDialog";
+
 const ManualLessonPage = lazy(() => import("./pages/ManualLessonPage"));
 const TakeTestPage = lazy(() => import("./pages/TakeTestPage"));
 const SkipChallengePage = lazy(() => import("./pages/SkipChallengePage"));
@@ -88,7 +90,12 @@ const AppRoutes = () => {
     </Suspense>
   );
 
-  return isMainPage ? <MobileLayout>{content}</MobileLayout> : content;
+  return (
+    <>
+      {isMainPage ? <MobileLayout>{content}</MobileLayout> : content}
+      <RealEmailReminderDialog />
+    </>
+  );
 };
 
 // Handle deep link OAuth tokens
