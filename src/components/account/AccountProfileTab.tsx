@@ -15,6 +15,7 @@ import CouponRedemption from "@/components/CouponRedemption";
 import PremiumDialog from "@/components/PremiumDialog";
 import CompetencyProfileCard from "./CompetencyProfileCard";
 import WebLoginSetupCard from "./WebLoginSetupCard";
+import RealEmailSetupCard from "./RealEmailSetupCard";
 import TeacherPremiumDialog from "@/components/TeacherPremiumDialog";
 import TeacherVerificationForm from "@/components/teacher/TeacherVerificationForm";
 import VerificationChat from "@/components/teacher/VerificationChat";
@@ -159,6 +160,9 @@ const AccountProfileTab = ({
           </div>
         </CardContent>
       </Card>
+
+      {/* Real email setup (Apple Hide My Email users) */}
+      <RealEmailSetupCard />
 
       {/* Web login (set/change password) */}
       <WebLoginSetupCard />

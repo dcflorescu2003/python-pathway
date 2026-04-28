@@ -10,7 +10,9 @@ export interface TemplateEntry {
 }
 
 import { template as teacherVerificationAdmin } from './teacher-verification-admin.tsx'
+import { template as emailChangeVerification } from './email-change-verification.tsx'
 
 export const TEMPLATES: Record<string, TemplateEntry> = {
   'teacher-verification-admin': teacherVerificationAdmin,
+  'email-change-verification': emailChangeVerification,
 }
