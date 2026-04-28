@@ -1,23 +1,45 @@
-## Problema
+## Problemă
 
-În `src/hooks/useChapters.ts` se aplică `addFixareLessons()` peste lecțiile încărcate din baza de date, ceea ce generează automat un duplicat „Fixare: …" (cu id `<id>f`) după fiecare lecție din DB. Vrem ca DB-ul să fie sursa unică de adevăr.
+Build-ul Android eșuează la `:capacitor-community-admob` cu:
+> `getDefaultProguardFile('proguard-android.txt')` is no longer supported since it includes `-dontoptimize`
 
-## Modificări
+Cauza: AGP 9.1.0 + Gradle 9.4 nu mai acceptă fișierul `proguard-android.txt` (deprecat). Plugin-ul `@capacitor-community/admob@7.0.3` încă îl referențiază în `node_modules/.../android/build.gradle` linia 39. Nu putem edita `node_modules` — se pierde la `npm install`.
 
-### 1. `src/hooks/useChapters.ts`
-- Eliminăm apelul `addFixareLessons(result)` și returnăm direct `result`.
-- Eliminăm importul `addFixareLessons` din `@/data/courses` (păstrăm `chapters as localChapters` pentru fallback-ul nativ).
+## Soluție
 
-### 2. Fallback nativ (`getNativeFallbackChapters`)
-- Rămâne `localChapters` din `courses.ts`, care deja are Fixare aplicat la export (`export const chapters = addFixareLessons(rawChapters)`). Fallback-ul offline pe Android va continua să funcționeze identic.
+Aplicăm un patch la nivel de Gradle root, care, după ce sub-proiectele sunt evaluate, înlocuiește în `release.proguardFiles` referința deprecată cu `proguard-android-optimize.txt` pentru oricare modul afectat (în special `capacitor-community-admob`).
 
-### 3. Compatibilitate cu lecții vechi „Fixare" deja completate
-- Păstrăm `addFixareLessons` exportat din `courses.ts` (folosit la fallback și de adminul `ContentEditor`).
-- Păstrăm logica din `src/lib/lessonTitles.ts` care rezolvă id-urile vechi terminate în `f` la titlu „Fixare: …" — astfel, în istoricul `completed_lessons`, intrările vechi cu sufix `f` continuă să afișeze un titlu lizibil.
-- Păstrăm normalizarea din `src/lib/competencyTracking.ts` (sufix `f` → id de bază) din același motiv de retrocompatibilitate.
+### Modificare în `android/build.gradle`
 
-## Rezultat
+Adăugăm în blocul `allprojects { ... }` (sau imediat după el) un hook:
 
-- Pe web și pe orice platformă cu DB disponibilă: lecțiile apar exact așa cum sunt în Supabase, fără duplicate „Fixare".
-- Pe nativ fără rețea: fallback-ul local continuă să afișeze Fixare auto-generat din `courses.ts` (curriculum static).
-- Istoricul vechi cu id-uri `<id>f` rămâne afișabil corect în profil/leaderboard.
+```gradle
+subprojects { subproject ->
+    subproject.afterEvaluate {
+        if (subproject.hasProperty('android')) {
+            subproject.android.buildTypes.all { bt ->
+                def fixed = bt.proguardFiles.collect { f ->
+                    f.name == 'proguard-android.txt'
+                        ? android.getDefaultProguardFile('proguard-android-optimize.txt')
+                        : f
+                }
+                bt.proguardFiles.clear()
+                bt.proguardFiles.addAll(fixed)
+            }
+        }
+    }
+}
+```
+
+Acest fix:
+- rulează automat la fiecare build, fără modificări în `node_modules`
+- supraviețuiește `npm install` / `npx cap sync`
+- nu afectează modulele care deja folosesc varianta corectă (inclusiv `app`)
+- e neinvaziv: schimbă doar referința la fișierul ProGuard implicit
+
+## Pași după aplicare
+
+1. În Android Studio: **Build → Clean Project**, apoi **Rebuild Project**
+2. Rulează din nou Generate Signed App Bundle
+
+Dacă mai apar warnings legate de Gradle 10 deprecation, sunt din alte plugin-uri și nu blochează build-ul.
