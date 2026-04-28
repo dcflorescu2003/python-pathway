@@ -1,45 +1,56 @@
-## Problemă
+## Problema
 
-Build-ul Android eșuează la `:capacitor-community-admob` cu:
-> `getDefaultProguardFile('proguard-android.txt')` is no longer supported since it includes `-dontoptimize`
+Pe iOS, la apăsarea „Sign in with Apple" apare eroarea **„Missing provider or options"**.
 
-Cauza: AGP 9.1.0 + Gradle 9.4 nu mai acceptă fișierul `proguard-android.txt` (deprecat). Plugin-ul `@capacitor-community/admob@7.0.3` încă îl referențiază în `node_modules/.../android/build.gradle` linia 39. Nu putem edita `node_modules` — se pierde la `npm install`.
+Cauza: pluginul `@capgo/capacitor-social-login` (v8) cere pe iOS ca metoda `login()` să primească **două** câmpuri obligatorii: `provider` ȘI `options` (un obiect, chiar și gol). În `src/hooks/useAuth.tsx` trimitem doar `{ provider: "apple" }`, fără `options`, iar partea nativă Swift respinge apelul imediat:
 
-## Soluție
-
-Aplicăm un patch la nivel de Gradle root, care, după ce sub-proiectele sunt evaluate, înlocuiește în `release.proguardFiles` referința deprecată cu `proguard-android-optimize.txt` pentru oricare modul afectat (în special `capacitor-community-admob`).
-
-### Modificare în `android/build.gradle`
-
-Adăugăm în blocul `allprojects { ... }` (sau imediat după el) un hook:
-
-```gradle
-subprojects { subproject ->
-    subproject.afterEvaluate {
-        if (subproject.hasProperty('android')) {
-            subproject.android.buildTypes.all { bt ->
-                def fixed = bt.proguardFiles.collect { f ->
-                    f.name == 'proguard-android.txt'
-                        ? android.getDefaultProguardFile('proguard-android-optimize.txt')
-                        : f
-                }
-                bt.proguardFiles.clear()
-                bt.proguardFiles.addAll(fixed)
-            }
-        }
-    }
+```swift
+guard let provider = call.getString("provider"),
+      let payload = call.getObject("options") else {
+    call.reject("Missing provider or options")
+    return
 }
 ```
 
-Acest fix:
-- rulează automat la fiecare build, fără modificări în `node_modules`
-- supraviețuiește `npm install` / `npx cap sync`
-- nu afectează modulele care deja folosesc varianta corectă (inclusiv `app`)
-- e neinvaziv: schimbă doar referința la fișierul ProGuard implicit
+Pe Android nu apare pentru că folosim `signInWithNativeGoogle` (alt path) și pentru că implementarea Apple pe Android e mai tolerantă.
 
-## Pași după aplicare
+## Modificări
 
-1. În Android Studio: **Build → Clean Project**, apoi **Rebuild Project**
-2. Rulează din nou Generate Signed App Bundle
+### 1. `src/hooks/useAuth.tsx` — `signInWithNativeApple`
+Adăugăm câmpul `options` cu scopurile standard Apple:
 
-Dacă mai apar warnings legate de Gradle 10 deprecation, sunt din alte plugin-uri și nu blochează build-ul.
+```ts
+const response = await SocialLogin.login({
+  provider: "apple",
+  options: {
+    scopes: ["email", "fullName"],
+    // nonce opțional — Supabase nu îl impune când trimitem idToken
+  },
+} as any);
+```
+
+### 2. `src/hooks/useAuth.tsx` — `signInWithNativeGoogle` (preventiv)
+Aceeași librărie, aceeași cerință. Adăugăm și aici `options: {}` ca să nu apară aceeași eroare pe Android dacă plugin-ul devine și mai strict într-un viitor update:
+
+```ts
+const response = await SocialLogin.login({
+  provider: "google",
+  options: {},
+} as any);
+```
+
+## Configurare iOS necesară (în afara codului)
+
+Aceste setări trebuie făcute manual în Xcode pentru ca Apple Sign In să funcționeze pe device real (nu sunt parte din cod):
+
+1. **Capability „Sign In with Apple"** activată pe target-ul `App` în Xcode (Signing & Capabilities), atât pentru build Debug cât și Release.
+2. Entitlement `com.apple.developer.applesignin = ["Default"]` (deja există în `AppRelease.entitlements`; trebuie adăugat și un `App.entitlements` pentru Debug, sau setat același file pentru ambele configurații).
+3. În Apple Developer Portal: App ID-ul `ro.pythonpathway.app` să aibă „Sign In with Apple" activat și provisioning profile regenerat.
+4. După modificare: `npx cap sync ios` + `pod install` în `ios/App`.
+
+## Fișiere modificate
+- `src/hooks/useAuth.tsx`
+
+## După implementare
+1. Build din Xcode pe device fizic (Apple Sign In nu merge pe simulator decât pe iOS 13+ cu cont Apple ID logat).
+2. Apasă „Continuă cu Apple" — ar trebui să apară sheet-ul nativ Apple.

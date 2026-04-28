@@ -143,6 +143,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       const response = await SocialLogin.login({
         provider: "google",
+        options: {},
       } as any);
 
       const result = response.result as any;
@@ -206,6 +207,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       const response = await SocialLogin.login({
         provider: "apple",
+        options: {
+          scopes: ["email", "fullName"],
+        },
       } as any);
 
       const result = response.result as any;
