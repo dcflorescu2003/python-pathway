@@ -1,52 +1,121 @@
 ## Obiectiv
 
-Permite utilizatorilor logați cu Apple să-și seteze o parolă pentru a se putea loga și pe web (PC) folosind email + parolă, păstrând același cont.
+Pentru utilizatorii care s-au logat cu Apple folosind "Hide My Email" (adresă `@privaterelay.appleid.com`), introducem un flux care îi încurajează (fără să-i blocheze) să adauge un email real verificat pentru recuperarea contului și pentru login pe web. Cardul de reminder reapare zilnic după ora 14:00 până când userul fie:
+- adaugă un email real verificat, sau
+- bifează "Nu îmi mai aminti".
 
-## Cum funcționează
+## Cum va arăta pentru utilizator
 
-Apple Sign-In creează un user în Supabase cu:
-- `provider: "apple"` în `app_metadata`
-- `email`: fie email-ul real, fie un alias `xxxxx@privaterelay.appleid.com` (dacă user-ul a ales "Hide My Email")
+### 1. Pe pagina **Cont → Profil** (vizibil mereu pentru useri Apple cu private relay)
 
-Supabase permite `auth.updateUser({ password })` pe orice user autentificat — chiar și pe cei creați prin OAuth. După setare, user-ul are 2 metode de login active simultan, ambele duc la același cont (același user_id, același progres, același Premium).
+Card nou "Adaugă email pentru recuperare" — apare deasupra cardului existent "Activează login pe web". Conține:
+- Mesaj explicativ: "Email-ul Apple e privat. Adaugă o adresă reală pentru a putea recupera contul și loga pe web."
+- Câmp pentru email + buton "Trimite cod"
+- După trimitere: câmp pentru codul de 6 cifre + buton "Verifică"
+- După verificare cu succes: badge verde "Email verificat" + cardul existent de parolă
 
-## Modificări
+### 2. **Cartonaș zilnic** (după ora 14:00, doar dacă nu a fost dismis azi)
 
-### 1. Hook nou: `useAuthMethods` (`src/hooks/useAuthMethods.ts`)
-Returnează:
-- `hasApple` — dacă user-ul s-a logat vreodată cu Apple (din `user.identities` sau `app_metadata.providers`)
-- `hasPassword` — dacă user-ul are parolă setată (deducem din `user.identities` — există identity de tip `email`)
-- `email` — email-ul efectiv folosit la login (real sau alias `@privaterelay.appleid.com`)
-- `isPrivateRelay` — boolean dacă e alias Apple
+Apare ca dialog modal central (dark mode, stil PyRo) când userul deschide app-ul, cu:
+- Titlu: "Adaugă un email real"
+- Descriere scurtă despre de ce
+- Două butoane:
+  - "Adaugă acum" → navighează la `/account` și deschide cardul
+  - "Mai târziu" → ascunde dialogul până mâine după 14:00
+- Checkbox jos: "Nu îmi mai aminti niciodată" → marchează permanent ca dismis
 
-### 2. Componentă nouă: `WebLoginSetupCard` (`src/components/account/WebLoginSetupCard.tsx`)
-Card vizibil în Account → tab Profil, DOAR dacă `hasApple && !hasPassword`. Conține:
-- Titlu: „Activează login pe web"
-- Explicație scurtă: „Te-ai logat cu Apple. Setează o parolă pentru a te putea loga și de pe PC."
-- Email afișat (cu mențiune dacă e alias Apple privat)
-- Buton „Setează parolă" → deschide dialog cu 2 inputuri (parolă + confirmare, min 8 caractere) → apel `supabase.auth.updateUser({ password })`
-- După succes: toast + card devine „Login web activ ✓" cu badge verde și instrucțiuni: „Loghează-te pe PC cu: {email} + parola setată"
+### 3. **Hint pe AuthPage** (deja există, păstrăm)
 
-### 3. Avertisment pentru email privat (în același card)
-Dacă `isPrivateRelay`, adăugăm o notă: „Email-ul tău Apple este privat (`xxx@privaterelay.appleid.com`). Apple va redirecționa email-urile către adresa ta reală. Folosește exact acest email la login pe web."
+Sub tab-ul Email există deja mesajul că userii sociali pot activa login pe web din profil. Îl extindem ușor pentru a menționa că pot folosi și un email real verificat.
 
-Opțional (faza 2, dacă cere): buton „Schimbă email-ul" care folosește `auth.updateUser({ email })` + flow de confirmare. NU e inclus acum pentru a păstra scope-ul mic.
+## Reguli de afișare a cartonașului
 
-### 4. Schimbare parolă (bonus, pentru toți userii)
-În același card, dacă `hasPassword === true`, afișează un buton mai discret „Schimbă parola" care reutilizează același dialog. Util pentru toți userii, nu doar cei Apple.
+Cartonașul apare **o singură dată pe zi**, după ora 14:00 (ora device-ului), dacă:
+- userul are `@privaterelay.appleid.com` ca email principal, ȘI
+- nu a verificat încă un email real, ȘI
+- nu a apăsat "Nu îmi mai aminti niciodată" în trecut, ȘI
+- nu a fost arătat azi (după 14:00 local).
 
-### 5. Pe AuthPage — niciun cod nou
-Tab-ul „Login cu email" deja există și funcționează. Doar adăugăm o mică notă sub el: „Te-ai logat cu Apple pe iPhone? Poți seta o parolă din Cont → Profil pentru a te loga și aici."
+După apăsarea "Mai târziu" se setează data de ultima afișare. Următoarea zi, după 14:00, reapare.
 
 ## Detalii tehnice
 
-- `user.identities` (din Supabase) e un array cu provider-ele conectate. Dacă există unul cu `provider === "email"` și are timestamp, înseamnă că parola e setată. Altfel, doar OAuth.
-- `supabase.auth.updateUser({ password: "..." })` funcționează fără re-autentificare deoarece sesiunea e deja activă.
-- După setare, refresh la `user` via `supabase.auth.getUser()` pentru a actualiza `identities` în UI.
-- Validare client: parolă minim 8 caractere, confirmarea trebuie să corespundă. Server-side validarea e făcută automat de Supabase.
+### Database (migrație nouă)
 
-## Ce nu se schimbă
+Tabel nou `user_email_reminders`:
+```text
+user_id           uuid PK ref auth.users
+last_shown_date   date    -- data ultimei afișări a cartonașului (UTC)
+dismissed_forever boolean default false
+real_email        text    -- email-ul real adăugat (după verificare)
+verified_at       timestamptz
+created_at        timestamptz default now()
+updated_at        timestamptz default now()
+```
+RLS: user vede/modifică doar propriul rând. Self-insert permis.
 
-- Configurația Apple Sign-In rămâne identică (BYOC cu Bundle ID).
-- Edge functions, RLS, alte fluxuri — neatinse.
-- Datele user-ului (progres, XP, Premium) sunt legate de `user_id`, deci rămân identice indiferent de metoda de login.
+### Edge function nouă: `request-email-change`
+
+Input: `{ new_email: string }`
+- Validează formatul
+- Generează cod 6 cifre + token (hash în DB)
+- Salvează în tabel temporar `email_change_otps` (user_id, code_hash, new_email, expires_at = +15min, attempts = 0)
+- Trimite email cu codul folosind `send-transactional-email` (template nou `email-change-verification`)
+- Rate limit: 1 cerere per minut per user
+
+### Edge function nouă: `verify-email-change`
+
+Input: `{ code: string }`
+- Verifică codul împotriva ultimei cereri active a userului
+- Max 5 încercări, după care se invalidează codul
+- La succes:
+  - Apelează `supabase.auth.admin.updateUserById()` cu `email: new_email` și `email_confirm: true` (folosește `SUPABASE_SERVICE_ROLE_KEY`)
+  - Marchează `user_email_reminders.real_email` și `verified_at`
+  - Șterge OTP-ul
+
+### Email template nou: `email-change-verification`
+
+Template React Email cu codul de 6 cifre afișat mare, brand PyRo. Adăugat în `supabase/functions/_shared/transactional-email-templates/registry.ts`.
+
+### Componente React noi
+
+1. `src/components/account/RealEmailSetupCard.tsx` — cardul cu form de email + OTP (folosit în `AccountProfileTab.tsx`).
+2. `src/components/RealEmailReminderDialog.tsx` — dialogul modal zilnic (montat în `App.tsx` sau `MobileLayout.tsx`).
+3. `src/hooks/useRealEmailReminder.ts` — hook care:
+   - Returnează `shouldShow: boolean`
+   - Logica: după 14:00 local, query `user_email_reminders` → dacă `dismissed_forever=false` ȘI `verified_at IS NULL` ȘI (`last_shown_date IS NULL` SAU `last_shown_date < azi`) → arată
+   - Funcții `markShown()`, `dismissForever()`
+
+### Modificări în `useAuthMethods.ts`
+
+Extindem cu `hasVerifiedRealEmail: boolean` (citit din tabelul `user_email_reminders`) ca să ascundem cardul după verificare.
+
+### Mount-ul dialogului
+
+În `App.tsx` adăugăm `<RealEmailReminderDialog />` care:
+- Se auto-evaluează la mount și la `visibilitychange`
+- Nu se afișează pe rute publice (`/auth`, `/reset-password`, `/privacy-policy`, etc.)
+- Nu se afișează pe rute de lecție/test în desfășurare (evităm întreruperi)
+
+## Ce NU facem
+
+- NU forțăm logout dacă userul refuză.
+- NU blocăm accesul la features.
+- NU schimbăm fluxul de login Apple existent.
+- NU atingem login-ul Google/email/parolă.
+
+## Pași de implementare
+
+1. Migrație DB: tabel `user_email_reminders` + tabel `email_change_otps` + RLS.
+2. Edge function `request-email-change` + email template nou.
+3. Edge function `verify-email-change`.
+4. Hook `useRealEmailReminder` + extindere `useAuthMethods`.
+5. Componenta `RealEmailSetupCard` integrată în `AccountProfileTab.tsx`.
+6. Componenta `RealEmailReminderDialog` montată în `App.tsx`.
+7. Memorie nouă: `mem://features/account-management/real-email-enforcement` cu logica completă.
+
+## Riscuri & note
+
+- Dacă userul schimbă email-ul, `auth.users.email` se actualizează direct — orice notificare viitoare merge la noul email (private relay-ul Apple devine inactiv pentru recuperare în Supabase, dar Apple Sign In continuă să meargă pe iOS pentru că folosește Apple ID intern).
+- OTP-urile expiră la 15 minute pentru securitate.
+- Email-urile de verificare folosesc infrastructura existentă (`notify.pyroskill.info`).
