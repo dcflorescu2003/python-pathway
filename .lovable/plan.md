@@ -1,56 +1,48 @@
-## Problema
+## Problema reală
 
-Pe iOS, la apăsarea „Sign in with Apple" apare eroarea **„Missing provider or options"**.
+Setup-ul push pe iOS este 95% complet, dar **tokenul salvat în `device_tokens` pentru iOS este token APNs brut** (ex: `826A955E0F6044DBDCF4C9C24EFDEF...`), NU token FCM. Edge function-ul `send-push` îl trimite spre FCM HTTP v1, iar FCM îl respinge pentru că nu e un token Firebase valid — el rutează către APNs **doar dacă** tokenul a fost emis de Firebase iOS SDK.
 
-Cauza: pluginul `@capgo/capacitor-social-login` (v8) cere pe iOS ca metoda `login()` să primească **două** câmpuri obligatorii: `provider` ȘI `options` (un obiect, chiar și gol). În `src/hooks/useAuth.tsx` trimitem doar `{ provider: "apple" }`, fără `options`, iar partea nativă Swift respinge apelul imediat:
+Pe Android merge pentru că `@capacitor/push-notifications` returnează direct token FCM (Firebase e integrat prin `google-services.json` + plugin gradle). Pe iOS nu există echivalent integrat → returnează tokenul APNs brut de la Apple.
 
-```swift
-guard let provider = call.getString("provider"),
-      let payload = call.getObject("options") else {
-    call.reject("Missing provider or options")
-    return
-}
-```
+## Soluție: integrare Firebase iOS SDK
 
-Pe Android nu apare pentru că folosim `signInWithNativeGoogle` (alt path) și pentru că implementarea Apple pe Android e mai tolerantă.
+Adăugăm `FirebaseMessaging` în iOS pod, iar în `AppDelegate` interceptăm tokenul APNs, îl pasăm la Firebase, apoi expunem tokenul FCM rezultat către pluginul Capacitor printr-un eveniment custom (sau direct salvare).
 
-## Modificări
+### Pași tehnici
 
-### 1. `src/hooks/useAuth.tsx` — `signInWithNativeApple`
-Adăugăm câmpul `options` cu scopurile standard Apple:
+1. **`ios/App/Podfile`** — adăugăm:
+   ```ruby
+   pod 'Firebase/Messaging'
+   ```
 
-```ts
-const response = await SocialLogin.login({
-  provider: "apple",
-  options: {
-    scopes: ["email", "fullName"],
-    // nonce opțional — Supabase nu îl impune când trimitem idToken
-  },
-} as any);
-```
+2. **`ios/App/App/AppDelegate.swift`** — adaptări:
+   - `import Firebase` și `import FirebaseMessaging`
+   - În `didFinishLaunchingWithOptions`: `FirebaseApp.configure()`
+   - Implementăm `MessagingDelegate` și în `didRegisterForRemoteNotificationsWithDeviceToken`:
+     - setăm `Messaging.messaging().apnsToken = deviceToken`
+     - cerem token FCM cu `Messaging.messaging().token { ... }`
+     - postăm notificarea `capacitorDidRegisterForRemoteNotifications` cu **tokenul FCM** (string convertit în Data) în loc de tokenul APNs brut
+   - Fallback pentru `messaging:didReceiveRegistrationToken:` ca să prindem refresh-urile.
 
-### 2. `src/hooks/useAuth.tsx` — `signInWithNativeGoogle` (preventiv)
-Aceeași librărie, aceeași cerință. Adăugăm și aici `options: {}` ca să nu apară aceeași eroare pe Android dacă plugin-ul devine și mai strict într-un viitor update:
+3. **`ios/App/App/GoogleService-Info.plist`** — deja există, verificăm că `BUNDLE_ID = ro.pythonpathway.app` corespunde cu Xcode project.
 
-```ts
-const response = await SocialLogin.login({
-  provider: "google",
-  options: {},
-} as any);
-```
+4. **Cleanup token-uri vechi APNs**: ștergem manual din `device_tokens` rândul iOS curent (`826A955E...`) ca la următorul login să se salveze tokenul FCM corect. Edge function-ul deja face cleanup automat la `UNREGISTERED`/`NOT_FOUND` de la FCM, dar curățăm preventiv.
 
-## Configurare iOS necesară (în afara codului)
+5. **`pod install`** se rulează automat la build-ul iOS de către Capacitor (`npx cap sync ios`).
 
-Aceste setări trebuie făcute manual în Xcode pentru ca Apple Sign In să funcționeze pe device real (nu sunt parte din cod):
+### Ce NU se modifică
 
-1. **Capability „Sign In with Apple"** activată pe target-ul `App` în Xcode (Signing & Capabilities), atât pentru build Debug cât și Release.
-2. Entitlement `com.apple.developer.applesignin = ["Default"]` (deja există în `AppRelease.entitlements`; trebuie adăugat și un `App.entitlements` pentru Debug, sau setat același file pentru ambele configurații).
-3. În Apple Developer Portal: App ID-ul `ro.pythonpathway.app` să aibă „Sign In with Apple" activat și provisioning profile regenerat.
-4. După modificare: `npx cap sync ios` + `pod install` în `ios/App`.
+- `usePushNotifications.tsx` — rămâne identic (pluginul va primi acum tokenul FCM, salvat la fel în `device_tokens`).
+- `send-push` edge function — rămâne identic (deja trimite payload corect cu blocul `apns` pentru sound + badge).
+- `device_tokens` schema + RLS — corecte.
+- Entitlements + Info.plist — deja au `aps-environment` și `remote-notification`.
 
-## Fișiere modificate
-- `src/hooks/useAuth.tsx`
+### Verificare după deploy
 
-## După implementare
-1. Build din Xcode pe device fizic (Apple Sign In nu merge pe simulator decât pe iOS 13+ cu cont Apple ID logat).
-2. Apasă „Continuă cu Apple" — ar trebui să apară sheet-ul nativ Apple.
+1. Build iOS nou → reinstalare app pe device
+2. Login → `device_tokens` ar trebui să conțină acum un token de forma `xxx:APA91b...` (format FCM) pentru `platform=ios`
+3. Trigger un push (ex. notificare de la profesor) → ar trebui să sosească pe iPhone chiar și cu app închisă
+
+### Notă
+
+În Firebase Console → Project Settings → Cloud Messaging → iOS app, trebuie încărcată **APNs Authentication Key (.p8)** (sau certificat APNs) ca Firebase să poată reda mai departe la APNs. Dacă nu e încă încărcată, push-urile vor pleca dar nu vor ajunge. Te anunț după deploy să verifici și asta în Firebase Console (singurul pas care nu se poate face din cod).
