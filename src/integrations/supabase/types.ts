@@ -310,6 +310,36 @@ export type Database = {
         }
         Relationships: []
       }
+      email_change_otps: {
+        Row: {
+          attempts: number
+          code_hash: string
+          created_at: string
+          expires_at: string
+          id: string
+          new_email: string
+          user_id: string
+        }
+        Insert: {
+          attempts?: number
+          code_hash: string
+          created_at?: string
+          expires_at: string
+          id?: string
+          new_email: string
+          user_id: string
+        }
+        Update: {
+          attempts?: number
+          code_hash?: string
+          created_at?: string
+          expires_at?: string
+          id?: string
+          new_email?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       email_send_log: {
         Row: {
           created_at: string
@@ -1587,6 +1617,36 @@ export type Database = {
           title?: string
           updated_at?: string
           variant_mode?: string
+        }
+        Relationships: []
+      }
+      user_email_reminders: {
+        Row: {
+          created_at: string
+          dismissed_forever: boolean
+          last_shown_date: string | null
+          real_email: string | null
+          updated_at: string
+          user_id: string
+          verified_at: string | null
+        }
+        Insert: {
+          created_at?: string
+          dismissed_forever?: boolean
+          last_shown_date?: string | null
+          real_email?: string | null
+          updated_at?: string
+          user_id: string
+          verified_at?: string | null
+        }
+        Update: {
+          created_at?: string
+          dismissed_forever?: boolean
+          last_shown_date?: string | null
+          real_email?: string | null
+          updated_at?: string
+          user_id?: string
+          verified_at?: string | null
         }
         Relationships: []
       }
