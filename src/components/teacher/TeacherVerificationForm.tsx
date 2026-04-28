@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { schools } from "@/data/schools";
+import { matchesSearch } from "@/lib/searchUtils";
 
 type Method = "invite_code" | "public_link" | "document" | "referral" | null;
 
@@ -93,8 +94,7 @@ const TeacherVerificationForm = ({ onSuccess, onCancel }: Props) => {
 
   const filteredSchools = useMemo(() => {
     if (!schoolSearch.trim()) return [];
-    const q = schoolSearch.toLowerCase();
-    return schools.filter(s => s.name.toLowerCase().includes(q) || s.city.toLowerCase().includes(q)).slice(0, 50);
+    return schools.filter(s => matchesSearch(s.name, schoolSearch) || matchesSearch(s.city, schoolSearch)).slice(0, 50);
   }, [schoolSearch]);
 
   const submit = async () => {
