@@ -8,6 +8,7 @@ import { getLevelInfo } from "@/data/levels";
 import { useProgress } from "@/hooks/useProgress";
 import { useChallenges } from "@/hooks/useChallenges";
 import { schools, getSelectedSchool, setSelectedSchool, clearSelectedSchool } from "@/data/schools";
+import { matchesSearch } from "@/lib/searchUtils";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -199,9 +200,7 @@ const Index = (): JSX.Element => {
   const isReady = !chaptersLoading && !!chapters;
 
   const filteredSchools = schoolSearch.trim()
-    ? schools.filter((s) =>
-        `${s.name} ${s.city}`.toLowerCase().includes(schoolSearch.toLowerCase())
-      ).slice(0, 50)
+    ? schools.filter((s) => matchesSearch(`${s.name} ${s.city}`, schoolSearch)).slice(0, 50)
     : schools.slice(0, 50);
 
   const handleSelectSchool = (schoolId: string) => {

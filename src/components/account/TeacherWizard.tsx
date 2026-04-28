@@ -8,6 +8,7 @@ import { schools } from "@/data/schools";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
+import { matchesSearch } from "@/lib/searchUtils";
 
 interface TeacherWizardProps {
   onComplete: () => void;
@@ -39,7 +40,7 @@ const TeacherWizard = ({ onComplete, onCancel }: TeacherWizardProps) => {
   }, [user]);
 
   const filtered = schoolSearch.trim()
-    ? schools.filter((s) => `${s.name} ${s.city}`.toLowerCase().includes(schoolSearch.toLowerCase())).slice(0, 40)
+    ? schools.filter((s) => matchesSearch(`${s.name} ${s.city}`, schoolSearch)).slice(0, 40)
     : schools.slice(0, 40);
 
   const selectedSchool = schools.find((s) => s.id === selectedSchoolId);
