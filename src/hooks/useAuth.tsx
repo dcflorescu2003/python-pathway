@@ -50,6 +50,19 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 async function initializeNativeGoogleLogin() {
+  if (isNativeIOS) {
+    // iOS folosește iOS Client ID-ul nativ. webClientId rămâne necesar pentru
+    // ca idToken-ul să fie emis cu audience web (acceptat de Lovable Cloud).
+    await SocialLogin.initialize({
+      google: {
+        iOSClientId: GOOGLE_IOS_CLIENT_ID,
+        webClientId: GOOGLE_WEB_CLIENT_ID,
+        mode: "online",
+      } as any,
+    });
+    return;
+  }
+
   if (!GOOGLE_WEB_CLIENT_ID) {
     throw new Error("Lipsește VITE_GOOGLE_WEB_CLIENT_ID pentru login-ul Google nativ pe Android.");
   }
