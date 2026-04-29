@@ -93,6 +93,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       );
     }
 
+    if (isNativeIOS) {
+      initPromises.push(
+        initializeNativeGoogleLogin().catch((error) => {
+          console.error("Failed to initialize native iOS Google login:", error);
+        })
+      );
+    }
+
     // Apple is available on both iOS and Android
     initPromises.push(
       SocialLogin.initialize({ apple: {} }).catch((error) => {
