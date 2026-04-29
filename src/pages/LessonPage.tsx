@@ -149,19 +149,18 @@ const LessonPage = () => {
     const wasCorrect = feedback === "correct";
     if (currentIndex + 1 >= lesson.exercises.length || (!wasCorrect && lives <= 0)) {
       setIsFinished(true);
-      if (wasCorrect || lives > 0) {
-        const total = lesson.exercises.filter((e) => e.type !== "card").length;
-        const percent = total === 0 ? 100 : Math.round((correctCount / total) * 100);
-        completeLesson(lesson.id, lesson.xpReward, percent);
-        if (user && competencyResultsRef.current.length > 0) {
-          recordCompetencyScores(user.id, competencyResultsRef.current);
-          competencyResultsRef.current = [];
-        }
+      const total = lesson.exercises.filter((e) => e.type !== "card").length;
+      const percent = total === 0 ? 100 : Math.round((correctCount / total) * 100);
+      const xpEarned = lives <= 0 ? 1 : Math.max(1, lesson.xpReward - wrongCount);
+      completeLesson(lesson.id, xpEarned, percent);
+      if (user && competencyResultsRef.current.length > 0) {
+        recordCompetencyScores(user.id, competencyResultsRef.current);
+        competencyResultsRef.current = [];
       }
     } else {
       setCurrentIndex((i) => i + 1);
     }
-  }, [currentIndex, correctCount, lives, lesson, feedback, completeLesson, user]);
+  }, [currentIndex, correctCount, wrongCount, lives, lesson, feedback, completeLesson, user]);
 
   if (isLoading || !chapters) return <LoadingScreen />;
   if (!lesson || !chapter) return <div className="p-8 text-center text-foreground">Lecție negăsită</div>;
