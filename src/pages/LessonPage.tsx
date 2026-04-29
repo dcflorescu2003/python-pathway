@@ -57,6 +57,7 @@ const LessonPage = () => {
 
   const [currentIndex, setCurrentIndex] = useState(0);
   const [correctCount, setCorrectCount] = useState(0);
+  const [wrongCount, setWrongCount] = useState(0);
   const [localLives, setLocalLives] = useState(5);
   // Inimi afișate în lecție: pentru Premium folosim contor local (nu se sincronizează cu DB);
   // pentru non-Premium e minimul dintre contor local și inimile reale (DB).
