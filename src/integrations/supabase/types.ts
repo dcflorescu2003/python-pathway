@@ -852,6 +852,7 @@ export type Database = {
           is_active: boolean
           order_id: string | null
           plan_id: string | null
+          platform: string
           product_id: string
           purchase_token: string
           updated_at: string
@@ -865,6 +866,7 @@ export type Database = {
           is_active?: boolean
           order_id?: string | null
           plan_id?: string | null
+          platform?: string
           product_id: string
           purchase_token: string
           updated_at?: string
@@ -878,6 +880,7 @@ export type Database = {
           is_active?: boolean
           order_id?: string | null
           plan_id?: string | null
+          platform?: string
           product_id?: string
           purchase_token?: string
           updated_at?: string
