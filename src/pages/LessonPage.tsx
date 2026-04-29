@@ -139,7 +139,7 @@ const LessonPage = () => {
         setLastExplanation(exercise?.explanation || null);
       }
     },
-    [currentIndex, lesson, loseLife, recordActivity, markLessonStarted, progress.isPremium]
+    [currentIndex, lesson, loseLife, recordActivity, markLessonStarted, progress.isPremium, correctCount, wrongCount, lives, completeLesson, user]
   );
 
   const handleContinue = useCallback(() => {
