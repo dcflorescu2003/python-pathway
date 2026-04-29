@@ -211,7 +211,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signInWithGoogle = async () => {
-    if (isNativeAndroid) {
+    if (isNativeAndroid || isNativeIOS) {
       return signInWithNativeGoogle();
     }
     if (Capacitor.isNativePlatform()) {
