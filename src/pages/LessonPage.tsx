@@ -65,7 +65,7 @@ const LessonPage = () => {
   const [isFinished, setIsFinished] = useState(false);
   const [feedback, setFeedback] = useState<"correct" | "wrong" | null>(null);
   const [lastExplanation, setLastExplanation] = useState<string | null>(null);
-  const wasFirstTime = !progress.completedLessons[lessonId || ""]?.completed;
+  
 
   // Lecția nu poate începe sau continua dacă userul nu are inimi (excepție: Premium)
   const noLives = !progress.isPremium && progress.lives <= 0;
