@@ -9,6 +9,7 @@ import type { User, Session } from "@supabase/supabase-js";
 const PRODUCTION_URL = 'https://pyroskill.info';
 const OAUTH_BROKER_URL = `${PRODUCTION_URL}/~oauth/initiate`;
 const GOOGLE_WEB_CLIENT_ID = import.meta.env.VITE_GOOGLE_WEB_CLIENT_ID;
+const GOOGLE_IOS_CLIENT_ID = "500659609573-544m8gs54gukhl5vn1so298rvuvaif67.apps.googleusercontent.com";
 const isNativeAndroid = Capacitor.isNativePlatform() && Capacitor.getPlatform() === "android";
 const isNativeIOS = Capacitor.isNativePlatform() && Capacitor.getPlatform() === "ios";
 
