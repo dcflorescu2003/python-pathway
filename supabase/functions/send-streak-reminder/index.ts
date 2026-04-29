@@ -5,12 +5,21 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const messages = [
-  { title: "Seria ta e în pericol! 🔥", body: "Ai {streak} zile consecutive — nu te opri acum!" },
-  { title: "Nu lăsa flacăra să se stingă! 🕯️", body: "Intră azi și continuă seria de {streak} zile!" },
-  { title: "Ești pe drumul cel bun! 💪", body: "Seria ta de {streak} zile te așteaptă — rezolvă un exercițiu rapid!" },
-  { title: "O lecție pe zi, succes mereu! 📚", body: "Ai deja {streak} zile! Continuă și azi!" },
-  { title: "Streak-ul tău contează! ⭐", body: "{streak} zile fără pauză — ești incredibil! Nu te opri!" },
+// Mesaje pentru utilizatorii cu streak în pericol (ultima activitate = ieri)
+const dangerMessages = [
+  { title: "Bună dimineața! ☀️", body: "Streak-ul tău de {streak} zile te așteaptă — o lecție rapidă cu cafeaua?" },
+  { title: "Trezește-te cu Python! 🐍", body: "Ai {streak} zile la rând. Nu lăsa flacăra să se stingă azi!" },
+  { title: "Seria ta e în pericol! 🔥", body: "{streak} zile consecutive — păstrează ritmul cu un exercițiu rapid!" },
+  { title: "O lecție pe zi, succes mereu! 📚", body: "Ai deja {streak} zile! Continuă seria și azi!" },
+  { title: "Streak-ul tău contează! ⭐", body: "{streak} zile fără pauză — ești incredibil! Hai să continuăm!" },
+];
+
+// Mesaje pentru cei care au sărit deja 2-7 zile (revenire)
+const comebackMessages = [
+  { title: "Ne-a fost dor de tine! 💚", body: "Hai înapoi la PyRo — recuperăm seria împreună!" },
+  { title: "Python te așteaptă 🐍", body: "Au trecut câteva zile. Reia ritmul cu o lecție scurtă azi!" },
+  { title: "Bună dimineața! ☀️", body: "Hai să revenim la cod — un exercițiu rapid și ești înapoi pe drum!" },
+  { title: "Nu uita de Python! 💻", body: "Te așteaptă lecții noi. Hai să dai start zilei cu o provocare!" },
 ];
 
 Deno.serve(async (req) => {
@@ -24,16 +33,23 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    // Get yesterday's date
-    const yesterday = new Date();
+    const today = new Date();
+    const todayStr = today.toISOString().split("T")[0];
+
+    const yesterday = new Date(today);
     yesterday.setDate(yesterday.getDate() - 1);
     const yesterdayStr = yesterday.toISOString().split("T")[0];
 
-    // Find users with active streak who haven't been active today
+    const sevenDaysAgo = new Date(today);
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    const sevenDaysAgoStr = sevenDaysAgo.toISOString().split("T")[0];
+
+    // Toți userii care au un streak > 0 și au fost activi între acum 7 zile și ieri
     const { data: users, error } = await adminClient
       .from("profiles")
-      .select("user_id, streak, display_name")
-      .eq("last_activity_date", yesterdayStr)
+      .select("user_id, streak, display_name, last_activity_date")
+      .gte("last_activity_date", sevenDaysAgoStr)
+      .lte("last_activity_date", yesterdayStr)
       .gt("streak", 0);
 
     if (error) throw error;
@@ -43,39 +59,56 @@ Deno.serve(async (req) => {
       });
     }
 
-    let notified = 0;
+    // Verifică care utilizatori au primit deja o notificare azi (idempotență)
+    const userIds = users.map((u) => u.user_id);
+    const { data: existingNotifs } = await adminClient
+      .from("notifications")
+      .select("user_id")
+      .in("user_id", userIds)
+      .gte("created_at", todayStr + "T00:00:00.000Z")
+      .or("title.ilike.%streak%,title.ilike.%dimineața%,title.ilike.%Python%,title.ilike.%dor de tine%");
 
-    for (const user of users) {
-      const msg = messages[Math.floor(Math.random() * messages.length)];
-      const title = msg.title;
-      const body = msg.body.replace("{streak}", String(user.streak));
+    const alreadyNotified = new Set((existingNotifs ?? []).map((n: any) => n.user_id));
+    const toNotify = users.filter((u) => !alreadyNotified.has(u.user_id));
 
-      // Insert in-app notification
-      await adminClient.from("notifications").insert({
-        user_id: user.user_id,
-        title,
-        body,
+    if (toNotify.length === 0) {
+      return new Response(JSON.stringify({ notified: 0, message: "All users already notified today" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
-
-      notified++;
     }
 
-    // Send push notifications to users with device tokens
-    const userIds = users.map((u) => u.user_id);
+    // Pregătim mesajul per utilizator (în pericol vs revenire)
+    const userMessages: Record<string, { title: string; body: string }> = {};
+    const inAppRows: Array<{ user_id: string; title: string; body: string }> = [];
+
+    for (const user of toNotify) {
+      const isDanger = user.last_activity_date === yesterdayStr;
+      const pool = isDanger ? dangerMessages : comebackMessages;
+      const tpl = pool[Math.floor(Math.random() * pool.length)];
+      const title = tpl.title;
+      const body = tpl.body.replace("{streak}", String(user.streak));
+      userMessages[user.user_id] = { title, body };
+      inAppRows.push({ user_id: user.user_id, title, body });
+    }
+
+    // Insert in-app notifications batch
+    if (inAppRows.length > 0) {
+      await adminClient.from("notifications").insert(inAppRows);
+    }
+
+    // Push notifications (FCM)
     const { data: tokens } = await adminClient
       .from("device_tokens")
       .select("token, user_id")
-      .in("user_id", userIds);
+      .in("user_id", Object.keys(userMessages));
 
     if (tokens && tokens.length > 0) {
-      // Group tokens by user to send personalized messages
       const tokensByUser: Record<string, string[]> = {};
       for (const t of tokens) {
         if (!tokensByUser[t.user_id]) tokensByUser[t.user_id] = [];
         tokensByUser[t.user_id].push(t.token);
       }
 
-      // Get FCM access token
       let accessToken: string | null = null;
       let projectId: string | null = null;
       try {
@@ -117,13 +150,9 @@ Deno.serve(async (req) => {
       }
 
       if (accessToken && projectId) {
-        for (const user of users) {
-          const userTokens = tokensByUser[user.user_id];
+        for (const [userId, msg] of Object.entries(userMessages)) {
+          const userTokens = tokensByUser[userId];
           if (!userTokens) continue;
-
-          const msg = messages[Math.floor(Math.random() * messages.length)];
-          const title = msg.title;
-          const body = msg.body.replace("{streak}", String(user.streak));
 
           for (const deviceToken of userTokens) {
             try {
@@ -133,7 +162,7 @@ Deno.serve(async (req) => {
                 body: JSON.stringify({
                   message: {
                     token: deviceToken,
-                    notification: { title, body },
+                    notification: { title: msg.title, body: msg.body },
                     android: { priority: "high", notification: { sound: "default" } },
                   },
                 }),
@@ -146,7 +175,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    return new Response(JSON.stringify({ notified }), {
+    return new Response(JSON.stringify({ notified: inAppRows.length, total_candidates: users.length }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (err) {
