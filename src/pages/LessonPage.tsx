@@ -57,6 +57,7 @@ const LessonPage = () => {
 
   const [currentIndex, setCurrentIndex] = useState(0);
   const [correctCount, setCorrectCount] = useState(0);
+  const [wrongCount, setWrongCount] = useState(0);
   const [localLives, setLocalLives] = useState(5);
   // Inimi afișate în lecție: pentru Premium folosim contor local (nu se sincronizează cu DB);
   // pentru non-Premium e minimul dintre contor local și inimile reale (DB).
@@ -64,7 +65,7 @@ const LessonPage = () => {
   const [isFinished, setIsFinished] = useState(false);
   const [feedback, setFeedback] = useState<"correct" | "wrong" | null>(null);
   const [lastExplanation, setLastExplanation] = useState<string | null>(null);
-  const wasFirstTime = !progress.completedLessons[lessonId || ""]?.completed;
+  
 
   // Lecția nu poate începe sau continua dacă userul nu are inimi (excepție: Premium)
   const noLives = !progress.isPremium && progress.lives <= 0;
@@ -73,6 +74,7 @@ const LessonPage = () => {
   const restartLesson = useCallback(() => {
     setCurrentIndex(0);
     setCorrectCount(0);
+    setWrongCount(0);
     setLocalLives(5);
     setFeedback(null);
     setLastExplanation(null);
@@ -93,7 +95,8 @@ const LessonPage = () => {
           setIsFinished(true);
           const total = lesson.exercises.filter((e) => e.type !== "card").length;
           const percent = total === 0 ? 100 : Math.round((correctCount / total) * 100);
-          completeLesson(lesson.id, lesson.xpReward, percent);
+          const xpEarned = lives <= 0 ? 1 : Math.max(1, lesson.xpReward - wrongCount);
+          completeLesson(lesson.id, xpEarned, percent);
           if (user && competencyResultsRef.current.length > 0) {
             recordCompetencyScores(user.id, competencyResultsRef.current);
             competencyResultsRef.current = [];
@@ -128,6 +131,7 @@ const LessonPage = () => {
       } else {
         // Scădem inima locală pentru toți (inclusiv Premium); pentru non-Premium scădem și inima reală.
         setLocalLives((l) => Math.max(0, l - 1));
+        setWrongCount((w) => w + 1);
         if (!progress.isPremium) {
           loseLife();
         }
@@ -135,7 +139,7 @@ const LessonPage = () => {
         setLastExplanation(exercise?.explanation || null);
       }
     },
-    [currentIndex, lesson, loseLife, recordActivity, markLessonStarted, progress.isPremium]
+    [currentIndex, lesson, loseLife, recordActivity, markLessonStarted, progress.isPremium, correctCount, wrongCount, lives, completeLesson, user]
   );
 
   const handleContinue = useCallback(() => {
@@ -145,19 +149,18 @@ const LessonPage = () => {
     const wasCorrect = feedback === "correct";
     if (currentIndex + 1 >= lesson.exercises.length || (!wasCorrect && lives <= 0)) {
       setIsFinished(true);
-      if (wasCorrect || lives > 0) {
-        const total = lesson.exercises.filter((e) => e.type !== "card").length;
-        const percent = total === 0 ? 100 : Math.round((correctCount / total) * 100);
-        completeLesson(lesson.id, lesson.xpReward, percent);
-        if (user && competencyResultsRef.current.length > 0) {
-          recordCompetencyScores(user.id, competencyResultsRef.current);
-          competencyResultsRef.current = [];
-        }
+      const total = lesson.exercises.filter((e) => e.type !== "card").length;
+      const percent = total === 0 ? 100 : Math.round((correctCount / total) * 100);
+      const xpEarned = lives <= 0 ? 1 : Math.max(1, lesson.xpReward - wrongCount);
+      completeLesson(lesson.id, xpEarned, percent);
+      if (user && competencyResultsRef.current.length > 0) {
+        recordCompetencyScores(user.id, competencyResultsRef.current);
+        competencyResultsRef.current = [];
       }
     } else {
       setCurrentIndex((i) => i + 1);
     }
-  }, [currentIndex, correctCount, lives, lesson, feedback, completeLesson, user]);
+  }, [currentIndex, correctCount, wrongCount, lives, lesson, feedback, completeLesson, user]);
 
   if (isLoading || !chapters) return <LoadingScreen />;
   if (!lesson || !chapter) return <div className="p-8 text-center text-foreground">Lecție negăsită</div>;
@@ -189,7 +192,7 @@ const LessonPage = () => {
   }
 
   if (isFinished) {
-    const xpEarned = lives > 0 ? (wasFirstTime ? lesson.xpReward : 3) : 0;
+    const xpEarned = lives <= 0 ? 1 : Math.max(1, lesson.xpReward - wrongCount);
     return (
       <div className="fixed inset-0 flex items-center justify-center bg-background p-6 safe-top safe-bottom">
         <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="w-full max-w-sm rounded-xl border border-border bg-card p-6 text-center">
@@ -198,12 +201,18 @@ const LessonPage = () => {
               <div className="text-5xl mb-4">🎉</div>
               <h2 className="text-xl font-bold text-foreground mb-2">Lecție completă!</h2>
               <p className="text-sm text-muted-foreground mb-4">Ai răspuns corect la {correctCount}/{lesson.exercises.filter((e) => e.type !== "card").length} exerciții</p>
-              <div className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-4 py-2 text-primary font-bold mb-6">+{xpEarned} XP</div>
+              <div className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-4 py-2 text-primary font-bold mb-2">+{xpEarned} XP</div>
+              {wrongCount > 0 && (
+                <p className="text-xs text-muted-foreground mb-6">−1 XP pentru fiecare greșeală ({wrongCount} {wrongCount === 1 ? "greșeală" : "greșeli"})</p>
+              )}
+              {wrongCount === 0 && <div className="mb-6" />}
             </>
           ) : (
             <>
               <div className="text-5xl mb-4">💔</div>
               <h2 className="text-xl font-bold text-foreground mb-2">Ai rămas fără vieți!</h2>
+              <div className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-4 py-2 text-primary font-bold mb-2">+{xpEarned} XP</div>
+              <p className="text-xs text-muted-foreground mb-4">Recompensă de consolare</p>
               {progress.isPremium ? (
                 <p className="text-sm text-muted-foreground mb-4">Reîncepe lecția cu 5 inimi noi.</p>
               ) : (
