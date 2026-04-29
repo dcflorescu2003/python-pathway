@@ -130,6 +130,7 @@ const LessonPage = () => {
       } else {
         // Scădem inima locală pentru toți (inclusiv Premium); pentru non-Premium scădem și inima reală.
         setLocalLives((l) => Math.max(0, l - 1));
+        setWrongCount((w) => w + 1);
         if (!progress.isPremium) {
           loseLife();
         }
