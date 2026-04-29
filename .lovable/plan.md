@@ -1,73 +1,58 @@
-## Obiectiv
-Adăugarea suportului nativ pentru Sign in with Google pe iOS (și Android), folosind iOS Client ID-ul nou creat în Google Cloud Console, fără a strica login-ul Web existent.
+## Problema
 
-## Context
-- Web OAuth folosește deja Web Client ID configurat în Lovable Cloud → Google Provider (BYOK).
-- iOS nativ NU poate folosi același redirect web, are nevoie de un iOS Client ID dedicat (deja creat: `500659609573-544m8gs54gukhl5vn1so298rvuvaif67.apps.googleusercontent.com`).
-- Lovable Cloud acceptă orice idToken Google valid emis pentru același Google Cloud Project, deci tokenul nativ obținut pe iOS va fi acceptat la `signInWithIdToken`.
+1. **Cron-ul există deja** (`send-streak-reminder-daily`) dar rulează la **17:00 UTC** (≈19:00–20:00 ora României) — adică seara, nu dimineața. De asta nu primești notificare dimineața.
+2. **Logica funcției e prea strictă**: trimite doar utilizatorilor cu `last_activity_date = ieri`. Dacă ai sărit deja o zi (cum e cazul tău: ultima activitate 27-04, azi 29-04), nu mai primești nimic — exact când ai mai mare nevoie de un ghiont.
+3. Mesajul actual spune "ai X zile consecutive", ceea ce sună ciudat dimineața când utilizatorul tocmai s-a trezit.
 
-## Modificări de cod
+## Soluție
 
-### 1. Instalare plugin nativ
-- Adaugă `@capgo/capacitor-social-login` în `package.json` (suportă Apple + Google nativ).
+### 1. Schimbă ora cron-ului la dimineață (ora României)
+- Nou orar: **`0 6 * * *`** = 06:00 UTC = **09:00 ora României** (08:00 iarna).
+- E o oră caldă: după trezire, înainte de școală/muncă, când utilizatorul își poate încadra rapid o lecție.
 
-### 2. Detectare platformă în componenta de login
-- În `useGoogleAuth` (sau echivalentul folosit în butonul Google):
-  - Dacă `Capacitor.isNativePlatform()` și `getPlatform() === 'ios'` → folosește fluxul nativ.
-  - Altfel (web sau Android pentru moment) → păstrează fluxul existent `lovable.auth.signInWithOAuth("google", …)`.
+### 2. Extinde logica funcției `send-streak-reminder`
+Trimite notificare în 2 cazuri:
+- **A. Streak în pericol**: `last_activity_date = ieri` AND `streak > 0` → mesaj „nu rupe seria de X zile!"
+- **B. Streak deja rupt recent**: `last_activity_date` între acum 2 și 7 zile AND `streak > 0` (sau best_streak > 2) → mesaj de revenire „te așteaptă lecțiile, hai înapoi!"
 
-### 3. Flux nativ iOS
-```ts
-import { SocialLogin } from '@capgo/capacitor-social-login';
-import { supabase } from '@/integrations/supabase/client';
+Asta acoperă și cazul tău (27-04 → azi = 2 zile pauză).
 
-await SocialLogin.initialize({
-  google: {
-    iOSClientId: '500659609573-544m8gs54gukhl5vn1so298rvuvaif67.apps.googleusercontent.com',
-  },
-});
+### 3. Mesaje noi, prietenoase de dimineață
+Pool de mesaje cu ton matinal:
+- „Bună dimineața! ☀️ Streak-ul tău de {streak} zile te așteaptă"
+- „O lecție rapidă cu cafeaua de dimineață? ☕ {streak} zile la rând!"
+- „Trezește-te cu Python! 🐍 Nu lăsa seria de {streak} zile să se rupă"
+- Pentru cei reveniri: „Ne-a fost dor de tine! 💚 Hai să recuperăm seria"
 
-const res = await SocialLogin.login({
-  provider: 'google',
-  options: { scopes: ['email', 'profile'] },
-});
+### 4. Idempotență — un singur mesaj/zi
+Înainte de a insera în `notifications`, verificăm dacă utilizatorul a primit deja azi o notificare de tip „streak" (filtrăm pe titlu sau adăugăm o coloană `kind`). Evităm duplicatele dacă cron-ul e rulat manual.
 
-const idToken = res.result.idToken;
-await supabase.auth.signInWithIdToken({
-  provider: 'google',
-  token: idToken,
-});
+## Modificări tehnice
+
+### Migrare SQL
+```sql
+SELECT cron.unschedule('send-streak-reminder-daily');
+
+SELECT cron.schedule(
+  'send-streak-reminder-morning',
+  '0 6 * * *',  -- 09:00 ora României
+  $$ SELECT net.http_post(
+       url := 'https://gcilflssbcswmgkrznot.supabase.co/functions/v1/send-streak-reminder',
+       headers := '{"Content-Type":"application/json","Authorization":"Bearer <ANON>"}'::jsonb,
+       body := '{}'::jsonb
+     ); $$
+);
 ```
 
-### 4. Configurare iOS native
-- În `ios/App/App/Info.plist` adaugă `CFBundleURLSchemes` cu reverse client ID:
-  `com.googleusercontent.apps.500659609573-544m8gs54gukhl5vn1so298rvuvaif67`
-- Notă către user: după `git pull`, va trebui să ruleze `npx cap sync ios` pentru ca plugin-ul să se înregistreze nativ.
+### `supabase/functions/send-streak-reminder/index.ts`
+- Lărgim query-ul: `last_activity_date BETWEEN today-7 AND today-1 AND streak > 0`.
+- Două seturi de mesaje (în pericol vs revenire), alegem după câte zile au trecut.
+- Înainte de insert, `SELECT 1 FROM notifications WHERE user_id=? AND created_at::date = today AND title LIKE '%streak%'` — skip dacă există.
+- Trimitem și push (FCM/APNs) — codul există deja.
 
-### 5. Memory update
-- Actualizează `mem://auth/native-social-login` cu noul iOS Client ID și plugin-ul folosit (`@capgo/capacitor-social-login`).
+## Test rapid după deploy
+Rulez funcția manual: `supabase.functions.invoke('send-streak-reminder')` și verific că tu (David Florescu) primești o notificare „revenire".
 
-## Detalii tehnice
-
-### Fișiere modificate
-- `package.json` – adaugă dependency
-- `src/hooks/useGoogleAuth.ts` (sau locul unde se cheamă `signInWithOAuth("google")`) – ramificare nativ vs web
-- `ios/App/App/Info.plist` – URL scheme pentru Google
-- `mem://auth/native-social-login` – update memory
-
-### Fișiere NEafectate
-- `supabase/config.toml` – nimic
-- `src/integrations/supabase/client.ts` – nimic (regulă fixă)
-- Configurația Google din Lovable Cloud – nimic (rămâne BYOK Web)
-
-## Pași pe care îi va face user-ul după implementare
-1. `git pull` în repo local pe Mac
-2. `npm install`
-3. `npx cap sync ios`
-4. Deschide `ios/App/App.xcworkspace` în Xcode
-5. Rebuild + run pe iPhone
-6. Test Sign in with Google → trebuie să apară sheet-ul nativ Google iOS, nu browser
-
-## Riscuri / nesiguranțe
-- Pe Android nu schimbăm nimic acum – continuă pe fluxul web existent (funcționează).
-- Dacă `signInWithIdToken` e respins, înseamnă că iOS Client ID-ul nu e în același Google Cloud Project ca Web Client ID-ul – dar din ce ai trimis (același prefix `500659609573-`), e același proiect, deci va merge.
+## Fișiere atinse
+- `supabase/functions/send-streak-reminder/index.ts` (rewrite logic + mesaje)
+- migrare SQL nouă (re-schedule cron)
