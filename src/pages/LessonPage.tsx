@@ -74,6 +74,7 @@ const LessonPage = () => {
   const restartLesson = useCallback(() => {
     setCurrentIndex(0);
     setCorrectCount(0);
+    setWrongCount(0);
     setLocalLives(5);
     setFeedback(null);
     setLastExplanation(null);
