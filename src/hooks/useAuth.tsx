@@ -9,6 +9,7 @@ import type { User, Session } from "@supabase/supabase-js";
 const PRODUCTION_URL = 'https://pyroskill.info';
 const OAUTH_BROKER_URL = `${PRODUCTION_URL}/~oauth/initiate`;
 const GOOGLE_WEB_CLIENT_ID = import.meta.env.VITE_GOOGLE_WEB_CLIENT_ID;
+const GOOGLE_IOS_CLIENT_ID = "500659609573-544m8gs54gukhl5vn1so298rvuvaif67.apps.googleusercontent.com";
 const isNativeAndroid = Capacitor.isNativePlatform() && Capacitor.getPlatform() === "android";
 const isNativeIOS = Capacitor.isNativePlatform() && Capacitor.getPlatform() === "ios";
 
@@ -49,6 +50,19 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 async function initializeNativeGoogleLogin() {
+  if (isNativeIOS) {
+    // iOS folosește iOS Client ID-ul nativ. webClientId rămâne necesar pentru
+    // ca idToken-ul să fie emis cu audience web (acceptat de Lovable Cloud).
+    await SocialLogin.initialize({
+      google: {
+        iOSClientId: GOOGLE_IOS_CLIENT_ID,
+        webClientId: GOOGLE_WEB_CLIENT_ID,
+        mode: "online",
+      } as any,
+    });
+    return;
+  }
+
   if (!GOOGLE_WEB_CLIENT_ID) {
     throw new Error("Lipsește VITE_GOOGLE_WEB_CLIENT_ID pentru login-ul Google nativ pe Android.");
   }
@@ -75,6 +89,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       initPromises.push(
         initializeNativeGoogleLogin().catch((error) => {
           console.error("Failed to initialize native Google login:", error);
+        })
+      );
+    }
+
+    if (isNativeIOS) {
+      initPromises.push(
+        initializeNativeGoogleLogin().catch((error) => {
+          console.error("Failed to initialize native iOS Google login:", error);
         })
       );
     }
@@ -189,7 +211,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signInWithGoogle = async () => {
-    if (isNativeAndroid) {
+    if (isNativeAndroid || isNativeIOS) {
       return signInWithNativeGoogle();
     }
     if (Capacitor.isNativePlatform()) {

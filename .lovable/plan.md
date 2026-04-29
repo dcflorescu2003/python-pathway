@@ -1,42 +1,73 @@
-## Modificare sistem XP la lecții
+## Obiectiv
+Adăugarea suportului nativ pentru Sign in with Google pe iOS (și Android), folosind iOS Client ID-ul nou creat în Google Cloud Console, fără a strica login-ul Web existent.
 
-### Reguli noi
-- **Perfect (0 greșeli)**: primești XP-ul integral al lecției (`lesson.xpReward`)
-- **Cu greșeli**: scade 1 XP pentru fiecare greșeală (răspuns greșit)
-- **Pierdere toate inimile**: primești 1 XP (consolare), indiferent de câte greșeli ai făcut
-- **XP minim**: niciodată sub 1 (chiar dacă greșelile depășesc xpReward, nu coboară sub 1 când lecția e finalizată)
+## Context
+- Web OAuth folosește deja Web Client ID configurat în Lovable Cloud → Google Provider (BYOK).
+- iOS nativ NU poate folosi același redirect web, are nevoie de un iOS Client ID dedicat (deja creat: `500659609573-544m8gs54gukhl5vn1so298rvuvaif67.apps.googleusercontent.com`).
+- Lovable Cloud acceptă orice idToken Google valid emis pentru același Google Cloud Project, deci tokenul nativ obținut pe iOS va fi acceptat la `signInWithIdToken`.
 
-### Comportament la recapitulare (lecție deja completată)
-**Întrebare pentru tine**: păstrăm regula veche de „3 XP fix la recapitulare" sau aplicăm aceeași formulă nouă (perfect = xpReward, -1/greșeală)?
+## Modificări de cod
 
-Default propus în plan: aplicăm aceeași formulă și la recapitulare — e mai simplu și mai consistent. (Spune-mi dacă vrei altfel.)
+### 1. Instalare plugin nativ
+- Adaugă `@capgo/capacitor-social-login` în `package.json` (suportă Apple + Google nativ).
 
-### Implementare
+### 2. Detectare platformă în componenta de login
+- În `useGoogleAuth` (sau echivalentul folosit în butonul Google):
+  - Dacă `Capacitor.isNativePlatform()` și `getPlatform() === 'ios'` → folosește fluxul nativ.
+  - Altfel (web sau Android pentru moment) → păstrează fluxul existent `lovable.auth.signInWithOAuth("google", …)`.
 
-**Fișier: `src/pages/LessonPage.tsx`**
+### 3. Flux nativ iOS
+```ts
+import { SocialLogin } from '@capgo/capacitor-social-login';
+import { supabase } from '@/integrations/supabase/client';
 
-1. Adaug state `wrongCount` (resetat în `restartLesson`)
-2. Incrementez `wrongCount` în `handleAnswer` la fiecare răspuns greșit
-3. Înlocuiesc calculul `xpEarned`:
-   ```
-   xpEarned = lives <= 0 
-     ? 1 
-     : Math.max(1, lesson.xpReward - wrongCount)
-   ```
-4. Apelez `completeLesson(lesson.id, xpEarned, percent)` — trec XP-ul calculat în loc de `lesson.xpReward`
-5. Actualizez ecranul de finish să afișeze `+{xpEarned} XP` cu noua valoare (afișat și când lives=0, fiindcă acum primește 1 XP)
-6. Adaug în UI o mică explicație opțională ("−1 XP per greșeală") sub badge-ul de XP
+await SocialLogin.initialize({
+  google: {
+    iOSClientId: '500659609573-544m8gs54gukhl5vn1so298rvuvaif67.apps.googleusercontent.com',
+  },
+});
 
-**Fișier: `src/hooks/useProgress.ts`** — verific că `completeLesson` acceptă XP-ul ca parametru (deja face asta din apelul existent).
+const res = await SocialLogin.login({
+  provider: 'google',
+  options: { scopes: ['email', 'profile'] },
+});
 
-**Manual lessons (`src/pages/ManualLessonPage.tsx`)**: lecțiile manuale publice nu acordă XP (no auth tracking) — nu necesită modificări.
+const idToken = res.result.idToken;
+await supabase.auth.signInWithIdToken({
+  provider: 'google',
+  token: idToken,
+});
+```
 
-**Teste / probleme** (problems, predefined tests): scopul nu le acoperă — rămân neschimbate.
+### 4. Configurare iOS native
+- În `ios/App/App/Info.plist` adaugă `CFBundleURLSchemes` cu reverse client ID:
+  `com.googleusercontent.apps.500659609573-544m8gs54gukhl5vn1so298rvuvaif67`
+- Notă către user: după `git pull`, va trebui să ruleze `npx cap sync ios` pentru ca plugin-ul să se înregistreze nativ.
 
-### Edge cases
-- Lecție doar cu card-uri (theory): perfect → xpReward integral (nu sunt greșeli posibile)
-- `xpReward = 5`, 7 greșeli, supraviețuiește → 1 XP (clamp minim)
-- `xpReward = 20`, 0 greșeli, lives=0 la final → imposibil (dacă a făcut perfect nu pierde inimi); dacă cumva apare → 1 XP (regula lives≤0 are prioritate)
+### 5. Memory update
+- Actualizează `mem://auth/native-social-login` cu noul iOS Client ID și plugin-ul folosit (`@capgo/capacitor-social-login`).
 
-### Memorie
-Voi actualiza `mem://features/gamification/lesson-scoring-logic` cu noua formulă XP.
+## Detalii tehnice
+
+### Fișiere modificate
+- `package.json` – adaugă dependency
+- `src/hooks/useGoogleAuth.ts` (sau locul unde se cheamă `signInWithOAuth("google")`) – ramificare nativ vs web
+- `ios/App/App/Info.plist` – URL scheme pentru Google
+- `mem://auth/native-social-login` – update memory
+
+### Fișiere NEafectate
+- `supabase/config.toml` – nimic
+- `src/integrations/supabase/client.ts` – nimic (regulă fixă)
+- Configurația Google din Lovable Cloud – nimic (rămâne BYOK Web)
+
+## Pași pe care îi va face user-ul după implementare
+1. `git pull` în repo local pe Mac
+2. `npm install`
+3. `npx cap sync ios`
+4. Deschide `ios/App/App.xcworkspace` în Xcode
+5. Rebuild + run pe iPhone
+6. Test Sign in with Google → trebuie să apară sheet-ul nativ Google iOS, nu browser
+
+## Riscuri / nesiguranțe
+- Pe Android nu schimbăm nimic acum – continuă pe fluxul web existent (funcționează).
+- Dacă `signInWithIdToken` e respins, înseamnă că iOS Client ID-ul nu e în același Google Cloud Project ca Web Client ID-ul – dar din ce ai trimis (același prefix `500659609573-`), e același proiect, deci va merge.

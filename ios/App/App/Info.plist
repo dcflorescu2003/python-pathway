@@ -64,5 +64,14 @@
 			<string>cstr6suwn9.skadnetwork</string>
 		</dict>
 	</array>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>com.googleusercontent.apps.500659609573-544m8gs54gukhl5vn1so298rvuvaif67</string>
+			</array>
+		</dict>
+	</array>
 </dict>
 </plist>
