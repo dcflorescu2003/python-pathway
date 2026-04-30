@@ -32,27 +32,6 @@ export type Database = {
         }
         Relationships: []
       }
-      apple_oauth_states: {
-        Row: {
-          code_verifier: string
-          created_at: string
-          return_to: string
-          state: string
-        }
-        Insert: {
-          code_verifier: string
-          created_at?: string
-          return_to: string
-          state: string
-        }
-        Update: {
-          code_verifier?: string
-          created_at?: string
-          return_to?: string
-          state?: string
-        }
-        Relationships: []
-      }
       challenges: {
         Row: {
           class_id: string

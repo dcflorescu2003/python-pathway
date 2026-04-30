@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ArrowLeft, Mail, Lock, User, Eye, EyeOff, LogOut, Shield, Trash2, Settings, GraduationCap, Pencil, Check, X, BookOpen, FileText } from "lucide-react";
 import { useAdminAccess } from "@/hooks/useAdminAccess";
+import { useAuthMethods } from "@/hooks/useAuthMethods";
 import { useSubscription } from "@/hooks/useSubscription";
 import { toast } from "sonner";
 
@@ -25,7 +26,9 @@ const AccountView = () => {
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
   const { isAdmin } = useAdminAccess();
+  const { hasApple, hasPassword, isPrivateRelay, loading: authMethodsLoading } = useAuthMethods();
   const { checkSubscription } = useSubscription();
+  const [showAppleGateDialog, setShowAppleGateDialog] = useState(false);
   const [teacherStatus, setTeacherStatus] = useState<string | null>(null);
   const [isClassMember, setIsClassMember] = useState(false);
   const [flagsLoaded, setFlagsLoaded] = useState(false);
@@ -102,6 +105,14 @@ const AccountView = () => {
 
   const handleJoinClass = async (code: string) => {
     if (!user || !code.trim()) return;
+
+    // Gating Apple: utilizatorii cu cont Apple trebuie să aibă email real (nu privaterelay)
+    // și parolă setată înainte să se înscrie într-o clasă (recovery + login pe web).
+    if (!authMethodsLoading && hasApple && (isPrivateRelay || !hasPassword)) {
+      setShowAppleGateDialog(true);
+      return;
+    }
+
     setJoinLoading(true);
     try {
       const { data: cls } = await supabase
@@ -389,6 +400,42 @@ const AccountView = () => {
               disabled={joinLastName.trim().length < 2 || joinFirstName.trim().length < 2 || joinLoading}
             >
               {joinLoading ? "Se înscrie..." : "Confirmă și intră în clasă"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Apple gating dialog: cere email real + parolă înainte de join */}
+      <Dialog open={showAppleGateDialog} onOpenChange={setShowAppleGateDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Finalizează contul înainte să te alături</DialogTitle>
+            <DialogDescription className="space-y-2 pt-2">
+              <span className="block">
+                Te-ai logat cu Apple. Pentru a te înscrie într-o clasă ai nevoie de:
+              </span>
+              <ul className="list-disc pl-5 space-y-1 text-sm">
+                {isPrivateRelay && (
+                  <li>o adresă de <strong>email reală</strong> (nu @privaterelay.appleid.com)</li>
+                )}
+                {!hasPassword && <li>o <strong>parolă</strong> pentru login pe web</li>}
+              </ul>
+              <span className="block pt-2 text-sm">
+                Așa îți poți recupera contul dacă pierzi accesul la Apple ID și te poți loga și de pe PC.
+              </span>
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+            <Button variant="ghost" onClick={() => setShowAppleGateDialog(false)}>
+              Mai târziu
+            </Button>
+            <Button
+              onClick={() => {
+                setShowAppleGateDialog(false);
+                setActiveTab("profile");
+              }}
+            >
+              Mergi la Cont
             </Button>
           </div>
         </DialogContent>
