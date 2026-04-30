@@ -238,8 +238,9 @@ export function useSubscription() {
           setTimeout(() => void checkSubscription(true), 2500);
         } catch (err: any) {
           console.error("[startCheckout] iOS purchase failed:", err);
+          const msg: string = err?.message || "";
           // Dacă a fost timeout client-side, întreabă RevenueCat dacă achiziția a trecut totuși
-          if (err?.message === "TIMEOUT_IOS_PURCHASE") {
+          if (msg === "TIMEOUT_IOS_PURCHASE") {
             const recovered = await reconcileAfterPurchaseTimeout();
             if (recovered) {
               setTimeout(() => void checkSubscription(true), 1500);
@@ -247,6 +248,24 @@ export function useSubscription() {
             }
             throw new Error(
               "App Store nu a returnat răspunsul la timp. Dacă plata s-a finalizat, abonamentul se activează automat în câteva secunde sau poți apăsa „Restaurează achizițiile”."
+            );
+          }
+          // Init/configure timeout — mesaj acționabil
+          if (/TIMEOUT_INIT_CONFIGURE/i.test(msg) || /nu e inițializat/i.test(msg)) {
+            throw new Error(
+              "RevenueCat nu poate iniția conexiunea cu App Store. Verifică: (1) ești logat cu un cont Sandbox în Settings → App Store → Sandbox Account, (2) ai conexiune la internet, (3) reinstalează appul."
+            );
+          }
+          // getOfferings timeout
+          if (/TIMEOUT_GET_OFFERINGS/i.test(msg)) {
+            throw new Error(
+              "App Store Connect nu a răspuns cu produsele. Verifică în RevenueCat dashboard că Offering-ul „current” are pachetele atașate și că produsele sunt aprobate în App Store Connect."
+            );
+          }
+          // Bridge missing
+          if (/bridge/i.test(msg) || /reinstalează/i.test(msg)) {
+            throw new Error(
+              "Bridge-ul RevenueCat nu e disponibil în acest build. Reinstalează appul sau cere un build nou."
             );
           }
           throw err;
