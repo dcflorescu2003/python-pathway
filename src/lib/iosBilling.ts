@@ -20,48 +20,53 @@ export const STRIPE_TO_IOS: Record<string, IOSProductKey> = {
 };
 
 // RevenueCat public iOS API key (publishable, safe in client code).
-// Replace this placeholder with the real key from RevenueCat Dashboard → API Keys → Public iOS.
-const REVENUECAT_PUBLIC_API_KEY_IOS = "PLACEHOLDER_REVENUECAT_IOS_PUBLIC_KEY";
+// Source: RevenueCat Dashboard → Project Settings → API Keys → Pyro (App Store).
+const REVENUECAT_PUBLIC_API_KEY_IOS = "appl_HJzjSqAtmWWTejEByusfNbnrLaD";
 
 export function isIOSNative(): boolean {
   return Capacitor.isNativePlatform() && Capacitor.getPlatform() === "ios";
 }
 
-let CapacitorPurchases: any = null;
+let PurchasesPlugin: any = null;
 async function getPurchases(): Promise<any> {
-  if (CapacitorPurchases) return CapacitorPurchases;
+  if (PurchasesPlugin) return PurchasesPlugin;
   if (!isIOSNative()) return null;
   try {
-    const mod = await import("@capgo/capacitor-purchases");
-    CapacitorPurchases = (mod as any).CapacitorPurchases || (mod as any).default;
-    return CapacitorPurchases;
+    const mod = await import("@revenuecat/purchases-capacitor");
+    PurchasesPlugin = (mod as any).Purchases || (mod as any).default;
+    return PurchasesPlugin;
   } catch (err) {
-    console.warn("[iosBilling] Failed to load @capgo/capacitor-purchases", err);
+    console.warn("[iosBilling] Failed to load @revenuecat/purchases-capacitor", err);
     return null;
   }
 }
 
 let initPromise: Promise<void> | null = null;
+let configuredUserId: string | null = null;
 
 export async function initIOSBilling(userId?: string): Promise<void> {
   if (!isIOSNative()) return;
-  if (initPromise) return initPromise;
+
+  // If already configured for the same user, no-op
+  if (initPromise && configuredUserId === (userId ?? null)) return initPromise;
 
   initPromise = (async () => {
     const Purchases = await getPurchases();
     if (!Purchases) {
-      console.warn("[iosBilling] CapacitorPurchases not available");
+      console.warn("[iosBilling] Purchases plugin not available");
       return;
     }
 
     try {
-      await Purchases.setup({
+      await Purchases.configure({
         apiKey: REVENUECAT_PUBLIC_API_KEY_IOS,
         appUserID: userId || null,
       });
+      configuredUserId = userId ?? null;
       console.log("[iosBilling] RevenueCat initialized", { hasUserId: !!userId });
     } catch (err) {
       console.error("[iosBilling] init failed:", err);
+      initPromise = null; // allow retry
     }
   })();
 
@@ -69,9 +74,9 @@ export async function initIOSBilling(userId?: string): Promise<void> {
 }
 
 /**
- * Trigger Apple Pay purchase flow for the given product.
+ * Trigger Apple Pay purchase flow for the given product via RevenueCat.
  * After completion, the customerInfo is sent to our backend so we mark the user
- * as Premium immediately (RevenueCat webhook is the source of truth long-term).
+ * as Premium immediately (RevenueCat webhook is the long-term source of truth).
  */
 export async function purchaseIOSSubscription(key: IOSProductKey): Promise<void> {
   if (!isIOSNative()) throw new Error("Apple IAP only on iOS");
@@ -82,23 +87,24 @@ export async function purchaseIOSSubscription(key: IOSProductKey): Promise<void>
 
   const { productId } = IOS_PRODUCTS[key];
 
-  // Fetch offerings to find the package matching our product id
-  const offerings = await Purchases.getOfferings();
-  const current = offerings?.current || offerings?.offerings?.current;
+  // Fetch current offering and find package matching our product id
+  const offeringsRes = await Purchases.getOfferings();
+  const current =
+    offeringsRes?.current ||
+    offeringsRes?.offerings?.current ||
+    null;
 
-  let pkg: any = null;
-  const allPackages = current?.availablePackages || [];
-  pkg = allPackages.find((p: any) => p.product?.identifier === productId);
+  const allPackages: any[] = current?.availablePackages || [];
+  const pkg = allPackages.find(
+    (p: any) =>
+      p?.product?.identifier === productId ||
+      p?.storeProduct?.identifier === productId
+  );
 
   if (!pkg) {
-    // Fallback: try direct product lookup
-    const products = await Purchases.getProducts({ productIdentifiers: [productId] });
-    const product = (products?.products || products)?.[0];
-    if (!product) throw new Error(`Produs negăsit: ${productId}`);
-
-    const result = await Purchases.purchaseProduct({ productIdentifier: productId });
-    await syncPurchaseWithBackend(result);
-    return;
+    throw new Error(
+      `Pachet RevenueCat negăsit pentru ${productId}. Verifică Offerings în RevenueCat.`
+    );
   }
 
   const result = await Purchases.purchasePackage({ aPackage: pkg });
@@ -108,26 +114,38 @@ export async function purchaseIOSSubscription(key: IOSProductKey): Promise<void>
 async function syncPurchaseWithBackend(result: any): Promise<void> {
   try {
     const customerInfo = result?.customerInfo || result?.purchaserInfo || result;
-    const productIdentifier = result?.productIdentifier || customerInfo?.activeSubscriptions?.[0];
-    const originalAppUserId = customerInfo?.originalAppUserId || customerInfo?.appUserID;
+    const productIdentifier =
+      result?.productIdentifier ||
+      Object.keys(customerInfo?.activeSubscriptions || {})[0] ||
+      (Array.isArray(customerInfo?.activeSubscriptions)
+        ? customerInfo.activeSubscriptions[0]
+        : null);
+    const originalAppUserId =
+      customerInfo?.originalAppUserId || customerInfo?.appUserID;
     const entitlements = customerInfo?.entitlements?.active || {};
-    const firstEntitlement = Object.values(entitlements)[0] as { expirationDate?: string } | undefined;
+    const firstEntitlement = Object.values(entitlements)[0] as
+      | { expirationDate?: string; productIdentifier?: string }
+      | undefined;
     const expirationISO =
       firstEntitlement?.expirationDate ||
-      customerInfo?.allExpirationDates?.[productIdentifier] ||
+      customerInfo?.allExpirationDates?.[productIdentifier as string] ||
       null;
 
     await supabase.functions.invoke("verify-ios-purchase", {
       body: {
-        productId: productIdentifier,
-        originalTransactionId: customerInfo?.originalApplicationVersion || originalAppUserId,
+        productId: productIdentifier || firstEntitlement?.productIdentifier,
+        originalTransactionId:
+          customerInfo?.originalApplicationVersion || originalAppUserId,
         revenuecatUserId: originalAppUserId,
         expirationISO,
         entitlements,
         rawCustomerInfo: customerInfo,
       },
     });
-    console.log("[iosBilling] backend sync ok", { productIdentifier, expirationISO });
+    console.log("[iosBilling] backend sync ok", {
+      productIdentifier,
+      expirationISO,
+    });
   } catch (err) {
     console.error("[iosBilling] backend sync failed:", err);
   }
@@ -156,7 +174,6 @@ export async function restoreIOSPurchases(): Promise<number> {
 export async function openIOSSubscriptionManagement(): Promise<void> {
   if (!isIOSNative()) return;
   try {
-    // Universal Apple deep link to subscription management
     window.open("itms-apps://apps.apple.com/account/subscriptions", "_blank");
   } catch (err) {
     console.error("[iosBilling] manage failed:", err);
