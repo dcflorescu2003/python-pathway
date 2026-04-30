@@ -48,26 +48,29 @@ serve(async (req) => {
     if (!userId || !userEmail) throw new Error("User not authenticated");
     logStep("User authenticated", { email: userEmail });
 
-    // Check Google Play Billing first (Android native purchases)
-    const { data: playSubs } = await supabaseClient
+    // Check native mobile billing first (Android Google Play OR iOS App Store).
+    // Both store rows in `play_billing_subscriptions`, distinguished by `platform` column.
+    const { data: nativeSubs } = await supabaseClient
       .from("play_billing_subscriptions")
-      .select("product_id, plan_id, expiry_time, is_active")
+      .select("product_id, plan_id, expiry_time, is_active, platform")
       .eq("user_id", userId)
       .eq("is_active", true)
       .order("expiry_time", { ascending: false })
       .limit(1);
 
-    const latestPlay = playSubs?.[0];
+    const latestNative = nativeSubs?.[0];
     let playActive = false;
     let playEnd: string | null = null;
     let playProductId: string | null = null;
-    if (latestPlay) {
-      const expiry = new Date(latestPlay.expiry_time);
+    let playPlatform: "android" | "ios" | null = null;
+    if (latestNative) {
+      const expiry = new Date(latestNative.expiry_time);
       if (expiry > new Date()) {
         playActive = true;
-        playEnd = latestPlay.expiry_time;
-        playProductId = latestPlay.product_id;
-        logStep("Active Play Billing subscription", { productId: playProductId, end: playEnd });
+        playEnd = latestNative.expiry_time;
+        playProductId = latestNative.product_id;
+        playPlatform = (latestNative.platform === "ios" ? "ios" : "android");
+        logStep("Active native subscription", { productId: playProductId, platform: playPlatform, end: playEnd });
       }
     }
 
@@ -168,8 +171,9 @@ serve(async (req) => {
       couponDaysRemaining = Math.ceil((new Date(couponEnd).getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
     }
 
-    // Determine source priority: play_billing > stripe > coupon
-    const source = playActive ? "play_billing" : stripeActive ? "stripe" : couponActive ? "coupon" : null;
+    // Determine source priority: native (ios/android) > stripe > coupon
+    const nativeSource = playPlatform === "ios" ? "ios_iap" : "play_billing";
+    const source = playActive ? nativeSource : stripeActive ? "stripe" : couponActive ? "coupon" : null;
     const finalProductId = playActive ? playProductId : productId;
     const finalEnd = playActive ? playEnd : (subscriptionEnd || couponEnd);
 
