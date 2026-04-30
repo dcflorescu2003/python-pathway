@@ -1,35 +1,36 @@
-## Schimbare logică regenerare inimi
+Problema raportată („Achiziția App Store nu a răspuns”) vine din timeout-ul de 45s pus peste `purchaseIOSSubscription`. Asta înseamnă că apelul `Purchases.purchasePackage(...)` nu a returnat nici succes, nici eroare în timp util. Nu e un caz în care Secret API Key ajută direct: purchase sheet-ul și cumpărarea se fac cu SDK-ul iOS și cheia publică RevenueCat. Secretul poate fi util doar pentru verificări server-side/API RevenueCat, nu pentru a porni/rezolva sheet-ul de cumpărare de pe device.
 
-### Comportament nou
-- Când userul rămâne la **0 inimi**, după **25 de minute** de pauză toate cele 5 inimi se reumplu automat.
-- Dacă userul are între 1 și 4 inimi, **nu mai există regenerare automată parțială** — singurul refill rapid este reclama (rewarded ad), care continuă să dea +5 (max 2 ori/zi).
-- Premium continuă să aibă inimi ∞ (neschimbat).
-- Alternativ la cele 25 de minute, userul poate viziona o reclamă pentru reumplere imediată.
+Plan de remediere:
 
-### Fișiere modificate
+1. Schimb fallback-ul de achiziție iOS ca să nu depindă exclusiv de `purchasePackage`
+   - În `src/lib/iosBilling.ts`, după ce găsim package-ul din Offering, extrag `storeProduct/product`.
+   - Încerc achiziția prin `Purchases.purchaseStoreProduct({ product })`, care pe iOS folosește direct Product ID-ul și evită blocajele legate de `presentedOfferingContext/package`.
+   - Dacă `purchaseStoreProduct` nu e disponibil sau eșuează imediat din motiv de shape/API, fac fallback la `purchasePackage({ aPackage: pkg })`.
 
-**1. `src/hooks/useProgress.ts`** — refactor `regenerateLives`:
-- Constante:
-  - `MAX_LIVES = 5` (neschimbat)
-  - `FULL_REGEN_MS = 25 * 60 * 1000` (înlocuiește `REGEN_INTERVAL_MS`)
-- Logică nouă în `regenerateLives(p)`:
-  - Dacă `isPremium` sau `lives >= MAX_LIVES` → return p (neschimbat).
-  - Dacă `lives === 0` și au trecut ≥ 25 min de la `livesUpdatedAt` → set `lives = MAX_LIVES`, update `livesUpdatedAt`.
-  - Altfel → return p neschimbat (fără regenerare parțială).
-- Locul unde se setează `livesUpdatedAt` la pierderea unei inimi (linia 352) rămâne la fel, dar îl ajustez astfel încât marker-ul de 25 min să se ancoreze de momentul când userul ajunge la **0**, nu de la 5→4. Concret: setez `livesUpdatedAt = now` când `newLives === 0` (în loc de când `prev.lives === MAX_LIVES`). Asta garantează că cele 25 minute pornesc exact când rămâi fără inimi.
+2. Adaug timeout intern mai clar pe etapele RevenueCat
+   - Separ logurile pentru:
+     - `purchase:getOfferings`
+     - `purchase:product-selected`
+     - `purchase:purchaseStoreProduct-call`
+     - `purchase:purchasePackage-fallback-call`
+     - `purchase:customerInfo-after-timeout`
+   - Dacă achiziția pare blocată, verific imediat `getCustomerInfo()` înainte să arunc eroarea către UI. Dacă utilizatorul a cumpărat dar callback-ul a întârziat, sincronizez backend-ul și nu afișez eroare falsă.
 
-**2. `src/components/RefillLivesDialog.tsx`** — mesajul de pauză:
-- Schimb textul: „Sau așteaptă **25 de minute** și toate cele 5 inimi se reîncarcă automat."
-- Elimin partea cu „20 de minute / 100 de minute".
-- Mesajul cu pauza apare doar dacă `lives === 0` (altfel nu se aplică); dacă userul are între 1–4, arăt o variantă: „Reumplerea automată are loc doar după ce rămâi fără inimi." — sau (mai simplu) păstrez un singur text universal: „După ce rămâi fără inimi, toate se reîncarcă în 25 de minute."
+3. Îmbunătățesc mesajul din UI pentru timeout
+   - În `src/hooks/useSubscription.ts`, schimb mesajul generic „Achiziția App Store nu a răspuns” într-un mesaj de diagnostic mai util:
+     - „App Store nu a returnat răspunsul la timp. Verific achiziția; dacă plata s-a finalizat, abonamentul se activează automat sau poți apăsa Restaurează achizițiile.”
+   - După timeout, declanșez un `restoreIOSPurchases()` / `checkSubscription(true)` de siguranță, ca să prindem cazurile în care Apple/RevenueCat finalizează lent.
 
-**3. `src/pages/LessonPage.tsx`** (linia 176) — mesajul afișat când userul rămâne fără inimi în lecție:
-- Înlocuiesc: „Așteaptă **25 de minute** pentru a-ți reumple toate inimile sau vizionează o reclamă pentru reumplere imediată."
+4. Adaug UI de debug minimal în dialogul Premium pentru iOS
+   - În `PremiumDialog.tsx`, pentru iOS native, adaug un buton discret „Debug iOS billing” / „Copiază log iOS billing”.
+   - Va afișa/copia ultimele loguri din `getIOSBillingDebugLog()`, ca să putem vedea exact ultima etapă atinsă pe TestFlight fără Xcode.
 
-**4. `src/components/WatchAdForLivesButton.tsx`** (linia 80) — sub-textul butonului:
-- Înlocuiesc: „Sau așteaptă **25 de minute** după ce rămâi fără inimi pentru reumplere completă."
+5. Verific integrarea nativă iOS
+   - Confirm că pluginul `@revenuecat/purchases-capacitor` rămâne prezent în Swift Package Manager.
+   - Nu ating cheia publică RevenueCat și nu introduc Secret API Key în client.
 
-### Detalii tehnice (technical)
-- `livesUpdatedAt` continuă să fie persistat în Supabase (`profiles.lives_updated_at`) și local. Logica server-side rămâne neutră — regenerarea e calculată client-side la încărcare, ca acum.
-- Update memory `mem://features/gamification/lives-system`: schimb regula din „regenerare graduală 1/20 min" în „regenerare completă după 25 min de la 0".
-- Nu necesită migrație DB.
+Ce NU voi face:
+- Nu voi pune Secret API Key în aplicația iOS/client. Ar fi nesigur și nu rezolvă blocajul purchase sheet-ului.
+- Nu voi reveni la Stripe pe iOS native, pentru că Apple nu permite asta pentru abonamente digitale în aplicații native.
+
+După aprobare implementez schimbările în `iosBilling.ts`, `useSubscription.ts` și `PremiumDialog.tsx`.

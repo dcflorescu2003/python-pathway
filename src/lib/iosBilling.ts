@@ -210,19 +210,76 @@ export async function purchaseIOSSubscription(key: IOSProductKey, userId?: strin
     );
   }
 
-  dlog("purchase:purchasePackage-call", { productId });
+  const storeProduct = pkg.product || pkg.storeProduct || null;
+  dlog("purchase:product-selected", {
+    productId,
+    hasStoreProduct: !!storeProduct,
+    spIdentifier: storeProduct?.identifier,
+  });
+
+  const isCancellation = (err: any) =>
+    err?.userCancelled ||
+    err?.code === "1" ||
+    err?.errorCode === "1" ||
+    /cancel/i.test(err?.message || "");
+
+  // Try purchaseStoreProduct first (more reliable on iOS — no presentedOfferingContext issues)
+  if (storeProduct && typeof Purchases.purchaseStoreProduct === "function") {
+    dlog("purchase:purchaseStoreProduct-call", { productId });
+    try {
+      const result = await Purchases.purchaseStoreProduct({ product: storeProduct });
+      dlog("purchase:purchaseStoreProduct-ok");
+      await syncPurchaseWithBackend(result);
+      return;
+    } catch (err: any) {
+      if (isCancellation(err)) {
+        dlog("purchase:user-cancelled");
+        return;
+      }
+      derr("purchase:purchaseStoreProduct-failed", err);
+      // fall through to purchasePackage fallback
+    }
+  }
+
+  dlog("purchase:purchasePackage-fallback-call", { productId });
   try {
     const result = await Purchases.purchasePackage({ aPackage: pkg });
     dlog("purchase:purchasePackage-ok");
     await syncPurchaseWithBackend(result);
   } catch (err: any) {
-    // RevenueCat user cancellation should not be a hard error
-    if (err?.userCancelled || err?.code === "1" || /cancel/i.test(err?.message || "")) {
+    if (isCancellation(err)) {
       dlog("purchase:user-cancelled");
       return;
     }
     derr("purchase:purchasePackage-failed", err);
     throw err;
+  }
+}
+
+/**
+ * Best-effort: if a purchase call timed out client-side, ask RevenueCat for the
+ * latest CustomerInfo. If an entitlement is now active, sync backend silently.
+ * Returns true if we detected an active entitlement.
+ */
+export async function reconcileAfterPurchaseTimeout(): Promise<boolean> {
+  if (!isIOSNative()) return false;
+  const Purchases = await getPurchases();
+  if (!Purchases) return false;
+  try {
+    dlog("reconcile:getCustomerInfo");
+    const info = await Purchases.getCustomerInfo();
+    const customerInfo = info?.customerInfo || info;
+    const active = customerInfo?.entitlements?.active || {};
+    const hasActive = Object.keys(active).length > 0;
+    dlog("reconcile:result", { hasActive, keys: Object.keys(active) });
+    if (hasActive) {
+      await syncPurchaseWithBackend({ customerInfo });
+      return true;
+    }
+    return false;
+  } catch (err) {
+    derr("reconcile:failed", err);
+    return false;
   }
 }
 
