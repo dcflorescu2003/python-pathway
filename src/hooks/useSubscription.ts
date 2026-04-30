@@ -16,6 +16,7 @@ import {
   restoreIOSPurchases,
   openIOSSubscriptionManagement,
   getIOSPrices,
+  reconcileAfterPurchaseTimeout,
   STRIPE_TO_IOS,
   type IOSPriceInfo,
   type IOSProductKey,
@@ -231,13 +232,23 @@ export function useSubscription() {
         try {
           await withTimeout(
             purchaseIOSSubscription(productKey, user?.id),
-            45_000,
-            "Achiziția App Store nu a răspuns. Închide dialogul și încearcă din nou."
+            90_000,
+            "TIMEOUT_IOS_PURCHASE"
           );
           setTimeout(() => void checkSubscription(true), 2500);
-        } catch (err) {
+        } catch (err: any) {
           console.error("[startCheckout] iOS purchase failed:", err);
-          // NU mai cădem pe Stripe pe iOS — Apple interzice asta în aplicații native.
+          // Dacă a fost timeout client-side, întreabă RevenueCat dacă achiziția a trecut totuși
+          if (err?.message === "TIMEOUT_IOS_PURCHASE") {
+            const recovered = await reconcileAfterPurchaseTimeout();
+            if (recovered) {
+              setTimeout(() => void checkSubscription(true), 1500);
+              return;
+            }
+            throw new Error(
+              "App Store nu a returnat răspunsul la timp. Dacă plata s-a finalizat, abonamentul se activează automat în câteva secunde sau poți apăsa „Restaurează achizițiile”."
+            );
+          }
           throw err;
         }
         return;

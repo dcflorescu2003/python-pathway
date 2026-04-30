@@ -1,8 +1,9 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Heart, Crown, Infinity, Loader2, Settings, ShieldCheck, Code, BarChart3, Trophy, RefreshCw } from "lucide-react";
+import { Heart, Crown, Infinity, Loader2, Settings, ShieldCheck, Code, BarChart3, Trophy, RefreshCw, Bug } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useSubscription, STUDENT_MONTHLY_PRICE } from "@/hooks/useSubscription";
+import { getIOSBillingDebugLog } from "@/lib/iosBilling";
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -208,6 +209,26 @@ const PremiumDialog = ({ open, onOpenChange }: PremiumDialogProps) => {
                     <RefreshCw className="h-3 w-3" />
                   )}
                   Restaurează achizițiile
+                </Button>
+              )}
+              {isIOSNative && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={async () => {
+                    const lines = getIOSBillingDebugLog();
+                    const text = lines.length ? lines.join("\n") : "(no logs yet)";
+                    try {
+                      await navigator.clipboard?.writeText(text);
+                      toast.success("Log iOS billing copiat", { description: text.slice(-300) });
+                    } catch {
+                      toast.message("Log iOS billing", { description: text.slice(-300), duration: 12000 });
+                    }
+                  }}
+                  className="w-full gap-2 text-[10px] text-foreground/40"
+                >
+                  <Bug className="h-3 w-3" />
+                  Copiază log iOS billing
                 </Button>
               )}
             </>
