@@ -851,10 +851,12 @@ export type Database = {
           id: string
           is_active: boolean
           order_id: string | null
+          original_transaction_id: string | null
           plan_id: string | null
           platform: string
           product_id: string
           purchase_token: string
+          revenuecat_user_id: string | null
           updated_at: string
           user_id: string
         }
@@ -865,10 +867,12 @@ export type Database = {
           id?: string
           is_active?: boolean
           order_id?: string | null
+          original_transaction_id?: string | null
           plan_id?: string | null
           platform?: string
           product_id: string
           purchase_token: string
+          revenuecat_user_id?: string | null
           updated_at?: string
           user_id: string
         }
@@ -879,10 +883,12 @@ export type Database = {
           id?: string
           is_active?: boolean
           order_id?: string | null
+          original_transaction_id?: string | null
           plan_id?: string | null
           platform?: string
           product_id?: string
           purchase_token?: string
+          revenuecat_user_id?: string | null
           updated_at?: string
           user_id?: string
         }
