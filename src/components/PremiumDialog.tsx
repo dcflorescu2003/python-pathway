@@ -41,8 +41,9 @@ const PremiumDialog = ({ open, onOpenChange }: PremiumDialogProps) => {
     setCheckoutLoading(priceId);
     try {
       await startCheckout(priceId);
-    } catch (err) {
+    } catch (err: any) {
       console.error("Checkout error:", err);
+      toast.error(err?.message ?? "Achiziția nu a putut fi inițiată");
     } finally {
       setCheckoutLoading(null);
     }
