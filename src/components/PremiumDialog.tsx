@@ -38,6 +38,10 @@ const PremiumDialog = ({ open, onOpenChange }: PremiumDialogProps) => {
       navigate("/auth");
       return;
     }
+    if (isIOSNative && iosPricesLoading) {
+      toast.info("Încă verific prețul din App Store. Încearcă din nou în câteva secunde.");
+      return;
+    }
     setCheckoutLoading(priceId);
     try {
       await startCheckout(priceId);
@@ -162,7 +166,7 @@ const PremiumDialog = ({ open, onOpenChange }: PremiumDialogProps) => {
                   <p className="text-xs text-foreground/60 mb-1">Lunar</p>
                   {isIOSNative ? (
                     <p className="text-2xl font-bold text-foreground">
-                      {iosPrices?.student_monthly?.priceString || (iosPricesLoading ? "Se încarcă..." : "Preț App Store")}
+                      {iosPrices?.student_monthly?.priceString || "Preț App Store"}
                     </p>
                   ) : (
                     <p className="text-2xl font-bold text-foreground">14,99 <span className="text-sm font-normal">RON</span></p>
