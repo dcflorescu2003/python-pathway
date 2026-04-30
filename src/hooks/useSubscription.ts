@@ -10,14 +10,6 @@ import {
   STRIPE_TO_ANDROID,
 } from "@/lib/playBilling";
 import {
-  isAndroidNative,
-  initPlayBilling,
-  purchaseSubscription,
-  restorePlayPurchases,
-  openPlaySubscriptionManagement,
-  STRIPE_TO_ANDROID,
-} from "@/lib/playBilling";
-import {
   isIOSNative,
   initIOSBilling,
   purchaseIOSSubscription,
