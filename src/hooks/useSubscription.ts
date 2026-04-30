@@ -157,6 +157,8 @@ export function useSubscription() {
   useEffect(() => {
     if (!user) {
       setState(DEFAULT_STATE);
+      setIosPrices({});
+      setIosPricesLoading(false);
       invalidateCache();
       return;
     }
@@ -166,16 +168,25 @@ export function useSubscription() {
     }
     if (isIOSNative()) {
       setIosPricesLoading(true);
-      void initIOSBilling(user.id).then(async () => {
+      void (async () => {
         try {
-          const prices = await getIOSPrices();
+          await withTimeout(
+            initIOSBilling(user.id),
+            8_000,
+            "RevenueCat nu a răspuns la inițializare."
+          );
+          const prices = await withTimeout(
+            getIOSPrices(user.id),
+            8_000,
+            "Prețurile App Store nu au răspuns."
+          );
           setIosPrices(prices);
         } catch (err) {
           console.warn("[useSubscription] getIOSPrices failed", err);
         } finally {
           setIosPricesLoading(false);
         }
-      });
+      })();
     }
     const interval = setInterval(() => {
       void checkSubscription(true);
@@ -219,7 +230,7 @@ export function useSubscription() {
         console.log("[startCheckout] Using iOS RevenueCat for", productKey);
         try {
           await withTimeout(
-            purchaseIOSSubscription(productKey),
+            purchaseIOSSubscription(productKey, user?.id),
             45_000,
             "Achiziția App Store nu a răspuns. Închide dialogul și încearcă din nou."
           );

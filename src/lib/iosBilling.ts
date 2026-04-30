@@ -78,9 +78,9 @@ export async function initIOSBilling(userId?: string): Promise<void> {
  * After completion, the customerInfo is sent to our backend so we mark the user
  * as Premium immediately (RevenueCat webhook is the long-term source of truth).
  */
-export async function purchaseIOSSubscription(key: IOSProductKey): Promise<void> {
+export async function purchaseIOSSubscription(key: IOSProductKey, userId?: string): Promise<void> {
   if (!isIOSNative()) throw new Error("Apple IAP only on iOS");
-  await initIOSBilling();
+  await initIOSBilling(userId);
 
   const Purchases = await getPurchases();
   if (!Purchases) throw new Error("Apple IAP not available");
@@ -158,10 +158,10 @@ export interface IOSPriceInfo {
   currencyCode: string;
 }
 
-export async function getIOSPrices(): Promise<Partial<Record<IOSProductKey, IOSPriceInfo>>> {
+export async function getIOSPrices(userId?: string): Promise<Partial<Record<IOSProductKey, IOSPriceInfo>>> {
   const result: Partial<Record<IOSProductKey, IOSPriceInfo>> = {};
   if (!isIOSNative()) return result;
-  await initIOSBilling();
+  await initIOSBilling(userId);
   const Purchases = await getPurchases();
   if (!Purchases) return result;
 
