@@ -111,8 +111,9 @@ async function syncPurchaseWithBackend(result: any): Promise<void> {
     const productIdentifier = result?.productIdentifier || customerInfo?.activeSubscriptions?.[0];
     const originalAppUserId = customerInfo?.originalAppUserId || customerInfo?.appUserID;
     const entitlements = customerInfo?.entitlements?.active || {};
+    const firstEntitlement = Object.values(entitlements)[0] as { expirationDate?: string } | undefined;
     const expirationISO =
-      Object.values(entitlements)[0]?.expirationDate ||
+      firstEntitlement?.expirationDate ||
       customerInfo?.allExpirationDates?.[productIdentifier] ||
       null;
 
