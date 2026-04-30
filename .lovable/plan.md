@@ -1,36 +1,68 @@
-Problema raportată („Achiziția App Store nu a răspuns”) vine din timeout-ul de 45s pus peste `purchaseIOSSubscription`. Asta înseamnă că apelul `Purchases.purchasePackage(...)` nu a returnat nici succes, nici eroare în timp util. Nu e un caz în care Secret API Key ajută direct: purchase sheet-ul și cumpărarea se fac cu SDK-ul iOS și cheia publică RevenueCat. Secretul poate fi util doar pentru verificări server-side/API RevenueCat, nu pentru a porni/rezolva sheet-ul de cumpărare de pe device.
+## Diagnostic confirmat
 
-Plan de remediere:
+Din log-ul de pe iPhone:
+- Plugin RevenueCat **se încarcă corect** (`hasPurchases: true`, e v13.0.1, listat în `Package.swift`)
+- `pluginKeys: []` e fals-pozitiv (metodele statice nu apar în `Object.keys`)
+- `init:start` se apelează **de 10+ ori în paralel** în primele 5 secunde
+- Log-ul se oprește la `getPurchases:cached` — **niciun `init:configure-call`, `init:configure-ok` sau `init:configure-failed`**
 
-1. Schimb fallback-ul de achiziție iOS ca să nu depindă exclusiv de `purchasePackage`
-   - În `src/lib/iosBilling.ts`, după ce găsim package-ul din Offering, extrag `storeProduct/product`.
-   - Încerc achiziția prin `Purchases.purchaseStoreProduct({ product })`, care pe iOS folosește direct Product ID-ul și evită blocajele legate de `presentedOfferingContext/package`.
-   - Dacă `purchaseStoreProduct` nu e disponibil sau eșuează imediat din motiv de shape/API, fac fallback la `purchasePackage({ aPackage: pkg })`.
+Concluzie: primul apel `Purchases.configure()` **face hang la nivel nativ** (probabil StoreKit nu răspunde — sandbox account neconfigurat pe device, produse neaprobate în App Store Connect, sau bundle ID mismatch). Toate celelalte apeluri așteaptă pe același `initPromise` și nimic nu se mai întâmplă, inclusiv `purchasePackage`.
 
-2. Adaug timeout intern mai clar pe etapele RevenueCat
-   - Separ logurile pentru:
-     - `purchase:getOfferings`
-     - `purchase:product-selected`
-     - `purchase:purchaseStoreProduct-call`
-     - `purchase:purchasePackage-fallback-call`
-     - `purchase:customerInfo-after-timeout`
-   - Dacă achiziția pare blocată, verific imediat `getCustomerInfo()` înainte să arunc eroarea către UI. Dacă utilizatorul a cumpărat dar callback-ul a întârziat, sincronizez backend-ul și nu afișez eroare falsă.
+## Ce schimbăm
 
-3. Îmbunătățesc mesajul din UI pentru timeout
-   - În `src/hooks/useSubscription.ts`, schimb mesajul generic „Achiziția App Store nu a răspuns” într-un mesaj de diagnostic mai util:
-     - „App Store nu a returnat răspunsul la timp. Verific achiziția; dacă plata s-a finalizat, abonamentul se activează automat sau poți apăsa Restaurează achizițiile.”
-   - După timeout, declanșez un `restoreIOSPurchases()` / `checkSubscription(true)` de siguranță, ca să prindem cazurile în care Apple/RevenueCat finalizează lent.
+### 1. `src/lib/iosBilling.ts`
 
-4. Adaug UI de debug minimal în dialogul Premium pentru iOS
-   - În `PremiumDialog.tsx`, pentru iOS native, adaug un buton discret „Debug iOS billing” / „Copiază log iOS billing”.
-   - Va afișa/copia ultimele loguri din `getIOSBillingDebugLog()`, ca să putem vedea exact ultima etapă atinsă pe TestFlight fără Xcode.
+**a) Timeout dur pe `configure()`** (5s):
+- Înfășurăm `Purchases.configure(...)` cu `Promise.race([call, timeout(5000)])`
+- Dacă timeout, marcăm SDK-ul ca "degraded" dar **continuăm** — `configure` în RevenueCat poate fi sync intern și să nu rezolve niciodată Promise-ul
 
-5. Verific integrarea nativă iOS
-   - Confirm că pluginul `@revenuecat/purchases-capacitor` rămâne prezent în Swift Package Manager.
-   - Nu ating cheia publică RevenueCat și nu introduc Secret API Key în client.
+**b) Timeout pe `getOfferings()` și `getCustomerInfo()`** (8s fiecare):
+- Dacă oricare face hang, log explicit + throw cu mesaj clar
+- Important: `purchaseStoreProduct` / `purchasePackage` nu primesc timeout (utilizatorul interacționează cu sheet-ul Apple)
 
-Ce NU voi face:
-- Nu voi pune Secret API Key în aplicația iOS/client. Ar fi nesigur și nu rezolvă blocajul purchase sheet-ului.
-- Nu voi reveni la Stripe pe iOS native, pentru că Apple nu permite asta pentru abonamente digitale în aplicații native.
+**c) Detecție explicită de metode înainte de apel**:
+```ts
+if (typeof Purchases.configure !== "function") {
+  throw new Error("RevenueCat SDK incomplet — reinstalează appul");
+}
+```
+Pentru fiecare metodă critică: `configure`, `getOfferings`, `purchaseStoreProduct`, `purchasePackage`, `getCustomerInfo`, `restorePurchases`. Asta ne spune **direct** dacă bridge-ul nativ lipsește, în loc să așteptăm timeout.
 
-După aprobare implementez schimbările în `iosBilling.ts`, `useSubscription.ts` și `PremiumDialog.tsx`.
+**d) Deduplicare reală a `initIOSBilling`**:
+- Log-ul curent arată 10 invocări — toate ar trebui să cadă pe `initPromise` cached, dar producem `init:start` log de 10 ori. Mutăm log-ul **după** verificarea cache-ului.
+- Adăugăm `initCompleted: boolean` — dacă e deja `true`, returnăm imediat fără să așteptăm vreun Promise.
+
+**e) Log nou `init:bridge-check`** care printează `typeof` pentru fiecare metodă critică imediat după `getPurchases`. Asta confirmă dacă bridge-ul e prezent înainte să apelăm orice.
+
+### 2. `src/hooks/useSubscription.ts`
+
+**a) Mesaj de eroare îmbunătățit pentru timeout pe init**:
+- Dacă `initIOSBilling` face timeout, afișăm: "RevenueCat nu a putut iniția. Verifică: (1) ești logat cu un Sandbox Apple ID în Settings → App Store, (2) ai conexiune la internet, (3) reinstalează appul."
+
+**b) Apelăm `initIOSBilling` o singură dată** la mount, nu o lăsăm să fie re-apelată din `getIOSPrices` și `purchaseIOSSubscription`:
+- În `iosBilling.ts`, în loc ca fiecare funcție publică să cheme `await initIOSBilling(userId)`, verificăm doar `if (!initCompleted) throw`. Init-ul se face **exclusiv** la mount în `useSubscription`.
+
+### 3. `src/components/PremiumDialog.tsx` (existent)
+
+- Butonul "Copiază log iOS billing" rămâne. Nimic nou aici.
+
+## Ce NU e cauza (excludem)
+
+- ❌ Plugin lipsă nativ — e în `Package.swift`
+- ❌ API key greșit — log-ul arată `apiKeyPrefix: "appl_H"` corect
+- ❌ Frontend bug în `purchasePackage` — niciodată nu ajungem acolo, init e blocat
+
+## După deploy — ce verifici pe device
+
+După `npx cap sync ios` + rebuild TestFlight, deschizi Premium dialog. Vei vedea unul din trei rezultate clare:
+
+1. **Toast roșu `RC: bridge-check`** cu listă de metode care lipsesc → plugin-ul nativ chiar nu e link-uit corect (puțin probabil, dar definitiv)
+2. **Toast roșu `RC: init:configure-timeout`** → `configure()` face hang nativ. Cauza 99% e: nu ești logat cu Sandbox Apple ID pe device în `Settings → App Store → Sandbox Account`. Fix: te deloghezi de la Apple ID-ul real, te loghezi cu un Sandbox tester creat în App Store Connect.
+3. **Init reușește, dar `getOfferings` timeout** → produsele nu sunt aprobate în App Store Connect sau Offering-ul "current" e gol în RevenueCat dashboard
+
+În oricare caz, vei avea un mesaj **acționabil** în loc de "App Store nu a răspuns".
+
+## Fișiere modificate
+
+- `src/lib/iosBilling.ts` — timeouts, bridge-check, deduplicare init reală
+- `src/hooks/useSubscription.ts` — mesaj eroare init, fără re-init implicit
