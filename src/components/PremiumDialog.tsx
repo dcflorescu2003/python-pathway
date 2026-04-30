@@ -15,7 +15,7 @@ interface PremiumDialogProps {
 const PremiumDialog = ({ open, onOpenChange }: PremiumDialogProps) => {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const { subscribed, subscriptionEnd, loading, startCheckout, openPortal, isAndroidNative, isIOSNative, restorePurchases, iosPrices } = useSubscription();
+  const { subscribed, subscriptionEnd, loading, startCheckout, openPortal, isAndroidNative, isIOSNative, restorePurchases, iosPrices, iosPricesLoading } = useSubscription();
   const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null);
   const [restoring, setRestoring] = useState(false);
 
@@ -160,9 +160,9 @@ const PremiumDialog = ({ open, onOpenChange }: PremiumDialogProps) => {
                   className="relative w-full rounded-xl border-2 border-primary bg-card p-4 text-center hover:border-primary/80 transition-colors disabled:opacity-50"
                 >
                   <p className="text-xs text-foreground/60 mb-1">Lunar</p>
-                  {isIOSNative && iosPrices?.student_monthly?.priceString ? (
+                  {isIOSNative ? (
                     <p className="text-2xl font-bold text-foreground">
-                      {iosPrices.student_monthly.priceString}
+                      {iosPrices?.student_monthly?.priceString || (iosPricesLoading ? "Se încarcă..." : "Preț App Store")}
                     </p>
                   ) : (
                     <p className="text-2xl font-bold text-foreground">14,99 <span className="text-sm font-normal">RON</span></p>
