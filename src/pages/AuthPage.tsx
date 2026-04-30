@@ -105,6 +105,14 @@ const AccountView = () => {
 
   const handleJoinClass = async (code: string) => {
     if (!user || !code.trim()) return;
+
+    // Gating Apple: utilizatorii cu cont Apple trebuie să aibă email real (nu privaterelay)
+    // și parolă setată înainte să se înscrie într-o clasă (recovery + login pe web).
+    if (!authMethodsLoading && hasApple && (isPrivateRelay || !hasPassword)) {
+      setShowAppleGateDialog(true);
+      return;
+    }
+
     setJoinLoading(true);
     try {
       const { data: cls } = await supabase
