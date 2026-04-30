@@ -124,6 +124,7 @@ async function getSharedSubscriptionState(force = false, userId?: string): Promi
 export function useSubscription() {
   const { user, session } = useAuth();
   const [state, setState] = useState<SubscriptionState>(cachedState ?? { ...DEFAULT_STATE, loading: !!user });
+  const [iosPrices, setIosPrices] = useState<Partial<Record<IOSProductKey, IOSPriceInfo>>>({});
 
   const isTeacherPremium = state.productId
     ? TEACHER_PRODUCT_IDS.includes(state.productId)
