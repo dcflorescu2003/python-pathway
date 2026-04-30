@@ -1,0 +1,1 @@
+DROP TABLE IF EXISTS public.apple_oauth_states;
