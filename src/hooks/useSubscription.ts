@@ -61,6 +61,14 @@ const DEFAULT_STATE: SubscriptionState = {
   productId: null,
 };
 
+function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {
+  let timeoutId: ReturnType<typeof setTimeout>;
+  const timeout = new Promise<never>((_, reject) => {
+    timeoutId = setTimeout(() => reject(new Error(message)), ms);
+  });
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timeoutId));
+}
+
 let inFlightCheck: Promise<SubscriptionState> | null = null;
 let lastCheckAt = 0;
 let lastCheckToken: string | null = null;
@@ -125,6 +133,7 @@ export function useSubscription() {
   const { user, session } = useAuth();
   const [state, setState] = useState<SubscriptionState>(cachedState ?? { ...DEFAULT_STATE, loading: !!user });
   const [iosPrices, setIosPrices] = useState<Partial<Record<IOSProductKey, IOSPriceInfo>>>({});
+  const [iosPricesLoading, setIosPricesLoading] = useState(false);
 
   const isTeacherPremium = state.productId
     ? TEACHER_PRODUCT_IDS.includes(state.productId)
@@ -154,12 +163,15 @@ export function useSubscription() {
       void initPlayBilling(user.id);
     }
     if (isIOSNative()) {
+      setIosPricesLoading(true);
       void initIOSBilling(user.id).then(async () => {
         try {
           const prices = await getIOSPrices();
           setIosPrices(prices);
         } catch (err) {
           console.warn("[useSubscription] getIOSPrices failed", err);
+        } finally {
+          setIosPricesLoading(false);
         }
       });
     }
@@ -204,7 +216,11 @@ export function useSubscription() {
         if (!productKey) throw new Error("Produsul nu este disponibil pe iOS");
         console.log("[startCheckout] Using iOS RevenueCat for", productKey);
         try {
-          await purchaseIOSSubscription(productKey);
+          await withTimeout(
+            purchaseIOSSubscription(productKey),
+            45_000,
+            "Achiziția App Store nu a răspuns. Închide dialogul și încearcă din nou."
+          );
           setTimeout(() => void checkSubscription(true), 2500);
         } catch (err) {
           console.error("[startCheckout] iOS purchase failed:", err);
@@ -263,6 +279,7 @@ export function useSubscription() {
     isAndroidNative: isAndroidNative(),
     isIOSNative: isIOSNative(),
     iosPrices,
+    iosPricesLoading,
     checkSubscription,
     startCheckout,
     openPortal,
