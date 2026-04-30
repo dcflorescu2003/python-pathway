@@ -1,35 +1,31 @@
-# Plan: Ghidaj Apple pe web (login + signup)
+# Plan: Elimină Google login pe iOS
 
 ## Scop
-- Pe **signup web**: butonul "Continuă cu Apple" dispare. Cont nou cu Apple pe web ar fi blocat oricum la înscrierea în clasă (privaterelay + fără parolă), deci nu are sens să-l oferim.
-- Pe **login web**: butonul rămâne (cei care au setat parolă pe iOS pot alterna).
-- Adaug un link discret sub buton: *"Te-ai logat cu Apple pe telefon și nu poți intra aici?"* → deschide un dialog cu pașii de finalizare cont.
-- Pe iOS / Android nativ, totul rămâne neatins.
+Pe **iOS nativ**, butonul "Continuă cu Google" dispare complet, atât pe login cât și pe signup. Pe web și pe Android nativ rămâne neschimbat. Apple și email/parolă rămân disponibile pe iOS.
 
 ## Modificări
 
-### 1. `src/pages/AuthPage.tsx` — vizibilitate buton Apple
-Condiția devine:
-```ts
-const showAppleButton =
-  !(Capacitor.isNativePlatform() && Capacitor.getPlatform() === "android")  // ascuns pe Android
-  && (Capacitor.isNativePlatform() || isLogin);                              // pe web doar pe login, nu signup
+### `src/pages/AuthPage.tsx`
+Wrap butonul Google (în jurul liniei 552-560) într-o condiție care îl ascunde pe iOS nativ:
+
+```tsx
+{!(Capacitor.isNativePlatform() && Capacitor.getPlatform() === "ios") && (
+  <Button variant="outline" className="w-full gap-2" onClick={handleGoogleLogin} type="button">
+    {/* ... iconul Google + text ... */}
+    Continuă cu Google
+  </Button>
+)}
 ```
 
-### 2. Link "Cont Apple de pe telefon?" + dialog explicativ
-- Doar pe web (`!Capacitor.isNativePlatform()`), sub butonul Apple.
-- Click → deschide un nou dialog `AppleHelpDialog` cu 3 pași:
-  1. Loghează-te din **aplicația iOS** cu Apple
-  2. Mergi la **Cont → Login pe web** și setează: parolă + email real (dacă folosești Hide My Email)
-  3. Revino aici și loghează-te cu **email + parolă**
-- Buton "Am înțeles" închide dialogul.
+Mesajul de sub form ("Te-ai logat cu Apple sau Google pe telefon?") rămâne neschimbat — pe iOS oricum nu mai apare butonul Google, deci nu induce în eroare (utilizatorii iOS care s-au înrolat cu Google din versiuni vechi încă pot folosi alternativa email+parolă pe care o setează din Cont).
 
-### 3. Mesajul existent de sub form rămâne
-Linia "Te-ai logat cu Apple sau Google pe telefon? Setează o parolă din Cont → Profil…" e ok — poate fi puțin reformulată să trimită spre același dialog, dar nu e critic.
+## Ce NU schimb
+- `useAuth.tsx` — păstrez logica `signInWithGoogle` intactă (utilizatorii existenți care au cont Google rămân funcționali pe alte platforme și pentru cazuri viitoare).
+- Inițializarea `SocialLogin` Google pe iOS — o las pentru compatibilitate, costul e zero dacă butonul nu mai e apelat.
+- Android, web — neschimbate.
 
-## Pași de execuție
-1. Modific condiția de afișare a butonului Apple (un singur if combinat).
-2. Adaug state `showAppleHelpDialog` + componenta Dialog cu cei 3 pași.
-3. Adaug link "Cont Apple de pe telefon? Vezi pașii" sub butonul Apple, vizibil doar pe web.
+## Pași execuție
+1. Editez condiția de afișare a butonului Google din `AuthPage.tsx`.
+2. Verific rapid că butonul Apple rămâne vizibil pe iOS (deja e: condiția existentă exclude doar Android nativ).
 
-Niciun edge function, nicio migrație — pur frontend.
+Niciun edge function, nicio migrație.
