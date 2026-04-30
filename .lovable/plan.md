@@ -1,88 +1,162 @@
 
-# Fix respingere App Store — 3 probleme
+# Apple Login: păstrăm iOS nativ, reparăm web-ul cu flux custom
 
-Apple a respins build-ul din 3 motive distincte. Le iau pe rând. **Doar #3 e cod**; #1 și #2 sunt pași în App Store Connect / pe Mac, pe care ți-i explic dar nu-i pot face eu.
+## Obiectiv
 
-## 1. Screenshots cu status bar Android (Guideline 2.3.3)
+Repararea login-ului Apple pe web (`pyroskill.info` și pe `*.lovable.app`) fără să atingem deloc fluxul iOS nativ care funcționează. Eliminăm complet dependența de configurarea Apple din Lovable Cloud, eliminând astfel conflictul de Client ID între Bundle ID iOS și Services ID web.
 
-**Ce e:** Screenshots-urile uploadate în App Store Connect sunt cele de pe Android (status bar cu baterie/oră în stil Android, sau eventual chenarul Android). Apple respinge orice metadata care arată alt OS.
+## Arhitectură
 
-**Ce ai de făcut tu (nu pot face din cod):**
-- În App Store Connect → App → 1.0 Pregătit pentru trimitere → Previews and Screenshots → "View All Sizes in Media Manager"
-- Șterge screenshots-urile actuale
-- Generează screenshots noi **de pe iPhone real / Simulator iOS** (Xcode → Simulator → Device → 6.9" iPhone 17 Pro Max + 6.7" iPhone 15 Pro Max). Dimensiuni cerute:
-  - 6.9" (1320×2868) — obligatoriu
-  - 6.5" (1284×2778) — recomandat
-  - iPad 13" dacă suporți iPad (poți declara "iPhone only" și scapi)
-- Cmd+S în Simulator pentru fiecare ecran (Home, Lecție, Code Editor, Leaderboard, Premium dialog, Cont) → 5–10 imagini
+```text
+iOS (NEATINS)
+  SocialLogin.login({ provider: "apple" })
+  → identityToken cu aud = ro.pythonpathway.app (Bundle ID)
+  → supabase.auth.signInWithIdToken({ provider: "apple" })
+  → sesiune Supabase (merge prin config-ul nativ Apple din Supabase)
 
-**Recomandare:** Declară aplicația **iPhone-only** în target-ul Xcode (Devices: iPhone) ca să nu mai trebuiască și screenshots iPad. Pot face asta în cod (modific `project.pbxproj` `TARGETED_DEVICE_FAMILY = "1"`).
+Web (NOU)
+  Buton "Sign in with Apple"
+  → /functions/v1/apple-web-initiate?return_to=https://pyroskill.info
+     (creează state + PKCE, redirect către Apple)
+  → user se autentifică pe appleid.apple.com
+  → Apple POST către /functions/v1/apple-web-callback
+     - validează state
+     - schimbă code pe id_token (semnează JWT client_secret la zbor cu .p8)
+     - validează id_token (issuer, audience, exp, semnătura JWKS)
+     - găsește/creează user în auth.users prin Admin API
+     - generează magiclink Supabase pentru user
+  → redirect către `${return_to}/auth/apple-finish?token_hash=...`
+  → frontend cheamă supabase.auth.verifyOtp({ token_hash, type: "magiclink" })
+  → sesiune setată, user redirectionat în app
+```
 
-## 2. IAP-urile nu sunt submitted for review (Guideline 2.1)
+Lovable Cloud Apple OAuth se dezactivează — câmpul Client ID din Cloud devine irelevant.
 
-**Ce e:** Apple vede în UI-ul tău butoane de "Premium" / "Abonament", dar în App Store Connect nu există niciun In-App Purchase trimis spre review odată cu binarul.
+## Pași
 
-**Ce ai de făcut tu în App Store Connect (nu pot face din cod):**
-1. App Store Connect → App → **In-App Purchases** (în meniul stâng) → "+"
-2. Creează **Auto-Renewable Subscription**:
-   - Reference Name: `Elev Premium Lunar`
-   - Product ID: `ro.pythonpathway.app.premium.monthly` (notează-l!)
-   - Subscription Group: `PyRo Premium` (creezi unul)
-   - Duration: 1 Month
-   - Price: tier-ul dorit (ex. RON 19.99)
-3. Adaugă **Localization** (RO + EN): display name "Elev Premium" + descriere
-4. Urcă **screenshot review IAP** (1024×1024 sau screenshot din app cu paywall) — obligatoriu, altfel nu poți submit-ui
-5. Repetă pentru plan anual dacă ai (ex. `ro.pythonpathway.app.premium.yearly`)
-6. Confirmă **Paid Apps Agreement** semnat în App Store Connect → Business
-7. Când urci binar nou, bifează IAP-urile pentru a fi incluse în review
+### 1. Apple Developer Console (manual, de către utilizator)
 
-**Spune-mi product ID-urile finale** ca să le pun în cod la pasul 3.
+Verificare/configurare Services ID `ro.pythonpathway.app.web`:
+- Sign In with Apple: enabled
+- Primary App ID: `ro.pythonpathway.app`
+- Domains and Subdomains: `pyroskill.info`, `www.pyroskill.info`, `pyro-learn.lovable.app`, `id-preview--*.lovable.app`
+- Return URL: `https://gcilflssbcswmgkrznot.supabase.co/functions/v1/apple-web-callback`
 
-## 3. Click pe Premium nu pornește purchase flow pe iOS — FIX ÎN COD
+### 2. Secrete (folosind add_secret)
 
-**Ce e:** În `useSubscription.ts`, `startCheckout` testează doar `isAndroidNative()` și pe iOS cade pe Stripe (`window.open(data.url, "_blank")`). În aplicația nativă iOS, `window.open` nu deschide nimic util, deci Apple a văzut "se încarcă scurt și nu pornește". În plus, **Apple interzice categoric Stripe pentru subscripții digitale** — trebuie StoreKit/IAP.
+- `APPLE_TEAM_ID` — Team ID din Apple Developer (10 caractere)
+- `APPLE_KEY_ID` — Key ID al cheii .p8 (10 caractere)
+- `APPLE_PRIVATE_KEY` — conținutul .p8 (PEM, cu BEGIN/END PRIVATE KEY)
+- `APPLE_WEB_CLIENT_ID` — `ro.pythonpathway.app.web`
 
-**Ce voi face în cod:**
+JWT-ul de client_secret se generează în edge function la fiecare apel, deci nu mai expiră la 6 luni.
 
-### 3a. Adaug plugin StoreKit
-Folosesc același `cordova-plugin-purchase` (`CdvPurchase`) pe care îl ai deja pentru Android — suportă și Apple App Store nativ. E deja instalat (`CordovaPluginPurchase` apare în `Package.swift`). Refactor `src/lib/playBilling.ts` într-un modul `iapBilling.ts` agnostic care:
-- Detectează platforma (`getPlatform() === "ios"` vs `"android"`)
-- Înregistrează produsele cu `Platform.APPLE_APPSTORE` sau `Platform.GOOGLE_PLAY` corespunzător
-- La approve, trimite la backend receipt-ul (`appStoreReceipt` / `purchaseToken`) cu un câmp `platform: "ios" | "android"`
+### 3. Migration: tabel `apple_oauth_states`
 
-### 3b. Mapping produs Stripe → iOS
-Adaug `STRIPE_TO_IOS` cu product ID-urile pe care le creezi la pasul 2 (ex. `ro.pythonpathway.app.premium.monthly`).
+Stochează state + code_verifier pentru PKCE între initiate și callback.
 
-### 3c. Edge function `verify-ios-purchase`
-Creez o funcție nouă (sau extind `verify-play-purchase` → `verify-purchase`) care:
-- Pe iOS: trimite `receipt-data` la `https://buy.itunes.apple.com/verifyReceipt` (cu fallback la sandbox URL pentru TestFlight). Necesită un **App-Specific Shared Secret** din App Store Connect → App → App Information → App-Specific Shared Secret. Îl voi cere ca secret `APPLE_SHARED_SECRET`.
-- Validează că product_id e cunoscut, expirația e în viitor → marchează `profiles.is_premium = true` și salvează în tabelul de subscripții.
-- Pe Android: păstrează logica existentă.
+```sql
+create table public.apple_oauth_states (
+  state text primary key,
+  code_verifier text not null,
+  return_to text not null,
+  created_at timestamptz default now()
+);
+-- TTL 10 min, RLS: nimeni acces direct (folosit doar din edge functions cu service role)
+alter table public.apple_oauth_states enable row level security;
+```
 
-### 3d. Update `useSubscription.startCheckout` și `openPortal`
-- `startCheckout`: dacă iOS native → `purchaseSubscription` cu mapping iOS, dacă Android → ce face acum, altfel Stripe (web).
-- `openPortal`: pe iOS deschide `itms-apps://apps.apple.com/account/subscriptions` (deep link Settings → Subscriptions).
-- `restorePurchases`: extind să meargă și pe iOS.
+### 4. Edge Function: `apple-web-initiate`
 
-### 3e. Update `PremiumDialog`
-Schimb textul "Gestionează în Google Play" → afișează "Gestionează în App Store" pe iOS. Adaug buton "Restaurează cumpărăturile" și pe iOS (cerut de Apple Guideline 3.1.1).
+`supabase/functions/apple-web-initiate/index.ts`
+- Public (verify_jwt = false)
+- Generează `state` (random 32 bytes) și `code_verifier` + `code_challenge` (PKCE S256)
+- Salvează state-ul cu `return_to` în `apple_oauth_states`
+- Redirect 302 către `https://appleid.apple.com/auth/authorize?...` cu:
+  - `client_id=ro.pythonpathway.app.web`
+  - `redirect_uri=https://gcilflssbcswmgkrznot.supabase.co/functions/v1/apple-web-callback`
+  - `response_type=code`
+  - `response_mode=form_post`
+  - `scope=name email`
+  - `state`, `code_challenge`, `code_challenge_method=S256`
 
-### 3f. Capabilities iOS
-Verific că în Xcode, target App → Signing & Capabilities → **In-App Purchase** e adăugat. Dacă nu, îți spun să-l adaugi (1 click) — nu pot edita `.pbxproj` capabilities din cod sigur, dar pot ghida.
+### 5. Edge Function: `apple-web-callback`
 
-## După implementare
+`supabase/functions/apple-web-callback/index.ts`
+- Public (verify_jwt = false), acceptă POST form-encoded de la Apple
+- Citește `code`, `state`, eventual `user` (la primul login Apple trimite și name)
+- Recuperează state-ul din DB; șterge după folosire
+- Generează client_secret JWT la zbor:
+  - alg ES256, header `kid = APPLE_KEY_ID`
+  - claims: `iss=APPLE_TEAM_ID, aud=https://appleid.apple.com, sub=APPLE_WEB_CLIENT_ID, iat, exp(+5min)`
+  - semnat cu `APPLE_PRIVATE_KEY` folosind `jose` din npm
+- POST la `https://appleid.apple.com/auth/token` cu `code`, `client_id`, `client_secret`, `grant_type=authorization_code`, `redirect_uri`, `code_verifier`
+- Primește `id_token`, îl decodează și verifică:
+  - semnătura cu cheile de la `https://appleid.apple.com/auth/keys` (jose JWKS)
+  - `iss=https://appleid.apple.com`, `aud=APPLE_WEB_CLIENT_ID`, `exp` valid
+- Extrage `sub` (Apple user ID) și `email`
+- Caută user existent cu `supabase.auth.admin.listUsers` filtrat pe email; dacă nu există, `admin.createUser({ email, email_confirm: true, app_metadata: { provider: "apple", apple_sub: sub } })`
+- Generează `admin.generateLink({ type: "magiclink", email })` — extrage `properties.hashed_token`
+- Redirect 302 către `${return_to}/auth/apple-finish#token_hash=...&type=magiclink`
 
-Pași pe care îi faci tu:
-1. `git pull` + `npm i` + `npx cap sync ios`
-2. În Xcode → Capabilities → adaugă **In-App Purchase** dacă nu e
-3. Creează IAP-urile în App Store Connect (pasul 2)
-4. Adaugă secret `APPLE_SHARED_SECRET` în Lovable Cloud
-5. Generează screenshots noi din Simulator
-6. Bump build number în Xcode → Archive → Upload → submit cu IAP-urile bifate, răspuns la review în care explici "Apple Sign In with Apple în loc de email"
-7. Test în Sandbox cu un Sandbox Tester înainte de submit
+### 6. Pagină frontend: `/auth/apple-finish`
 
-## Ce ai de confirmat acum
+`src/pages/AppleFinishPage.tsx`
+- Citește `token_hash` din hash params
+- `await supabase.auth.verifyOtp({ token_hash, type: "magiclink" })`
+- Pe success: `navigate("/")` (sau `return_to` original stocat în sessionStorage înainte de redirect)
+- Pe eroare: toast + navigate la `/auth`
 
-1. **Product ID-urile IAP** pe care le vei crea (sugestie: `ro.pythonpathway.app.premium.monthly` și `.yearly`) — sau să folosesc ăstea?
-2. **Vrei să declar aplicația iPhone-only** (scapi de iPad screenshots)?
-3. Confirmi că pot crea edge function nouă `verify-purchase` care înlocuiește `verify-play-purchase` (sau prefer să adaug separat `verify-ios-purchase` și să le păstrez decuplate)?
+Adaugi ruta în `App.tsx` ca rută publică.
+
+### 7. Modificare `useAuth.tsx`
+
+Doar branch-ul web (linia 261). Înlocuim:
+```ts
+const result = await lovable.auth.signInWithOAuth("apple", {
+  redirect_uri: window.location.origin,
+});
+```
+cu redirect către edge function:
+```ts
+window.location.href =
+  `${SUPABASE_URL}/functions/v1/apple-web-initiate?return_to=${encodeURIComponent(window.location.origin)}`;
+return { error: null };
+```
+
+Branch-urile pentru `isNativeIOS`/`isNativeAndroid` rămân exact cum sunt.
+
+### 8. Lovable Cloud → dezactivare Apple
+
+După ce funcționează web-ul nou: în Cloud → Auth Settings → Apple, fie dezactivezi providerul, fie rezolvi câmpul Client ID — nu mai contează, nu-l mai folosește nimeni. Recomand să-l lași dezactivat ca să fie clar care e flow-ul activ.
+
+## Detalii tehnice
+
+**Librării edge function:**
+- `jose` (npm:jose@5) pentru semnare ES256 + verificare JWKS
+- `@supabase/supabase-js` pentru Admin API
+- CORS nu e necesar (sunt redirect-uri 302 / form POST de la Apple, nu fetch din browser)
+
+**verify_jwt:** ambele functions sunt publice, însă Apple semnează callback-ul cu state + PKCE — protecție echivalentă.
+
+**Hide My Email:** dacă userul ascunde emailul, Apple trimite un email de tip `xxx@privaterelay.appleid.com`. Logica existentă `RealEmailReminderDialog` continuă să se aplice.
+
+**Userii existenți:** match doar după email. Dacă cineva are deja cont email/password cu același email, login-ul Apple va lega de acel cont (același UUID). Acceptabil per răspunsul tău.
+
+**State TTL:** edge function-ul `apple-web-callback` ignoră state-uri mai vechi de 10 minute.
+
+## Fișiere modificate / create
+
+- `supabase/migrations/<timestamp>_apple_oauth_states.sql` (nou)
+- `supabase/functions/apple-web-initiate/index.ts` (nou)
+- `supabase/functions/apple-web-callback/index.ts` (nou)
+- `src/pages/AppleFinishPage.tsx` (nou)
+- `src/App.tsx` (rută nouă)
+- `src/hooks/useAuth.tsx` (1 branch înlocuit)
+- secrete: `APPLE_TEAM_ID`, `APPLE_KEY_ID`, `APPLE_PRIVATE_KEY`, `APPLE_WEB_CLIENT_ID`
+
+## Riscuri
+
+- Dacă Services ID-ul nu e configurat corect în Apple Developer Console (domeniu lipsă, return URL greșit), Apple va respinge cu `invalid_redirect_uri` sau `invalid_client`. Pasul 1 e critic — verifică înainte de deploy.
+- Cheia .p8 trebuie pusă cu newline-uri reale când e setat secretul.
+- iOS-ul nu se atinge deloc, deci risc zero pe app-ul mobil.
