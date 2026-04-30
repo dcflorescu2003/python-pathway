@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ArrowLeft, Mail, Lock, User, Eye, EyeOff, LogOut, Shield, Trash2, Settings, GraduationCap, Pencil, Check, X, BookOpen, FileText } from "lucide-react";
 import { useAdminAccess } from "@/hooks/useAdminAccess";
+import { useAuthMethods } from "@/hooks/useAuthMethods";
 import { useSubscription } from "@/hooks/useSubscription";
 import { toast } from "sonner";
 
@@ -25,7 +26,9 @@ const AccountView = () => {
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
   const { isAdmin } = useAdminAccess();
+  const { hasApple, hasPassword, isPrivateRelay, loading: authMethodsLoading } = useAuthMethods();
   const { checkSubscription } = useSubscription();
+  const [showAppleGateDialog, setShowAppleGateDialog] = useState(false);
   const [teacherStatus, setTeacherStatus] = useState<string | null>(null);
   const [isClassMember, setIsClassMember] = useState(false);
   const [flagsLoaded, setFlagsLoaded] = useState(false);
