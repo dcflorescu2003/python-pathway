@@ -258,10 +258,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (Capacitor.isNativePlatform()) {
       return signInWithOAuthNative("apple");
     }
-    const result = await lovable.auth.signInWithOAuth("apple", {
-      redirect_uri: window.location.origin,
-    });
-    return { error: result.error || null };
+    // Web: flux Apple OAuth custom prin edge functions (nu mai folosește Lovable Cloud
+    // pentru Apple ca să evităm conflictul Bundle ID iOS vs Services ID web).
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
+    const returnTo = window.location.origin;
+    window.location.href = `${supabaseUrl}/functions/v1/apple-web-initiate?return_to=${encodeURIComponent(returnTo)}`;
+    return { error: null };
   };
 
   const signOut = async () => {
