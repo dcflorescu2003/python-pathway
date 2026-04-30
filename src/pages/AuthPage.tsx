@@ -404,6 +404,42 @@ const AccountView = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Apple gating dialog: cere email real + parolă înainte de join */}
+      <Dialog open={showAppleGateDialog} onOpenChange={setShowAppleGateDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Finalizează contul înainte să te alături</DialogTitle>
+            <DialogDescription className="space-y-2 pt-2">
+              <span className="block">
+                Te-ai logat cu Apple. Pentru a te înscrie într-o clasă ai nevoie de:
+              </span>
+              <ul className="list-disc pl-5 space-y-1 text-sm">
+                {isPrivateRelay && (
+                  <li>o adresă de <strong>email reală</strong> (nu @privaterelay.appleid.com)</li>
+                )}
+                {!hasPassword && <li>o <strong>parolă</strong> pentru login pe web</li>}
+              </ul>
+              <span className="block pt-2 text-sm">
+                Așa îți poți recupera contul dacă pierzi accesul la Apple ID și te poți loga și de pe PC.
+              </span>
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+            <Button variant="ghost" onClick={() => setShowAppleGateDialog(false)}>
+              Mai târziu
+            </Button>
+            <Button
+              onClick={() => {
+                setShowAppleGateDialog(false);
+                setActiveTab("profile");
+              }}
+            >
+              Mergi la Cont
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </motion.div>
   );
 };
