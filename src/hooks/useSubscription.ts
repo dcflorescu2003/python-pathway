@@ -191,12 +191,19 @@ export function useSubscription() {
       if (ios) {
         const productKey = STRIPE_TO_IOS[priceId];
         if (!productKey) throw new Error("Produsul nu este disponibil pe iOS");
-        await purchaseIOSSubscription(productKey);
-        setTimeout(() => void checkSubscription(true), 2500);
+        console.log("[startCheckout] Using iOS RevenueCat for", productKey);
+        try {
+          await purchaseIOSSubscription(productKey);
+          setTimeout(() => void checkSubscription(true), 2500);
+        } catch (err) {
+          console.error("[startCheckout] iOS purchase failed:", err);
+          // NU mai cădem pe Stripe pe iOS — Apple interzice asta în aplicații native.
+          throw err;
+        }
         return;
       }
 
-      console.log("[startCheckout] Falling back to Stripe checkout");
+      console.log("[startCheckout] Falling back to Stripe checkout (web only)");
 
       const { data, error } = await supabase.functions.invoke("create-checkout", {
         body: { priceId },
