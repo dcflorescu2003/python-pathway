@@ -1,67 +1,35 @@
-## Problema
+## Schimbare logică regenerare inimi
 
-În screenshot-ul din TestFlight (iOS) se văd două lucruri:
+### Comportament nou
+- Când userul rămâne la **0 inimi**, după **25 de minute** de pauză toate cele 5 inimi se reumplu automat.
+- Dacă userul are între 1 și 4 inimi, **nu mai există regenerare automată parțială** — singurul refill rapid este reclama (rewarded ad), care continuă să dea +5 (max 2 ori/zi).
+- Premium continuă să aibă inimi ∞ (neschimbat).
+- Alternativ la cele 25 de minute, userul poate viziona o reclamă pentru reumplere imediată.
 
-1. **Prețul afișat este `14,99 RON`** — același cu Android/Stripe. Pe iOS prețul trebuie să vină din App Store Connect (prin RevenueCat), pentru că Apple afișează prețul în moneda locală a contului App Store și prețul real configurat în App Store Connect poate fi diferit (de ex. tier-ul ales în USD/EUR).
-2. **La apăsarea pe cardul de preț** apare doar un spinner verde și nu se deschide nimic — nicio foaie Apple Pay, nicio eroare vizibilă. Cel mai probabil `getOfferings()` din RevenueCat nu returnează pachetul `pyro_student_monthly_ios`, iar eroarea apare doar în consolă.
+### Fișiere modificate
 
-## Cauza
+**1. `src/hooks/useProgress.ts`** — refactor `regenerateLives`:
+- Constante:
+  - `MAX_LIVES = 5` (neschimbat)
+  - `FULL_REGEN_MS = 25 * 60 * 1000` (înlocuiește `REGEN_INTERVAL_MS`)
+- Logică nouă în `regenerateLives(p)`:
+  - Dacă `isPremium` sau `lives >= MAX_LIVES` → return p (neschimbat).
+  - Dacă `lives === 0` și au trecut ≥ 25 min de la `livesUpdatedAt` → set `lives = MAX_LIVES`, update `livesUpdatedAt`.
+  - Altfel → return p neschimbat (fără regenerare parțială).
+- Locul unde se setează `livesUpdatedAt` la pierderea unei inimi (linia 352) rămâne la fel, dar îl ajustez astfel încât marker-ul de 25 min să se ancoreze de momentul când userul ajunge la **0**, nu de la 5→4. Concret: setez `livesUpdatedAt = now` când `newLives === 0` (în loc de când `prev.lives === MAX_LIVES`). Asta garantează că cele 25 minute pornesc exact când rămâi fără inimi.
 
-În `src/components/PremiumDialog.tsx`, prețul este scris hardcodat în JSX:
-```
-<p>14,99 <span>RON</span></p>
-```
-Pe iOS, RevenueCat returnează `storeProduct.priceString` localizat (ex. `"$2.99"`, `"2,99 €"`, `"14,99 lei"`), care trebuie folosit în locul textului fix.
+**2. `src/components/RefillLivesDialog.tsx`** — mesajul de pauză:
+- Schimb textul: „Sau așteaptă **25 de minute** și toate cele 5 inimi se reîncarcă automat."
+- Elimin partea cu „20 de minute / 100 de minute".
+- Mesajul cu pauza apare doar dacă `lives === 0` (altfel nu se aplică); dacă userul are între 1–4, arăt o variantă: „Reumplerea automată are loc doar după ce rămâi fără inimi." — sau (mai simplu) păstrez un singur text universal: „După ce rămâi fără inimi, toate se reîncarcă în 25 de minute."
 
-Pentru butonul care nu răspunde, eroarea „Pachet RevenueCat negăsit" sau orice eșec de configure este aruncată în `purchaseIOSSubscription` și prinsă în `handlePurchase`, dar nu este afișată utilizatorului — doar `console.error`. În TestFlight nu se vede consola, deci pare blocat.
+**3. `src/pages/LessonPage.tsx`** (linia 176) — mesajul afișat când userul rămâne fără inimi în lecție:
+- Înlocuiesc: „Așteaptă **25 de minute** pentru a-ți reumple toate inimile sau vizionează o reclamă pentru reumplere imediată."
 
-## Modificări
+**4. `src/components/WatchAdForLivesButton.tsx`** (linia 80) — sub-textul butonului:
+- Înlocuiesc: „Sau așteaptă **25 de minute** după ce rămâi fără inimi pentru reumplere completă."
 
-### 1. `src/lib/iosBilling.ts` — expune prețul localizat și pachetele
-
-Adaugă o funcție nouă care returnează prețurile App Store pentru fiecare produs iOS:
-
-```ts
-export interface IOSPriceInfo {
-  productId: string;
-  priceString: string;     // ex. "14,99 lei", "$2.99"
-  price: number;           // valoare numerică
-  currencyCode: string;    // ex. "RON", "USD"
-}
-
-export async function getIOSPrices(): Promise<Partial<Record<IOSProductKey, IOSPriceInfo>>>
-```
-Funcția:
-- Apelează `Purchases.getOfferings()`.
-- Pentru fiecare cheie din `IOS_PRODUCTS`, găsește pachetul după `productId` și extrage `storeProduct.priceString / price / currencyCode`.
-- Loghează clar dacă un produs lipsește din offering (ajută diagnosticul TestFlight).
-
-### 2. `src/hooks/useSubscription.ts` — adaugă state pentru prețuri iOS
-
-- Adaugă `iosPrices` în state-ul hook-ului.
-- În `useEffect`-ul care apelează `initIOSBilling`, după inițializare apelează `getIOSPrices()` și salvează rezultatul.
-- Returnează `iosPrices` din hook.
-
-### 3. `src/components/PremiumDialog.tsx` — afișaj și diagnostic
-
-- Citește `iosPrices` și `isIOSNative` din `useSubscription`.
-- Construiește `displayPrice` astfel:
-  - Dacă `isIOSNative` și `iosPrices.student_monthly?.priceString` există → folosește `priceString` localizat (înlocuiește integral `"14,99 RON"`).
-  - Altfel → fallback la `"14,99 RON"` (Android + web Stripe au același preț în RON).
-- În `handlePurchase`, dacă `startCheckout` aruncă eroare pe iOS, afișează `toast.error(err.message ?? "Achiziția nu a putut fi inițiată")` ca să se vadă cauza în TestFlight (ex. „Pachet RevenueCat negăsit pentru pyro_student_monthly_ios").
-
-### 4. Fără modificări de backend
-
-Nu se ating funcțiile edge sau RLS. Prețul afișat este pur cosmetic; sursa de adevăr pentru ce plătește utilizatorul rămâne App Store (Apple confirmă prețul final în foaia de plată).
-
-## Pași după deploy
-
-1. În App Store Connect verifică ca produsul `pyro_student_monthly_ios` să fie `Ready to Submit` / `Approved` și să fie atașat în RevenueCat la Offering-ul `current`.
-2. Rulează local `npx cap sync ios` și rebuild în Xcode pentru ca pluginul `@revenuecat/purchases-capacitor` să fie inclus.
-3. În TestFlight, dacă apare toast-ul „Pachet RevenueCat negăsit", problema e în Offerings RevenueCat, nu în cod — știm exact unde să intervenim.
-
-## Rezultat așteptat
-
-- Pe iOS prețul afișat în dialog devine cel real din App Store (ex. `14,99 lei` sau echivalent în moneda contului App Store), nu un text hardcodat.
-- La apăsare, dacă RevenueCat nu poate iniția achiziția, utilizatorul vede un toast cu motivul în loc de spinner infinit.
-- Pe Android și web, comportamentul rămâne identic cu cel actual.
+### Detalii tehnice (technical)
+- `livesUpdatedAt` continuă să fie persistat în Supabase (`profiles.lives_updated_at`) și local. Logica server-side rămâne neutră — regenerarea e calculată client-side la încărcare, ca acum.
+- Update memory `mem://features/gamification/lives-system`: schimb regula din „regenerare graduală 1/20 min" în „regenerare completă după 25 min de la 0".
+- Nu necesită migrație DB.

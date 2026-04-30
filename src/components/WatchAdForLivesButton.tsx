@@ -77,7 +77,7 @@ const WatchAdForLivesButton = ({ isPremium, onLivesGranted }: WatchAdForLivesBut
       </Button>
       <p className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground text-center">
         <Clock className="h-3 w-3" />
-        Sau ia o pauză de 20 de minute și o inimă se reumple automat.
+        Sau așteaptă 25 de minute după ce rămâi fără inimi pentru reumplere completă.
       </p>
     </div>
   );
