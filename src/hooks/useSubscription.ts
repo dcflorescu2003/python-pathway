@@ -15,7 +15,10 @@ import {
   purchaseIOSSubscription,
   restoreIOSPurchases,
   openIOSSubscriptionManagement,
+  getIOSPrices,
   STRIPE_TO_IOS,
+  type IOSPriceInfo,
+  type IOSProductKey,
 } from "@/lib/iosBilling";
 
 // Stripe product IDs for subscription type detection
@@ -121,6 +124,7 @@ async function getSharedSubscriptionState(force = false, userId?: string): Promi
 export function useSubscription() {
   const { user, session } = useAuth();
   const [state, setState] = useState<SubscriptionState>(cachedState ?? { ...DEFAULT_STATE, loading: !!user });
+  const [iosPrices, setIosPrices] = useState<Partial<Record<IOSProductKey, IOSPriceInfo>>>({});
 
   const isTeacherPremium = state.productId
     ? TEACHER_PRODUCT_IDS.includes(state.productId)
@@ -150,7 +154,14 @@ export function useSubscription() {
       void initPlayBilling(user.id);
     }
     if (isIOSNative()) {
-      void initIOSBilling(user.id);
+      void initIOSBilling(user.id).then(async () => {
+        try {
+          const prices = await getIOSPrices();
+          setIosPrices(prices);
+        } catch (err) {
+          console.warn("[useSubscription] getIOSPrices failed", err);
+        }
+      });
     }
     const interval = setInterval(() => {
       void checkSubscription(true);
@@ -251,6 +262,7 @@ export function useSubscription() {
     isStudentPremium,
     isAndroidNative: isAndroidNative(),
     isIOSNative: isIOSNative(),
+    iosPrices,
     checkSubscription,
     startCheckout,
     openPortal,
