@@ -9,6 +9,14 @@ import {
   openPlaySubscriptionManagement,
   STRIPE_TO_ANDROID,
 } from "@/lib/playBilling";
+import {
+  isIOSNative,
+  initIOSBilling,
+  purchaseIOSSubscription,
+  restoreIOSPurchases,
+  openIOSSubscriptionManagement,
+  STRIPE_TO_IOS,
+} from "@/lib/iosBilling";
 
 // Stripe product IDs for subscription type detection
 export const STUDENT_PRODUCT_IDS = [
