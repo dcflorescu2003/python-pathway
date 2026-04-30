@@ -15,7 +15,7 @@ interface PremiumDialogProps {
 const PremiumDialog = ({ open, onOpenChange }: PremiumDialogProps) => {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const { subscribed, subscriptionEnd, loading, startCheckout, openPortal, isAndroidNative, restorePurchases } = useSubscription();
+  const { subscribed, subscriptionEnd, loading, startCheckout, openPortal, isAndroidNative, isIOSNative, restorePurchases } = useSubscription();
   const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null);
   const [restoring, setRestoring] = useState(false);
 
@@ -88,7 +88,11 @@ const PremiumDialog = ({ open, onOpenChange }: PremiumDialogProps) => {
               )}
               <Button variant="outline" onClick={handleManage} className="mt-2 gap-2">
                 <Settings className="h-4 w-4" />
-                {isAndroidNative ? "Gestionează în Google Play" : "Gestionează abonamentul"}
+                {isAndroidNative
+                  ? "Gestionează în Google Play"
+                  : isIOSNative
+                  ? "Gestionează în App Store"
+                  : "Gestionează abonamentul"}
               </Button>
             </div>
           ) : (
@@ -175,9 +179,11 @@ const PremiumDialog = ({ open, onOpenChange }: PremiumDialogProps) => {
               <p className="text-[10px] text-center text-foreground/40">
                 {isAndroidNative
                   ? "Plata se procesează prin Google Play"
+                  : isIOSNative
+                  ? "Plata se procesează prin App Store"
                   : "Plata se procesează securizat prin Stripe"}
               </p>
-              {isAndroidNative && (
+              {(isAndroidNative || isIOSNative) && (
                 <Button
                   variant="ghost"
                   size="sm"
