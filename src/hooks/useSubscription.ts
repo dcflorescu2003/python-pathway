@@ -10,12 +10,23 @@ import {
   STRIPE_TO_ANDROID,
 } from "@/lib/playBilling";
 import {
+  isAndroidNative,
+  initPlayBilling,
+  purchaseSubscription,
+  restorePlayPurchases,
+  openPlaySubscriptionManagement,
+  STRIPE_TO_ANDROID,
+} from "@/lib/playBilling";
+import {
   isIOSNative,
   initIOSBilling,
   purchaseIOSSubscription,
   restoreIOSPurchases,
   openIOSSubscriptionManagement,
+  getIOSPrices,
   STRIPE_TO_IOS,
+  type IOSPriceInfo,
+  type IOSProductKey,
 } from "@/lib/iosBilling";
 
 // Stripe product IDs for subscription type detection
