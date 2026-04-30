@@ -160,7 +160,13 @@ const PremiumDialog = ({ open, onOpenChange }: PremiumDialogProps) => {
                   className="relative w-full rounded-xl border-2 border-primary bg-card p-4 text-center hover:border-primary/80 transition-colors disabled:opacity-50"
                 >
                   <p className="text-xs text-foreground/60 mb-1">Lunar</p>
-                  <p className="text-2xl font-bold text-foreground">14,99 <span className="text-sm font-normal">RON</span></p>
+                  {isIOSNative && iosPrices?.student_monthly?.priceString ? (
+                    <p className="text-2xl font-bold text-foreground">
+                      {iosPrices.student_monthly.priceString}
+                    </p>
+                  ) : (
+                    <p className="text-2xl font-bold text-foreground">14,99 <span className="text-sm font-normal">RON</span></p>
+                  )}
                   <p className="text-xs text-foreground/50">/lună</p>
                   {checkoutLoading === STUDENT_MONTHLY_PRICE && (
                     <Loader2 className="absolute top-2 right-2 h-4 w-4 animate-spin text-primary" />
