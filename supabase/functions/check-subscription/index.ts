@@ -171,8 +171,9 @@ serve(async (req) => {
       couponDaysRemaining = Math.ceil((new Date(couponEnd).getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
     }
 
-    // Determine source priority: play_billing > stripe > coupon
-    const source = playActive ? "play_billing" : stripeActive ? "stripe" : couponActive ? "coupon" : null;
+    // Determine source priority: native (ios/android) > stripe > coupon
+    const nativeSource = playPlatform === "ios" ? "ios_iap" : "play_billing";
+    const source = playActive ? nativeSource : stripeActive ? "stripe" : couponActive ? "coupon" : null;
     const finalProductId = playActive ? playProductId : productId;
     const finalEnd = playActive ? playEnd : (subscriptionEnd || couponEnd);
 
