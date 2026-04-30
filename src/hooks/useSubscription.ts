@@ -154,7 +154,14 @@ export function useSubscription() {
       void initPlayBilling(user.id);
     }
     if (isIOSNative()) {
-      void initIOSBilling(user.id);
+      void initIOSBilling(user.id).then(async () => {
+        try {
+          const prices = await getIOSPrices();
+          setIosPrices(prices);
+        } catch (err) {
+          console.warn("[useSubscription] getIOSPrices failed", err);
+        }
+      });
     }
     const interval = setInterval(() => {
       void checkSubscription(true);
