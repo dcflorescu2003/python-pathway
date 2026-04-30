@@ -262,6 +262,7 @@ export function useSubscription() {
     isStudentPremium,
     isAndroidNative: isAndroidNative(),
     isIOSNative: isIOSNative(),
+    iosPrices,
     checkSubscription,
     startCheckout,
     openPortal,
