@@ -16,6 +16,7 @@ import {
   restoreIOSPurchases,
   openIOSSubscriptionManagement,
   getIOSPrices,
+  reconcileAfterPurchaseTimeout,
   STRIPE_TO_IOS,
   type IOSPriceInfo,
   type IOSProductKey,
