@@ -40,6 +40,7 @@ const ProblemSolvePage = lazy(() => import("./pages/ProblemSolvePage"));
 const AuthPage = lazy(() => import("./pages/AuthPage"));
 const AdminPage = lazy(() => import("./pages/AdminPage"));
 const ResetPasswordPage = lazy(() => import("./pages/ResetPasswordPage"));
+const AppleFinishPage = lazy(() => import("./pages/AppleFinishPage"));
 const PrivacyPolicyPage = lazy(() => import("./pages/PrivacyPolicyPage"));
 const DeleteAccountPage = lazy(() => import("./pages/DeleteAccountPage"));
 const SupportPage = lazy(() => import("./pages/SupportPage"));
