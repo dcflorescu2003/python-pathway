@@ -1,76 +1,35 @@
-# Plan: Apple iOS rămâne, Web folosește gating "email real + parolă"
+# Plan: Ghidaj Apple pe web (login + signup)
 
-## Obiective
-
-1. **Renunțăm la flow-ul custom Apple Web** (`apple-web-initiate` / `apple-web-callback`) — produce `invalid_client` și complică inutil.
-2. **iOS rămâne neatins** (login nativ Apple via Capacitor, deja funcțional).
-3. **Web Apple**: revine la `lovable.auth.signInWithOAuth("apple", …)` (cum era inițial).
-4. **Cartonașul "Adaugă email real"** (`RealEmailSetupCard`) rămâne așa cum e — deja merge.
-5. **Nou: gating la înscrierea în clasă** — un elev logat cu Apple care are încă `@privaterelay.appleid.com` SAU nu are parolă setată **nu poate** intra într-o clasă; e blocat cu un mesaj clar care îl trimite la Cont → setează email real + parolă.
+## Scop
+- Pe **signup web**: butonul "Continuă cu Apple" dispare. Cont nou cu Apple pe web ar fi blocat oricum la înscrierea în clasă (privaterelay + fără parolă), deci nu are sens să-l oferim.
+- Pe **login web**: butonul rămâne (cei care au setat parolă pe iOS pot alterna).
+- Adaug un link discret sub buton: *"Te-ai logat cu Apple pe telefon și nu poți intra aici?"* → deschide un dialog cu pașii de finalizare cont.
+- Pe iOS / Android nativ, totul rămâne neatins.
 
 ## Modificări
 
-### 1. `src/hooks/useAuth.tsx` — `signInWithApple` (web)
-
-Înlocuim ramura web custom cu varianta originală:
-
+### 1. `src/pages/AuthPage.tsx` — vizibilitate buton Apple
+Condiția devine:
 ```ts
-// Web: revenim la flow-ul Lovable Cloud (cum era înainte)
-const result = await lovable.auth.signInWithOAuth("apple", {
-  redirect_uri: window.location.origin,
-});
-return { error: result.error || null };
+const showAppleButton =
+  !(Capacitor.isNativePlatform() && Capacitor.getPlatform() === "android")  // ascuns pe Android
+  && (Capacitor.isNativePlatform() || isLogin);                              // pe web doar pe login, nu signup
 ```
 
-iOS / Android nativ rămân neschimbate.
+### 2. Link "Cont Apple de pe telefon?" + dialog explicativ
+- Doar pe web (`!Capacitor.isNativePlatform()`), sub butonul Apple.
+- Click → deschide un nou dialog `AppleHelpDialog` cu 3 pași:
+  1. Loghează-te din **aplicația iOS** cu Apple
+  2. Mergi la **Cont → Login pe web** și setează: parolă + email real (dacă folosești Hide My Email)
+  3. Revino aici și loghează-te cu **email + parolă**
+- Buton "Am înțeles" închide dialogul.
 
-### 2. Curățăm flow-ul Apple custom
+### 3. Mesajul existent de sub form rămâne
+Linia "Te-ai logat cu Apple sau Google pe telefon? Setează o parolă din Cont → Profil…" e ok — poate fi puțin reformulată să trimită spre același dialog, dar nu e critic.
 
-- Șterg `supabase/functions/apple-web-initiate/index.ts`
-- Șterg `supabase/functions/apple-web-callback/index.ts`
-- Șterg `src/pages/AppleFinishPage.tsx`
-- Scot ruta `/auth/apple-finish` din `src/App.tsx`
-- Migrație: `DROP TABLE public.apple_oauth_states`
-- Scot blocurile aferente din `supabase/config.toml`
-- Secretele Apple (`APPLE_TEAM_ID`, `APPLE_KEY_ID`, `APPLE_PRIVATE_KEY`, `APPLE_WEB_CLIENT_ID`) le lăsăm pe loc — nu strică, pot folosi mai târziu.
+## Pași de execuție
+1. Modific condiția de afișare a butonului Apple (un singur if combinat).
+2. Adaug state `showAppleHelpDialog` + componenta Dialog cu cei 3 pași.
+3. Adaug link "Cont Apple de pe telefon? Vezi pașii" sub butonul Apple, vizibil doar pe web.
 
-### 3. Gating la "Alătură-te clasei" (`src/pages/AuthPage.tsx`)
-
-În `joinClassDirect` (și înainte de `handleNameConfirm`) verificăm prin `useAuthMethods()`:
-
-```text
-needsRealEmail = isPrivateRelay (email-ul curent e @privaterelay.appleid.com)
-needsPassword  = !hasPassword (utilizatorul nu și-a setat parolă încă)
-```
-
-Dacă `needsRealEmail || needsPassword`:
-
-- Blocăm `joinClassDirect` / `handleNameConfirm` cu un dialog/toast clar:
-  > "Pentru a te înscrie într-o clasă cu contul Apple, trebuie să adaugi un email real și o parolă (poți recupera contul și pe web). Mergi la **Cont → Login pe web**."
-- Buton "Mergi la Cont" care duce la tab-ul `profile` din pagina curentă (deja existent — `setActiveTab("profile")`), unde sunt vizibile `RealEmailSetupCard` + `WebLoginSetupCard`.
-- Nu rulăm INSERT în `class_members`.
-
-Regula se aplică **doar pentru elevi cu identitate Apple** (via `hasApple`). Pentru Google / email+parolă nu facem gating.
-
-### 4. Mesaj contextual în `StudentTab` (opțional — UX)
-
-Dacă elevul e deja membru al unei clase și **între timp** redevine "private relay fără parolă" (caz rar), afișăm un banner discret în StudentTab care îi cere să își finalizeze contul. Doar text + link spre cardurile existente — nimic distructiv.
-
-## Pași de execuție (în ordine)
-
-1. Modific `useAuth.tsx` (revenire la `lovable.auth.signInWithOAuth("apple")` pe web).
-2. Șterg pagina/funcțiile/tabela custom Apple + ruta din `App.tsx` + secțiuni din `config.toml`.
-3. Migrație SQL: `DROP TABLE IF EXISTS public.apple_oauth_states`.
-4. Adaug logica de gating Apple în `AuthPage.tsx` (un helper `assertCanJoinClass()` apelat înainte de orice INSERT în `class_members`).
-5. Banner contextual în `StudentTab` (opțional, doar dacă vrei UX-ul în plus — confirmă-mi).
-
-## Pași manuali pentru tine după implementare
-
-- În **Lovable Cloud → Users → Auth Settings → Apple** asigură-te că Apple e activ pe varianta managed (BYOC dacă ai configurat-o, altfel default). Asta e ce funcționa inițial.
-- Nu mai e nevoie de Return URL custom în Apple Developer Console pentru flow-ul nostru (Lovable Cloud îl gestionează intern).
-
-## Întrebare înainte de execuție
-
-Vrei și **bannerul contextual în StudentTab** (pasul 4 din "Modificări"), sau e suficient gating-ul la momentul join-ului?  
-  
-Nu inteleg intrebarea de executie. Explica-mi mai detaliat inainte de a aplica planul
+Niciun edge function, nicio migrație — pur frontend.
