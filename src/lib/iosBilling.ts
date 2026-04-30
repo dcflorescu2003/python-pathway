@@ -151,6 +151,54 @@ async function syncPurchaseWithBackend(result: any): Promise<void> {
   }
 }
 
+export interface IOSPriceInfo {
+  productId: string;
+  priceString: string;
+  price: number;
+  currencyCode: string;
+}
+
+export async function getIOSPrices(): Promise<Partial<Record<IOSProductKey, IOSPriceInfo>>> {
+  const result: Partial<Record<IOSProductKey, IOSPriceInfo>> = {};
+  if (!isIOSNative()) return result;
+  await initIOSBilling();
+  const Purchases = await getPurchases();
+  if (!Purchases) return result;
+
+  try {
+    const offeringsRes = await Purchases.getOfferings();
+    const current =
+      offeringsRes?.current ||
+      offeringsRes?.offerings?.current ||
+      null;
+    const allPackages: any[] = current?.availablePackages || [];
+
+    (Object.keys(IOS_PRODUCTS) as IOSProductKey[]).forEach((key) => {
+      const { productId } = IOS_PRODUCTS[key];
+      const pkg = allPackages.find(
+        (p: any) =>
+          p?.product?.identifier === productId ||
+          p?.storeProduct?.identifier === productId
+      );
+      if (!pkg) {
+        console.warn(`[iosBilling] No RevenueCat package for ${productId}`);
+        return;
+      }
+      const sp = pkg.product || pkg.storeProduct || {};
+      result[key] = {
+        productId,
+        priceString: sp.priceString || sp.price_string || "",
+        price: typeof sp.price === "number" ? sp.price : Number(sp.price) || 0,
+        currencyCode: sp.currencyCode || sp.currency_code || "",
+      };
+    });
+    console.log("[iosBilling] Loaded iOS prices", result);
+  } catch (err) {
+    console.error("[iosBilling] getIOSPrices failed:", err);
+  }
+  return result;
+}
+
 export async function restoreIOSPurchases(): Promise<number> {
   if (!isIOSNative()) return 0;
   await initIOSBilling();
