@@ -15,7 +15,7 @@ interface PremiumDialogProps {
 const PremiumDialog = ({ open, onOpenChange }: PremiumDialogProps) => {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const { subscribed, subscriptionEnd, loading, startCheckout, openPortal, isAndroidNative, isIOSNative, restorePurchases } = useSubscription();
+  const { subscribed, subscriptionEnd, loading, startCheckout, openPortal, isAndroidNative, isIOSNative, restorePurchases, iosPrices } = useSubscription();
   const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null);
   const [restoring, setRestoring] = useState(false);
 
