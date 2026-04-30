@@ -77,6 +77,7 @@ const AppRoutes = () => {
           <Route path="/problem/:problemId" element={<ProblemSolvePage />} />
           <Route path="/admin" element={<AdminPage />} />
           <Route path="/reset-password" element={<ResetPasswordPage />} />
+          <Route path="/auth/apple-finish" element={<AppleFinishPage />} />
           <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
           <Route path="/delete-account" element={<DeleteAccountPage />} />
           <Route path="/support" element={<SupportPage />} />
