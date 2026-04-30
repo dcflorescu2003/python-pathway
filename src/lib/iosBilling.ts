@@ -21,13 +21,9 @@ export const STRIPE_TO_IOS: Record<string, IOSProductKey> = {
 };
 
 // RevenueCat public iOS API key (publishable, safe in client code).
-// Source: RevenueCat Dashboard → Project Settings → API Keys → Pyro (App Store).
 const REVENUECAT_PUBLIC_API_KEY_IOS = "appl_HJzjSqAtmWWTejEByusfNbnrLaD";
 
 // ============= Aggressive logging helpers =============
-// These send logs both to console AND to a visible toast on the screen
-// so we can debug RevenueCat issues without Xcode.
-
 const DEBUG_LOG_BUFFER: string[] = [];
 
 function dlog(stage: string, data?: any) {
@@ -43,8 +39,7 @@ function dlog(stage: string, data?: any) {
   const line = `[${ts}] ${stage}${payload ? `: ${payload}` : ""}`;
   console.log("[iosBilling]", line);
   DEBUG_LOG_BUFFER.push(line);
-  // keep only the last 50 entries
-  if (DEBUG_LOG_BUFFER.length > 50) DEBUG_LOG_BUFFER.shift();
+  if (DEBUG_LOG_BUFFER.length > 80) DEBUG_LOG_BUFFER.shift();
 }
 
 function derr(stage: string, err: any) {
@@ -55,8 +50,7 @@ function derr(stage: string, err: any) {
   const line = `[${ts}] ❌ ${stage} | code=${code} | msg=${msg} ${userInfo}`;
   console.error("[iosBilling]", line, err);
   DEBUG_LOG_BUFFER.push(line);
-  if (DEBUG_LOG_BUFFER.length > 50) DEBUG_LOG_BUFFER.shift();
-  // surface as visible toast on iOS only (don't spam web)
+  if (DEBUG_LOG_BUFFER.length > 80) DEBUG_LOG_BUFFER.shift();
   if (isIOSNative()) {
     toast.error(`RC: ${stage}`, {
       description: `${code ? `[${code}] ` : ""}${msg}`.slice(0, 240),
@@ -65,7 +59,6 @@ function derr(stage: string, err: any) {
   }
 }
 
-/** Returns the in-memory debug log buffer (for an "Show debug" UI). */
 export function getIOSBillingDebugLog(): string[] {
   return [...DEBUG_LOG_BUFFER];
 }
@@ -74,12 +67,38 @@ export function isIOSNative(): boolean {
   return Capacitor.isNativePlatform() && Capacitor.getPlatform() === "ios";
 }
 
+// ============= Promise helpers =============
+
+function withTimeout<T>(promise: Promise<T> | T, ms: number, label: string): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    let done = false;
+    const timer = setTimeout(() => {
+      if (done) return;
+      done = true;
+      reject(new Error(`TIMEOUT_${label}_${ms}ms`));
+    }, ms);
+    Promise.resolve(promise).then(
+      (v) => {
+        if (done) return;
+        done = true;
+        clearTimeout(timer);
+        resolve(v);
+      },
+      (e) => {
+        if (done) return;
+        done = true;
+        clearTimeout(timer);
+        reject(e);
+      }
+    );
+  });
+}
+
+// ============= Plugin loader =============
+
 let PurchasesPlugin: any = null;
 async function getPurchases(): Promise<any> {
-  if (PurchasesPlugin) {
-    dlog("getPurchases:cached");
-    return PurchasesPlugin;
-  }
+  if (PurchasesPlugin) return PurchasesPlugin;
   if (!isIOSNative()) {
     dlog("getPurchases:not-ios", {
       isNative: Capacitor.isNativePlatform(),
@@ -94,9 +113,31 @@ async function getPurchases(): Promise<any> {
     dlog("getPurchases:loaded", {
       hasPurchases: !!(mod as any).Purchases,
       hasDefault: !!(mod as any).default,
-      keys: Object.keys(mod as any).slice(0, 20),
-      pluginKeys: PurchasesPlugin ? Object.keys(PurchasesPlugin).slice(0, 20) : [],
     });
+    // Bridge check: do critical methods exist?
+    const requiredMethods = [
+      "configure",
+      "getOfferings",
+      "getCustomerInfo",
+      "purchasePackage",
+      "restorePurchases",
+    ];
+    const bridgeStatus: Record<string, string> = {};
+    const missing: string[] = [];
+    for (const m of requiredMethods) {
+      const t = typeof PurchasesPlugin?.[m];
+      bridgeStatus[m] = t;
+      if (t !== "function") missing.push(m);
+    }
+    // optional method
+    bridgeStatus["purchaseStoreProduct"] = typeof PurchasesPlugin?.purchaseStoreProduct;
+    dlog("init:bridge-check", bridgeStatus);
+    if (missing.length > 0) {
+      derr(
+        "bridge-missing-methods",
+        new Error(`Native bridge incomplet — lipsesc: ${missing.join(", ")}`)
+      );
+    }
     return PurchasesPlugin;
   } catch (err) {
     derr("getPurchases:import-failed", err);
@@ -104,18 +145,30 @@ async function getPurchases(): Promise<any> {
   }
 }
 
-let initPromise: Promise<void> | null = null;
+// ============= Init (deduplicat) =============
+
+let initPromise: Promise<boolean> | null = null;
+let initCompleted = false;
 let configuredUserId: string | null = null;
 
-export async function initIOSBilling(userId?: string): Promise<void> {
-  if (!isIOSNative()) {
-    dlog("init:skip-not-ios");
-    return;
+const INIT_TIMEOUT_MS = 5000;
+const OFFERINGS_TIMEOUT_MS = 8000;
+const CUSTOMER_INFO_TIMEOUT_MS = 8000;
+
+/**
+ * Init RevenueCat. Returns true if SDK is usable, false otherwise.
+ * Multiple parallel callers share the same promise (true deduplication).
+ */
+export async function initIOSBilling(userId?: string): Promise<boolean> {
+  if (!isIOSNative()) return false;
+
+  // Already initialized for this user — instant return, no log spam
+  if (initCompleted && configuredUserId === (userId ?? null)) {
+    return true;
   }
 
-  // If already configured for the same user, no-op
-  if (initPromise && configuredUserId === (userId ?? null)) {
-    dlog("init:already-configured", { userId: userId ?? null });
+  // Init in flight — share it
+  if (initPromise) {
     return initPromise;
   }
 
@@ -125,7 +178,15 @@ export async function initIOSBilling(userId?: string): Promise<void> {
     const Purchases = await getPurchases();
     if (!Purchases) {
       derr("init:no-plugin", new Error("Purchases plugin not available"));
-      return;
+      return false;
+    }
+
+    if (typeof Purchases.configure !== "function") {
+      derr(
+        "init:configure-missing",
+        new Error("Purchases.configure nu există — bridge-ul nativ nu e link-uit")
+      );
+      return false;
     }
 
     try {
@@ -133,28 +194,48 @@ export async function initIOSBilling(userId?: string): Promise<void> {
         apiKeyPrefix: REVENUECAT_PUBLIC_API_KEY_IOS.slice(0, 6),
         hasUserId: !!userId,
       });
-      await Purchases.configure({
-        apiKey: REVENUECAT_PUBLIC_API_KEY_IOS,
-        appUserID: userId || null,
-      });
+      // configure() can hang natively if StoreKit can't reach App Store
+      // (no Sandbox account, no internet, etc). Force a timeout.
+      await withTimeout(
+        Purchases.configure({
+          apiKey: REVENUECAT_PUBLIC_API_KEY_IOS,
+          appUserID: userId || null,
+        }),
+        INIT_TIMEOUT_MS,
+        "INIT_CONFIGURE"
+      );
       configuredUserId = userId ?? null;
+      initCompleted = true;
       dlog("init:configured-ok");
 
-      // Try to fetch customer info to confirm SDK is alive
+      // Try to fetch customer info to confirm SDK is alive — also with timeout
       try {
-        const info = await Purchases.getCustomerInfo();
+        const info = await withTimeout(
+          Purchases.getCustomerInfo(),
+          CUSTOMER_INFO_TIMEOUT_MS,
+          "INIT_CUSTOMER_INFO"
+        );
         dlog("init:customerInfo", {
-          appUserID: info?.customerInfo?.originalAppUserId || info?.originalAppUserId,
+          appUserID:
+            (info as any)?.customerInfo?.originalAppUserId ||
+            (info as any)?.originalAppUserId,
           activeEntitlements: Object.keys(
-            info?.customerInfo?.entitlements?.active || info?.entitlements?.active || {}
+            (info as any)?.customerInfo?.entitlements?.active ||
+              (info as any)?.entitlements?.active ||
+              {}
           ),
         });
       } catch (infoErr) {
         derr("init:getCustomerInfo-failed", infoErr);
+        // not fatal — configure succeeded
       }
+
+      return true;
     } catch (err) {
-      derr("init:configure-failed", err);
+      derr("init:configure-failed-or-timeout", err);
       initPromise = null; // allow retry
+      initCompleted = false;
+      return false;
     }
   })();
 
@@ -167,20 +248,42 @@ export async function initIOSBilling(userId?: string): Promise<void> {
 export async function purchaseIOSSubscription(key: IOSProductKey, userId?: string): Promise<void> {
   if (!isIOSNative()) throw new Error("Apple IAP only on iOS");
   dlog("purchase:start", { key, userId });
-  await initIOSBilling(userId);
+
+  if (!initCompleted) {
+    const ok = await initIOSBilling(userId);
+    if (!ok) {
+      throw new Error(
+        "RevenueCat nu e inițializat. Verifică Sandbox Apple ID în Settings → App Store și conexiunea la internet."
+      );
+    }
+  }
 
   const Purchases = await getPurchases();
   if (!Purchases) throw new Error("Apple IAP not available");
 
+  if (typeof Purchases.getOfferings !== "function") {
+    throw new Error("getOfferings lipsește din bridge — reinstalează appul");
+  }
+
   const { productId } = IOS_PRODUCTS[key];
 
-  // Fetch current offering and find package matching our product id
   dlog("purchase:getOfferings");
-  const offeringsRes = await Purchases.getOfferings();
+  let offeringsRes: any;
+  try {
+    offeringsRes = await withTimeout(
+      Purchases.getOfferings(),
+      OFFERINGS_TIMEOUT_MS,
+      "GET_OFFERINGS"
+    );
+  } catch (err) {
+    derr("purchase:getOfferings-failed", err);
+    throw new Error(
+      "App Store Connect nu a răspuns cu produsele. Verifică că produsele sunt aprobate și că Offering-ul „current” are pachete în RevenueCat."
+    );
+  }
+
   const current =
-    offeringsRes?.current ||
-    offeringsRes?.offerings?.current ||
-    null;
+    offeringsRes?.current || offeringsRes?.offerings?.current || null;
 
   dlog("purchase:offerings-result", {
     hasCurrent: !!current,
@@ -223,7 +326,7 @@ export async function purchaseIOSSubscription(key: IOSProductKey, userId?: strin
     err?.errorCode === "1" ||
     /cancel/i.test(err?.message || "");
 
-  // Try purchaseStoreProduct first (more reliable on iOS — no presentedOfferingContext issues)
+  // Try purchaseStoreProduct first (more reliable on iOS)
   if (storeProduct && typeof Purchases.purchaseStoreProduct === "function") {
     dlog("purchase:purchaseStoreProduct-call", { productId });
     try {
@@ -239,6 +342,10 @@ export async function purchaseIOSSubscription(key: IOSProductKey, userId?: strin
       derr("purchase:purchaseStoreProduct-failed", err);
       // fall through to purchasePackage fallback
     }
+  }
+
+  if (typeof Purchases.purchasePackage !== "function") {
+    throw new Error("purchasePackage lipsește din bridge — reinstalează appul");
   }
 
   dlog("purchase:purchasePackage-fallback-call", { productId });
@@ -257,18 +364,21 @@ export async function purchaseIOSSubscription(key: IOSProductKey, userId?: strin
 }
 
 /**
- * Best-effort: if a purchase call timed out client-side, ask RevenueCat for the
- * latest CustomerInfo. If an entitlement is now active, sync backend silently.
- * Returns true if we detected an active entitlement.
+ * If a purchase call timed out client-side, ask RevenueCat for the latest
+ * CustomerInfo. If an entitlement is now active, sync backend silently.
  */
 export async function reconcileAfterPurchaseTimeout(): Promise<boolean> {
   if (!isIOSNative()) return false;
   const Purchases = await getPurchases();
-  if (!Purchases) return false;
+  if (!Purchases || typeof Purchases.getCustomerInfo !== "function") return false;
   try {
     dlog("reconcile:getCustomerInfo");
-    const info = await Purchases.getCustomerInfo();
-    const customerInfo = info?.customerInfo || info;
+    const info = await withTimeout(
+      Purchases.getCustomerInfo(),
+      CUSTOMER_INFO_TIMEOUT_MS,
+      "RECONCILE_CUSTOMER_INFO"
+    );
+    const customerInfo = (info as any)?.customerInfo || info;
     const active = customerInfo?.entitlements?.active || {};
     const hasActive = Object.keys(active).length > 0;
     dlog("reconcile:result", { hasActive, keys: Object.keys(active) });
@@ -329,24 +439,34 @@ export interface IOSPriceInfo {
 
 export async function getIOSPrices(userId?: string): Promise<Partial<Record<IOSProductKey, IOSPriceInfo>>> {
   const result: Partial<Record<IOSProductKey, IOSPriceInfo>> = {};
-  if (!isIOSNative()) {
-    dlog("getPrices:skip-not-ios");
-    return result;
-  }
+  if (!isIOSNative()) return result;
   dlog("getPrices:start", { userId });
-  await initIOSBilling(userId);
+
+  if (!initCompleted) {
+    const ok = await initIOSBilling(userId);
+    if (!ok) {
+      derr("getPrices:init-failed", new Error("Init RevenueCat eșuat"));
+      return result;
+    }
+  }
+
   const Purchases = await getPurchases();
-  if (!Purchases) {
-    derr("getPrices:no-plugin", new Error("Purchases plugin not available"));
+  if (!Purchases) return result;
+  if (typeof Purchases.getOfferings !== "function") {
+    derr("getPrices:no-getOfferings", new Error("getOfferings lipsește din bridge"));
     return result;
   }
 
   try {
     dlog("getPrices:getOfferings-call");
-    const offeringsRes = await Purchases.getOfferings();
+    const offeringsRes = await withTimeout(
+      Purchases.getOfferings(),
+      OFFERINGS_TIMEOUT_MS,
+      "GET_PRICES_OFFERINGS"
+    );
     const current =
-      offeringsRes?.current ||
-      offeringsRes?.offerings?.current ||
+      (offeringsRes as any)?.current ||
+      (offeringsRes as any)?.offerings?.current ||
       null;
     const allPackages: any[] = current?.availablePackages || [];
 
@@ -357,14 +477,16 @@ export async function getIOSPrices(userId?: string): Promise<Partial<Record<IOSP
       packageIds: allPackages
         .map((p) => p?.product?.identifier || p?.storeProduct?.identifier)
         .filter(Boolean),
-      allOfferings: Object.keys(offeringsRes?.all || offeringsRes?.offerings?.all || {}),
+      allOfferings: Object.keys(
+        (offeringsRes as any)?.all || (offeringsRes as any)?.offerings?.all || {}
+      ),
     });
 
     if (allPackages.length === 0) {
       derr(
         "getPrices:no-packages",
         new Error(
-          "RevenueCat returned 0 packages. Check that 'current' Offering has packages attached in RevenueCat dashboard."
+          "RevenueCat returned 0 packages. Verifică Offering 'current' în RevenueCat dashboard."
         )
       );
     }
@@ -398,9 +520,14 @@ export async function getIOSPrices(userId?: string): Promise<Partial<Record<IOSP
 export async function restoreIOSPurchases(): Promise<number> {
   if (!isIOSNative()) return 0;
   dlog("restore:start");
-  await initIOSBilling();
+
+  if (!initCompleted) {
+    const ok = await initIOSBilling();
+    if (!ok) return 0;
+  }
+
   const Purchases = await getPurchases();
-  if (!Purchases) return 0;
+  if (!Purchases || typeof Purchases.restorePurchases !== "function") return 0;
 
   try {
     const result = await Purchases.restorePurchases();
