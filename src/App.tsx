@@ -40,6 +40,7 @@ const ProblemSolvePage = lazy(() => import("./pages/ProblemSolvePage"));
 const AuthPage = lazy(() => import("./pages/AuthPage"));
 const AdminPage = lazy(() => import("./pages/AdminPage"));
 const ResetPasswordPage = lazy(() => import("./pages/ResetPasswordPage"));
+const AppleFinishPage = lazy(() => import("./pages/AppleFinishPage"));
 const PrivacyPolicyPage = lazy(() => import("./pages/PrivacyPolicyPage"));
 const DeleteAccountPage = lazy(() => import("./pages/DeleteAccountPage"));
 const SupportPage = lazy(() => import("./pages/SupportPage"));
@@ -76,6 +77,7 @@ const AppRoutes = () => {
           <Route path="/problem/:problemId" element={<ProblemSolvePage />} />
           <Route path="/admin" element={<AdminPage />} />
           <Route path="/reset-password" element={<ResetPasswordPage />} />
+          <Route path="/auth/apple-finish" element={<AppleFinishPage />} />
           <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
           <Route path="/delete-account" element={<DeleteAccountPage />} />
           <Route path="/support" element={<SupportPage />} />
