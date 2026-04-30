@@ -697,6 +697,37 @@ const AuthPage = () => {
           </motion.div>
         </motion.div>
       )}
+
+      {/* Apple help dialog: explică cum se loghează web utilizatorii care s-au înrolat cu Apple pe iOS */}
+      <Dialog open={showAppleHelp} onOpenChange={setShowAppleHelp}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Cont Apple de pe telefon</DialogTitle>
+            <DialogDescription className="pt-2">
+              Pentru a te loga pe web cu un cont creat prin Apple, urmează 3 pași:
+            </DialogDescription>
+          </DialogHeader>
+          <ol className="space-y-3 text-sm">
+            <li className="flex gap-3">
+              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/15 font-mono text-xs font-bold text-primary">1</span>
+              <span>Deschide aplicația <strong>PyRo pe iPhone</strong> și loghează-te cu Apple.</span>
+            </li>
+            <li className="flex gap-3">
+              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/15 font-mono text-xs font-bold text-primary">2</span>
+              <span>
+                Mergi la <span className="font-mono text-foreground">Cont → Profil</span>, setează o <strong>parolă</strong> și, dacă folosești Hide My Email, adaugă un <strong>email real</strong>.
+              </span>
+            </li>
+            <li className="flex gap-3">
+              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/15 font-mono text-xs font-bold text-primary">3</span>
+              <span>Revino aici și loghează-te cu <strong>email + parolă</strong> (nu cu butonul Apple).</span>
+            </li>
+          </ol>
+          <div className="flex justify-end pt-2">
+            <Button onClick={() => setShowAppleHelp(false)}>Am înțeles</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </motion.div>
   );
 };
