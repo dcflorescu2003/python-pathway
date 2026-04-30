@@ -149,6 +149,9 @@ export function useSubscription() {
     if (isAndroidNative()) {
       void initPlayBilling(user.id);
     }
+    if (isIOSNative()) {
+      void initIOSBilling(user.id);
+    }
     const interval = setInterval(() => {
       void checkSubscription(true);
     }, 60_000);
@@ -173,13 +176,22 @@ export function useSubscription() {
     async (priceId: string) => {
       if (!session) return;
 
-      const native = isAndroidNative();
-      console.log("[startCheckout] isAndroidNative:", native, "priceId:", priceId);
+      const android = isAndroidNative();
+      const ios = isIOSNative();
+      console.log("[startCheckout]", { android, ios, priceId });
 
-      if (native) {
+      if (android) {
         const productKey = STRIPE_TO_ANDROID[priceId];
         if (!productKey) throw new Error("Produsul nu este disponibil pe Android");
         await purchaseSubscription(productKey);
+        setTimeout(() => void checkSubscription(true), 2500);
+        return;
+      }
+
+      if (ios) {
+        const productKey = STRIPE_TO_IOS[priceId];
+        if (!productKey) throw new Error("Produsul nu este disponibil pe iOS");
+        await purchaseIOSSubscription(productKey);
         setTimeout(() => void checkSubscription(true), 2500);
         return;
       }
@@ -203,14 +215,25 @@ export function useSubscription() {
       return;
     }
 
+    if (isIOSNative()) {
+      await openIOSSubscriptionManagement();
+      return;
+    }
+
     const { data, error } = await supabase.functions.invoke("customer-portal");
     if (error) throw error;
     if (data?.url) window.open(data.url, "_blank");
   }, [session]);
 
   const restorePurchases = useCallback(async () => {
-    if (!isAndroidNative()) return 0;
-    const count = await restorePlayPurchases();
+    let count = 0;
+    if (isAndroidNative()) {
+      count = await restorePlayPurchases();
+    } else if (isIOSNative()) {
+      count = await restoreIOSPurchases();
+    } else {
+      return 0;
+    }
     setTimeout(() => void checkSubscription(true), 1500);
     return count;
   }, [checkSubscription]);
@@ -220,6 +243,7 @@ export function useSubscription() {
     isTeacherPremium,
     isStudentPremium,
     isAndroidNative: isAndroidNative(),
+    isIOSNative: isIOSNative(),
     checkSubscription,
     startCheckout,
     openPortal,
