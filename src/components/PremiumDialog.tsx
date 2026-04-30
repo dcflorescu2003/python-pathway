@@ -1,8 +1,9 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Heart, Crown, Infinity, Loader2, Settings, ShieldCheck, Code, BarChart3, Trophy, RefreshCw } from "lucide-react";
+import { Heart, Crown, Infinity, Loader2, Settings, ShieldCheck, Code, BarChart3, Trophy, RefreshCw, Bug } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useSubscription, STUDENT_MONTHLY_PRICE } from "@/hooks/useSubscription";
+import { getIOSBillingDebugLog } from "@/lib/iosBilling";
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { toast } from "sonner";
