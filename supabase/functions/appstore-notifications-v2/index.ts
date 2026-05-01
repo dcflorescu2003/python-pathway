@@ -189,6 +189,7 @@ serve(async (req) => {
       ? new Date(expirationMs).toISOString()
       : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
     const planId = String(productId).includes("yearly") ? "yearly" : "monthly";
+    const isTeacherProduct = String(productId).includes("teacher");
     const purchaseToken = `ios:${origTxId}`;
 
     const autoRenewing = renewalInfo?.autoRenewStatus === 1;
@@ -220,25 +221,41 @@ serve(async (req) => {
     }
 
     if (isActive) {
+      const profileUpdate: Record<string, any> = {};
+      if (isTeacherProduct) {
+        profileUpdate.is_teacher = true;
+        profileUpdate.teacher_status = "active";
+      } else {
+        profileUpdate.is_premium = true;
+      }
       await supabase
         .from("profiles")
-        .update({ is_premium: true })
+        .update(profileUpdate)
         .eq("user_id", userId);
     } else {
-      // Re-evaluate: only flip off if no other active subscription exists
+      // Re-evaluate: only flip off the relevant flag if no other active subscription of same kind exists
       const { data: stillActive } = await supabase
         .from("play_billing_subscriptions")
-        .select("id")
+        .select("product_id")
         .eq("user_id", userId)
         .eq("is_active", true)
-        .gt("expiry_time", new Date().toISOString())
-        .limit(1);
+        .gt("expiry_time", new Date().toISOString());
 
-      if (!stillActive || stillActive.length === 0) {
-        await supabase
-          .from("profiles")
-          .update({ is_premium: false })
-          .eq("user_id", userId);
+      const hasActiveTeacher =
+        stillActive?.some((r) => String(r.product_id).includes("teacher")) ?? false;
+      const hasActiveStudent =
+        stillActive?.some((r) => !String(r.product_id).includes("teacher")) ?? false;
+
+      const profileUpdate: Record<string, any> = {};
+      if (isTeacherProduct && !hasActiveTeacher) {
+        profileUpdate.is_teacher = false;
+        profileUpdate.teacher_status = null;
+      }
+      if (!isTeacherProduct && !hasActiveStudent) {
+        profileUpdate.is_premium = false;
+      }
+      if (Object.keys(profileUpdate).length > 0) {
+        await supabase.from("profiles").update(profileUpdate).eq("user_id", userId);
       }
     }
 
