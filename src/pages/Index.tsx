@@ -31,6 +31,8 @@ import LevelUpDialog from "@/components/LevelUpDialog";
 import StreakDialog from "@/components/StreakDialog";
 import PersonalizedSummary from "@/components/PersonalizedSummary";
 import RefillLivesDialog from "@/components/RefillLivesDialog";
+import LivesRefilledDialog from "@/components/LivesRefilledDialog";
+import ComebackDialog from "@/components/ComebackDialog";
 import { Capacitor } from "@capacitor/core";
 
 const Index = (): JSX.Element => {
