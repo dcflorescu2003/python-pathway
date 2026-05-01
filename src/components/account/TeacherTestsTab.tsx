@@ -25,6 +25,7 @@ const TeacherTestsTab = ({ teacherStatus }: TeacherTestsTabProps) => {
 
   return (
     <div className="space-y-4">
+      <TeacherPendingReviewBanner />
       {teacherStatus === "unverified" && (
         <Card className="border-primary/30 bg-primary/5">
           <CardContent className="p-3">
