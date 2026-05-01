@@ -1,68 +1,166 @@
-## Diagnostic confirmat
+# Migrare iOS IAP: RevenueCat → StoreKit 2 nativ
 
-Din log-ul de pe iPhone:
-- Plugin RevenueCat **se încarcă corect** (`hasPurchases: true`, e v13.0.1, listat în `Package.swift`)
-- `pluginKeys: []` e fals-pozitiv (metodele statice nu apar în `Object.keys`)
-- `init:start` se apelează **de 10+ ori în paralel** în primele 5 secunde
-- Log-ul se oprește la `getPurchases:cached` — **niciun `init:configure-call`, `init:configure-ok` sau `init:configure-failed`**
+## De ce schimbăm
 
-Concluzie: primul apel `Purchases.configure()` **face hang la nivel nativ** (probabil StoreKit nu răspunde — sandbox account neconfigurat pe device, produse neaprobate în App Store Connect, sau bundle ID mismatch). Toate celelalte apeluri așteaptă pe același `initPromise` și nimic nu se mai întâmplă, inclusiv `purchasePackage`.
+RevenueCat hangs la `configure()` pe TestFlight, fără timeout vizibil — bridge-ul nu se mai întoarce niciodată. În loc să mai depanăm un SDK third-party, mergem direct pe **StoreKit 2** (Apple) cu un **plugin Capacitor custom scris în Swift** și verificare server-side prin **App Store Server API**. Mai puține dependințe, mai puțini single points of failure, control total pe semnături și webhook.
 
-## Ce schimbăm
+## Arhitectura nouă
 
-### 1. `src/lib/iosBilling.ts`
+```text
+┌─────────────────────────┐
+│  React (TS)             │
+│  src/lib/iosBilling.ts  │  ← rescris, doar StoreKit
+└──────────┬──────────────┘
+           │ Capacitor bridge
+           ▼
+┌─────────────────────────┐
+│  PyroIAPPlugin (Swift)  │  ← scris de noi în ios/App/App/
+│  StoreKit 2 API         │
+└──────────┬──────────────┘
+           │ JWS signedTransaction
+           ▼
+┌──────────────────────────────────┐
+│  Edge: verify-ios-purchase       │  ← rescris: verifică JWS
+│  + Apple App Store Server API    │
+└──────────┬───────────────────────┘
+           │
+           ▼
+   play_billing_subscriptions
+   (deja are platform='ios')
 
-**a) Timeout dur pe `configure()`** (5s):
-- Înfășurăm `Purchases.configure(...)` cu `Promise.race([call, timeout(5000)])`
-- Dacă timeout, marcăm SDK-ul ca "degraded" dar **continuăm** — `configure` în RevenueCat poate fi sync intern și să nu rezolve niciodată Promise-ul
-
-**b) Timeout pe `getOfferings()` și `getCustomerInfo()`** (8s fiecare):
-- Dacă oricare face hang, log explicit + throw cu mesaj clar
-- Important: `purchaseStoreProduct` / `purchasePackage` nu primesc timeout (utilizatorul interacționează cu sheet-ul Apple)
-
-**c) Detecție explicită de metode înainte de apel**:
-```ts
-if (typeof Purchases.configure !== "function") {
-  throw new Error("RevenueCat SDK incomplet — reinstalează appul");
-}
+┌──────────────────────────────────┐
+│  Edge: appstore-notifications-v2 │  ← NOU: webhook Apple S2S
+└──────────────────────────────────┘
 ```
-Pentru fiecare metodă critică: `configure`, `getOfferings`, `purchaseStoreProduct`, `purchasePackage`, `getCustomerInfo`, `restorePurchases`. Asta ne spune **direct** dacă bridge-ul nativ lipsește, în loc să așteptăm timeout.
 
-**d) Deduplicare reală a `initIOSBilling`**:
-- Log-ul curent arată 10 invocări — toate ar trebui să cadă pe `initPromise` cached, dar producem `init:start` log de 10 ori. Mutăm log-ul **după** verificarea cache-ului.
-- Adăugăm `initCompleted: boolean` — dacă e deja `true`, returnăm imediat fără să așteptăm vreun Promise.
+Tabela `play_billing_subscriptions` și `check-subscription` rămân — știu deja `platform='ios'`.
 
-**e) Log nou `init:bridge-check`** care printează `typeof` pentru fiecare metodă critică imediat după `getPurchases`. Asta confirmă dacă bridge-ul e prezent înainte să apelăm orice.
+## Ce ștergem
 
-### 2. `src/hooks/useSubscription.ts`
+- Pachetul `@revenuecat/purchases-capacitor` din `package.json`
+- Tot codul RevenueCat din `src/lib/iosBilling.ts` (păstrăm doar API-ul public exportat)
+- Edge function `revenuecat-webhook` (înlocuit de `appstore-notifications-v2`)
+- Secret-ul `REVENUECAT_WEBHOOK_AUTH` (după migrare)
+- Configul RevenueCat din dashboard (manual, nu cere cod)
 
-**a) Mesaj de eroare îmbunătățit pentru timeout pe init**:
-- Dacă `initIOSBilling` face timeout, afișăm: "RevenueCat nu a putut iniția. Verifică: (1) ești logat cu un Sandbox Apple ID în Settings → App Store, (2) ai conexiune la internet, (3) reinstalează appul."
+## Pași — în ordine
 
-**b) Apelăm `initIOSBilling` o singură dată** la mount, nu o lăsăm să fie re-apelată din `getIOSPrices` și `purchaseIOSSubscription`:
-- În `iosBilling.ts`, în loc ca fiecare funcție publică să cheme `await initIOSBilling(userId)`, verificăm doar `if (!initCompleted) throw`. Init-ul se face **exclusiv** la mount în `useSubscription`.
+### Pas 1 — Pregătire App Store Connect (manual, tu)
 
-### 3. `src/components/PremiumDialog.tsx` (existent)
+Înainte de orice cod nou, ai nevoie de:
 
-- Butonul "Copiază log iOS billing" rămâne. Nimic nou aici.
+1. **4 produse In-App Purchase** în App Store Connect cu exact aceste IDs (deja le-ai creat pentru RevenueCat):
+  - `pyro_student_monthly_ios`
+  - `pyro_student_yearly_ios`
+  - `pyro_teacher_monthly_ios`
+  - `pyro_teacher_yearly_ios`
+2. **App Store Server API key** (Users & Access → Keys → In-App Purchase): generezi o cheie `.p8`, salvezi `Key ID`, `Issuer ID`, conținutul `.p8`. Astea devin 3 secrete noi în Lovable Cloud.
+3. **App Store Server Notifications V2** URL (Apps → app-ul tău → App Information → App Store Server Notifications): pui URL-ul edge function-ului nostru (după Pas 5).
 
-## Ce NU e cauza (excludem)
+Eu îți voi cere secretele exacte la momentul potrivit.
 
-- ❌ Plugin lipsă nativ — e în `Package.swift`
-- ❌ API key greșit — log-ul arată `apiKeyPrefix: "appl_H"` corect
-- ❌ Frontend bug în `purchasePackage` — niciodată nu ajungem acolo, init e blocat
+### Pas 2 — Plugin Capacitor nativ (Swift)
 
-## După deploy — ce verifici pe device
+Creez:
 
-După `npx cap sync ios` + rebuild TestFlight, deschizi Premium dialog. Vei vedea unul din trei rezultate clare:
+- `ios/App/App/PyroIAP.swift` — actor StoreKit 2 cu metode `getProducts`, `purchase`, `restore`, `getActiveTransactions`, listener `Transaction.updates`
+- `ios/App/App/PyroIAPPlugin.swift` — `@objc CAPPlugin` care expune metodele JS
+- `ios/App/App/PyroIAPPlugin.m` — registration macro pentru bridge
 
-1. **Toast roșu `RC: bridge-check`** cu listă de metode care lipsesc → plugin-ul nativ chiar nu e link-uit corect (puțin probabil, dar definitiv)
-2. **Toast roșu `RC: init:configure-timeout`** → `configure()` face hang nativ. Cauza 99% e: nu ești logat cu Sandbox Apple ID pe device în `Settings → App Store → Sandbox Account`. Fix: te deloghezi de la Apple ID-ul real, te loghezi cu un Sandbox tester creat în App Store Connect.
-3. **Init reușește, dar `getOfferings` timeout** → produsele nu sunt aprobate în App Store Connect sau Offering-ul "current" e gol în RevenueCat dashboard
+Plugin-ul returnează către JS, după fiecare achiziție: `productId`, `originalTransactionId`, `transactionId`, `expirationDate`, `signedTransaction` (JWS) — pe acesta îl validăm server-side.
 
-În oricare caz, vei avea un mesaj **acționabil** în loc de "App Store nu a răspuns".
+### Pas 3 — Layer JS rescris
 
-## Fișiere modificate
+Rescriu `src/lib/iosBilling.ts`:
 
-- `src/lib/iosBilling.ts` — timeouts, bridge-check, deduplicare init reală
-- `src/hooks/useSubscription.ts` — mesaj eroare init, fără re-init implicit
+- Păstrez exporturile publice (`isIOSNative`, `initIOSBilling`, `purchaseIOSSubscription`, `restoreIOSPurchases`, `getIOSPrices`, `openIOSSubscriptionManagement`, `reconcileAfterPurchaseTimeout`, `IOS_PRODUCTS`, `STRIPE_TO_IOS`, tipurile) — `useSubscription` rămâne **neatins**.
+- Înăuntru: `registerPlugin<PyroIAPPlugin>('PyroIAP')` direct, fără SDK extern.
+- Păstrez sistemul de `dlog`/`derr` și buffer-ul de debug — îți rămâne butonul "Copiază log iOS billing".
+- `openIOSSubscriptionManagement` deschide `https://apps.apple.com/account/subscriptions` cu `App.openUrl` (sau `Browser`).
+
+### Pas 4 — Edge `verify-ios-purchase` rescris
+
+Funcția va:
+
+1. Primi `signedTransaction` (JWS) de la client.
+2. Decoda JWS-ul (header + payload base64) **fără** verificare criptografică în primă fază — pentru că Apple oferă deja chei rotate și ne complică Deno-ul.
+3. Apela **App Store Server API** (`/inApps/v1/transactions/{transactionId}`) cu un JWT semnat ES256 din secretele Apple → primește `signedTransactionInfo` autentic.
+4. Decoda payload-ul autentic → `productId`, `originalTransactionId`, `expiresDate`, `revocationDate`.
+5. Upsert în `play_billing_subscriptions` cu `platform='ios'`, exact ca acum.
+6. `profiles.is_premium = true`.
+
+Dacă tranzacția e revocată / expirată → marchează inactiv.
+
+Folosesc `jose` din `esm.sh` pentru semnarea JWT-ului ES256.
+
+### Pas 5 — Edge nouă `appstore-notifications-v2`
+
+Webhook public (`verify_jwt = false`). Apple trimite `signedPayload` la fiecare event de subscription. Funcția:
+
+1. Decodează JWS-ul (payload este `notificationType` + `data.signedTransactionInfo`).
+2. Pentru events active (`SUBSCRIBED`, `DID_RENEW`, `DID_CHANGE_RENEWAL_STATUS=1`) → upsert `is_active=true`.
+3. Pentru inactive (`EXPIRED`, `REFUND`, `REVOKE`, `DID_FAIL_TO_RENEW` cu grace expired) → `is_active=false` + recheck `is_premium`.
+4. Match user via `originalTransactionId` în tabela existentă (sau prin `appAccountToken` pe care îl setăm la purchase = `user.id`).
+
+**Punct critic**: la `purchase()` în Swift voi seta `Product.PurchaseOption.appAccountToken(UUID(user.id))` ca să mapăm user-ul fără ambiguitate.
+
+### Pas 6 — Migrare config + curățenie
+
+- Scot `@revenuecat/purchases-capacitor` din `package.json`
+- Șterg edge-ul `revenuecat-webhook`
+- Adaug în `supabase/config.toml` un block pentru `appstore-notifications-v2` cu `verify_jwt = false`
+- În Xcode: capability **In-App Purchase** rămâne; nu mai e nevoie de altceva special.
+
+### Pas 7 — Testare end-to-end
+
+Build TestFlight nou. Tu testezi cu Sandbox account:
+
+1. Login → home → vezi prețuri reale.
+2. Cumperi student_monthly → vezi că scrie corect în DB.
+3. Force-close app → revii → premium activ (din `check-subscription`).
+4. Settings iOS → cancel sandbox sub → primim `EXPIRED` pe webhook → DB inactiv.
+5. Apăs "Restaurează achizițiile" pe alt device cu același Apple ID → reactivare.
+
+Eu voi adăuga logging masiv și un buton temporar "Trimite log la dev" pe AccountTab dacă apare ceva.
+
+## Detalii tehnice
+
+**StoreKit 2 versus StoreKit 1**: folosim StoreKit 2 (`async/await`, `Product.products(for:)`, `Transaction.updates`). Necesită **iOS 15+**. Verific în `Info.plist` că `MinimumOSVersion >= 15.0`; dacă nu, urc pragul (Capacitor 6 oricum cere iOS 14, deci nu pierdem device-uri reale).
+
+**De ce App Store Server API și nu doar verifyReceipt**: `verifyReceipt` este deprecated. Server API e modul oficial pentru server-to-server și e gândit pentru exact use-case-ul nostru (un singur originalTransactionId → toată istoria abonamentului).
+
+**De ce JWS dual-pass (decode local + re-fetch de la Apple)**: ne ferim de transactions falsificate de utilizatori jailbroken. Sursa de adevăr este răspunsul direct de la Apple, nu ce trimite clientul.
+
+**appAccountToken**: UUID v4 ce trebuie să fie exact `user.id` din Supabase. La fiecare purchase îl atașăm; webhook-ul îl primește înapoi → mapping user fără email lookup.
+
+**Race condition la purchase**: Swift listener-ul `Transaction.updates` rulează în background și poate trimite tranzacția înainte ca callback-ul lui `purchase()` să se întoarcă. Tratez idempotent prin `originalTransactionId` ca PK conceptual (UNIQUE pe `purchase_token` în tabelă — deja așa e).
+
+**Restore**: `AppStore.sync()` + iter peste `Transaction.currentEntitlements` → trimit fiecare tranzacție activă la edge.
+
+## Ce vei face manual tu
+
+1. **Înainte de Pas 4**: îmi dai 3 secrete (`APPLE_IAP_KEY_ID`, `APPLE_IAP_ISSUER_ID`, `APPLE_IAP_PRIVATE_KEY` — conținutul `.p8`).
+2. **Înainte de Pas 5**: după ce deploy-ăm edge-ul `appstore-notifications-v2`, îmi dai URL-ul lui și îl pui în App Store Connect → Notifications V2 (Production și Sandbox).
+3. **Build nou**: `npx cap sync ios` + Archive + TestFlight.
+4. **După ce totul merge**: poți închide proiectul din RevenueCat dashboard.
+
+## Ce risc rămâne
+
+- Apple Sandbox e notoriu de buggy (reproduceri lente, ID-uri stale). Avem timeout pe toate apelurile native.
+- Prima încărcare de produse poate fi de 5–10s pe Sandbox (rețea Apple). Pun spinner + cache 60s.
+- Dacă webhook-ul n-ajunge (rar), `check-subscription` rulat la deschidere app va sincroniza prin App Store Server API direct.
+
+## Ordinea de execuție când zici "go"
+
+1. Cer cele 3 secrete Apple IAP.
+2. Scriu plugin-ul Swift + .m + actualizez `Podfile`/`Package.swift` dacă e cazul.
+3. Rescriu `src/lib/iosBilling.ts`.
+4. Rescriu edge `verify-ios-purchase`.
+5. Creez edge `appstore-notifications-v2` + config.toml.
+6. Șterg `revenuecat-webhook` și pachetul npm.
+7. Îți spun să faci `npx cap sync ios` + Archive + să configurezi URL-ul webhook în App Store Connect.
+8. Test sandbox împreună.
+
+Confirmi și încep cu Pas 1 (cer secretele)?  
+  
+Nu, inainte sa ceri secretele ma ghidezi pas cu pas cum le obtin, ce sunt, de unde le iau. Confirma la fiecare ca il am apoi le ceri. Sa fim atenti sa nu ratam nimic
