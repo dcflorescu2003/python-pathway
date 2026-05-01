@@ -48,7 +48,7 @@ const AccountProfileTab = ({
   const { user } = useAuth();
   const { progress } = useProgress();
   const { data: chapters } = useChapters();
-  const { subscribed, subscriptionEnd, source, openPortal } = useSubscription();
+  const { subscribed, subscriptionEnd, source, openPortal, isIOSNative, isAndroidNative } = useSubscription();
   const { data: referralCodes = [] } = useTeacherReferralCodes();
   const { isNative, showPrivacyOptions } = useAdMob();
   const [privacyLoading, setPrivacyLoading] = useState(false);
