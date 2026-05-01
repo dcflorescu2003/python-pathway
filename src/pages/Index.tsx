@@ -75,17 +75,49 @@ const Index = (): JSX.Element => {
     }
   }, [authLoading, user, navigate]);
 
-  // Fetch best_streak + teacher_status from profile
+  // Fetch best_streak + teacher_status + check comeback / lives refilled
   useEffect(() => {
     if (!user) return;
     supabase
       .from("profiles")
-      .select("best_streak, teacher_status")
+      .select("best_streak, teacher_status, last_activity_date, last_comeback_shown_at, lives, lives_refilled_dialog_shown_at, is_premium")
       .eq("user_id", user.id)
       .single()
       .then(({ data }) => {
         if (data?.best_streak != null) setBestStreak(data.best_streak);
         if (data?.teacher_status != null) setTeacherStatus(data.teacher_status);
+
+        const todayStr = new Date().toISOString().split("T")[0];
+
+        // Comeback: ultima activitate >7 zile, dialog nemaifișat în ultimele 7 zile
+        if (data?.last_activity_date) {
+          const lastDate = new Date(data.last_activity_date);
+          const diffMs = Date.now() - lastDate.getTime();
+          const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+          if (diffDays >= 7) {
+            const lastComeback = data.last_comeback_shown_at;
+            const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
+            if (!lastComeback || lastComeback < sevenDaysAgo) {
+              setComebackDays(diffDays);
+              setShowComeback(true);
+              supabase
+                .from("profiles")
+                .update({ last_comeback_shown_at: todayStr })
+                .eq("user_id", user.id)
+                .then();
+            }
+          }
+        }
+
+        // Lives refilled: lives = 5, ne-premium, dialog nemaifișat azi
+        if (data?.lives === 5 && !data?.is_premium && data?.lives_refilled_dialog_shown_at !== todayStr) {
+          setShowLivesRefilled(true);
+          supabase
+            .from("profiles")
+            .update({ lives_refilled_dialog_shown_at: todayStr })
+            .eq("user_id", user.id)
+            .then();
+        }
       });
   }, [user]);
 
