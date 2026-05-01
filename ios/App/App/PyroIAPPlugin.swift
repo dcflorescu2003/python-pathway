@@ -1,5 +1,6 @@
 import Foundation
 import Capacitor
+import UIKit
 
 /// Capacitor bridge for StoreKit 2.
 /// Exposed to JavaScript as `Capacitor.Plugins.PyroIAP`.
@@ -92,10 +93,7 @@ public class PyroIAPPlugin: CAPPlugin {
     @objc func openManageSubscriptions(_ call: CAPPluginCall) {
         DispatchQueue.main.async {
             if let url = URL(string: "itms-apps://apps.apple.com/account/subscriptions") {
-                #if canImport(UIKit)
-                import UIKit
                 UIApplication.shared.open(url)
-                #endif
             }
             call.resolve()
         }
