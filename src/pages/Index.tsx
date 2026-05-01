@@ -543,6 +543,8 @@ const Index = (): JSX.Element => {
       <LevelUpDialog open={showLevelUp} onOpenChange={setShowLevelUp} levelInfo={levelInfo} newLevel={level} />
       <StreakDialog open={showStreak} onOpenChange={setShowStreak} streak={progress.streak} bestStreak={Math.max(bestStreak, progress.streak)} lastActivityDate={progress.lastActivityDate} />
       <RefillLivesDialog open={showRefillLives} onOpenChange={setShowRefillLives} lives={progress.lives} isPremium={progress.isPremium} onLivesGranted={setLivesFromReward} />
+      <LivesRefilledDialog open={showLivesRefilled} onOpenChange={setShowLivesRefilled} onStartLesson={() => { setShowLivesRefilled(false); }} />
+      <ComebackDialog open={showComeback} onOpenChange={setShowComeback} daysAway={comebackDays} onResume={() => setShowComeback(false)} />
     </motion.div>
       )}
     </AnimatePresence>
