@@ -14,7 +14,6 @@ import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, A
 import CouponRedemption from "@/components/CouponRedemption";
 import PremiumDialog from "@/components/PremiumDialog";
 import CompetencyProfileCard from "./CompetencyProfileCard";
-import WebLoginSetupCard from "./WebLoginSetupCard";
 import RealEmailSetupCard from "./RealEmailSetupCard";
 import TeacherPremiumDialog from "@/components/TeacherPremiumDialog";
 import TeacherVerificationForm from "@/components/teacher/TeacherVerificationForm";
@@ -49,7 +48,7 @@ const AccountProfileTab = ({
   const { user } = useAuth();
   const { progress } = useProgress();
   const { data: chapters } = useChapters();
-  const { subscribed, subscriptionEnd, source, openPortal } = useSubscription();
+  const { subscribed, subscriptionEnd, source, openPortal, isIOSNative, isAndroidNative } = useSubscription();
   const { data: referralCodes = [] } = useTeacherReferralCodes();
   const { isNative, showPrivacyOptions } = useAdMob();
   const [privacyLoading, setPrivacyLoading] = useState(false);
@@ -161,11 +160,8 @@ const AccountProfileTab = ({
         </CardContent>
       </Card>
 
-      {/* Real email setup (Apple Hide My Email users) */}
+      {/* Apple Hide My Email: unified email + password setup */}
       <RealEmailSetupCard />
-
-      {/* Web login (set/change password) */}
-      <WebLoginSetupCard />
 
       {/* Stats */}
       {!teacherStatus && (
@@ -203,7 +199,7 @@ const AccountProfileTab = ({
             {source === "coupon" && (
               <p className="text-[10px] text-muted-foreground mt-1">Activat prin cupon</p>
             )}
-            {source === "stripe" && (
+            {(source === "stripe" || isIOSNative || isAndroidNative) && (
               <Button
                 variant="outline"
                 size="sm"
@@ -216,7 +212,13 @@ const AccountProfileTab = ({
                 }}
               >
                 <CreditCard className="h-4 w-4" />
-                {portalLoading ? "Se deschide..." : "Gestionează abonamentul"}
+                {portalLoading
+                  ? "Se deschide..."
+                  : isIOSNative
+                  ? "Gestionează în App Store"
+                  : isAndroidNative
+                  ? "Gestionează în Google Play"
+                  : "Gestionează abonamentul"}
               </Button>
             )}
           </CardContent>
