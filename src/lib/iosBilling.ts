@@ -94,6 +94,53 @@ function withTimeout<T>(promise: Promise<T> | T, ms: number, label: string): Pro
   });
 }
 
+function callNativeWithTimeout<T>(
+  call: () => Promise<T> | T,
+  ms: number,
+  label: string,
+  stage: string
+): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    let done = false;
+    const timer = setTimeout(() => {
+      if (done) return;
+      done = true;
+      reject(new Error(`TIMEOUT_${label}_${ms}ms`));
+    }, ms);
+
+    let nativeResult: Promise<T> | T;
+    try {
+      dlog(`${stage}:before-native-call`, { ms });
+      nativeResult = call();
+      dlog(`${stage}:after-native-call`, {
+        returned: nativeResult !== undefined,
+        thenable: typeof (nativeResult as any)?.then === "function",
+      });
+    } catch (err) {
+      if (done) return;
+      done = true;
+      clearTimeout(timer);
+      reject(err);
+      return;
+    }
+
+    Promise.resolve(nativeResult).then(
+      (value) => {
+        if (done) return;
+        done = true;
+        clearTimeout(timer);
+        resolve(value);
+      },
+      (err) => {
+        if (done) return;
+        done = true;
+        clearTimeout(timer);
+        reject(err);
+      }
+    );
+  });
+}
+
 // ============= Plugin loader =============
 
 let PurchasesPlugin: any = null;
@@ -176,8 +223,10 @@ export async function initIOSBilling(userId?: string): Promise<boolean> {
 
   initPromise = (async () => {
     const Purchases = await getPurchases();
+    dlog("init:plugin-ready", { hasPlugin: !!Purchases });
     if (!Purchases) {
       derr("init:no-plugin", new Error("Purchases plugin not available"));
+      initPromise = null;
       return false;
     }
 
@@ -186,6 +235,7 @@ export async function initIOSBilling(userId?: string): Promise<boolean> {
         "init:configure-missing",
         new Error("Purchases.configure nu există — bridge-ul nativ nu e link-uit")
       );
+      initPromise = null;
       return false;
     }
 
@@ -196,13 +246,14 @@ export async function initIOSBilling(userId?: string): Promise<boolean> {
       });
       // configure() can hang natively if StoreKit can't reach App Store
       // (no Sandbox account, no internet, etc). Force a timeout.
-      await withTimeout(
-        Purchases.configure({
+      await callNativeWithTimeout(
+        () => Purchases.configure({
           apiKey: REVENUECAT_PUBLIC_API_KEY_IOS,
           appUserID: userId || null,
         }),
         INIT_TIMEOUT_MS,
-        "INIT_CONFIGURE"
+        "INIT_CONFIGURE",
+        "init:configure"
       );
       configuredUserId = userId ?? null;
       initCompleted = true;
