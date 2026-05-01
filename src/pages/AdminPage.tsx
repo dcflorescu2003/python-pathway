@@ -6,6 +6,7 @@ import ContentEditor from "@/components/admin/ContentEditor";
 import ProblemsEditor from "@/components/admin/ProblemsEditor";
 import CouponManager from "@/components/admin/CouponManager";
 import AdminSettings from "@/components/admin/AdminSettings";
+import NewLessonNotifier from "@/components/admin/NewLessonNotifier";
 import ManualEditor from "@/components/admin/ManualEditor";
 import TeacherApproval from "@/components/admin/TeacherApproval";
 import EvalBankEditor from "@/components/admin/EvalBankEditor";
@@ -107,7 +108,10 @@ const AdminPage = () => {
           </TabsContent>
 
           <TabsContent value="settings">
-            <AdminSettings currentUserEmail={user?.email || ""} />
+            <div className="space-y-4">
+              <NewLessonNotifier currentUserEmail={user?.email || ""} />
+              <AdminSettings currentUserEmail={user?.email || ""} />
+            </div>
           </TabsContent>
         </Tabs>
       </main>
