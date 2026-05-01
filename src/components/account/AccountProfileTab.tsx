@@ -14,7 +14,6 @@ import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, A
 import CouponRedemption from "@/components/CouponRedemption";
 import PremiumDialog from "@/components/PremiumDialog";
 import CompetencyProfileCard from "./CompetencyProfileCard";
-import WebLoginSetupCard from "./WebLoginSetupCard";
 import RealEmailSetupCard from "./RealEmailSetupCard";
 import TeacherPremiumDialog from "@/components/TeacherPremiumDialog";
 import TeacherVerificationForm from "@/components/teacher/TeacherVerificationForm";
@@ -161,11 +160,8 @@ const AccountProfileTab = ({
         </CardContent>
       </Card>
 
-      {/* Real email setup (Apple Hide My Email users) */}
+      {/* Apple Hide My Email: unified email + password setup */}
       <RealEmailSetupCard />
-
-      {/* Web login (set/change password) */}
-      <WebLoginSetupCard />
 
       {/* Stats */}
       {!teacherStatus && (
