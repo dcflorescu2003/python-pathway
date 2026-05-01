@@ -244,9 +244,16 @@ serve(async (req) => {
     }
 
     if (isActive) {
+      const profileUpdate: Record<string, any> = {};
+      if (isTeacherProduct) {
+        profileUpdate.is_teacher = true;
+        profileUpdate.teacher_status = "active";
+      } else {
+        profileUpdate.is_premium = true;
+      }
       await supabaseAdmin
         .from("profiles")
-        .update({ is_premium: true })
+        .update(profileUpdate)
         .eq("user_id", userId);
     }
 
