@@ -1052,8 +1052,14 @@ export type Database = {
           is_premium: boolean
           is_teacher: boolean
           last_activity_date: string
+          last_comeback_shown_at: string | null
+          last_evening_reminder_at: string | null
+          last_life_refill_at: string | null
           last_name: string | null
+          last_teacher_reminder_at: string | null
+          last_weekly_reminder_at: string | null
           lives: number
+          lives_refilled_dialog_shown_at: string | null
           lives_updated_at: string | null
           nickname: string | null
           school_id: string | null
@@ -1076,8 +1082,14 @@ export type Database = {
           is_premium?: boolean
           is_teacher?: boolean
           last_activity_date?: string
+          last_comeback_shown_at?: string | null
+          last_evening_reminder_at?: string | null
+          last_life_refill_at?: string | null
           last_name?: string | null
+          last_teacher_reminder_at?: string | null
+          last_weekly_reminder_at?: string | null
           lives?: number
+          lives_refilled_dialog_shown_at?: string | null
           lives_updated_at?: string | null
           nickname?: string | null
           school_id?: string | null
@@ -1100,8 +1112,14 @@ export type Database = {
           is_premium?: boolean
           is_teacher?: boolean
           last_activity_date?: string
+          last_comeback_shown_at?: string | null
+          last_evening_reminder_at?: string | null
+          last_life_refill_at?: string | null
           last_name?: string | null
+          last_teacher_reminder_at?: string | null
+          last_weekly_reminder_at?: string | null
           lives?: number
+          lives_refilled_dialog_shown_at?: string | null
           lives_updated_at?: string | null
           nickname?: string | null
           school_id?: string | null
