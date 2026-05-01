@@ -204,6 +204,7 @@ serve(async (req) => {
 
     const isActive = !revokedMs && new Date(expiryISO) > new Date();
     const planId = String(productId).includes("yearly") ? "yearly" : "monthly";
+    const isTeacherProduct = String(productId).includes("teacher");
     const purchaseToken = `ios:${origTxId}`;
 
     log("upserting", {
