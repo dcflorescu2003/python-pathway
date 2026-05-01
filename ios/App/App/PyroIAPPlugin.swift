@@ -5,7 +5,17 @@ import UIKit
 /// Capacitor bridge for StoreKit 2.
 /// Exposed to JavaScript as `Capacitor.Plugins.PyroIAP`.
 @objc(PyroIAPPlugin)
-public class PyroIAPPlugin: CAPPlugin {
+public class PyroIAPPlugin: CAPPlugin, CAPBridgedPlugin {
+    public let identifier = "PyroIAPPlugin"
+    public let jsName = "PyroIAP"
+    public let pluginMethods: [CAPPluginMethod] = [
+        CAPPluginMethod(name: "ping", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "loadProducts", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "purchase", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "restore", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "getActiveTransactions", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "openManageSubscriptions", returnType: CAPPluginReturnPromise),
+    ]
 
     public override func load() {
         super.load()
