@@ -1,166 +1,95 @@
-# Migrare iOS IAP: RevenueCat → StoreKit 2 nativ
+## Întrebarea despre iOS — răspuns scurt
 
-## De ce schimbăm
+**NU trebuie să adaugi nimic nou pentru anulare.** Apple **nu permite** ca anularea abonamentului să se facă din interiorul aplicației — este interzis prin App Store Review Guidelines (secțiunea 3.1.2). Userul **trebuie** redirecționat către Settings → Apple ID → Subscriptions.
 
-RevenueCat hangs la `configure()` pe TestFlight, fără timeout vizibil — bridge-ul nu se mai întoarce niciodată. În loc să mai depanăm un SDK third-party, mergem direct pe **StoreKit 2** (Apple) cu un **plugin Capacitor custom scris în Swift** și verificare server-side prin **App Store Server API**. Mai puține dependințe, mai puțini single points of failure, control total pe semnături și webhook.
+Și avem deja asta implementat:
 
-## Arhitectura nouă
+- `src/lib/iosBilling.ts` → `openIOSSubscriptionManagement()` apelează `plugin.openManageSubscriptions()` (deschide pagina nativă de subscripții) cu fallback pe `itms-apps://apps.apple.com/account/subscriptions`.
+- În `PremiumDialog.tsx` butonul afișează **„Gestionează în App Store"** când userul e deja premium pe iOS.
+
+✅ Deci pe iOS suntem ok și conform cu regulile Apple. Niciun cod nou de scris.
+
+---
+
+## Notificări & cartonașe lipsă — ce adăugăm
+
+### A. Cron jobs noi pe server
 
 ```text
-┌─────────────────────────┐
-│  React (TS)             │
-│  src/lib/iosBilling.ts  │  ← rescris, doar StoreKit
-└──────────┬──────────────┘
-           │ Capacitor bridge
-           ▼
-┌─────────────────────────┐
-│  PyroIAPPlugin (Swift)  │  ← scris de noi în ios/App/App/
-│  StoreKit 2 API         │
-└──────────┬──────────────┘
-           │ JWS signedTransaction
-           ▼
-┌──────────────────────────────────┐
-│  Edge: verify-ios-purchase       │  ← rescris: verifică JWS
-│  + Apple App Store Server API    │
-└──────────┬───────────────────────┘
-           │
-           ▼
-   play_billing_subscriptions
-   (deja are platform='ios')
-
-┌──────────────────────────────────┐
-│  Edge: appstore-notifications-v2 │  ← NOU: webhook Apple S2S
-└──────────────────────────────────┘
+1. send-evening-reminder         → zilnic 19:00 ora României (16:00 UTC vara / 17:00 UTC iarna → folosim 17:00 UTC)
+2. send-weekly-comeback          → luni 10:00 UTC, pentru utilizatori inactivi >7 zile
+3. send-lives-refilled           → la fiecare 30 minute (verifică cine a ajuns la 5/5 vieți)
+4. send-teacher-reminder         → marți & joi 09:00 UTC, pentru profesori cu submisii neevaluate
+5. send-new-lesson-notification  → declanșat manual din admin când publici lecție nouă (NU cron)
 ```
 
-Tabela `play_billing_subscriptions` și `check-subscription` rămân — știu deja `platform='ios'`.
+### B. Edge Functions noi de creat
 
-## Ce ștergem
 
-- Pachetul `@revenuecat/purchases-capacitor` din `package.json`
-- Tot codul RevenueCat din `src/lib/iosBilling.ts` (păstrăm doar API-ul public exportat)
-- Edge function `revenuecat-webhook` (înlocuit de `appstore-notifications-v2`)
-- Secret-ul `REVENUECAT_WEBHOOK_AUTH` (după migrare)
-- Configul RevenueCat din dashboard (manual, nu cere cod)
+| Funcție                 | Logică                                                                                                                                                            |
+| ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `send-evening-reminder` | Useri activi azi cu lecții <3 → mesaje "Mai ai timp pentru o lecție rapidă", "Ziua nu e completă fără Python". Skip dacă deja rezolvați 3+ lecții azi.            |
+| `send-weekly-comeback`  | Useri inactivi >7 zile, cu cel puțin 1 lecție făcută vreodată. Mesaj diferit de cel zilnic, mai emoțional ("Te-am pierdut?"). Max 1 dată/săptămână per user.      |
+| `send-lives-refilled`   | Query: useri care au ajuns la 5/5 vieți în ultimele 30 min (ne folosim de `last_life_refill_at`). Notificare push: "Vieți pline! 5/5 ❤️ — gata de o nouă lecție". |
+| `send-teacher-reminder` | Profesori verificați cu `test_submissions` ne-evaluate >24h sau clase noi cu studenți noi.                                                                        |
+| `notify-new-lesson`     | Apelată din admin → trimite push tuturor (sau target). Body: "Lecție nouă: {titlu}".                                                                              |
 
-## Pași — în ordine
 
-### Pas 1 — Pregătire App Store Connect (manual, tu)
+Toate vor folosi același pattern din `send-streak-reminder`: in-app notification în tabela `notifications` + push prin FCM + APNs.
 
-Înainte de orice cod nou, ai nevoie de:
+### C. Cartonașe noi (frontend)
 
-1. **4 produse In-App Purchase** în App Store Connect cu exact aceste IDs (deja le-ai creat pentru RevenueCat):
-  - `pyro_student_monthly_ios`
-  - `pyro_student_yearly_ios`
-  - `pyro_teacher_monthly_ios`
-  - `pyro_teacher_yearly_ios`
-2. **App Store Server API key** (Users & Access → Keys → In-App Purchase): generezi o cheie `.p8`, salvezi `Key ID`, `Issuer ID`, conținutul `.p8`. Astea devin 3 secrete noi în Lovable Cloud.
-3. **App Store Server Notifications V2** URL (Apps → app-ul tău → App Information → App Store Server Notifications): pui URL-ul edge function-ului nostru (după Pas 5).
 
-Eu îți voi cere secretele exacte la momentul potrivit.
+| Cartonaș                       | Trigger                                                                          | Frecvență                  |
+| ------------------------------ | -------------------------------------------------------------------------------- | -------------------------- |
+| **LivesRefilledDialog**        | La deschiderea appului dacă vieți=5/5 ȘI ultima dată afișat era >24h             | Max 1/zi                   |
+| **NewLessonDialog**            | Push primit cu type=`new_lesson` ȘI userul deschide notificarea                  | La deschiderea notificării |
+| **TeacherPendingReviewBanner** | Banner (nu dialog) în /account tab profesor dacă există submisii neevaluate >24h | Permanent până rezolvă     |
+| **ComebackDialog**             | User logat după >7 zile inactivitate                                             | 1 dată per "comeback"      |
 
-### Pas 2 — Plugin Capacitor nativ (Swift)
 
-Creez:
+### D. Modificări DB (migrații)
 
-- `ios/App/App/PyroIAP.swift` — actor StoreKit 2 cu metode `getProducts`, `purchase`, `restore`, `getActiveTransactions`, listener `Transaction.updates`
-- `ios/App/App/PyroIAPPlugin.swift` — `@objc CAPPlugin` care expune metodele JS
-- `ios/App/App/PyroIAPPlugin.m` — registration macro pentru bridge
+```text
+- ADD COLUMN profiles.last_life_refill_at timestamptz
+- ADD COLUMN profiles.last_comeback_shown_at date
+- ADD COLUMN profiles.last_evening_reminder_at date
+- ADD COLUMN profiles.last_weekly_reminder_at date
+- ADD COLUMN profiles.last_teacher_reminder_at date
+- Trigger pe user_lives: când ajunge la 5, setează last_life_refill_at
+```
 
-Plugin-ul returnează către JS, după fiecare achiziție: `productId`, `originalTransactionId`, `transactionId`, `expirationDate`, `signedTransaction` (JWS) — pe acesta îl validăm server-side.
+### E. Configurare cron (în baza de date)
 
-### Pas 3 — Layer JS rescris
+```text
+send-evening-reminder       → '0 17 * * *'         (19:00 RO iarna)
+send-weekly-comeback        → '0 10 * * 1'         (luni 10 UTC)
+send-lives-refilled         → '*/30 * * * *'       (la 30 min)
+send-teacher-reminder       → '0 9 * * 2,4'        (marți & joi)
+```
 
-Rescriu `src/lib/iosBilling.ts`:
+### F. Admin — UI nou
 
-- Păstrez exporturile publice (`isIOSNative`, `initIOSBilling`, `purchaseIOSSubscription`, `restoreIOSPurchases`, `getIOSPrices`, `openIOSSubscriptionManagement`, `reconcileAfterPurchaseTimeout`, `IOS_PRODUCTS`, `STRIPE_TO_IOS`, tipurile) — `useSubscription` rămâne **neatins**.
-- Înăuntru: `registerPlugin<PyroIAPPlugin>('PyroIAP')` direct, fără SDK extern.
-- Păstrez sistemul de `dlog`/`derr` și buffer-ul de debug — îți rămâne butonul "Copiază log iOS billing".
-- `openIOSSubscriptionManagement` deschide `https://apps.apple.com/account/subscriptions` cu `App.openUrl` (sau `Browser`).
+În `/admin` adăugăm un buton **"📢 Anunță lecție nouă"** care invocă `notify-new-lesson` cu titlul + capitolul lecției nou publicate.
 
-### Pas 4 — Edge `verify-ios-purchase` rescris
+---
 
-Funcția va:
+## Ordinea execuției
 
-1. Primi `signedTransaction` (JWS) de la client.
-2. Decoda JWS-ul (header + payload base64) **fără** verificare criptografică în primă fază — pentru că Apple oferă deja chei rotate și ne complică Deno-ul.
-3. Apela **App Store Server API** (`/inApps/v1/transactions/{transactionId}`) cu un JWT semnat ES256 din secretele Apple → primește `signedTransactionInfo` autentic.
-4. Decoda payload-ul autentic → `productId`, `originalTransactionId`, `expiresDate`, `revocationDate`.
-5. Upsert în `play_billing_subscriptions` cu `platform='ios'`, exact ca acum.
-6. `profiles.is_premium = true`.
+1. Migrație DB: coloanele noi + trigger pe lives.
+2. 5 edge functions noi (cu CORS, validare JWT, push FCM/APNs).
+3. 5 cron jobs schedulate via SQL (folosind anon key + URL exact ca la `send-streak-reminder`).
+4. 4 cartonașe noi în React + integrare în `Index.tsx` și `account/TeacherClassesTab.tsx`.
+5. Buton admin pentru `notify-new-lesson`.
+6. Hooks pentru detectarea comeback-ului și a vieților pline (folosesc `localStorage` namespaced cu user.id, conform regulii din memorie).
 
-Dacă tranzacția e revocată / expirată → marchează inactiv.
+---
 
-Folosesc `jose` din `esm.sh` pentru semnarea JWT-ului ES256.
+## Ce NU includem (și de ce)
 
-### Pas 5 — Edge nouă `appstore-notifications-v2`
+- ❌ Anulare abonament din app pe iOS — interzis de Apple, deja avem deep link spre Settings.
+- ❌ Reminder pentru "vieți pierdute, vino înapoi peste X minute" — devine spam, deja userul vede timer-ul în `RefillLivesDialog`. Putem adăuga ulterior dacă vrei explicit.
 
-Webhook public (`verify_jwt = false`). Apple trimite `signedPayload` la fiecare event de subscription. Funcția:
-
-1. Decodează JWS-ul (payload este `notificationType` + `data.signedTransactionInfo`).
-2. Pentru events active (`SUBSCRIBED`, `DID_RENEW`, `DID_CHANGE_RENEWAL_STATUS=1`) → upsert `is_active=true`.
-3. Pentru inactive (`EXPIRED`, `REFUND`, `REVOKE`, `DID_FAIL_TO_RENEW` cu grace expired) → `is_active=false` + recheck `is_premium`.
-4. Match user via `originalTransactionId` în tabela existentă (sau prin `appAccountToken` pe care îl setăm la purchase = `user.id`).
-
-**Punct critic**: la `purchase()` în Swift voi seta `Product.PurchaseOption.appAccountToken(UUID(user.id))` ca să mapăm user-ul fără ambiguitate.
-
-### Pas 6 — Migrare config + curățenie
-
-- Scot `@revenuecat/purchases-capacitor` din `package.json`
-- Șterg edge-ul `revenuecat-webhook`
-- Adaug în `supabase/config.toml` un block pentru `appstore-notifications-v2` cu `verify_jwt = false`
-- În Xcode: capability **In-App Purchase** rămâne; nu mai e nevoie de altceva special.
-
-### Pas 7 — Testare end-to-end
-
-Build TestFlight nou. Tu testezi cu Sandbox account:
-
-1. Login → home → vezi prețuri reale.
-2. Cumperi student_monthly → vezi că scrie corect în DB.
-3. Force-close app → revii → premium activ (din `check-subscription`).
-4. Settings iOS → cancel sandbox sub → primim `EXPIRED` pe webhook → DB inactiv.
-5. Apăs "Restaurează achizițiile" pe alt device cu același Apple ID → reactivare.
-
-Eu voi adăuga logging masiv și un buton temporar "Trimite log la dev" pe AccountTab dacă apare ceva.
-
-## Detalii tehnice
-
-**StoreKit 2 versus StoreKit 1**: folosim StoreKit 2 (`async/await`, `Product.products(for:)`, `Transaction.updates`). Necesită **iOS 15+**. Verific în `Info.plist` că `MinimumOSVersion >= 15.0`; dacă nu, urc pragul (Capacitor 6 oricum cere iOS 14, deci nu pierdem device-uri reale).
-
-**De ce App Store Server API și nu doar verifyReceipt**: `verifyReceipt` este deprecated. Server API e modul oficial pentru server-to-server și e gândit pentru exact use-case-ul nostru (un singur originalTransactionId → toată istoria abonamentului).
-
-**De ce JWS dual-pass (decode local + re-fetch de la Apple)**: ne ferim de transactions falsificate de utilizatori jailbroken. Sursa de adevăr este răspunsul direct de la Apple, nu ce trimite clientul.
-
-**appAccountToken**: UUID v4 ce trebuie să fie exact `user.id` din Supabase. La fiecare purchase îl atașăm; webhook-ul îl primește înapoi → mapping user fără email lookup.
-
-**Race condition la purchase**: Swift listener-ul `Transaction.updates` rulează în background și poate trimite tranzacția înainte ca callback-ul lui `purchase()` să se întoarcă. Tratez idempotent prin `originalTransactionId` ca PK conceptual (UNIQUE pe `purchase_token` în tabelă — deja așa e).
-
-**Restore**: `AppStore.sync()` + iter peste `Transaction.currentEntitlements` → trimit fiecare tranzacție activă la edge.
-
-## Ce vei face manual tu
-
-1. **Înainte de Pas 4**: îmi dai 3 secrete (`APPLE_IAP_KEY_ID`, `APPLE_IAP_ISSUER_ID`, `APPLE_IAP_PRIVATE_KEY` — conținutul `.p8`).
-2. **Înainte de Pas 5**: după ce deploy-ăm edge-ul `appstore-notifications-v2`, îmi dai URL-ul lui și îl pui în App Store Connect → Notifications V2 (Production și Sandbox).
-3. **Build nou**: `npx cap sync ios` + Archive + TestFlight.
-4. **După ce totul merge**: poți închide proiectul din RevenueCat dashboard.
-
-## Ce risc rămâne
-
-- Apple Sandbox e notoriu de buggy (reproduceri lente, ID-uri stale). Avem timeout pe toate apelurile native.
-- Prima încărcare de produse poate fi de 5–10s pe Sandbox (rețea Apple). Pun spinner + cache 60s.
-- Dacă webhook-ul n-ajunge (rar), `check-subscription` rulat la deschidere app va sincroniza prin App Store Server API direct.
-
-## Ordinea de execuție când zici "go"
-
-1. Cer cele 3 secrete Apple IAP.
-2. Scriu plugin-ul Swift + .m + actualizez `Podfile`/`Package.swift` dacă e cazul.
-3. Rescriu `src/lib/iosBilling.ts`.
-4. Rescriu edge `verify-ios-purchase`.
-5. Creez edge `appstore-notifications-v2` + config.toml.
-6. Șterg `revenuecat-webhook` și pachetul npm.
-7. Îți spun să faci `npx cap sync ios` + Archive + să configurezi URL-ul webhook în App Store Connect.
-8. Test sandbox împreună.
-
-Confirmi și încep cu Pas 1 (cer secretele)?  
+Confirmi planul și plec la treabă?  
   
-Nu, inainte sa ceri secretele ma ghidezi pas cu pas cum le obtin, ce sunt, de unde le iau. Confirma la fiecare ca il am apoi le ceri. Sa fim atenti sa nu ratam nimic
+Unde este deep link spre setting? Nu am vazut

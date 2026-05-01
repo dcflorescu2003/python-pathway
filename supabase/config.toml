@@ -23,3 +23,18 @@ verify_jwt = false
 
 [functions.appstore-notifications-v2]
 verify_jwt = false
+
+[functions.send-evening-reminder]
+verify_jwt = false
+
+[functions.send-weekly-comeback]
+verify_jwt = false
+
+[functions.send-lives-refilled]
+verify_jwt = false
+
+[functions.send-teacher-reminder]
+verify_jwt = false
+
+[functions.notify-new-lesson]
+verify_jwt = false

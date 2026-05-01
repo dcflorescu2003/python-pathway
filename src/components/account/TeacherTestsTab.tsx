@@ -1,6 +1,7 @@
 import { useState } from "react";
 import TestManager from "@/components/teacher/TestManager";
 import TestBuilder from "@/components/teacher/TestBuilder";
+import TeacherPendingReviewBanner from "@/components/teacher/TeacherPendingReviewBanner";
 import { Card, CardContent } from "@/components/ui/card";
 import { AlertTriangle } from "lucide-react";
 
@@ -24,6 +25,7 @@ const TeacherTestsTab = ({ teacherStatus }: TeacherTestsTabProps) => {
 
   return (
     <div className="space-y-4">
+      <TeacherPendingReviewBanner />
       {teacherStatus === "unverified" && (
         <Card className="border-primary/30 bg-primary/5">
           <CardContent className="p-3">
