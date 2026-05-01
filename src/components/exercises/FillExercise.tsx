@@ -21,7 +21,8 @@ const FillExercise = ({ exercise, onAnswer, feedback }: Props) => {
   const [answers, setAnswers] = useState<Record<string, string>>({});
 
   const isBlankCorrect = (userAnswer: string, acceptedAnswers: string) => {
-    const alternatives = acceptedAnswers.split(",").map((a) => normalize(a));
+    // Acceptăm atât `,` cât și `|` ca separator între variante alternative.
+    const alternatives = acceptedAnswers.split(/[,|]/).map((a) => normalize(a));
     return alternatives.includes(normalize(userAnswer));
   };
 
@@ -55,7 +56,7 @@ const FillExercise = ({ exercise, onAnswer, feedback }: Props) => {
                 />
                 {feedback === "wrong" && (
                   <span className="text-xs text-primary ml-1">
-                    ({exercise.blanks![i].answer.split(",")[0]})
+                    ({exercise.blanks![i].answer.split(/[,|]/)[0].trim()})
                   </span>
                 )}
               </>
