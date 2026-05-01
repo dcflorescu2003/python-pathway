@@ -243,7 +243,7 @@ export default function CsvImporter({ targetTable, lessonId, existingCount, exis
               </Button>
             </div>
             <p>Tipuri: quiz, truefalse, fill, order, card, open_answer, problem</p>
-            <p>Blanks: variante separate prin „;" (mai multe blank-uri)</p>
+            <p>Blanks: „;" separă blank-urile diferite; „|" separă variante alternative pentru același blank (ex: <code>append|adauga</code>)</p>
             <p>Lines/Groups: separate prin „|"</p>
             <p className="text-amber-400/80 font-medium">⚠ Dacă un câmp conține virgulă, încadrați-l cu ghilimele: "text cu, virgulă"</p>
           </div>

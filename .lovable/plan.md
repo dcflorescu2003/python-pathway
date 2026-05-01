@@ -1,46 +1,44 @@
-# Plan: Profil — buton App Store, eliminare WebLogin, unificare flux Apple
+# Suport `|` ca separator de variante în import CSV (fill)
 
-## 1. Adaugă buton "Gestionează în App Store" în profil (sub "Premium activ")
+## Problema
+La importul CSV, exercițiile de tip `fill` acceptă blanks separate prin `;` (când ai mai multe spații goale), dar **nu** acceptă variante alternative pentru același blank. Runtime-ul (`FillExercise.tsx`) acceptă deja variante separate prin `,` în câmpul `answer`, dar parserul CSV nu convertește nimic din `|` → `,`.
 
-În `src/components/account/AccountProfileTab.tsx`, în secțiunea Premium activ (linia ~191-223), pe lângă butonul existent `Gestionează abonamentul` (vizibil doar pentru `source === "stripe"`), adăugăm o ramură pentru iOS native:
+Exemplul din captură: `x + 1 | x+1` ar trebui să devină 2 răspunsuri corecte pentru același blank.
 
-- Detectăm iOS native prin `useSubscription()` care expune deja `isIOSNative` și `openPortal` (acesta deja face `plugin.openManageSubscriptions()` cu fallback la `itms-apps://`).
-- Afișăm butonul `Gestionează în App Store` (iconă `Settings`) când `isIOSNative === true`, indiferent de `source`. La click apelează `openPortal()`.
-- Pentru Android native afișăm `Gestionează în Google Play` în același mod.
-- Butonul Stripe rămâne ca acum pentru web.
+## Soluția
+Un singur fix punctual în `src/components/admin/csvParser.ts`, în `rowToExercise`, case `"fill"`:
 
-## 2. Elimină cardul "Activează login pe web"
+```ts
+ex.blanks = blanksStr.split(";").map((b, i) => ({
+  id: `b${i + 1}`,
+  // Convert `|` (alternative variants) to `,` — runtime FillExercise
+  // splits by `,` and accepts any variant.
+  answer: b.split("|").map(a => a.trim()).filter(Boolean).join(","),
+}));
+```
 
-- Șterg complet importul și utilizarea `WebLoginSetupCard` din `AccountProfileTab.tsx` (liniile 17 și 168).
-- Șterg fișierul `src/components/account/WebLoginSetupCard.tsx` (nu mai e folosit nicăieri).
+Convenții rezultate:
+- `;` separă blank-urile diferite (când `code_template` are mai multe `___`)
+- `|` separă variantele alternative pentru **același** blank
+- `,` rămâne formatul intern stocat în DB (FillExercise îl știe deja)
 
-## 3. Unifică pentru Apple: adaugă email real + setează parolă + confirmă într-un singur flux
+Exemplu CSV:
+```
+fill,"...","...","...","l.___(5)",append|adauga,...
+```
+→ un blank, două variante acceptate: `append` și `adauga`.
 
-Înlocuim conținutul lui `RealEmailSetupCard.tsx` cu un wizard în 3 pași, vizibil doar pentru utilizatori `isPrivateRelay` care **nu au deja** email real verificat **sau** parolă setată. Folosim `useAuthMethods` (care expune `hasPassword`) + `useRealEmailReminder` (`hasVerifiedRealEmail`).
+```
+fill,"...","...","...","print(___, ___)",x+1|x + 1;y|y_val,...
+```
+→ două blank-uri; primul acceptă `x+1` sau `x + 1`, al doilea acceptă `y` sau `y_val`.
 
-Logică de afișare:
-- Dacă `!isPrivateRelay` → cardul nu apare (ca acum).
-- Dacă `hasVerifiedRealEmail && hasPassword` → afișăm starea verde "Cont complet configurat" cu emailul; nu mai cerem nimic.
-- Altfel → wizard cu 3 pași într-un singur card:
-  1. **Email**: input email + buton `Continuă` → apelează `request-email-change` (trimite OTP).
-  2. **Cod**: input OTP 6 cifre + buton `Verifică` → apelează `verify-email-change` (schimbă emailul în Supabase). La succes trecem automat la pas 3.
-  3. **Parolă**: input parolă (min 8) + confirmare + buton `Finalizează` → `supabase.auth.updateUser({ password })`. La succes: toast „Cont configurat!", `refreshAuth()` + `refreshReminder()`.
-- Sărim peste pasul 3 dacă `hasPassword === true` deja.
-- Sărim peste pașii 1-2 dacă `hasVerifiedRealEmail === true` deja (cazul cineva care a verificat emailul dar n-a setat parolă încă).
+## Verificări secundare
+- `generateExportCSV` (linia 343) face `ex.blanks.map(b => b.answer).join(";")`. Dacă un `b.answer` conține deja `,` (variante), exportul îl va salva tot cu `,`. Pentru round-trip curat, vom înlocui `,` → `|` la export, ca să refolosim convenția nouă: `r.blanks = ex.blanks.map(b => (b.answer || "").split(",").map(a => a.trim()).join("|")).join(";")`.
+- Texte de ajutor:
+  - `CsvImporter.tsx` linia 246: actualizez să menționeze `|` pentru variante.
+  - În template-uri (`getExercisesTemplateCSV`, `getContentLessonTemplateCSV`) comentariul existent menționează deja `|` pentru variante (linia 405-406), dar exemplul real nu îl folosește — îl las ca este, comentariul e suficient.
 
-Titlu nou card: „Finalizează contul". Subtitlu: „Adaugă un email real și o parolă pentru a-ți recupera contul și a te loga de pe orice device."
-
-## 4. Curățare
-
-- Cardul vechi `WebLoginSetupCard.tsx` se șterge.
-- Memoria `mem://features/account-management/hybrid-login` și `mem://features/account-management/real-email-enforcement` rămân valabile conceptual, dar UI-ul a fuzionat — voi actualiza aceste memorii ca să reflecte fluxul unificat (un singur card pentru Apple, fără card separat pentru web login).
-
-## Detalii tehnice
-
-Fișiere atinse:
-- `src/components/account/AccountProfileTab.tsx` — adaugă buton iOS/Android sub Premium activ; elimină `<WebLoginSetupCard />` și importul.
-- `src/components/account/RealEmailSetupCard.tsx` — rescris ca wizard 3 pași (email → OTP → parolă), folosește și `hasPassword` din `useAuthMethods`.
-- `src/components/account/WebLoginSetupCard.tsx` — șters.
-- `mem://features/account-management/hybrid-login` și `mem://features/account-management/real-email-enforcement` — actualizate.
-
-Niciun edge function nou; refolosim `request-email-change`, `verify-email-change` și `supabase.auth.updateUser`.
+## Fișiere modificate
+- `src/components/admin/csvParser.ts` — parser fill + export
+- `src/components/admin/CsvImporter.tsx` — text ajutor în dialog

@@ -203,8 +203,13 @@ function rowToExercise(row: Record<string, string>): ParsedExercise {
       ex.code_template = row.code_template || null;
       const blanksStr = row.blanks || "";
       if (!blanksStr) { ex.error = "Blanks lipsă"; break; }
-      // blanks separate prin ; iar variante prin |
-      ex.blanks = blanksStr.split(";").map((b, i) => ({ id: `b${i + 1}`, answer: b.trim() }));
+      // blanks separate prin `;` (mai multe spații goale)
+      // variante alternative pentru același blank separate prin `|`
+      // (FillExercise acceptă intern variante separate prin `,`)
+      ex.blanks = blanksStr.split(";").map((b, i) => ({
+        id: `b${i + 1}`,
+        answer: b.split("|").map(a => a.trim()).filter(Boolean).join(","),
+      }));
       break;
     }
     case "order": {
@@ -340,7 +345,16 @@ export function generateExportCSV(exercises: any[]): string {
     r.explanation = ex.explanation || "";
     r.code_template = ex.code_template || ex.codeTemplate || "";
     if (ex.blanks && Array.isArray(ex.blanks)) {
-      r.blanks = ex.blanks.map((b: any) => b.answer).join(";");
+      // Round-trip: convertește variantele interne (`,`) înapoi la `|` pentru CSV.
+      r.blanks = ex.blanks
+        .map((b: any) =>
+          (b.answer || "")
+            .split(",")
+            .map((a: string) => a.trim())
+            .filter(Boolean)
+            .join("|")
+        )
+        .join(";");
     }
     if (ex.lines && Array.isArray(ex.lines)) {
       r.lines = ex.lines.map((l: any) => l.text).join("|");
