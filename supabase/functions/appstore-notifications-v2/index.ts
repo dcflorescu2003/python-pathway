@@ -189,6 +189,7 @@ serve(async (req) => {
       ? new Date(expirationMs).toISOString()
       : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
     const planId = String(productId).includes("yearly") ? "yearly" : "monthly";
+    const isTeacherProduct = String(productId).includes("teacher");
     const purchaseToken = `ios:${origTxId}`;
 
     const autoRenewing = renewalInfo?.autoRenewStatus === 1;
