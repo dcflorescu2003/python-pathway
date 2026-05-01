@@ -199,7 +199,7 @@ const AccountProfileTab = ({
             {source === "coupon" && (
               <p className="text-[10px] text-muted-foreground mt-1">Activat prin cupon</p>
             )}
-            {source === "stripe" && (
+            {(source === "stripe" || isIOSNative || isAndroidNative) && (
               <Button
                 variant="outline"
                 size="sm"
@@ -212,7 +212,13 @@ const AccountProfileTab = ({
                 }}
               >
                 <CreditCard className="h-4 w-4" />
-                {portalLoading ? "Se deschide..." : "Gestionează abonamentul"}
+                {portalLoading
+                  ? "Se deschide..."
+                  : isIOSNative
+                  ? "Gestionează în App Store"
+                  : isAndroidNative
+                  ? "Gestionează în Google Play"
+                  : "Gestionează abonamentul"}
               </Button>
             )}
           </CardContent>
