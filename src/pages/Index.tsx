@@ -60,6 +60,9 @@ const Index = (): JSX.Element => {
   const [teacherStatus, setTeacherStatus] = useState<string | null>(null);
   const [showTeacherPremium, setShowTeacherPremium] = useState(false);
   const [showTeacherPremiumPopup, setShowTeacherPremiumPopup] = useState(false);
+  const [showLivesRefilled, setShowLivesRefilled] = useState(false);
+  const [showComeback, setShowComeback] = useState(false);
+  const [comebackDays, setComebackDays] = useState(0);
 
   useEffect(() => {
     if (authLoading) return;
