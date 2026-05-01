@@ -1,6 +1,7 @@
 import { useState } from "react";
 import TestManager from "@/components/teacher/TestManager";
 import TestBuilder from "@/components/teacher/TestBuilder";
+import TeacherPendingReviewBanner from "@/components/teacher/TeacherPendingReviewBanner";
 import { Card, CardContent } from "@/components/ui/card";
 import { AlertTriangle } from "lucide-react";
 
