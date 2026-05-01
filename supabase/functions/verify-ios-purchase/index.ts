@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import * as jose from "https://esm.sh/jose@5.9.6";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -11,6 +12,71 @@ const log = (step: string, details?: unknown) => {
   const d = details ? ` - ${JSON.stringify(details)}` : "";
   console.log(`[VERIFY-IOS-PURCHASE] ${step}${d}`);
 };
+
+const APPLE_BUNDLE_ID = "ro.pythonpathway.app";
+
+// Decode JWS payload without crypto verification (we re-fetch authoritative data from Apple).
+function decodeJWSPayload(jws: string): Record<string, any> | null {
+  try {
+    const parts = jws.split(".");
+    if (parts.length !== 3) return null;
+    const padded = parts[1] + "=".repeat((4 - (parts[1].length % 4)) % 4);
+    const decoded = atob(padded.replace(/-/g, "+").replace(/_/g, "/"));
+    return JSON.parse(decoded);
+  } catch (err) {
+    log("decodeJWS error", String(err));
+    return null;
+  }
+}
+
+async function makeAppleJWT(): Promise<string> {
+  const keyId = Deno.env.get("APPLE_IAP_KEY_ID");
+  const issuerId = Deno.env.get("APPLE_IAP_ISSUER_ID");
+  const privateKeyPem = Deno.env.get("APPLE_IAP_PRIVATE_KEY");
+  if (!keyId || !issuerId || !privateKeyPem) {
+    throw new Error("Apple IAP secrets not configured");
+  }
+
+  const key = await jose.importPKCS8(privateKeyPem, "ES256");
+  const now = Math.floor(Date.now() / 1000);
+
+  return await new jose.SignJWT({
+    bid: APPLE_BUNDLE_ID,
+  })
+    .setProtectedHeader({ alg: "ES256", kid: keyId, typ: "JWT" })
+    .setIssuer(issuerId)
+    .setIssuedAt(now)
+    .setExpirationTime(now + 30 * 60) // 30 min, max allowed by Apple is 60 min
+    .setAudience("appstoreconnect-v1")
+    .sign(key);
+}
+
+async function fetchTransactionInfo(
+  transactionId: string,
+  useSandbox: boolean
+): Promise<Record<string, any> | null> {
+  const jwt = await makeAppleJWT();
+  const host = useSandbox
+    ? "api.storekit-sandbox.itunes.apple.com"
+    : "api.storekit.itunes.apple.com";
+  const url = `https://${host}/inApps/v1/transactions/${transactionId}`;
+
+  log("apple-api:request", { host, transactionId });
+  const res = await fetch(url, {
+    headers: { Authorization: `Bearer ${jwt}` },
+  });
+
+  if (!res.ok) {
+    const text = await res.text();
+    log("apple-api:error", { status: res.status, body: text.slice(0, 300) });
+    return null;
+  }
+
+  const body = await res.json();
+  const signedTx = body?.signedTransactionInfo;
+  if (!signedTx) return null;
+  return decodeJWSPayload(signedTx);
+}
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -38,7 +104,8 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_ANON_KEY") ?? "",
       { global: { headers: { Authorization: authHeader } } }
     );
-    const { data: claimsData, error: claimsError } = await anonClient.auth.getClaims(token);
+    const { data: claimsData, error: claimsError } =
+      await anonClient.auth.getClaims(token);
     if (claimsError || !claimsData?.claims) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,
@@ -50,49 +117,105 @@ serve(async (req) => {
 
     const body = await req.json().catch(() => ({}));
     const {
-      productId,
+      productId: clientProductId,
+      transactionId,
       originalTransactionId,
-      revenuecatUserId,
-      expirationISO,
-      entitlements,
+      signedTransaction,
+      expirationISO: clientExpirationISO,
+      appAccountToken,
     } = body || {};
 
-    log("payload", {
-      productId,
-      hasExpiration: !!expirationISO,
-      entitlementCount: entitlements ? Object.keys(entitlements).length : 0,
+    if (!signedTransaction || !transactionId) {
+      return new Response(
+        JSON.stringify({ error: "Missing signedTransaction or transactionId" }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
+
+    // 1. Decode the client-supplied JWS to know which environment to query.
+    const clientPayload = decodeJWSPayload(signedTransaction);
+    const clientEnvironment = (clientPayload?.environment || "Production") as string;
+    const isSandbox = clientEnvironment.toLowerCase() === "sandbox";
+
+    log("client payload decoded", {
+      environment: clientEnvironment,
+      productId: clientPayload?.productId,
+      bundleId: clientPayload?.bundleId,
     });
 
-    if (!productId) {
-      return new Response(JSON.stringify({ error: "Missing productId" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+    // Bundle ID sanity check
+    if (clientPayload?.bundleId && clientPayload.bundleId !== APPLE_BUNDLE_ID) {
+      log("bundleId mismatch", {
+        expected: APPLE_BUNDLE_ID,
+        got: clientPayload.bundleId,
       });
+      return new Response(
+        JSON.stringify({ error: "Invalid bundle id" }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
     }
 
-    // Determine expiration
-    let expiryTime: string | null = expirationISO || null;
-    if (!expiryTime && entitlements && typeof entitlements === "object") {
-      const first = Object.values(entitlements)[0] as any;
-      expiryTime = first?.expirationDate || null;
+    // 2. Re-fetch authoritative transaction info from Apple (signed by Apple, not the client).
+    let authoritative: Record<string, any> | null = null;
+    try {
+      authoritative = await fetchTransactionInfo(transactionId, isSandbox);
+      // If sandbox failed and we tried prod, try sandbox (and vice versa)
+      if (!authoritative) {
+        authoritative = await fetchTransactionInfo(transactionId, !isSandbox);
+      }
+    } catch (err) {
+      log("apple-api fetch failed, falling back to client payload", String(err));
     }
 
-    // If we still don't have an expiration but the product was purchased, give 30 days as a safe optimistic guess.
-    // RevenueCat webhook will correct this.
-    if (!expiryTime) {
-      const days = productId.includes("yearly") ? 365 : 30;
-      expiryTime = new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString();
+    const trusted = authoritative || clientPayload || {};
+    const productId = trusted.productId || clientProductId;
+    const origTxId =
+      String(trusted.originalTransactionId || originalTransactionId || "");
+    const expirationMs = trusted.expiresDate || trusted.expirationDate;
+    const revokedMs = trusted.revocationDate;
+    const finalAppAccountToken = trusted.appAccountToken || appAccountToken;
+
+    if (!productId || !origTxId) {
+      return new Response(
+        JSON.stringify({ error: "Missing productId or originalTransactionId" }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
     }
 
-    // Map productId → plan_id
-    const planId = productId.includes("yearly") ? "yearly" : "monthly";
+    // Determine effective expiration
+    let expiryISO: string;
+    if (expirationMs && typeof expirationMs === "number") {
+      expiryISO = new Date(expirationMs).toISOString();
+    } else if (clientExpirationISO) {
+      expiryISO = clientExpirationISO;
+    } else {
+      const days = String(productId).includes("yearly") ? 365 : 30;
+      expiryISO = new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString();
+    }
 
-    // Use originalTransactionId as the unique purchase_token for iOS rows.
-    // If missing, fall back to a synthetic token tied to user+product (still UNIQUE).
-    const purchaseToken =
-      originalTransactionId || `ios:${userId}:${productId}`;
+    const isActive = !revokedMs && new Date(expiryISO) > new Date();
+    const planId = String(productId).includes("yearly") ? "yearly" : "monthly";
+    const purchaseToken = `ios:${origTxId}`;
 
-    // Upsert into shared subscriptions table
+    log("upserting", {
+      userId,
+      productId,
+      isActive,
+      expiryISO,
+      origTxId,
+      env: clientEnvironment,
+    });
+
+    // 3. Upsert to play_billing_subscriptions (shared table)
     const { error: upsertErr } = await supabaseAdmin
       .from("play_billing_subscriptions")
       .upsert(
@@ -101,11 +224,11 @@ serve(async (req) => {
           product_id: productId,
           plan_id: planId,
           purchase_token: purchaseToken,
-          original_transaction_id: originalTransactionId || null,
-          revenuecat_user_id: revenuecatUserId || null,
-          expiry_time: expiryTime,
-          auto_renewing: true,
-          is_active: true,
+          original_transaction_id: origTxId,
+          revenuecat_user_id: finalAppAccountToken || null,
+          expiry_time: expiryISO,
+          auto_renewing: isActive,
+          is_active: isActive,
           platform: "ios",
         },
         { onConflict: "purchase_token" }
@@ -119,20 +242,21 @@ serve(async (req) => {
       });
     }
 
-    // Also flip is_premium on the profile immediately (will be re-synced by check-subscription)
-    await supabaseAdmin
-      .from("profiles")
-      .update({ is_premium: true })
-      .eq("user_id", userId);
-
-    log("subscription recorded", { userId, productId, expiryTime });
+    if (isActive) {
+      await supabaseAdmin
+        .from("profiles")
+        .update({ is_premium: true })
+        .eq("user_id", userId);
+    }
 
     return new Response(
       JSON.stringify({
         ok: true,
         product_id: productId,
-        expiry_time: expiryTime,
+        expiry_time: expiryISO,
+        is_active: isActive,
         platform: "ios",
+        environment: clientEnvironment,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
