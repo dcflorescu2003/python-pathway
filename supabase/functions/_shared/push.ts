@@ -11,8 +11,25 @@ export async function sendFCMPushes(
 
   const { data: tokens } = await adminClient
     .from("device_tokens")
-    .select("token, user_id, platform, created_at")
+    .select("token, user_id, platform, created_at, apns_environment")
     .in("user_id", userIds);
+
+  // Pre-compute unread badge counts per user (for iOS)
+  const badgeByUser: Record<string, number> = {};
+  try {
+    const { data: unread } = await adminClient
+      .from("notifications")
+      .select("user_id")
+      .in("user_id", userIds)
+      .eq("read", false);
+    if (unread) {
+      for (const r of unread) {
+        badgeByUser[r.user_id] = (badgeByUser[r.user_id] ?? 0) + 1;
+      }
+    }
+  } catch (e) {
+    console.error("Badge count fetch error:", e);
+  }
 
   if (!tokens || tokens.length === 0) return 0;
 
