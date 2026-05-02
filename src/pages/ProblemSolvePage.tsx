@@ -105,8 +105,8 @@ const ProblemSolvePage = () => {
 
   return (
     <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="min-h-screen bg-background pb-[calc(var(--sab)+32px)]">
-      <div className="sticky top-0 z-40 bg-background/95 backdrop-blur-md border-b border-border">
-        <div className="flex items-center gap-3 px-4 py-3 pt-[calc(var(--sat)+16px)]">
+      <div className="sticky top-0 z-40 bg-background/95 backdrop-blur-md border-b border-border pt-[calc(var(--sat)+8px)]">
+        <div className="flex items-center gap-3 px-4 py-3">
           <button onClick={() => navigate("/problems")} className="active:scale-90 transition-transform">
             <ArrowLeft className="h-6 w-6 text-foreground" />
           </button>
