@@ -1,44 +1,53 @@
-# Suport `|` ca separator de variante în import CSV (fill)
-
 ## Problema
-La importul CSV, exercițiile de tip `fill` acceptă blanks separate prin `;` (când ai mai multe spații goale), dar **nu** acceptă variante alternative pentru același blank. Runtime-ul (`FillExercise.tsx`) acceptă deja variante separate prin `,` în câmpul `answer`, dar parserul CSV nu convertește nimic din `|` → `,`.
 
-Exemplul din captură: `x + 1 | x+1` ar trebui să devină 2 răspunsuri corecte pentru același blank.
+1. **Notificări duplicate dimineața pe Android**: Există un singur cron (`send-streak-reminder-morning` la 06:00). Cauza dublării e că în `device_tokens` mulți useri au mai multe token-uri pentru același device (vechi + nou, sau duplicate exacte). Funcția trimite push pentru fiecare token în parte → 2+ notificări. Exemple găsite: utilizator cu 2 token-uri Android identice; alți useri cu 4 token-uri (Android+iOS amestecate).
+
+2. **Reminder de seară greșit**: `send-evening-reminder` trimite acum useri-lor care **AU fost activi azi** (`last_activity_date = today`) și au făcut <3 lecții. Userul vrea exact invers — celor care **NU au fost activi azi**.
 
 ## Soluția
-Un singur fix punctual în `src/components/admin/csvParser.ts`, în `rowToExercise`, case `"fill"`:
 
-```ts
-ex.blanks = blanksStr.split(";").map((b, i) => ({
-  id: `b${i + 1}`,
-  // Convert `|` (alternative variants) to `,` — runtime FillExercise
-  // splits by `,` and accepts any variant.
-  answer: b.split("|").map(a => a.trim()).filter(Boolean).join(","),
-}));
+### 1. Deduplicare device_tokens (rezolvă notificarea dublă)
+
+**Migrație SQL**:
+- Șterge duplicate exacte (același `token`) — păstrează doar cel mai recent.
+- Adaugă constraint `UNIQUE (token)` ca să nu se mai repete.
+- Adaugă constraint `UNIQUE (user_id, platform, token)` ca backup.
+- Pentru fiecare user, păstrează cel mult 1 token activ per (user_id, platform): la INSERT din client, dacă există un token mai vechi pe același device, să fie înlocuit. Asta se face prin upsert (vezi pasul 2) + trigger care șterge token-urile mai vechi de 60 zile pentru același user pe aceeași platformă când se introduce unul nou.
+
+**Curățare imediată**:
+```sql
+-- păstrează doar cel mai recent token per valoare distinctă
+DELETE FROM device_tokens a USING device_tokens b
+WHERE a.token = b.token AND a.created_at < b.created_at;
 ```
 
-Convenții rezultate:
-- `;` separă blank-urile diferite (când `code_template` are mai multe `___`)
-- `|` separă variantele alternative pentru **același** blank
-- `,` rămâne formatul intern stocat în DB (FillExercise îl știe deja)
+### 2. Logică push robustă (deduplicare la trimitere)
 
-Exemplu CSV:
-```
-fill,"...","...","...","l.___(5)",append|adauga,...
-```
-→ un blank, două variante acceptate: `append` și `adauga`.
+În `_shared/push.ts` și în `send-streak-reminder/index.ts`:
+- Înainte de send, deduplică token-urile per user (Set pe valoarea `token`).
+- Limitează la **maxim un push per (user_id, platform)** — păstrează cel mai recent `created_at`. Asta garantează că, chiar dacă rămân token-uri vechi nesterse, userul primește o singură notificare pe Android și una pe iOS.
+- Token-urile pentru care FCM/APNs returnează `UNREGISTERED` / `NOT_FOUND` / `BadDeviceToken` să fie șterse (deja se face în `send-push`, dar nu și în reminderele de cron — adăugăm aceeași curățare).
 
-```
-fill,"...","...","...","print(___, ___)",x+1|x + 1;y|y_val,...
-```
-→ două blank-uri; primul acceptă `x+1` sau `x + 1`, al doilea acceptă `y` sau `y_val`.
+### 3. Inversare logică `send-evening-reminder`
 
-## Verificări secundare
-- `generateExportCSV` (linia 343) face `ex.blanks.map(b => b.answer).join(";")`. Dacă un `b.answer` conține deja `,` (variante), exportul îl va salva tot cu `,`. Pentru round-trip curat, vom înlocui `,` → `|` la export, ca să refolosim convenția nouă: `r.blanks = ex.blanks.map(b => (b.answer || "").split(",").map(a => a.trim()).join("|")).join(";")`.
-- Texte de ajutor:
-  - `CsvImporter.tsx` linia 246: actualizez să menționeze `|` pentru variante.
-  - În template-uri (`getExercisesTemplateCSV`, `getContentLessonTemplateCSV`) comentariul existent menționează deja `|` pentru variante (linia 405-406), dar exemplul real nu îl folosește — îl las ca este, comentariul e suficient.
+Modific query-ul în `supabase/functions/send-evening-reminder/index.ts`:
+- Înlocuiesc filtrul `eq("last_activity_date", todayStr)` cu **users care NU au activitate azi**: `last_activity_date < todayStr` (sau IS NULL).
+- Păstrez idempotency-ul (`last_evening_reminder_at != todayStr`).
+- Elimin verificarea „>= 3 lecții azi" (irelevantă pentru useri inactivi).
+- Mesajele rămân generice „mai e timp pentru o lecție rapidă" — se potrivesc.
+- Opțional: limitez la useri care au logat în ultimele 14 zile (`last_activity_date >= now()-14`) ca să nu spammăm conturile abandonate. Recomand să fie inclus.
+
+### 4. Refolosire helper `sendFCMPushes`
+
+`send-streak-reminder` are inline ~100 linii de cod FCM identic cu `_shared/push.ts`. Îl înlocuiesc cu apelul la helper-ul shared (modificat să facă deduplicare).
 
 ## Fișiere modificate
-- `src/components/admin/csvParser.ts` — parser fill + export
-- `src/components/admin/CsvImporter.tsx` — text ajutor în dialog
+
+- `supabase/functions/_shared/push.ts` — deduplicare token-uri per (user, platform), cleanup token-uri invalide.
+- `supabase/functions/send-streak-reminder/index.ts` — folosește `sendFCMPushes` în loc de logică inline.
+- `supabase/functions/send-evening-reminder/index.ts` — query inversat (useri inactivi azi).
+- Migrație nouă: deduplicare + UNIQUE constraint pe `device_tokens.token`.
+
+## Notă
+
+Cron job-urile rămân neschimbate — există deja o singură intrare pentru `send-streak-reminder-morning` (06:00 UTC) și una pentru `send-evening-reminder` (17:00 UTC). Dublarea pe Android nu vine din cron, ci din token-uri duplicate.
