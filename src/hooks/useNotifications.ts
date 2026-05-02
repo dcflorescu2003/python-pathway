@@ -32,6 +32,28 @@ export const useNotifications = () => {
     refetchInterval: 30000,
   });
 
+  // Real-time updates: any new notification for this user invalidates the cache instantly.
+  useEffect(() => {
+    if (!user) return;
+    const channel = supabase
+      .channel(`notifications-${user.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "notifications",
+          filter: `user_id=eq.${user.id}`,
+        },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ["notifications", user.id] });
+        }
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user, queryClient]);
   const markAsRead = useMutation({
     mutationFn: async (id: string) => {
       const { error } = await supabase
