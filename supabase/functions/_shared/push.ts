@@ -35,7 +35,7 @@ export async function sendFCMPushes(
 
   // Step 1: dedupe by token value globally (just in case constraint isn't there)
   const seenTokens = new Set<string>();
-  const uniqueTokens: Array<{ token: string; user_id: string; platform: string; created_at: string }> = [];
+  const uniqueTokens: Array<{ token: string; user_id: string; platform: string; created_at: string; apns_environment?: string | null }> = [];
   for (const t of tokens) {
     if (seenTokens.has(t.token)) continue;
     seenTokens.add(t.token);
@@ -43,7 +43,7 @@ export async function sendFCMPushes(
   }
 
   // Step 2: keep only the most recent token per (user_id, platform)
-  const bestPerUserPlatform: Record<string, { token: string; user_id: string; platform: string; created_at: string }> = {};
+  const bestPerUserPlatform: Record<string, { token: string; user_id: string; platform: string; created_at: string; apns_environment?: string | null }> = {};
   for (const t of uniqueTokens) {
     const platform = (t.platform || "android").toLowerCase() === "ios" ? "ios" : "android";
     const key = `${t.user_id}|${platform}`;
