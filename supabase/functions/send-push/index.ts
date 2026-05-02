@@ -223,7 +223,7 @@ Deno.serve(async (req) => {
 
     const { data: tokens, error: tokensError } = await adminClient
       .from("device_tokens")
-      .select("token, platform")
+      .select("token, platform, user_id, apns_environment")
       .in("user_id", student_ids);
 
     console.log("[SEND-PUSH] Device tokens found:", tokens?.length ?? 0, "error:", tokensError?.message ?? "none");
@@ -233,6 +233,23 @@ Deno.serve(async (req) => {
         JSON.stringify({ sent: 0, message: "No device tokens found" }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
+    }
+
+    // Pre-compute unread badge counts per user (for iOS)
+    const badgeByUser: Record<string, number> = {};
+    try {
+      const { data: unread } = await adminClient
+        .from("notifications")
+        .select("user_id")
+        .in("user_id", student_ids)
+        .eq("read", false);
+      if (unread) {
+        for (const r of unread as Array<{ user_id: string }>) {
+          badgeByUser[r.user_id] = (badgeByUser[r.user_id] ?? 0) + 1;
+        }
+      }
+    } catch (e) {
+      console.error("[SEND-PUSH] Badge count fetch error:", e);
     }
 
     // Lazy-load FCM creds only if we have Android tokens
@@ -250,7 +267,7 @@ Deno.serve(async (req) => {
     let sent = 0;
     const tokensToDelete: string[] = [];
 
-    for (const row of tokens as Array<{ token: string; platform: string }>) {
+    for (const row of tokens as Array<{ token: string; platform: string; user_id: string; apns_environment: string | null }>) {
       const deviceToken = row.token;
       const platform = row.platform;
       const tokenPreview = deviceToken.substring(0, 20) + "...";
@@ -258,11 +275,26 @@ Deno.serve(async (req) => {
       if (platform === "ios") {
         // === iOS via APNs direct ===
         try {
-          console.log("[SEND-PUSH] iOS token, sending via APNs:", tokenPreview);
-          const result = await sendApnsPush(deviceToken, title, msgBody);
-          console.log("[SEND-PUSH] APNs response status:", result.status, "body:", result.bodyText);
+          const preferredEnv: "sandbox" | "production" =
+            row.apns_environment === "sandbox" ? "sandbox" : "production";
+          const badge = badgeByUser[row.user_id] ?? 1;
+          console.log("[SEND-PUSH] iOS token, sending via APNs:", tokenPreview, "env:", preferredEnv, "badge:", badge);
+          const result = await sendApnsPush(deviceToken, title, msgBody, badge, preferredEnv);
+          console.log("[SEND-PUSH] APNs response status:", result.status, "usedEnv:", result.usedEnv);
           if (result.ok) {
             sent++;
+            // Persist environment correction if it changed
+            if (result.usedEnv !== preferredEnv) {
+              try {
+                await adminClient
+                  .from("device_tokens")
+                  .update({ apns_environment: result.usedEnv })
+                  .eq("token", deviceToken);
+                console.log("[SEND-PUSH] Persisted apns_environment:", result.usedEnv);
+              } catch (e) {
+                console.error("[SEND-PUSH] Failed to persist apns_environment:", e);
+              }
+            }
           } else {
             // 410 Unregistered or 400 BadDeviceToken => cleanup
             if (
