@@ -249,7 +249,7 @@ const LessonPage = () => {
 
   return (
     <div className="fixed inset-0 bg-background flex flex-col">
-      <header className="border-b border-border bg-background/80 backdrop-blur-md px-4 py-3 pt-[calc(var(--sat)+8px)]">
+      <header className="border-b border-border bg-background/80 backdrop-blur-md px-4 py-3 pt-[var(--sat)]">
         <div className="flex items-center gap-3">
           <button onClick={() => navigate(`/chapter/${chapter.id}`)} className="touch-target flex items-center justify-center">
             <X className="h-6 w-6 text-muted-foreground" />

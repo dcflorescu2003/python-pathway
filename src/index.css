@@ -82,8 +82,15 @@
      with a guaranteed minimum so devices without notch / home indicator
      (iPhone SE, older Androids) still get breathing room from edges. */
   :root {
-    --sat: max(env(safe-area-inset-top, 0px), var(--android-sait, 0px), 16px);
-    --sab: max(env(safe-area-inset-bottom, 0px), var(--android-saib, 0px), 24px);
+    /* Raw safe-area insets (iOS env + Android injected from MainActivity) */
+    --sat-raw: max(env(safe-area-inset-top, 0px), var(--android-sait, 0px));
+    --sab-raw: max(env(safe-area-inset-bottom, 0px), var(--android-saib, 0px));
+
+    /* Public safe-area tokens with a minimum floor for devices without notch/home indicator.
+       On iPhone notch/Dynamic Island (~44-59px) and home indicator (~34px) the raw value wins,
+       so no extra space is added. On Android edge-to-edge without insets the floor kicks in. */
+    --sat: max(var(--sat-raw), 24px);
+    --sab: max(var(--sab-raw), 28px);
     --sal: max(env(safe-area-inset-left, 0px), var(--android-sail, 0px), 0px);
     --sar: max(env(safe-area-inset-right, 0px), var(--android-sair, 0px), 0px);
   }

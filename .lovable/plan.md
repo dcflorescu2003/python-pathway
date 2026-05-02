@@ -1,72 +1,78 @@
-## Scop
+## Problema
 
-Pe Android, bara de status (sus) și bara de gesturi/navigație (jos) se suprapun cu interfața pe unele ecrane. Pagina **Acasă** are deja un spațiu corect deasupra headerului. Vrem **același comportament** pe toate ecranele: header fix puțin coborât sub bara de status, iar footer/bottom-nav puțin ridicat de bara de gesturi.
+Pe iPhone, după mărirea minimelor safe-area (`--sat` 16px, `--sab` 24px) și adăugarea `+8px` la headere via `pt-[calc(var(--sat)+8px)]`:
 
-## Diagnostic
-
-Variabilele safe-area sunt deja definite în `src/index.css`:
-- `--sat` (top) cu un minim de 12px
-- `--sab` (bottom) cu un minim de 16px
-
-Dar headerele nu folosesc același padding peste tot:
-- ✅ `Index` (Acasă), `LessonPage`, `ManualLessonPage`, `SkipChallengePage` → `pt-[var(--sat)]` (corect, dar uneori prea aproape)
-- ⚠️ `ProblemsPage`, `ProblemSolvePage` → padding pe `<div>` interior, nu pe `<header>` → marginea fundalului headerului se pierde sub status bar
-- ⚠️ Pagini cu `pt-[calc(var(--sat)+8px)]` (Auth/Cont, Chapter, ChapterTheory, Admin, Support, Privacy, Reset, DeleteAccount, Leaderboard, TakeTest) — sunt aproape ok, dar inconsistente între ele
-
-`MobileLayout` (Acasă/Probleme/Clasament/Cont) are deja `pb-[calc(4rem+var(--sab))]` și `BottomNav` are `pb-[var(--sab)]` — dar bara însăși are doar 16px minim, ceea ce pe telefoane cu gesture bar (majoritatea Android 13+) nu lasă suficient spațiu vizual.
+- iOS raportează deja `env(safe-area-inset-top)` ≈ 44-59px (notch/Dynamic Island) și `safe-area-inset-bottom` ≈ 34px (home indicator).
+- `+8px` se cumulează → header ajunge la ~52-67px de la marginea fizică, prea spațiat sus.
+- Identic jos: BottomNav cu `pb-[var(--sab)]` (=34px pe iPhone) + 4rem înălțime e ok, dar feedback-ul de la lecții cu `pb-[var(--sab)]` se ridică prea mult.
 
 ## Soluție
 
-### 1. Mărește minimele safe-area pentru un aspect mai aerisit (`src/index.css`)
+Eliminăm complet `+8px` din padding-uri și ne bazăm pe `--sat` / `--sab` cu un **minim suficient prin ele însele**. Astfel:
 
-```text
---sat: max(env(safe-area-inset-top, 0px), var(--android-sait, 0px), 16px);
---sab: max(env(safe-area-inset-bottom, 0px), var(--android-saib, 0px), 24px);
+- **iPhone**: insetul real (44-59px sus, 34px jos) = padding-ul efectiv → niciun adaos.
+- **Android cu cutout**: la fel, insetul real e deja ok.
+- **Android edge-to-edge fără insets** (sau iPhone SE fără notch): minimul intră în joc → ~24px sus, 28px jos.
+
+### Pas 1: Tunează minimele în `src/index.css`
+
+```css
+:root {
+  --sat-raw: max(env(safe-area-inset-top, 0px), var(--android-sait, 0px));
+  --sab-raw: max(env(safe-area-inset-bottom, 0px), var(--android-saib, 0px));
+
+  /* Floor de 24/28px se aplică DOAR când raw < floor (device fără notch/home bar).
+     Pe iPhone, raw-ul (44-59 / 34) câștigă oricum → fără spațiu suplimentar. */
+  --sat: max(var(--sat-raw), 24px);
+  --sab: max(var(--sab-raw), 28px);
+  --sal: max(env(safe-area-inset-left, 0px), var(--android-sail, 0px), 0px);
+  --sar: max(env(safe-area-inset-right, 0px), var(--android-sair, 0px), 0px);
+}
 ```
 
-Astfel chiar și pe device-uri care nu raportează insets (Android edge-to-edge fără cutout), header și footer rămân deplasate clar față de marginile fizice.
+### Pas 2: Înlocuiește `pt-[calc(var(--sat)+8px)]` cu `pt-[var(--sat)]`
 
-### 2. Standardizează headerul pe toate paginile
+Pe toate paginile cu header sticky — adaosul de 8px nu mai e necesar acum că floor-ul e 24px:
 
-Folosește o singură formulă: `pt-[calc(var(--sat)+8px)]` pe elementul `<header>` (nu pe div-ul interior). Pagini de aliniat:
+- `src/pages/Index.tsx`
+- `src/pages/AuthPage.tsx` (2 ocurențe — login + AccountView)
+- `src/pages/ChapterPage.tsx` (2 ocurențe)
+- `src/pages/ChapterTheoryPage.tsx`
+- `src/pages/AdminPage.tsx`
+- `src/pages/SupportPage.tsx`
+- `src/pages/PrivacyPolicyPage.tsx`
+- `src/pages/ResetPasswordPage.tsx`
+- `src/pages/DeleteAccountPage.tsx`
+- `src/pages/LeaderboardPage.tsx`
+- `src/pages/LessonPage.tsx`
+- `src/pages/ManualLessonPage.tsx`
+- `src/pages/SkipChallengePage.tsx`
+- `src/pages/ProblemsPage.tsx`
+- `src/pages/ProblemSolvePage.tsx`
+- `src/pages/TakeTestPage.tsx`
 
-- `src/pages/Index.tsx` (linia 286): `pt-[var(--sat)]` → `pt-[calc(var(--sat)+8px)]`
-- `src/pages/LessonPage.tsx` (linia 252): la fel
-- `src/pages/ManualLessonPage.tsx` (linia 275): la fel
-- `src/pages/SkipChallengePage.tsx` (linia 227): la fel
-- `src/pages/LeaderboardPage.tsx` (linia 214): la fel
-- `src/pages/ProblemsPage.tsx` (47–48): mută `pt-[calc(var(--sat)+8px)]` de pe div pe `<header>`
-- `src/pages/ProblemSolvePage.tsx` (108–109): la fel
+Toate devin `pt-[var(--sat)]`.
 
-Restul (`AuthPage`, `ChapterPage`, `ChapterTheoryPage`, `AdminPage`, `SupportPage`, `PrivacyPolicyPage`, `ResetPasswordPage`, `DeleteAccountPage`, `TakeTestPage`) sunt deja ok cu `+8px`.
+### Pas 3: `ProblemSolvePage` — ajustează padding-bottom-ul de containerul scroll
 
-### 3. Footer / BottomNav
+Linia 107: `pb-[calc(var(--sab)+32px)]` → `pb-[calc(var(--sab)+16px)]` (acum că `--sab` e 28px minim, +32 e prea mult).
 
-- `src/components/layout/BottomNav.tsx`: rămâne `pb-[var(--sab)]` (acum 24px minim → ridicat vizibil de marginea jos).
-- `src/components/layout/MobileLayout.tsx`: păstrează `pb-[calc(4rem+var(--sab))]` (auto-adaptă datorită noului `--sab`).
-- Footere fixe de feedback din `LessonPage`/`ManualLessonPage`/`SkipChallengePage` deja folosesc `pb-[var(--sab)]` → vor beneficia automat.
-- `ProblemSolvePage`: are `pb-[calc(var(--sab)+32px)]` pe container — corect, fără modificări.
+## Rezultat
 
-### 4. Pagina Cont — taburile
+| Device | Top header | Bottom |
+|---|---|---|
+| iPhone 14/15 (Dynamic Island) | 59px (real inset) | 34px (real inset) |
+| iPhone X-13 (notch) | 47px | 34px |
+| iPhone SE (no notch) | 24px (floor) | 28px (floor) |
+| Android cu cutout | inset real | inset real |
+| Android edge-to-edge | 24px | 28px |
 
-`AccountPage` (în `AuthPage.tsx`) folosește un singur header sticky. Tab-urile (`AccountProfileTab`, `StudentTab`, `TeacherClassesTab`, `TeacherTestsTab`) randează doar conținut sub header, deci moștenesc automat spacingul corect. Verificăm că niciun tab nu are propriul `header` cu padding diferit.
+Aspectul „identic Acasă" rămâne pe Android (24/28px), iar pe iPhone nu se mai adaugă spațiu artificial peste ce iOS oferă deja prin notch/home indicator.
 
-## Rezumat fișiere modificate
+## Fișiere modificate
 
 ```text
-src/index.css                       (--sat 12→16, --sab 16→24)
-src/pages/Index.tsx                 (header pt)
-src/pages/LessonPage.tsx            (header pt)
-src/pages/ManualLessonPage.tsx      (header pt)
-src/pages/SkipChallengePage.tsx     (header pt)
-src/pages/LeaderboardPage.tsx       (header pt)
-src/pages/ProblemsPage.tsx          (mută pt pe <header>)
-src/pages/ProblemSolvePage.tsx      (mută pt pe <header>)
+src/index.css                         (redefinire --sat/--sab cu floor 24/28)
+src/pages/*.tsx (16 fișiere)          (pt-[calc(var(--sat)+8px)] → pt-[var(--sat)])
+src/pages/ProblemSolvePage.tsx        (pb +32 → +16)
 ```
-
-## Validare
-
-După aplicare, vom verifica vizual pe Android (status bar + gesture bar) că:
-1. Logo/iconițe header nu intră sub status bar pe nicio pagină.
-2. BottomNav și butoanele de „Continuă" stau clar deasupra barei de gesturi.
-3. Aspectul este identic între Acasă, Lecții, Lecție, Cont (toate taburile), Probleme, Clasament.
