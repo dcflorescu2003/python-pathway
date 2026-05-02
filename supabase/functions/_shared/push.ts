@@ -159,6 +159,7 @@ export async function sendFCMPushes(
 
     if (t.platform === "ios") {
       if (!apnsJwt || !apnsBundleId) continue;
+      const badge = badgeByUser[t.user_id] ?? 1;
       const sendApns = async (host: string) => {
         const res = await fetch(`https://${host}/3/device/${t.token}`, {
           method: "POST",
@@ -170,7 +171,12 @@ export async function sendFCMPushes(
             "content-type": "application/json",
           },
           body: JSON.stringify({
-            aps: { alert: { title: msg.title, body: msg.body }, sound: "default", badge: 1 },
+            aps: {
+              alert: { title: msg.title, body: msg.body },
+              sound: "default",
+              badge,
+              "interruption-level": "time-sensitive",
+            },
           }),
         });
         const bodyText = await res.text();
@@ -179,10 +185,27 @@ export async function sendFCMPushes(
         return { ok: res.ok, status: res.status, bodyText, reason };
       };
       try {
-        let r = await sendApns("api.push.apple.com");
-        // Fallback to sandbox for TestFlight/Xcode builds whose tokens prod rejects.
+        // Choose host based on stored apns_environment; default to production.
+        const preferredEnv = (t.apns_environment === "sandbox") ? "sandbox" : "production";
+        const primaryHost = preferredEnv === "sandbox" ? "api.sandbox.push.apple.com" : "api.push.apple.com";
+        const fallbackHost = preferredEnv === "sandbox" ? "api.push.apple.com" : "api.sandbox.push.apple.com";
+
+        let r = await sendApns(primaryHost);
+        let usedEnv = preferredEnv;
+        // If wrong env, retry the other and persist correction.
         if (!r.ok && (r.reason === "BadDeviceToken" || r.status === 400)) {
-          r = await sendApns("api.sandbox.push.apple.com");
+          r = await sendApns(fallbackHost);
+          if (r.ok) {
+            usedEnv = preferredEnv === "sandbox" ? "production" : "sandbox";
+            try {
+              await adminClient
+                .from("device_tokens")
+                .update({ apns_environment: usedEnv })
+                .eq("token", t.token);
+            } catch (e) {
+              console.error("Failed to persist apns_environment:", e);
+            }
+          }
         }
         if (r.ok) count++;
         else if (
@@ -191,6 +214,8 @@ export async function sendFCMPushes(
           r.bodyText.includes("BadDeviceToken")
         ) {
           tokensToDelete.push(t.token);
+        } else {
+          console.error("APNs error", { status: r.status, reason: r.reason, env: usedEnv });
         }
       } catch (e) {
         console.error("APNs send error:", e);
