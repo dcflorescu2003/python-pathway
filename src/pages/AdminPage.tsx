@@ -34,7 +34,7 @@ const AdminPage = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="sticky top-0 z-40 border-b border-border bg-background/80 backdrop-blur-md pt-[calc(var(--sat)+8px)]">
+      <header className="sticky top-0 z-40 border-b border-border bg-background/80 backdrop-blur-md pt-[var(--sat)]">
         <div className="flex items-center gap-3 px-4 py-3">
           <button onClick={() => navigate("/")} className="active:scale-90 transition-transform">
             <ArrowLeft className="h-6 w-6 text-foreground" />
