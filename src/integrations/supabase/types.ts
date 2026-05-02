@@ -288,6 +288,7 @@ export type Database = {
       }
       device_tokens: {
         Row: {
+          apns_environment: string | null
           created_at: string
           id: string
           platform: string
@@ -295,6 +296,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          apns_environment?: string | null
           created_at?: string
           id?: string
           platform?: string
@@ -302,6 +304,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          apns_environment?: string | null
           created_at?: string
           id?: string
           platform?: string
