@@ -1,6 +1,7 @@
 // Shared helper for sending FCM + APNs push notifications.
 // - Deduplicates tokens (per-token + at most 1 push per user/platform).
 // - Cleans up invalid tokens after send.
+// - Inserts in-app notification rows so the bell stays in sync even when push is dropped.
 // Returns number of pushes successfully sent.
 export async function sendFCMPushes(
   adminClient: any,
@@ -8,6 +9,20 @@ export async function sendFCMPushes(
 ): Promise<number> {
   const userIds = Object.keys(userMessages);
   if (userIds.length === 0) return 0;
+
+  // Insert in-app notifications first so the bell reflects the message even
+  // if push delivery fails (Focus, no permission, no token, OS throttling).
+  try {
+    const rows = userIds.map((uid) => ({
+      user_id: uid,
+      title: userMessages[uid].title,
+      body: userMessages[uid].body,
+    }));
+    const { error: notifErr } = await adminClient.from("notifications").insert(rows);
+    if (notifErr) console.error("In-app notifications insert error:", notifErr.message);
+  } catch (e) {
+    console.error("In-app notifications insert exception:", e);
+  }
 
   const { data: tokens } = await adminClient
     .from("device_tokens")
