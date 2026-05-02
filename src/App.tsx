@@ -157,25 +157,42 @@ const AppComponent = () => {
     }
   }, [showSplash]);
 
-  // Watchdog de pornire: dacă după 7s aplicația încă nu a depășit splash-ul/loading-ul
-  // inițial, facem un singur reload controlat. Flag-ul previne bucle infinite.
+  // Watchdog de pornire: dacă după N secunde aplicația încă nu a depășit
+  // splash-ul/loading-ul inițial, facem un singur reload controlat.
+  // Pe native (iOS/Android) folosim un timeout mai mare ca să nu întrerupem
+  // restaurarea sesiunii pe device-uri lente.
   useEffect(() => {
     const RELOAD_FLAG = "pyro-startup-reload-attempt";
     const READY_FLAG = "pyro-startup-ready";
+    const isNative = Capacitor.isNativePlatform();
+    const timeoutMs = isNative ? 14000 : 7000;
 
-    // Marcăm că am pornit; flag-ul de reload este șters odată ce app-ul ajunge "ready".
     const watchdog = setTimeout(() => {
       const alreadyReloaded = sessionStorage.getItem(RELOAD_FLAG);
       const isReady = sessionStorage.getItem(READY_FLAG);
       if (isReady) return;
       if (alreadyReloaded) return; // nu intrăm în buclă
+
+      // Dacă există deja o sesiune Supabase persistată, NU facem reload —
+      // restaurarea e probabil doar lentă, iar reload-ul ar putea o întrerupe.
+      try {
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i);
+          if (key && (key.startsWith("sb-") || key.includes("supabase.auth"))) {
+            return;
+          }
+        }
+      } catch {
+        // ignore
+      }
+
       sessionStorage.setItem(RELOAD_FLAG, String(Date.now()));
       try {
         window.location.reload();
       } catch {
         // ignore
       }
-    }, 7000);
+    }, timeoutMs);
 
     return () => clearTimeout(watchdog);
   }, []);
