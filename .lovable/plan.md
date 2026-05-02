@@ -1,74 +1,72 @@
+## Scop
 
-## Problem
+Pe Android, bara de status (sus) și bara de gesturi/navigație (jos) se suprapun cu interfața pe unele ecrane. Pagina **Acasă** are deja un spațiu corect deasupra headerului. Vrem **același comportament** pe toate ecranele: header fix puțin coborât sub bara de status, iar footer/bottom-nav puțin ridicat de bara de gesturi.
 
-Pe unele iPhone-uri, după login utilizatorul vede lecțiile câteva secunde, apoi este delogat automat. Pe alte device-uri (inclusiv Android) merge perfect. Comportamentul este intermitent → simptom clasic de **persistență instabilă a sesiunii în WKWebView (Capacitor iOS)**.
+## Diagnostic
 
-## Cauze identificate
+Variabilele safe-area sunt deja definite în `src/index.css`:
+- `--sat` (top) cu un minim de 12px
+- `--sab` (bottom) cu un minim de 16px
 
-1. **`localStorage` direct ca storage pentru Supabase (`src/integrations/supabase/client.ts`)**
-   În WKWebView (iOS), `localStorage` poate fi:
-   - golit silențios la presiune de memorie / iOS reclamă spațiu;
-   - scris asincron — după `signInWithIdToken`, refresh token-ul ajunge în memorie, dar nu mereu pe disc înainte de următorul tick de auto-refresh;
-   - separat per WebView instance (poate diferi după update / reinstalare).
-   Rezultat: Supabase auto-refresh (la pornire / la ~5s) nu găsește refresh token persistat → emite `SIGNED_OUT` → `useAuth` setează `user = null` → `Index.tsx` redirectează la `/auth`. Asta se vede exact ca în video: lecțiile apar, apoi user-ul e dat afară.
+Dar headerele nu folosesc același padding peste tot:
+- ✅ `Index` (Acasă), `LessonPage`, `ManualLessonPage`, `SkipChallengePage` → `pt-[var(--sat)]` (corect, dar uneori prea aproape)
+- ⚠️ `ProblemsPage`, `ProblemSolvePage` → padding pe `<div>` interior, nu pe `<header>` → marginea fundalului headerului se pierde sub status bar
+- ⚠️ Pagini cu `pt-[calc(var(--sat)+8px)]` (Auth/Cont, Chapter, ChapterTheory, Admin, Support, Privacy, Reset, DeleteAccount, Leaderboard, TakeTest) — sunt aproape ok, dar inconsistente între ele
 
-2. **Watchdog de pornire (`src/App.tsx`)**
-   Reload forțat după 7s dacă `pyro-startup-ready` nu e setat. Pe iOS lent / la cold start după login, poate trage un reload în mijlocul restaurării sesiunii și amplifica problema.
+`MobileLayout` (Acasă/Probleme/Clasament/Cont) are deja `pb-[calc(4rem+var(--sab))]` și `BottomNav` are `pb-[var(--sab)]` — dar bara însăși are doar 16px minim, ceea ce pe telefoane cu gesture bar (majoritatea Android 13+) nu lasă suficient spațiu vizual.
 
-3. **Posibilă dublă inițializare a clientului Supabase** prin `lovable` integration (`@lovable.dev/cloud-auth-js` cheamă `supabase.auth.setSession`) — pe web e ok, dar pe iOS native nu folosim acel flux pentru Apple/Google. Trebuie verificat că nu există două instanțe GoTrueClient care să se calce.
+## Soluție
 
-## Plan de implementare
+### 1. Mărește minimele safe-area pentru un aspect mai aerisit (`src/index.css`)
 
-### 1. Storage sigur pentru Supabase pe Capacitor iOS
-Fișier: `src/integrations/supabase/client.ts`
-
-Înlocuim `storage: localStorage` cu un adapter care:
-- Pe **native (iOS/Android)** folosește `@capacitor/preferences` (key-value persistent, garantat scris pe disc, supraviețuiește închiderii app-ului și update-urilor).
-- Pe **web** folosește `localStorage` (comportamentul actual).
-
-```ts
-// pseudo
-import { Capacitor } from "@capacitor/core";
-import { Preferences } from "@capacitor/preferences";
-
-const nativeStorage = {
-  getItem: async (key) => (await Preferences.get({ key })).value,
-  setItem: async (key, value) => { await Preferences.set({ key, value }); },
-  removeItem: async (key) => { await Preferences.remove({ key }); },
-};
-
-const storage = Capacitor.isNativePlatform() ? nativeStorage : localStorage;
+```text
+--sat: max(env(safe-area-inset-top, 0px), var(--android-sait, 0px), 16px);
+--sab: max(env(safe-area-inset-bottom, 0px), var(--android-saib, 0px), 24px);
 ```
 
-Pachetul `@capacitor/preferences` se va adăuga ca dependință. După deploy, pe native rulăm `npx cap sync` (deja parte din workflow-ul utilizatorului).
+Astfel chiar și pe device-uri care nu raportează insets (Android edge-to-edge fără cutout), header și footer rămân deplasate clar față de marginile fizice.
 
-**Migrare lină**: la prima pornire după update, sesiunea există doar în `localStorage`. Adăugăm un mic „bridge” care, la boot pe native, copiază cheile `sb-*-auth-token` din `localStorage` în Preferences dacă nu există deja, ca utilizatorii deja logați să nu fie deconectați la update.
+### 2. Standardizează headerul pe toate paginile
 
-### 2. Întărire `useAuth` împotriva fluctuațiilor tranzitorii
-Fișier: `src/hooks/useAuth.tsx`
+Folosește o singură formulă: `pt-[calc(var(--sat)+8px)]` pe elementul `<header>` (nu pe div-ul interior). Pagini de aliniat:
 
-- Ignorăm primul `SIGNED_OUT` care vine în primele 2-3 secunde după ce `signInWithIdToken` a returnat fără eroare. Folosim un flag `recentlySignedIn` (timestamp). Dacă vine `SIGNED_OUT` în fereastra asta, facem un singur `supabase.auth.getSession()` retry înainte de a marca user-ul ca null.
-- Logăm `_event` la `onAuthStateChange` (doar în native) ca să avem evidență dacă reapare.
+- `src/pages/Index.tsx` (linia 286): `pt-[var(--sat)]` → `pt-[calc(var(--sat)+8px)]`
+- `src/pages/LessonPage.tsx` (linia 252): la fel
+- `src/pages/ManualLessonPage.tsx` (linia 275): la fel
+- `src/pages/SkipChallengePage.tsx` (linia 227): la fel
+- `src/pages/LeaderboardPage.tsx` (linia 214): la fel
+- `src/pages/ProblemsPage.tsx` (47–48): mută `pt-[calc(var(--sat)+8px)]` de pe div pe `<header>`
+- `src/pages/ProblemSolvePage.tsx` (108–109): la fel
 
-### 3. Watchdog mai inteligent (`src/App.tsx`)
-- Mărim timeout-ul de la 7s la 12s pe iOS.
-- Nu mai facem reload dacă există o sesiune Supabase în storage (citim direct cu un get rapid). Reload-ul actual poate întrerupe restaurarea de sesiune pe device-uri lente.
+Restul (`AuthPage`, `ChapterPage`, `ChapterTheoryPage`, `AdminPage`, `SupportPage`, `PrivacyPolicyPage`, `ResetPasswordPage`, `DeleteAccountPage`, `TakeTestPage`) sunt deja ok cu `+8px`.
 
-### 4. Verificare clienți Supabase dubli
-Confirmăm că `@lovable.dev/cloud-auth-js` nu instanțiază propriul GoTrueClient cu același storage. Pe native nu e folosit pentru Apple/Google (avem flux nativ), dar fluxul `signInWithOAuthNative` (Browser deep link) cheamă `supabase.auth.setSession` direct → ok. Adăugăm doar un `console.log` defensiv dacă e necesar.
+### 3. Footer / BottomNav
 
-### 5. Test
-- Buton existent „Test push” + emitem un toast cu starea sesiunii curente într-un mic debug panel admin (opțional).
-- Pașii de test: login Apple pe iPhone afectat → background app 30s → revino → trebuie să rămână logat. Cold start după 5 minute → trebuie să rămână logat.
+- `src/components/layout/BottomNav.tsx`: rămâne `pb-[var(--sab)]` (acum 24px minim → ridicat vizibil de marginea jos).
+- `src/components/layout/MobileLayout.tsx`: păstrează `pb-[calc(4rem+var(--sab))]` (auto-adaptă datorită noului `--sab`).
+- Footere fixe de feedback din `LessonPage`/`ManualLessonPage`/`SkipChallengePage` deja folosesc `pb-[var(--sab)]` → vor beneficia automat.
+- `ProblemSolvePage`: are `pb-[calc(var(--sab)+32px)]` pe container — corect, fără modificări.
 
-## Files to change
+### 4. Pagina Cont — taburile
 
-- `src/integrations/supabase/client.ts` — storage adapter native vs web + migrare din localStorage.
-- `src/hooks/useAuth.tsx` — protecție împotriva `SIGNED_OUT` tranzitoriu.
-- `src/App.tsx` — watchdog mai blând.
-- `package.json` — adăugare `@capacitor/preferences`.
-- (opțional) `ios/App/Podfile.lock` — regenerat de `cap sync`.
+`AccountPage` (în `AuthPage.tsx`) folosește un singur header sticky. Tab-urile (`AccountProfileTab`, `StudentTab`, `TeacherClassesTab`, `TeacherTestsTab`) randează doar conținut sub header, deci moștenesc automat spacingul corect. Verificăm că niciun tab nu are propriul `header` cu padding diferit.
 
-## Risc / rollback
-- Schimbarea storage-ului pe native deconectează utilizatorii existenți doar dacă migrarea din `localStorage` eșuează. Migrarea e best-effort și fail-safe (catch silent).
-- Pe web nimic nu se schimbă.
+## Rezumat fișiere modificate
+
+```text
+src/index.css                       (--sat 12→16, --sab 16→24)
+src/pages/Index.tsx                 (header pt)
+src/pages/LessonPage.tsx            (header pt)
+src/pages/ManualLessonPage.tsx      (header pt)
+src/pages/SkipChallengePage.tsx     (header pt)
+src/pages/LeaderboardPage.tsx       (header pt)
+src/pages/ProblemsPage.tsx          (mută pt pe <header>)
+src/pages/ProblemSolvePage.tsx      (mută pt pe <header>)
+```
+
+## Validare
+
+După aplicare, vom verifica vizual pe Android (status bar + gesture bar) că:
+1. Logo/iconițe header nu intră sub status bar pe nicio pagină.
+2. BottomNav și butoanele de „Continuă" stau clar deasupra barei de gesturi.
+3. Aspectul este identic între Acasă, Lecții, Lecție, Cont (toate taburile), Probleme, Clasament.
