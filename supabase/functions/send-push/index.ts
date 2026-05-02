@@ -127,7 +127,8 @@ async function sendApnsPushTo(
   host: string,
   deviceToken: string,
   title: string,
-  body: string
+  body: string,
+  badge: number,
 ): Promise<{ ok: boolean; status: number; bodyText: string; reason: string }> {
   const jwt = await getApnsJwt();
   const bundleId = Deno.env.get("APNS_BUNDLE_ID") ?? "";
@@ -145,7 +146,8 @@ async function sendApnsPushTo(
       aps: {
         alert: { title, body },
         sound: "default",
-        badge: 1,
+        badge,
+        "interruption-level": "time-sensitive",
       },
     }),
   });
@@ -159,17 +161,22 @@ async function sendApnsPushTo(
 async function sendApnsPush(
   deviceToken: string,
   title: string,
-  body: string
-): Promise<{ ok: boolean; status: number; bodyText: string }> {
-  // Try production first; if Apple rejects token, fallback to sandbox (TestFlight/Xcode dev builds use sandbox tokens).
-  const r = await sendApnsPushTo("api.push.apple.com", deviceToken, title, body);
-  console.log(`[SEND-PUSH] APNs prod status=${r.status} reason="${r.reason}"`);
+  body: string,
+  badge: number,
+  preferredEnv: "sandbox" | "production",
+): Promise<{ ok: boolean; status: number; bodyText: string; usedEnv: "sandbox" | "production" }> {
+  const primaryHost = preferredEnv === "sandbox" ? "api.sandbox.push.apple.com" : "api.push.apple.com";
+  const fallbackHost = preferredEnv === "sandbox" ? "api.push.apple.com" : "api.sandbox.push.apple.com";
+
+  const r = await sendApnsPushTo(primaryHost, deviceToken, title, body, badge);
+  console.log(`[SEND-PUSH] APNs ${preferredEnv} status=${r.status} reason="${r.reason}"`);
   if (!r.ok && (r.reason === "BadDeviceToken" || r.status === 400)) {
-    const r2 = await sendApnsPushTo("api.sandbox.push.apple.com", deviceToken, title, body);
-    console.log(`[SEND-PUSH] APNs sandbox fallback status=${r2.status} reason="${r2.reason}"`);
-    return { ok: r2.ok, status: r2.status, bodyText: r2.bodyText };
+    const r2 = await sendApnsPushTo(fallbackHost, deviceToken, title, body, badge);
+    const otherEnv: "sandbox" | "production" = preferredEnv === "sandbox" ? "production" : "sandbox";
+    console.log(`[SEND-PUSH] APNs ${otherEnv} fallback status=${r2.status} reason="${r2.reason}"`);
+    return { ok: r2.ok, status: r2.status, bodyText: r2.bodyText, usedEnv: otherEnv };
   }
-  return { ok: r.ok, status: r.status, bodyText: r.bodyText };
+  return { ok: r.ok, status: r.status, bodyText: r.bodyText, usedEnv: preferredEnv };
 }
 
 // ============== Handler ==============
