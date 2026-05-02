@@ -142,8 +142,8 @@ export async function sendFCMPushes(
 
     if (t.platform === "ios") {
       if (!apnsJwt || !apnsBundleId) continue;
-      try {
-        const res = await fetch(`https://api.push.apple.com/3/device/${t.token}`, {
+      const sendApns = async (host: string) => {
+        const res = await fetch(`https://${host}/3/device/${t.token}`, {
           method: "POST",
           headers: {
             authorization: `bearer ${apnsJwt}`,
@@ -157,11 +157,21 @@ export async function sendFCMPushes(
           }),
         });
         const bodyText = await res.text();
-        if (res.ok) count++;
+        let reason = "";
+        try { reason = (JSON.parse(bodyText) as any)?.reason ?? ""; } catch { /* noop */ }
+        return { ok: res.ok, status: res.status, bodyText, reason };
+      };
+      try {
+        let r = await sendApns("api.push.apple.com");
+        // Fallback to sandbox for TestFlight/Xcode builds whose tokens prod rejects.
+        if (!r.ok && (r.reason === "BadDeviceToken" || r.status === 400)) {
+          r = await sendApns("api.sandbox.push.apple.com");
+        }
+        if (r.ok) count++;
         else if (
-          res.status === 410 ||
-          bodyText.includes("Unregistered") ||
-          bodyText.includes("BadDeviceToken")
+          r.status === 410 ||
+          r.bodyText.includes("Unregistered") ||
+          r.bodyText.includes("BadDeviceToken")
         ) {
           tokensToDelete.push(t.token);
         }
