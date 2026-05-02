@@ -1,53 +1,74 @@
-## Problema
 
-1. **Notificări duplicate dimineața pe Android**: Există un singur cron (`send-streak-reminder-morning` la 06:00). Cauza dublării e că în `device_tokens` mulți useri au mai multe token-uri pentru același device (vechi + nou, sau duplicate exacte). Funcția trimite push pentru fiecare token în parte → 2+ notificări. Exemple găsite: utilizator cu 2 token-uri Android identice; alți useri cu 4 token-uri (Android+iOS amestecate).
+## Problem
 
-2. **Reminder de seară greșit**: `send-evening-reminder` trimite acum useri-lor care **AU fost activi azi** (`last_activity_date = today`) și au făcut <3 lecții. Userul vrea exact invers — celor care **NU au fost activi azi**.
+Pe unele iPhone-uri, după login utilizatorul vede lecțiile câteva secunde, apoi este delogat automat. Pe alte device-uri (inclusiv Android) merge perfect. Comportamentul este intermitent → simptom clasic de **persistență instabilă a sesiunii în WKWebView (Capacitor iOS)**.
 
-## Soluția
+## Cauze identificate
 
-### 1. Deduplicare device_tokens (rezolvă notificarea dublă)
+1. **`localStorage` direct ca storage pentru Supabase (`src/integrations/supabase/client.ts`)**
+   În WKWebView (iOS), `localStorage` poate fi:
+   - golit silențios la presiune de memorie / iOS reclamă spațiu;
+   - scris asincron — după `signInWithIdToken`, refresh token-ul ajunge în memorie, dar nu mereu pe disc înainte de următorul tick de auto-refresh;
+   - separat per WebView instance (poate diferi după update / reinstalare).
+   Rezultat: Supabase auto-refresh (la pornire / la ~5s) nu găsește refresh token persistat → emite `SIGNED_OUT` → `useAuth` setează `user = null` → `Index.tsx` redirectează la `/auth`. Asta se vede exact ca în video: lecțiile apar, apoi user-ul e dat afară.
 
-**Migrație SQL**:
-- Șterge duplicate exacte (același `token`) — păstrează doar cel mai recent.
-- Adaugă constraint `UNIQUE (token)` ca să nu se mai repete.
-- Adaugă constraint `UNIQUE (user_id, platform, token)` ca backup.
-- Pentru fiecare user, păstrează cel mult 1 token activ per (user_id, platform): la INSERT din client, dacă există un token mai vechi pe același device, să fie înlocuit. Asta se face prin upsert (vezi pasul 2) + trigger care șterge token-urile mai vechi de 60 zile pentru același user pe aceeași platformă când se introduce unul nou.
+2. **Watchdog de pornire (`src/App.tsx`)**
+   Reload forțat după 7s dacă `pyro-startup-ready` nu e setat. Pe iOS lent / la cold start după login, poate trage un reload în mijlocul restaurării sesiunii și amplifica problema.
 
-**Curățare imediată**:
-```sql
--- păstrează doar cel mai recent token per valoare distinctă
-DELETE FROM device_tokens a USING device_tokens b
-WHERE a.token = b.token AND a.created_at < b.created_at;
+3. **Posibilă dublă inițializare a clientului Supabase** prin `lovable` integration (`@lovable.dev/cloud-auth-js` cheamă `supabase.auth.setSession`) — pe web e ok, dar pe iOS native nu folosim acel flux pentru Apple/Google. Trebuie verificat că nu există două instanțe GoTrueClient care să se calce.
+
+## Plan de implementare
+
+### 1. Storage sigur pentru Supabase pe Capacitor iOS
+Fișier: `src/integrations/supabase/client.ts`
+
+Înlocuim `storage: localStorage` cu un adapter care:
+- Pe **native (iOS/Android)** folosește `@capacitor/preferences` (key-value persistent, garantat scris pe disc, supraviețuiește închiderii app-ului și update-urilor).
+- Pe **web** folosește `localStorage` (comportamentul actual).
+
+```ts
+// pseudo
+import { Capacitor } from "@capacitor/core";
+import { Preferences } from "@capacitor/preferences";
+
+const nativeStorage = {
+  getItem: async (key) => (await Preferences.get({ key })).value,
+  setItem: async (key, value) => { await Preferences.set({ key, value }); },
+  removeItem: async (key) => { await Preferences.remove({ key }); },
+};
+
+const storage = Capacitor.isNativePlatform() ? nativeStorage : localStorage;
 ```
 
-### 2. Logică push robustă (deduplicare la trimitere)
+Pachetul `@capacitor/preferences` se va adăuga ca dependință. După deploy, pe native rulăm `npx cap sync` (deja parte din workflow-ul utilizatorului).
 
-În `_shared/push.ts` și în `send-streak-reminder/index.ts`:
-- Înainte de send, deduplică token-urile per user (Set pe valoarea `token`).
-- Limitează la **maxim un push per (user_id, platform)** — păstrează cel mai recent `created_at`. Asta garantează că, chiar dacă rămân token-uri vechi nesterse, userul primește o singură notificare pe Android și una pe iOS.
-- Token-urile pentru care FCM/APNs returnează `UNREGISTERED` / `NOT_FOUND` / `BadDeviceToken` să fie șterse (deja se face în `send-push`, dar nu și în reminderele de cron — adăugăm aceeași curățare).
+**Migrare lină**: la prima pornire după update, sesiunea există doar în `localStorage`. Adăugăm un mic „bridge” care, la boot pe native, copiază cheile `sb-*-auth-token` din `localStorage` în Preferences dacă nu există deja, ca utilizatorii deja logați să nu fie deconectați la update.
 
-### 3. Inversare logică `send-evening-reminder`
+### 2. Întărire `useAuth` împotriva fluctuațiilor tranzitorii
+Fișier: `src/hooks/useAuth.tsx`
 
-Modific query-ul în `supabase/functions/send-evening-reminder/index.ts`:
-- Înlocuiesc filtrul `eq("last_activity_date", todayStr)` cu **users care NU au activitate azi**: `last_activity_date < todayStr` (sau IS NULL).
-- Păstrez idempotency-ul (`last_evening_reminder_at != todayStr`).
-- Elimin verificarea „>= 3 lecții azi" (irelevantă pentru useri inactivi).
-- Mesajele rămân generice „mai e timp pentru o lecție rapidă" — se potrivesc.
-- Opțional: limitez la useri care au logat în ultimele 14 zile (`last_activity_date >= now()-14`) ca să nu spammăm conturile abandonate. Recomand să fie inclus.
+- Ignorăm primul `SIGNED_OUT` care vine în primele 2-3 secunde după ce `signInWithIdToken` a returnat fără eroare. Folosim un flag `recentlySignedIn` (timestamp). Dacă vine `SIGNED_OUT` în fereastra asta, facem un singur `supabase.auth.getSession()` retry înainte de a marca user-ul ca null.
+- Logăm `_event` la `onAuthStateChange` (doar în native) ca să avem evidență dacă reapare.
 
-### 4. Refolosire helper `sendFCMPushes`
+### 3. Watchdog mai inteligent (`src/App.tsx`)
+- Mărim timeout-ul de la 7s la 12s pe iOS.
+- Nu mai facem reload dacă există o sesiune Supabase în storage (citim direct cu un get rapid). Reload-ul actual poate întrerupe restaurarea de sesiune pe device-uri lente.
 
-`send-streak-reminder` are inline ~100 linii de cod FCM identic cu `_shared/push.ts`. Îl înlocuiesc cu apelul la helper-ul shared (modificat să facă deduplicare).
+### 4. Verificare clienți Supabase dubli
+Confirmăm că `@lovable.dev/cloud-auth-js` nu instanțiază propriul GoTrueClient cu același storage. Pe native nu e folosit pentru Apple/Google (avem flux nativ), dar fluxul `signInWithOAuthNative` (Browser deep link) cheamă `supabase.auth.setSession` direct → ok. Adăugăm doar un `console.log` defensiv dacă e necesar.
 
-## Fișiere modificate
+### 5. Test
+- Buton existent „Test push” + emitem un toast cu starea sesiunii curente într-un mic debug panel admin (opțional).
+- Pașii de test: login Apple pe iPhone afectat → background app 30s → revino → trebuie să rămână logat. Cold start după 5 minute → trebuie să rămână logat.
 
-- `supabase/functions/_shared/push.ts` — deduplicare token-uri per (user, platform), cleanup token-uri invalide.
-- `supabase/functions/send-streak-reminder/index.ts` — folosește `sendFCMPushes` în loc de logică inline.
-- `supabase/functions/send-evening-reminder/index.ts` — query inversat (useri inactivi azi).
-- Migrație nouă: deduplicare + UNIQUE constraint pe `device_tokens.token`.
+## Files to change
 
-## Notă
+- `src/integrations/supabase/client.ts` — storage adapter native vs web + migrare din localStorage.
+- `src/hooks/useAuth.tsx` — protecție împotriva `SIGNED_OUT` tranzitoriu.
+- `src/App.tsx` — watchdog mai blând.
+- `package.json` — adăugare `@capacitor/preferences`.
+- (opțional) `ios/App/Podfile.lock` — regenerat de `cap sync`.
 
-Cron job-urile rămân neschimbate — există deja o singură intrare pentru `send-streak-reminder-morning` (06:00 UTC) și una pentru `send-evening-reminder` (17:00 UTC). Dublarea pe Android nu vine din cron, ci din token-uri duplicate.
+## Risc / rollback
+- Schimbarea storage-ului pe native deconectează utilizatorii existenți doar dacă migrarea din `localStorage` eșuează. Migrarea e best-effort și fail-safe (catch silent).
+- Pe web nimic nu se schimbă.

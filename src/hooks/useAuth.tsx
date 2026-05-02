@@ -113,20 +113,49 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let resolved = false;
+    let lastKnownSession: Session | null = null;
     const markResolved = () => {
       resolved = true;
       setLoading(false);
     };
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-      setUser(session?.user ?? null);
+    const isNative = Capacitor.isNativePlatform();
+
+    const applySession = (next: Session | null) => {
+      lastKnownSession = next;
+      setSession(next);
+      setUser(next?.user ?? null);
+    };
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      // Pe iOS WKWebView se întâmplă uneori să primim un SIGNED_OUT tranzitoriu
+      // imediat după login, când WebView-ul nu a apucat să persiste încă tokenul.
+      // Verificăm direct storage-ul (Preferences-backed via native-persistence shim);
+      // dacă găsim o sesiune validă, ignorăm evenimentul fals și forțăm un retry.
+      if (
+        isNative &&
+        event === "SIGNED_OUT" &&
+        lastKnownSession &&
+        Date.now() - (lastKnownSession.expires_at ?? 0) * 1000 < 0
+      ) {
+        // Sesiunea pe care o avem nu e expirată — ignorăm SIGNED_OUT-ul și
+        // încercăm un getSession() care va citi din Preferences via shim.
+        supabase.auth.getSession().then(({ data }) => {
+          if (data.session) {
+            applySession(data.session);
+          } else {
+            applySession(null);
+          }
+          markResolved();
+        });
+        return;
+      }
+      applySession(session);
       markResolved();
     });
 
     supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
+      applySession(session);
       markResolved();
     }).catch(() => markResolved());
 
