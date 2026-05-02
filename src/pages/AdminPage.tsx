@@ -110,6 +110,7 @@ const AdminPage = () => {
 
           <TabsContent value="settings">
             <div className="space-y-4">
+              <AdminPushTester />
               <NewLessonNotifier currentUserEmail={user?.email || ""} />
               <AdminSettings currentUserEmail={user?.email || ""} />
             </div>
