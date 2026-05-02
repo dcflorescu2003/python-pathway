@@ -123,15 +123,16 @@ async function getApnsJwt(): Promise<string> {
   return jwt;
 }
 
-async function sendApnsPush(
+async function sendApnsPushTo(
+  host: string,
   deviceToken: string,
   title: string,
   body: string
-): Promise<{ ok: boolean; status: number; bodyText: string }> {
+): Promise<{ ok: boolean; status: number; bodyText: string; reason: string }> {
   const jwt = await getApnsJwt();
   const bundleId = Deno.env.get("APNS_BUNDLE_ID") ?? "";
 
-  const res = await fetch(`https://api.push.apple.com/3/device/${deviceToken}`, {
+  const res = await fetch(`https://${host}/3/device/${deviceToken}`, {
     method: "POST",
     headers: {
       authorization: `bearer ${jwt}`,
@@ -150,7 +151,25 @@ async function sendApnsPush(
   });
 
   const bodyText = await res.text();
-  return { ok: res.ok, status: res.status, bodyText };
+  let reason = "";
+  try { reason = (JSON.parse(bodyText) as any)?.reason ?? ""; } catch { /* noop */ }
+  return { ok: res.ok, status: res.status, bodyText, reason };
+}
+
+async function sendApnsPush(
+  deviceToken: string,
+  title: string,
+  body: string
+): Promise<{ ok: boolean; status: number; bodyText: string }> {
+  // Try production first; if Apple rejects token, fallback to sandbox (TestFlight/Xcode dev builds use sandbox tokens).
+  const r = await sendApnsPushTo("api.push.apple.com", deviceToken, title, body);
+  console.log(`[SEND-PUSH] APNs prod status=${r.status} reason="${r.reason}"`);
+  if (!r.ok && (r.reason === "BadDeviceToken" || r.status === 400)) {
+    const r2 = await sendApnsPushTo("api.sandbox.push.apple.com", deviceToken, title, body);
+    console.log(`[SEND-PUSH] APNs sandbox fallback status=${r2.status} reason="${r2.reason}"`);
+    return { ok: r2.ok, status: r2.status, bodyText: r2.bodyText };
+  }
+  return { ok: r.ok, status: r.status, bodyText: r.bodyText };
 }
 
 // ============== Handler ==============
