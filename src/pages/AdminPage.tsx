@@ -7,6 +7,7 @@ import ProblemsEditor from "@/components/admin/ProblemsEditor";
 import CouponManager from "@/components/admin/CouponManager";
 import AdminSettings from "@/components/admin/AdminSettings";
 import NewLessonNotifier from "@/components/admin/NewLessonNotifier";
+import AdminPushTester from "@/components/admin/AdminPushTester";
 import ManualEditor from "@/components/admin/ManualEditor";
 import TeacherApproval from "@/components/admin/TeacherApproval";
 import EvalBankEditor from "@/components/admin/EvalBankEditor";
