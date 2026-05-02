@@ -17,14 +17,29 @@ function usePushRegistration() {
       await PushNotifications.register();
 
       PushNotifications.addListener("registration", async (token) => {
-        await supabase.from("device_tokens" as any).upsert(
-          {
-            user_id: user.id,
-            token: token.value,
-            platform: Capacitor.getPlatform(),
-          },
-          { onConflict: "user_id,token" }
-        );
+        const platform = Capacitor.getPlatform();
+        // Check if a row already exists for this token to preserve learned apns_environment
+        const { data: existing } = await supabase
+          .from("device_tokens" as any)
+          .select("apns_environment")
+          .eq("user_id", user.id)
+          .eq("token", token.value)
+          .maybeSingle();
+
+        const payload: Record<string, any> = {
+          user_id: user.id,
+          token: token.value,
+          platform,
+        };
+        // Preserve previously-learned environment, or set null for new iOS tokens
+        // (edge function will auto-detect and persist on first send).
+        if (platform === "ios") {
+          payload.apns_environment = (existing as any)?.apns_environment ?? null;
+        }
+
+        await supabase.from("device_tokens" as any).upsert(payload, {
+          onConflict: "user_id,token",
+        });
       });
 
       PushNotifications.addListener("registrationError", (err) => {
