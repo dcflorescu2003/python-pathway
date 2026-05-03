@@ -344,6 +344,9 @@ const AccountView = () => {
           <Button variant="outline" className="w-full gap-2" onClick={() => navigate("/privacy-policy")}>
             <Shield className="h-4 w-4" /> Politica de confidențialitate
           </Button>
+          <Button variant="outline" className="w-full gap-2" onClick={() => navigate("/terms-of-use")}>
+            <Shield className="h-4 w-4" /> Termeni de utilizare (EULA)
+          </Button>
           <Button variant="destructive" className="w-full gap-2" onClick={handleSignOut}>
             <LogOut className="h-4 w-4" /> Deconectează-te
           </Button>

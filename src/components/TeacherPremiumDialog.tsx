@@ -159,6 +159,26 @@ const TeacherPremiumDialog = ({ open, onOpenChange }: TeacherPremiumDialogProps)
               <p className="text-[10px] text-center text-foreground/40">
                 Preț de fondator
               </p>
+
+              {/* Required subscription disclosure (Apple Guideline 3.1.2) */}
+              <div className="rounded-md border border-border/60 bg-muted/30 p-2.5 space-y-1">
+                <p className="text-[10px] text-foreground/70 leading-relaxed">
+                  <strong className="text-foreground">PyRo Profesor AI</strong> — abonament cu reînnoire automată, durată 1 lună, preț 29 RON/lună (sau echivalentul afișat în App Store/Google Play).
+                </p>
+                <p className="text-[10px] text-foreground/60 leading-relaxed">
+                  Plata se face din contul Apple ID/Google la confirmare. Abonamentul se reînnoiește automat dacă nu îl anulezi cu cel puțin 24h înainte de finalul perioadei. Îl poți gestiona din setările contului tău.
+                </p>
+                <div className="flex items-center justify-center gap-3 pt-1">
+                  <a href="/terms-of-use" target="_blank" rel="noreferrer" className="text-[10px] text-primary underline">
+                    Termeni de utilizare (EULA)
+                  </a>
+                  <span className="text-[10px] text-foreground/30">•</span>
+                  <a href="/privacy-policy" target="_blank" rel="noreferrer" className="text-[10px] text-primary underline">
+                    Confidențialitate
+                  </a>
+                </div>
+              </div>
+
               <p className="text-[10px] text-center text-foreground/40">
                 {isAndroidNative
                   ? "Plata se procesează prin Google Play"

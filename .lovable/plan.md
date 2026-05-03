@@ -1,78 +1,54 @@
-## Problema
+## Obiectiv
+Apple cere ca, pentru orice abonament auto-renewable, aplicația și metadatele App Store Connect să conțină un link funcțional la **Terms of Use (EULA)**, alături de informațiile complete despre abonament (titlu, durată, preț). În prezent avem doar Privacy Policy — lipsește EULA.
 
-Pe iPhone, după mărirea minimelor safe-area (`--sat` 16px, `--sab` 24px) și adăugarea `+8px` la headere via `pt-[calc(var(--sat)+8px)]`:
+## Plan în pași
 
-- iOS raportează deja `env(safe-area-inset-top)` ≈ 44-59px (notch/Dynamic Island) și `safe-area-inset-bottom` ≈ 34px (home indicator).
-- `+8px` se cumulează → header ajunge la ~52-67px de la marginea fizică, prea spațiat sus.
-- Identic jos: BottomNav cu `pb-[var(--sab)]` (=34px pe iPhone) + 4rem înălțime e ok, dar feedback-ul de la lecții cu `pb-[var(--sab)]` se ridică prea mult.
+### 1. Pagina Terms of Use (EULA) în app
+- Creăm `src/pages/TermsOfUsePage.tsx` cu textul standard Apple EULA (recomandat de Apple) tradus / adaptat în română, plus secțiuni specifice PyRo:
+  - Titlul abonamentului: „PyRo Elev Premium" / „PyRo Profesor AI"
+  - Durata: lunară, auto-reînnoire
+  - Prețul: 14,99 RON/lună (Elev), 29 RON/lună (Profesor) — pe iOS afișăm și mențiunea „prețul afișat în App Store este definitiv"
+  - Politica de reînnoire automată (anulare cu min. 24h înainte de finalul perioadei)
+  - Cum se gestionează / anulează din Setări iOS → Apple ID → Subscriptions
+  - Linkuri către Privacy Policy și Apple Standard EULA
+- Înregistrăm ruta `/terms-of-use` în `src/App.tsx` (lazy, ca PrivacyPolicyPage).
 
-## Soluție
+### 2. Linkuri în fluxul de achiziție (cerința Apple)
+În `src/components/PremiumDialog.tsx` și `src/components/TeacherPremiumDialog.tsx`, sub butonul de preț, adăugăm un bloc obligatoriu cu:
+- Titlul abonamentului
+- Durata („1 lună, se reînnoiește automat")
+- Prețul (din `iosPrices` pe iOS, fallback hardcodat altundeva)
+- Mențiunea: „Abonamentul se reînnoiește automat dacă nu este anulat cu cel puțin 24 de ore înainte de finalul perioadei. Îl poți gestiona din setările contului tău App Store."
+- Două linkuri funcționale, vizibile clar:
+  - **Termeni de utilizare (EULA)** → `/terms-of-use`
+  - **Politica de confidențialitate** → `/privacy-policy`
 
-Eliminăm complet `+8px` din padding-uri și ne bazăm pe `--sat` / `--sab` cu un **minim suficient prin ele însele**. Astfel:
+### 3. Linkuri din pagina Cont și Auth
+- În `AuthPage.tsx` (deja are buton Privacy) adăugăm și un buton „Termeni de utilizare".
+- În `AccountProfileTab.tsx` (sau echivalent) adăugăm linkul către Terms.
 
-- **iPhone**: insetul real (44-59px sus, 34px jos) = padding-ul efectiv → niciun adaos.
-- **Android cu cutout**: la fel, insetul real e deja ok.
-- **Android edge-to-edge fără insets** (sau iPhone SE fără notch): minimul intră în joc → ~24px sus, 28px jos.
+### 4. Metadate App Store Connect (acțiune manuală a userului)
+Userul trebuie:
+- În App Store Connect → App Information → să adauge linkul EULA în câmpul „License Agreement" SAU să adauge URL-ul în descriere (`https://pyroskill.info/terms-of-use`).
+- Să confirme că Privacy Policy URL este setat (`https://pyroskill.info/privacy-policy`).
+- În răspunsul la Apple Review, să menționeze unde se găsesc EULA & Privacy în app (în dialogurile de Premium și în Auth/Account) și să atașeze un screen recording.
 
-### Pas 1: Tunează minimele în `src/index.css`
+### 5. Răspuns către App Review
+Pregătim un text scurt pe care userul îl poate copia în răspunsul către Apple, indicând:
+- Locul exact al linkurilor în app (PremiumDialog, TeacherPremiumDialog, Auth, Account, Terms page)
+- URL public al EULA
+- Build-ul nou care trebuie urcat după modificări
 
-```css
-:root {
-  --sat-raw: max(env(safe-area-inset-top, 0px), var(--android-sait, 0px));
-  --sab-raw: max(env(safe-area-inset-bottom, 0px), var(--android-saib, 0px));
+## Fișiere afectate
+- nou: `src/pages/TermsOfUsePage.tsx`
+- editat: `src/App.tsx` (rută)
+- editat: `src/components/PremiumDialog.tsx` (bloc info abonament + linkuri)
+- editat: `src/components/TeacherPremiumDialog.tsx` (același bloc)
+- editat: `src/pages/AuthPage.tsx` (buton Terms)
+- editat: `src/components/account/AccountProfileTab.tsx` (link Terms)
 
-  /* Floor de 24/28px se aplică DOAR când raw < floor (device fără notch/home bar).
-     Pe iPhone, raw-ul (44-59 / 34) câștigă oricum → fără spațiu suplimentar. */
-  --sat: max(var(--sat-raw), 24px);
-  --sab: max(var(--sab-raw), 28px);
-  --sal: max(env(safe-area-inset-left, 0px), var(--android-sail, 0px), 0px);
-  --sar: max(env(safe-area-inset-right, 0px), var(--android-sair, 0px), 0px);
-}
-```
+## Note tehnice
+- Nu e nevoie de `SubscriptionStoreView` (ar fi SwiftUI nativ); Apple îl sugerează ca opțiune, dar permite și varianta clasică — bloc text + linkuri funcționale — pe care o aplicăm.
+- După deploy, userul trebuie să facă build nou iOS (`npx cap sync ios` + bump versiune în Xcode) și să-l urce.
 
-### Pas 2: Înlocuiește `pt-[calc(var(--sat)+8px)]` cu `pt-[var(--sat)]`
-
-Pe toate paginile cu header sticky — adaosul de 8px nu mai e necesar acum că floor-ul e 24px:
-
-- `src/pages/Index.tsx`
-- `src/pages/AuthPage.tsx` (2 ocurențe — login + AccountView)
-- `src/pages/ChapterPage.tsx` (2 ocurențe)
-- `src/pages/ChapterTheoryPage.tsx`
-- `src/pages/AdminPage.tsx`
-- `src/pages/SupportPage.tsx`
-- `src/pages/PrivacyPolicyPage.tsx`
-- `src/pages/ResetPasswordPage.tsx`
-- `src/pages/DeleteAccountPage.tsx`
-- `src/pages/LeaderboardPage.tsx`
-- `src/pages/LessonPage.tsx`
-- `src/pages/ManualLessonPage.tsx`
-- `src/pages/SkipChallengePage.tsx`
-- `src/pages/ProblemsPage.tsx`
-- `src/pages/ProblemSolvePage.tsx`
-- `src/pages/TakeTestPage.tsx`
-
-Toate devin `pt-[var(--sat)]`.
-
-### Pas 3: `ProblemSolvePage` — ajustează padding-bottom-ul de containerul scroll
-
-Linia 107: `pb-[calc(var(--sab)+32px)]` → `pb-[calc(var(--sab)+16px)]` (acum că `--sab` e 28px minim, +32 e prea mult).
-
-## Rezultat
-
-| Device | Top header | Bottom |
-|---|---|---|
-| iPhone 14/15 (Dynamic Island) | 59px (real inset) | 34px (real inset) |
-| iPhone X-13 (notch) | 47px | 34px |
-| iPhone SE (no notch) | 24px (floor) | 28px (floor) |
-| Android cu cutout | inset real | inset real |
-| Android edge-to-edge | 24px | 28px |
-
-Aspectul „identic Acasă" rămâne pe Android (24/28px), iar pe iPhone nu se mai adaugă spațiu artificial peste ce iOS oferă deja prin notch/home indicator.
-
-## Fișiere modificate
-
-```text
-src/index.css                         (redefinire --sat/--sab cu floor 24/28)
-src/pages/*.tsx (16 fișiere)          (pt-[calc(var(--sat)+8px)] → pt-[var(--sat)])
-src/pages/ProblemSolvePage.tsx        (pb +32 → +16)
-```
+Aprobă planul ca să-l implementez pas cu pas.

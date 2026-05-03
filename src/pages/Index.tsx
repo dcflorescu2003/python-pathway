@@ -524,9 +524,13 @@ const Index = (): JSX.Element => {
           >
             Ajutor & Suport
           </button>
-          <div className="flex gap-3 text-[10px] text-muted-foreground">
+          <div className="flex flex-wrap justify-center gap-2 text-[10px] text-muted-foreground">
             <button onClick={() => navigate("/privacy-policy")} className="hover:text-foreground">
               Confidențialitate
+            </button>
+            <span>·</span>
+            <button onClick={() => navigate("/terms-of-use")} className="hover:text-foreground">
+              Termeni (EULA)
             </button>
             <span>·</span>
             <button onClick={() => navigate("/delete-account")} className="hover:text-foreground">
