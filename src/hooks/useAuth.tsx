@@ -5,6 +5,10 @@ import { lovable } from "@/integrations/lovable";
 import { Capacitor } from "@capacitor/core";
 import { Browser } from "@capacitor/browser";
 import type { User, Session } from "@supabase/supabase-js";
+import {
+  readNativeAuthBackup,
+  clearNativeAuthBackup,
+} from "@/integrations/supabase/native-persistence";
 
 const PRODUCTION_URL = 'https://pyroskill.info';
 const OAUTH_BROKER_URL = `${PRODUCTION_URL}/~oauth/initiate`;
@@ -114,6 +118,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let resolved = false;
     let lastKnownSession: Session | null = null;
+    let firstSessionAt = 0;
+    let recoveryInFlight = false;
+    let recoveryAttempts = 0;
+
     const markResolved = () => {
       resolved = true;
       setLoading(false);
@@ -125,31 +133,87 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       lastKnownSession = next;
       setSession(next);
       setUser(next?.user ?? null);
+      if (next && !firstSessionAt) {
+        firstSessionAt = Date.now();
+      }
+    };
+
+    // Try to recover a transient SIGNED_OUT by re-applying the last good
+    // session from native Preferences. Returns true if recovery succeeded.
+    const tryRecoverFromNativeBackup = async (): Promise<boolean> => {
+      if (!isNative || recoveryInFlight) return false;
+      recoveryInFlight = true;
+      recoveryAttempts += 1;
+      try {
+        const backup = await readNativeAuthBackup();
+        // Find the auth-token blob (Supabase stores under sb-<ref>-auth-token).
+        const tokenEntry = Object.entries(backup).find(([k]) =>
+          k.endsWith("-auth-token")
+        );
+        if (!tokenEntry) return false;
+
+        let parsed: any;
+        try {
+          parsed = JSON.parse(tokenEntry[1]);
+        } catch {
+          return false;
+        }
+
+        const access_token: string | undefined = parsed?.access_token;
+        const refresh_token: string | undefined = parsed?.refresh_token;
+        if (!access_token || !refresh_token) return false;
+
+        // Restore localStorage and ask Supabase to re-validate.
+        try {
+          localStorage.setItem(tokenEntry[0], tokenEntry[1]);
+        } catch {
+          /* ignore */
+        }
+        const { data, error } = await supabase.auth.setSession({
+          access_token,
+          refresh_token,
+        });
+        if (error || !data.session) {
+          console.warn("[auth-recovery] setSession failed", error?.message);
+          return false;
+        }
+        console.warn("[auth-recovery] session restored from native backup");
+        applySession(data.session);
+        return true;
+      } catch (err) {
+        console.warn("[auth-recovery] unexpected error", err);
+        return false;
+      } finally {
+        recoveryInFlight = false;
+      }
     };
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      // Pe iOS WKWebView se întâmplă uneori să primim un SIGNED_OUT tranzitoriu
-      // imediat după login, când WebView-ul nu a apucat să persiste încă tokenul.
-      // Verificăm direct storage-ul (Preferences-backed via native-persistence shim);
-      // dacă găsim o sesiune validă, ignorăm evenimentul fals și forțăm un retry.
+      // On native, an early SIGNED_OUT immediately after a valid session is
+      // almost always a transient refresh failure (poor network, clock skew,
+      // 5xx). Try once to restore from native Preferences before logging out.
       if (
         isNative &&
         event === "SIGNED_OUT" &&
-        lastKnownSession &&
-        Date.now() - (lastKnownSession.expires_at ?? 0) * 1000 < 0
+        firstSessionAt > 0 &&
+        recoveryAttempts === 0
       ) {
-        // Sesiunea pe care o avem nu e expirată — ignorăm SIGNED_OUT-ul și
-        // încercăm un getSession() care va citi din Preferences via shim.
-        supabase.auth.getSession().then(({ data }) => {
-          if (data.session) {
-            applySession(data.session);
-          } else {
+        tryRecoverFromNativeBackup().then((ok) => {
+          if (!ok) {
+            // Real signout (or refresh truly invalid): clean up backup.
+            clearNativeAuthBackup().catch(() => undefined);
             applySession(null);
           }
           markResolved();
         });
         return;
       }
+
+      // Explicit / repeated SIGNED_OUT → also clear durable backup.
+      if (isNative && event === "SIGNED_OUT") {
+        clearNativeAuthBackup().catch(() => undefined);
+      }
+
       applySession(session);
       markResolved();
     });
@@ -299,6 +363,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await SocialLogin.logout({ provider: "google" }).catch(() => undefined);
     }
     await supabase.auth.signOut();
+    // Explicit user-driven logout — wipe the durable backup too.
+    if (Capacitor.isNativePlatform()) {
+      await clearNativeAuthBackup().catch(() => undefined);
+    }
   };
 
   return (
