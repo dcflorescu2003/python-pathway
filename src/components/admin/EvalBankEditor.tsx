@@ -426,6 +426,12 @@ function EvalExerciseEditor({ exercise, lessonId, nextIndex, onSave, onCancel }:
       ? exercise.test_cases
       : [{ input: "", expected_output: "", hidden: false }]
   );
+  // Pre-generăm un ID stabil pentru exercițiile noi, ca să putem atașa
+  // microcompetențe înainte de prima salvare. La Anulare facem cleanup.
+  const [stableId] = useState(
+    () => exercise?.id || `eval-e-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+  );
+  const isNew = !exercise;
 
   const handleTypeChange = (newType: string) => {
     setType(newType);
@@ -436,14 +442,30 @@ function EvalExerciseEditor({ exercise, lessonId, nextIndex, onSave, onCancel }:
     if (newType === "problem") { setCodeTemplate(""); setSolution(""); setTestCases([{ input: "", expected_output: "", hidden: false }]); }
   };
 
+  const handleCancel = async () => {
+    // Dacă e exercițiu nou și am atașat deja microcompetențe pe stableId,
+    // le ștergem ca să nu rămână mapări orfane.
+    if (isNew) {
+      try {
+        await supabase
+          .from("item_competencies")
+          .delete()
+          .eq("item_type", "eval_exercise")
+          .eq("item_id", stableId);
+      } catch {
+        // ignore – cleanup best-effort
+      }
+    }
+    onCancel();
+  };
+
   const handleSave = () => {
     if (type === "open_answer" && !question.trim()) { toast.error("Completează întrebarea."); return; }
     if (!question.trim() && type !== "truefalse" && type !== "open_answer") { toast.error("Completează întrebarea."); return; }
     if (type === "truefalse" && !statement.trim()) { toast.error("Completează afirmația."); return; }
     if (type === "problem" && !solution.trim()) { toast.error("Completează soluția."); return; }
-    const id = exercise?.id || `eval-e-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
     onSave({
-      id, type, question: type === "truefalse" ? statement : question,
+      id: stableId, type, question: type === "truefalse" ? statement : question,
       options: type === "quiz" ? options : null,
       correct_option_id: type === "quiz" ? correctOptionId : null,
       blanks: type === "fill" ? blanks : null,
