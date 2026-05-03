@@ -516,8 +516,7 @@ const ExerciseEditor = ({ exercise, onSave, onCancel, lessonId, nextIndex, compe
         <div className="rounded-lg border border-border bg-muted/30 p-3">
           <CompetencyTagger
             itemType={competencyItemType}
-            itemId={exercise ? data.id : null}
-            emptyHint="Salvează exercițiul, apoi revino aici pentru a atașa microcompetențe."
+            itemId={data.id}
           />
         </div>
       )}
@@ -526,7 +525,26 @@ const ExerciseEditor = ({ exercise, onSave, onCancel, lessonId, nextIndex, compe
         <Button onClick={() => onSave(data)} className="flex-1">
           💾 Salvează
         </Button>
-        <Button variant="outline" onClick={onCancel} className="flex-1">
+        <Button
+          variant="outline"
+          onClick={async () => {
+            // Cleanup mapări orfane dacă userul anulează un exercițiu nou
+            // pentru care a apucat să atașeze microcompetențe.
+            if (!exercise && competencyItemType) {
+              try {
+                await supabase
+                  .from("item_competencies")
+                  .delete()
+                  .eq("item_type", competencyItemType)
+                  .eq("item_id", data.id);
+              } catch {
+                // best-effort
+              }
+            }
+            onCancel();
+          }}
+          className="flex-1"
+        >
           Anulează
         </Button>
       </div>
