@@ -152,6 +152,9 @@ const SupportPage = () => {
             <button onClick={() => navigate("/privacy-policy")} className="hover:text-foreground underline">
               Politica de confidențialitate
             </button>
+            <button onClick={() => navigate("/terms-of-use")} className="hover:text-foreground underline">
+              Termeni de utilizare (EULA)
+            </button>
             <button onClick={() => navigate("/delete-account")} className="hover:text-foreground underline">
               Șterge contul
             </button>
