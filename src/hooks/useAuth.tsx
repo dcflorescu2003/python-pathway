@@ -5,6 +5,10 @@ import { lovable } from "@/integrations/lovable";
 import { Capacitor } from "@capacitor/core";
 import { Browser } from "@capacitor/browser";
 import type { User, Session } from "@supabase/supabase-js";
+import {
+  readNativeAuthBackup,
+  clearNativeAuthBackup,
+} from "@/integrations/supabase/native-persistence";
 
 const PRODUCTION_URL = 'https://pyroskill.info';
 const OAUTH_BROKER_URL = `${PRODUCTION_URL}/~oauth/initiate`;
