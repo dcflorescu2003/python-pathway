@@ -11,6 +11,7 @@ import RichTextEditor from "./RichTextEditor";
 import CodeBlockEditor from "./CodeBlockEditor";
 import { CompetencyTagger } from "./CompetencyTagger";
 import type { ItemType as CompetencyItemType } from "@/hooks/useCompetencies";
+import { supabase } from "@/integrations/supabase/client";
 
 interface Props {
   exercise?: Exercise;
