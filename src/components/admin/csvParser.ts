@@ -376,17 +376,38 @@ export function generateExportCSV(exercises: any[]): string {
 }
 
 export function getExercisesTemplateCSV(): string {
-  const headers = "type,question,option_a,option_b,option_c,option_d,correct,explanation,code_template,blanks,lines,statement,is_true,groups,solution,test_cases,competencies";
-  const rows = [
+  // 17 coloane (în ordine):
+  //  1.type 2.question 3.option_a 4.option_b 5.option_c 6.option_d 7.correct
+  //  8.explanation 9.code_template 10.blanks 11.lines 12.statement 13.is_true
+  //  14.groups 15.solution 16.test_cases 17.competencies
+  // Fiecare exemplu de mai jos are EXACT 16 virgule (= 17 coloane).
+  const header = "type,question,option_a,option_b,option_c,option_d,correct,explanation,code_template,blanks,lines,statement,is_true,groups,solution,test_cases,competencies";
+  return [
+    "# ============================================================",
+    "# TEMPLATE EXERCIȚII (bancă de evaluare / lecții / manual)",
+    "# Tipuri permise (banca evaluare): quiz, truefalse, fill, order, card, open_answer, problem",
+    "# Coloana 'competencies' e opțională: coduri micro separate prin ;  (ex: M21;M61)",
+    "# Liniile care încep cu # sunt comentarii și sunt ignorate la import.",
+    "# Dacă un câmp conține virgulă, ÎNCADREAZĂ-L cu ghilimele duble: \"text, cu virgulă\".",
+    "# ============================================================",
+    header,
+    "# --- 1) QUIZ: 4 opțiuni a-d, 'correct' = litera răspunsului corect.",
     'quiz,"Ce tip de date este 3.14?",int,float,str,bool,b,"3.14 este un număr zecimal, deci float",,,,,,,,,M21',
-    'truefalse,,,,,,,"Python este un limbaj interpretat",,,,"Python este un limbaj interpretat",True,,,,M21',
-    'fill,"Completează codul pentru a afișa mesajul:",,,,,,,"Se folosește funcția print()","print(___)",...print(\'Salut\')...;...print(\"Bună\")...,,,,,,M18',
-    'order,"Ordonează pașii pentru a citi un fișier:",,,,,,,"f = open(\'date.txt\')|continut = f.read()|print(continut)|f.close()",,,,,1|2|3|4,,M10',
-    'card,"**Liste în Python**\n\nListele sunt colecții ordonate de elemente.\n\n```python\nfructe = [\'măr\', \'pară\', \'banană\']\n```",,,,,,,,,,,,,,,M61',
-    'open_answer,"Explică diferența dintre o listă și un tuplu în Python.",,,,,,"Răspunsul trebuie să menționeze mutabilitatea",,,,,,,,,M61;M21',
-    'problem,"Scrie o funcție care returnează suma numerelor pare dintr-o listă.",,,,,,,,"def suma_pare(lista):\n    return sum(x for x in lista if x % 2 == 0)",,,,,"[1,2,3,4]:6|[2,4,6]:12|[1,3,5]:0",M61;M82',
-  ];
-  return [headers, ...rows].join("\n");
+    "# --- 2) TRUEFALSE: completează 'statement' și 'is_true' (True/False). 'question' poate fi gol.",
+    'truefalse,,,,,,,"Python este un limbaj interpretat.",,,,"Python este un limbaj interpretat.",True,,,,M21',
+    "# --- 3) FILL: 'code_template' cu ___ pentru spații; 'blanks' = răspunsuri separate prin ;",
+    "#       Variante alternative pentru același spațiu se separă prin | (ex: append|adauga).",
+    'fill,"Afișează pe ecran textul Salut:",,,,,,"Folosește funcția print().","___(""Salut"")",print,,,,,,,M18',
+    "# --- 4) ORDER: 'lines' separate prin |, ordinea corectă = ordinea scrisă.",
+    "#       'groups' (opțional) marchează linii interschimbabile (același număr = orice ordine OK).",
+    'order,"Ordonează pașii pentru a citi un fișier:",,,,,,"Întâi deschidem, apoi citim, apoi închidem.",,,"f = open(\'date.txt\')|continut = f.read()|print(continut)|f.close()",,,1|2|3|4,,,M10',
+    "# --- 5) CARD: doar 'question' contează, suportă Markdown. Restul coloanelor goale.",
+    'card,"**Liste în Python**\\n\\nListele sunt colecții ordonate, mutabile.\\n\\n```python\\nfructe = [\'măr\', \'pară\']\\n```",,,,,,,,,,,,,,,M61',
+    "# --- 6) OPEN_ANSWER: răspuns liber (corectare manuală sau AI). Doar 'question' (+ optional 'explanation').",
+    'open_answer,"Explică diferența dintre o listă și un tuplu în Python.",,,,,,"Răspunsul trebuie să menționeze mutabilitatea.",,,,,,,,,M61;M21',
+    "# --- 7) PROBLEM: 'solution' = referință Python, 'test_cases' = input1:output1|input2:output2",
+    'problem,"Scrie funcția suma_pare(lista) care returnează suma numerelor pare.",,,,,,,,,,,,,"def suma_pare(lista):\\n    return sum(x for x in lista if x % 2 == 0)","[1,2,3,4]:6|[2,4,6]:12|[1,3,5]:0",M61;M82',
+  ].join("\n");
 }
 
 /**
