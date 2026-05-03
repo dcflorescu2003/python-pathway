@@ -363,6 +363,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await SocialLogin.logout({ provider: "google" }).catch(() => undefined);
     }
     await supabase.auth.signOut();
+    // Explicit user-driven logout — wipe the durable backup too.
+    if (Capacitor.isNativePlatform()) {
+      await clearNativeAuthBackup().catch(() => undefined);
+    }
   };
 
   return (
