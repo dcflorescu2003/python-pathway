@@ -41,6 +41,7 @@ function createDefaultProgress(): UserProgress {
     skipUnlockedLessons: {},
     lastActivityDate: "",
     isPremium: false,
+    hasUnlimitedLives: false,
     livesUpdatedAt: new Date().toISOString(),
   };
 }
