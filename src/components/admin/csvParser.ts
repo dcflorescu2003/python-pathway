@@ -111,6 +111,23 @@ function autoRepairRow(values: string[], headerCount: number, headers: string[])
   return values;
 }
 
+/**
+ * Înlocuiește un singur `|` cu `,`, dar păstrează `||` (operator OR în Python/JS).
+ * Ex: ">|>=" → ">,>=" ; "ana|mimi" → "ana,mimi" ; "x>0 || y>0" → "x>0 || y>0".
+ */
+export function convertSinglePipes(s: string): string {
+  if (!s || s.indexOf("|") === -1) return s;
+  return s.replace(/(?<!\|)\|(?!\|)/g, ",");
+}
+
+// Coloane care folosesc `|` ca separator real — NU le procesăm.
+const PIPE_SEPARATOR_COLUMNS = new Set([
+  "lines",
+  "groups",
+  "test_cases",
+  "blanks", // procesat separat în rowToExercise (split pe | → join pe ,)
+]);
+
 function parseCSVRows(text: string): { headers: string[]; rows: Record<string, string>[] } {
   const sep = detectSeparator(text);
   // Filter out empty lines AND comment lines starting with # (after trim)
@@ -127,7 +144,10 @@ function parseCSVRows(text: string): { headers: string[]; rows: Record<string, s
       values = autoRepairRow(values, headers.length, headers);
     }
     const obj: Record<string, string> = {};
-    headers.forEach((h, i) => { obj[h] = values[i] || ""; });
+    headers.forEach((h, i) => {
+      const raw = values[i] || "";
+      obj[h] = PIPE_SEPARATOR_COLUMNS.has(h) ? raw : convertSinglePipes(raw);
+    });
     if (originalLen !== headers.length) {
       obj.__col_warn = `${originalLen} coloane găsite, ${headers.length} așteptate`;
     }
