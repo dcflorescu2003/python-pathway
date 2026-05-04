@@ -29,6 +29,35 @@ const TestManager = ({ onCreateTest, onEditTest, teacherStatus }: TestManagerPro
   const [selectedClassId, setSelectedClassId] = useState<string>("");
   const [windowMinutes, setWindowMinutes] = useState<string>("");
   const [viewingResultsTestId, setViewingResultsTestId] = useState<string | null>(null);
+  const [limitDialogOpen, setLimitDialogOpen] = useState(false);
+  const [premiumDialogOpen, setPremiumDialogOpen] = useState(false);
+  const warnedRef = useRef<{ p80: boolean; p95: boolean }>({ p80: false, p95: false });
+
+  const { isTeacherPremium } = useSubscription();
+  const { limit: testLimit, tier: teacherTier } = getTeacherTestLimit({ teacherStatus, isTeacherPremium });
+  const totalTests = tests.length;
+  const ratio = testLimit > 0 ? totalTests / testLimit : 0;
+  const atLimit = totalTests >= testLimit;
+
+  useEffect(() => {
+    if (isLoading) return;
+    if (ratio >= 0.95 && ratio < 1 && !warnedRef.current.p95) {
+      warnedRef.current.p95 = true;
+      toast.warning(`Aproape ai atins limita (${totalTests}/${testLimit} teste salvate).`);
+    } else if (ratio >= 0.8 && ratio < 0.95 && !warnedRef.current.p80) {
+      warnedRef.current.p80 = true;
+      const remaining = testLimit - totalTests;
+      toast.message(`Mai ai ${remaining} teste până la limita de ${testLimit}.`);
+    }
+  }, [ratio, totalTests, testLimit, isLoading]);
+
+  const handleCreateClick = () => {
+    if (atLimit) {
+      setLimitDialogOpen(true);
+      return;
+    }
+    onCreateTest();
+  };
 
   const { data: assignments = [] } = useTestAssignments(expandedTestId);
   const { data: items = [] } = useTestItems(expandedTestId);
