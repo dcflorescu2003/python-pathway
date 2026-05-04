@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -8,13 +8,18 @@ import { Plus, Trash2, FileText, Clock, Send, ChevronDown, ChevronUp, Users, Pen
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import TestResults from "./TestResults";
+import { useSubscription } from "@/hooks/useSubscription";
+import { getTeacherTestLimit, TEACHER_TIER_LABEL } from "@/lib/teacherLimits";
+import TestLimitReachedDialog from "./TestLimitReachedDialog";
+import TeacherPremiumDialog from "@/components/TeacherPremiumDialog";
 
 interface TestManagerProps {
   onCreateTest: () => void;
   onEditTest: (testId: string) => void;
+  teacherStatus?: string | null;
 }
 
-const TestManager = ({ onCreateTest, onEditTest }: TestManagerProps) => {
+const TestManager = ({ onCreateTest, onEditTest, teacherStatus }: TestManagerProps) => {
   const { data: tests = [], isLoading } = useTeacherTests();
   const deleteTest = useDeleteTest();
   const assignTest = useAssignTest();
