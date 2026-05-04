@@ -75,7 +75,7 @@ function computeNewStreak(currentStreak: number, lastActivityDate: string): numb
 }
 
 function regenerateLives(p: UserProgress): UserProgress {
-  if (p.isPremium || p.lives >= MAX_LIVES) return p;
+  if (p.hasUnlimitedLives || p.lives >= MAX_LIVES) return p;
   // Only full refill, only when the user is at 0 and 30 minutes have passed.
   if (p.lives !== 0) return p;
   const now = Date.now();
