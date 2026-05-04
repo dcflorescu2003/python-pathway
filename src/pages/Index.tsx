@@ -549,7 +549,7 @@ const Index = (): JSX.Element => {
       <CouponExpiredDialog open={couponExpired} onOpenChange={(open) => { if (!open) dismissCouponExpired(); }} onSubscribe={startCheckout} onStayFree={dismissCouponExpired} couponType={couponType} />
       <LevelUpDialog open={showLevelUp} onOpenChange={setShowLevelUp} levelInfo={levelInfo} newLevel={level} />
       <StreakDialog open={showStreak} onOpenChange={setShowStreak} streak={progress.streak} bestStreak={Math.max(bestStreak, progress.streak)} lastActivityDate={progress.lastActivityDate} />
-      <RefillLivesDialog open={showRefillLives} onOpenChange={setShowRefillLives} lives={progress.lives} isPremium={progress.isPremium} onLivesGranted={setLivesFromReward} />
+      <RefillLivesDialog open={showRefillLives} onOpenChange={setShowRefillLives} lives={progress.lives} isPremium={progress.hasUnlimitedLives} onLivesGranted={setLivesFromReward} />
       <LivesRefilledDialog open={showLivesRefilled} onOpenChange={setShowLivesRefilled} onStartLesson={() => { setShowLivesRefilled(false); }} />
       <ComebackDialog open={showComeback} onOpenChange={setShowComeback} daysAway={comebackDays} onResume={() => setShowComeback(false)} />
     </motion.div>
