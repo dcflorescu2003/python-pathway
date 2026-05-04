@@ -16,9 +16,11 @@ import { usePredefinedTests, usePredefinedTestItems } from "@/hooks/usePredefine
 import { ArrowLeft, Plus, Trash2, BookOpen, Code, GripVertical, PenLine, FileCheck, Copy, ChevronDown, ChevronRight, Eye, AlertTriangle, Sparkles } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
+import { getTeacherTestLimit, TEACHER_TIER_LABEL } from "@/lib/teacherLimits";
+import TestLimitReachedDialog from "./TestLimitReachedDialog";
+import TeacherPremiumDialog from "@/components/TeacherPremiumDialog";
 
 const MAX_AI_ITEMS_PER_TEST = 3;
-const MAX_TESTS_PER_MONTH = 10;
 
 interface TestBuilderProps {
   onBack: () => void;
