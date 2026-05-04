@@ -1067,6 +1067,15 @@ const TestBuilder = ({ onBack, editTestId, teacherStatus }: TestBuilderProps) =>
             ? `Salvează modificările (${items.length} itemi)`
             : `Creează test (${items.length} itemi)`}
       </Button>
+
+      <TestLimitReachedDialog
+        open={limitDialogOpen}
+        onOpenChange={setLimitDialogOpen}
+        tier={teacherTier}
+        limit={testLimit}
+        onUpgrade={() => setPremiumDialogOpen(true)}
+      />
+      <TeacherPremiumDialog open={premiumDialogOpen} onOpenChange={setPremiumDialogOpen} />
     </div>
   );
 };
