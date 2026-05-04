@@ -177,7 +177,7 @@ const LessonPage = () => {
           </p>
           <div className="mb-4">
             <WatchAdForLivesButton
-              isPremium={progress.isPremium}
+              isPremium={progress.hasUnlimitedLives}
               onLivesGranted={(newLives, livesUpdatedAt) => {
                 setLivesFromReward(newLives, livesUpdatedAt);
               }}
