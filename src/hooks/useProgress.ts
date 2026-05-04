@@ -358,7 +358,7 @@ export function useProgress() {
 
   const loseLife = useCallback(() => {
     setProgress((prev) => {
-      if (prev.isPremium) return prev;
+      if (prev.hasUnlimitedLives) return prev;
       const now = new Date().toISOString();
       const newLives = Math.max(0, prev.lives - 1);
       const newProgress = {
