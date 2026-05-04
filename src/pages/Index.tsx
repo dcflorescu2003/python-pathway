@@ -324,8 +324,11 @@ const Index = (): JSX.Element => {
             <button
               type="button"
               onClick={() => {
-                if (progress.isPremium) {
-                  toast({ title: "Ai inimi nelimitate ✨", description: "Beneficiu Premium." });
+                if (progress.hasUnlimitedLives) {
+                  toast({
+                    title: "Ai inimi nelimitate ❤️",
+                    description: progress.isPremium ? "Beneficiu Premium." : "Inimile tale nu se consumă.",
+                  });
                   return;
                 }
                 if (progress.lives >= 5) {
@@ -338,7 +341,7 @@ const Index = (): JSX.Element => {
               aria-label="Reîncarcă inimile"
             >
               <Heart className="h-5 w-5" />
-              <span className="text-sm font-bold">{progress.isPremium ? "∞" : progress.lives}</span>
+              <span className="text-sm font-bold">{progress.hasUnlimitedLives ? "∞" : progress.lives}</span>
             </button>
             <div className="flex items-center gap-1 text-xp">
               <Zap className="h-5 w-5" />
