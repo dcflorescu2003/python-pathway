@@ -513,6 +513,7 @@ function mergeProgress(a: UserProgress, b: UserProgress): UserProgress {
     streak: Math.max(a.streak, b.streak),
     lives: Math.max(a.lives, b.lives),
     isPremium: a.isPremium || b.isPremium,
+    hasUnlimitedLives: a.hasUnlimitedLives || b.hasUnlimitedLives,
     lastActivityDate: mergedDate,
     completedLessons: mergedLessons,
     startedLessons: { ...a.startedLessons, ...b.startedLessons },
