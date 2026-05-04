@@ -1,42 +1,44 @@
-## Problem
+## Inimi nelimitate pentru profesorii verificați
 
-La importul CSV de exerciții, vrem ca un singur `|` în câmpurile de conținut text să fie convertit automat în `,` (formatul intern al variantelor alternative). Dar `||` (operator OR Python/JS) trebuie păstrat intact.
+Profesorii cu `teacher_status = 'verified'` primesc automat inimi nelimitate, fără niciun mesaj sau promo în UI. Beneficiul se activează în momentul în care admin-ul aprobă (sau prin invite/referral/cupon care setează `teacher_status='verified'`).
 
-Exemple:
-- `>|>=` → `>,>=`
-- `ana|mimi` → `ana,mimi`
-- `x>0 || y>0` → `x>0 || y>0` (neschimbat)
+### Ce primesc / nu primesc verificații
 
-## Changes
+- **Da**: `lives` nu mai scade, afișaj `∞` la inimi, fără dialog „Fără vieți", fără reclamă-pentru-inimi.
+- **Nu**: nu primesc Premium (nu apare coroana, nu primesc conținut Premium, nu primesc dragon gold).
 
-### `src/components/admin/csvParser.ts`
+### Modificări tehnice
 
-1. **Helper nou `convertSinglePipes(s)`** — folosește regex `/(?<!\|)\|(?!\|)/g` ca să înlocuiască doar pipe-urile singulare cu virgulă.
+**1. `src/hooks/useProgress.ts`**
+- Adaugă `hasUnlimitedLives: boolean` în interfața `UserProgress` (default `false`).
+- La `loadCloud` și la refetch pe focus, citește în plus `teacher_status` din `profiles` și calculează:
+  `hasUnlimitedLives = (profile.is_premium ?? false) || profile.teacher_status === 'verified'`
+- Înlocuiește în logica de vieți toate verificările `p.isPremium` cu `p.hasUnlimitedLives`:
+  - `regenerateLives` (linia 71)
+  - `loseLife` (linia 347)
+  - `mergeProgress` (linia 504): `hasUnlimitedLives: a.hasUnlimitedLives || b.hasUnlimitedLives`
+- `isPremium` rămâne intact (controlează coroana, conținut Premium etc.).
 
-2. **Aplicat doar pe coloane de text**, nu pe cele care folosesc `|` ca separator real (`lines`, `groups`, `test_cases`, `blanks`). Astfel:
-   - `question`, `explanation`, `statement`, `option_*`, `code_template`, `solution`, `correct`, `is_true` etc. trec prin `convertSinglePipes`.
-   - `lines` și `groups` (split pe `|`) și `test_cases` (`input:output|input:output`) rămân neatinse.
-   - `blanks` rămâne neatins în parser pentru că `rowToExercise` deja face split pe `|` și join pe `,` — și acolo regula "doar `|` singur" nu se aplică (utilizatorul scrie deja `>|>=` ca intenție clară de variantă alternativă).
+**2. `src/pages/LessonPage.tsx`**
+- `lives = progress.hasUnlimitedLives ? localLives : Math.min(localLives, progress.lives)` (linia 64)
+- `noLives = !progress.hasUnlimitedLives && progress.lives <= 0` (linia 71)
+- Branch-ul `if (!progress.isPremium) loseLife()` → `if (!progress.hasUnlimitedLives) loseLife()` (linia 135)
+- Ecranul „Lecție terminată fără vieți": `progress.hasUnlimitedLives ? Reîncepe : Vezi reclamă` (liniile 216-238)
 
-3. **Comentariu actualizat** în `getExercisesTemplateCSV()` ca să menționeze noua regulă.
+**3. `src/pages/SkipChallengePage.tsx`**
+- Linia 136: `if (progress.lives <= 0 && !progress.hasUnlimitedLives)`
 
-### Test unitar nou: `src/components/admin/csvParser.test.ts`
+**4. `src/pages/Index.tsx`**
+- Afișaj inimi (linia 341): `{progress.hasUnlimitedLives ? "∞" : progress.lives}`
+- Click handler inimi (linia 327): toast „Inimi nelimitate" doar dacă `hasUnlimitedLives` (text neutru, nu menționează „Premium" pentru profesori). Vom împărți: dacă e `isPremium` → mesaj Premium; dacă e doar verificat → mesaj scurt „Ai inimi nelimitate ❤️" fără să pomenească rolul.
+- `RefillLivesDialog` se deschide doar când nu are `hasUnlimitedLives`.
 
-Cazuri:
-- Quiz cu `option_a = ">|>="` → opțiunea devine `">,>="`
-- Quiz cu `question = "x>0 || y>0"` → rămâne `"x>0 || y>0"`
-- Card cu `explanation = "ana|mimi"` → devine `"ana,mimi"`
-- Order cu `lines = "a|b|c"` → rămâne split corect în 3 linii (regula NU se aplică)
-- Problem cu `test_cases = "1:2|3:4"` → rămâne 2 cazuri de test
-- Mix: `"a||b|c"` → `"a||b,c"` (||  păstrat, | simplu convertit)
+**5. `src/components/RefillLivesDialog.tsx`** și **`src/components/WatchAdForLivesButton.tsx`**
+- Adaugă prop `hasUnlimitedLives` (sau înlocuiește `isPremium`-ul existent care decide ascunderea reclamei) — ascund butonul de reclamă și pentru verificați. Cea mai mică schimbare: păstrăm `isPremium` ca prop dar îi pasăm de fapt valoarea `hasUnlimitedLives` din locurile care îl invocă.
 
-## Files modified
+**6. Memorie**
+- Adăugăm `mem://features/teacher-platform/verified-unlimited-lives` cu regula: „Profesorii verificați primesc inimi nelimitate silențios; nu apare nicăieri ca beneficiu/reclamă; nu primesc alte avantaje Premium".
+- Actualizăm `mem://index.md` cu referința.
 
-- `src/components/admin/csvParser.ts`
-- `src/components/admin/csvParser.test.ts` (nou)
-
-## Out of scope
-
-Nu modific logica de validare runtime (`FillExercise.tsx` deja acceptă `|` și `,` simultan). Modificarea e exclusiv la nivel de import CSV.
-
-Confirmi și aplicăm?
+### Fără modificări de DB / RLS
+Coloana `teacher_status` există deja, RLS-ul actual permite citirea profilului propriu. Nicio migrație necesară.

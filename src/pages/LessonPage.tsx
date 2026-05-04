@@ -59,16 +59,16 @@ const LessonPage = () => {
   const [correctCount, setCorrectCount] = useState(0);
   const [wrongCount, setWrongCount] = useState(0);
   const [localLives, setLocalLives] = useState(5);
-  // Inimi afișate în lecție: pentru Premium folosim contor local (nu se sincronizează cu DB);
-  // pentru non-Premium e minimul dintre contor local și inimile reale (DB).
-  const lives = progress.isPremium ? localLives : Math.min(localLives, progress.lives);
+  // Inimi afișate în lecție: pentru utilizatorii cu inimi nelimitate (Premium sau profesori verificați) folosim contor local;
+  // pentru ceilalți e minimul dintre contor local și inimile reale (DB).
+  const lives = progress.hasUnlimitedLives ? localLives : Math.min(localLives, progress.lives);
   const [isFinished, setIsFinished] = useState(false);
   const [feedback, setFeedback] = useState<"correct" | "wrong" | null>(null);
   const [lastExplanation, setLastExplanation] = useState<string | null>(null);
   
 
-  // Lecția nu poate începe sau continua dacă userul nu are inimi (excepție: Premium)
-  const noLives = !progress.isPremium && progress.lives <= 0;
+  // Lecția nu poate începe sau continua dacă userul nu are inimi (excepție: inimi nelimitate)
+  const noLives = !progress.hasUnlimitedLives && progress.lives <= 0;
   const lessonStarted = currentIndex > 0 || feedback !== null || correctCount > 0;
 
   const restartLesson = useCallback(() => {
@@ -129,17 +129,17 @@ const LessonPage = () => {
           recordActivity();
         }
       } else {
-        // Scădem inima locală pentru toți (inclusiv Premium); pentru non-Premium scădem și inima reală.
+        // Scădem inima locală pentru toți; pentru cei fără inimi nelimitate scădem și inima reală.
         setLocalLives((l) => Math.max(0, l - 1));
         setWrongCount((w) => w + 1);
-        if (!progress.isPremium) {
+        if (!progress.hasUnlimitedLives) {
           loseLife();
         }
         setFeedback("wrong");
         setLastExplanation(exercise?.explanation || null);
       }
     },
-    [currentIndex, lesson, loseLife, recordActivity, markLessonStarted, progress.isPremium, correctCount, wrongCount, lives, completeLesson, user]
+    [currentIndex, lesson, loseLife, recordActivity, markLessonStarted, progress.hasUnlimitedLives, correctCount, wrongCount, lives, completeLesson, user]
   );
 
   const handleContinue = useCallback(() => {
@@ -177,7 +177,7 @@ const LessonPage = () => {
           </p>
           <div className="mb-4">
             <WatchAdForLivesButton
-              isPremium={progress.isPremium}
+              isPremium={progress.hasUnlimitedLives}
               onLivesGranted={(newLives, livesUpdatedAt) => {
                 setLivesFromReward(newLives, livesUpdatedAt);
               }}
@@ -213,14 +213,14 @@ const LessonPage = () => {
               <h2 className="text-xl font-bold text-foreground mb-2">Ai rămas fără vieți!</h2>
               <div className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-4 py-2 text-primary font-bold mb-2">+{xpEarned} XP</div>
               <p className="text-xs text-muted-foreground mb-4">Recompensă de consolare</p>
-              {progress.isPremium ? (
+              {progress.hasUnlimitedLives ? (
                 <p className="text-sm text-muted-foreground mb-4">Reîncepe lecția cu 5 inimi noi.</p>
               ) : (
                 <>
                   <p className="text-sm text-muted-foreground mb-4">Încearcă din nou mai târziu sau vizionează o reclamă pentru a primi 5 inimi.</p>
                   <div className="mb-4">
                     <WatchAdForLivesButton
-                      isPremium={progress.isPremium}
+                      isPremium={progress.hasUnlimitedLives}
                       onLivesGranted={(newLives, livesUpdatedAt) => {
                         setLivesFromReward(newLives, livesUpdatedAt);
                       }}
@@ -233,7 +233,7 @@ const LessonPage = () => {
           <div className="flex gap-3">
             <Button variant="outline" className="flex-1 touch-target" onClick={() => navigate(`/chapter/${chapter.id}`)}>Înapoi</Button>
             {lives > 0 && <Button className="flex-1 touch-target" onClick={() => navigate(`/chapter/${chapter.id}`)}>Continuă</Button>}
-            {lives <= 0 && progress.isPremium && (
+            {lives <= 0 && progress.hasUnlimitedLives && (
               <Button className="flex-1 touch-target" onClick={restartLesson}>Reîncepe</Button>
             )}
           </div>

@@ -109,8 +109,9 @@ const Index = (): JSX.Element => {
           }
         }
 
-        // Lives refilled: lives = 5, ne-premium, dialog nemaifișat azi
-        if (data?.lives === 5 && !data?.is_premium && data?.lives_refilled_dialog_shown_at !== todayStr) {
+        // Lives refilled: lives = 5, fără inimi nelimitate (Premium sau profesor verificat), dialog nemaifișat azi
+        const hasUnlimited = data?.is_premium || data?.teacher_status === "verified";
+        if (data?.lives === 5 && !hasUnlimited && data?.lives_refilled_dialog_shown_at !== todayStr) {
           setShowLivesRefilled(true);
           supabase
             .from("profiles")
@@ -324,8 +325,11 @@ const Index = (): JSX.Element => {
             <button
               type="button"
               onClick={() => {
-                if (progress.isPremium) {
-                  toast({ title: "Ai inimi nelimitate ✨", description: "Beneficiu Premium." });
+                if (progress.hasUnlimitedLives) {
+                  toast({
+                    title: "Ai inimi nelimitate ❤️",
+                    description: progress.isPremium ? "Beneficiu Premium." : "Inimile tale nu se consumă.",
+                  });
                   return;
                 }
                 if (progress.lives >= 5) {
@@ -338,7 +342,7 @@ const Index = (): JSX.Element => {
               aria-label="Reîncarcă inimile"
             >
               <Heart className="h-5 w-5" />
-              <span className="text-sm font-bold">{progress.isPremium ? "∞" : progress.lives}</span>
+              <span className="text-sm font-bold">{progress.hasUnlimitedLives ? "∞" : progress.lives}</span>
             </button>
             <div className="flex items-center gap-1 text-xp">
               <Zap className="h-5 w-5" />
@@ -546,7 +550,7 @@ const Index = (): JSX.Element => {
       <CouponExpiredDialog open={couponExpired} onOpenChange={(open) => { if (!open) dismissCouponExpired(); }} onSubscribe={startCheckout} onStayFree={dismissCouponExpired} couponType={couponType} />
       <LevelUpDialog open={showLevelUp} onOpenChange={setShowLevelUp} levelInfo={levelInfo} newLevel={level} />
       <StreakDialog open={showStreak} onOpenChange={setShowStreak} streak={progress.streak} bestStreak={Math.max(bestStreak, progress.streak)} lastActivityDate={progress.lastActivityDate} />
-      <RefillLivesDialog open={showRefillLives} onOpenChange={setShowRefillLives} lives={progress.lives} isPremium={progress.isPremium} onLivesGranted={setLivesFromReward} />
+      <RefillLivesDialog open={showRefillLives} onOpenChange={setShowRefillLives} lives={progress.lives} isPremium={progress.hasUnlimitedLives} onLivesGranted={setLivesFromReward} />
       <LivesRefilledDialog open={showLivesRefilled} onOpenChange={setShowLivesRefilled} onStartLesson={() => { setShowLivesRefilled(false); }} />
       <ComebackDialog open={showComeback} onOpenChange={setShowComeback} daysAway={comebackDays} onResume={() => setShowComeback(false)} />
     </motion.div>

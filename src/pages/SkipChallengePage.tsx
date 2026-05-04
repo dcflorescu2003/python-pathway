@@ -133,7 +133,7 @@ const SkipChallengePage = () => {
         finishFailed();
         return;
       }
-      if (progress.lives <= 0 && !progress.isPremium) {
+      if (progress.lives <= 0 && !progress.hasUnlimitedLives) {
         setOutcome("no-lives");
         return;
       }
@@ -144,7 +144,7 @@ const SkipChallengePage = () => {
     } else {
       setCurrentIndex((i) => i + 1);
     }
-  }, [feedback, challengeLives, currentIndex, questions.length, finishFailed, finishSuccess, progress.lives, progress.isPremium]);
+  }, [feedback, challengeLives, currentIndex, questions.length, finishFailed, finishSuccess, progress.lives, progress.hasUnlimitedLives]);
 
   useEffect(() => {
     // If user lands here without enough pool, fail gracefully

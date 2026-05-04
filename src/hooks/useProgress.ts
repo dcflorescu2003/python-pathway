@@ -11,6 +11,12 @@ export interface UserProgress {
   skipUnlockedLessons: Record<string, true>;
   lastActivityDate: string;
   isPremium: boolean;
+  /**
+   * Silent flag: lives never decrement, displayed as ∞.
+   * True for Premium users OR verified teachers (teacher_status='verified').
+   * Verified teachers DO NOT get any other Premium perk; never advertise this in UI.
+   */
+  hasUnlimitedLives: boolean;
   livesUpdatedAt: string;
 }
 
@@ -35,6 +41,7 @@ function createDefaultProgress(): UserProgress {
     skipUnlockedLessons: {},
     lastActivityDate: "",
     isPremium: false,
+    hasUnlimitedLives: false,
     livesUpdatedAt: new Date().toISOString(),
   };
 }
@@ -68,7 +75,7 @@ function computeNewStreak(currentStreak: number, lastActivityDate: string): numb
 }
 
 function regenerateLives(p: UserProgress): UserProgress {
-  if (p.isPremium || p.lives >= MAX_LIVES) return p;
+  if (p.hasUnlimitedLives || p.lives >= MAX_LIVES) return p;
   // Only full refill, only when the user is at 0 and 30 minutes have passed.
   if (p.lives !== 0) return p;
   const now = Date.now();
@@ -156,7 +163,7 @@ export function useProgress() {
       try {
         const { data: profile } = await supabase
           .from("profiles")
-          .select("xp, streak, lives, is_premium, last_activity_date, lives_updated_at")
+          .select("xp, streak, lives, is_premium, last_activity_date, lives_updated_at, teacher_status")
           .eq("user_id", user.id)
           .single();
 
@@ -180,11 +187,15 @@ export function useProgress() {
           cloudSkipUnlocks[row.lesson_id] = true;
         });
 
+        const isPremiumCloud = profile?.is_premium ?? false;
+        const isVerifiedTeacher = (profile as any)?.teacher_status === "verified";
+
         const cloudProgress: UserProgress = {
           xp: profile?.xp ?? 0,
           streak: profile?.streak ?? 0,
           lives: profile?.lives ?? MAX_LIVES,
-          isPremium: profile?.is_premium ?? false,
+          isPremium: isPremiumCloud,
+          hasUnlimitedLives: isPremiumCloud || isVerifiedTeacher,
           lastActivityDate: profile?.last_activity_date ?? getTodayDate(),
           completedLessons: cloudCompleted,
           startedLessons: {},
@@ -221,7 +232,7 @@ export function useProgress() {
       try {
         const { data: profile } = await supabase
           .from("profiles")
-          .select("xp, streak, lives, is_premium, last_activity_date, lives_updated_at")
+          .select("xp, streak, lives, is_premium, last_activity_date, lives_updated_at, teacher_status")
           .eq("user_id", user.id)
           .single();
         if (!profile) return;
@@ -234,12 +245,15 @@ export function useProgress() {
             (profile.xp ?? 0) > prev.xp;
           if (!isCloudNewer) return prev;
 
+          const isPremiumCloud = profile.is_premium ?? prev.isPremium;
+          const isVerifiedTeacher = (profile as any).teacher_status === "verified";
           const merged: UserProgress = {
             ...prev,
             xp: Math.max(prev.xp, profile.xp ?? 0),
             streak: Math.max(prev.streak, profile.streak ?? 0),
             lives: profile.lives ?? prev.lives,
-            isPremium: profile.is_premium ?? prev.isPremium,
+            isPremium: isPremiumCloud,
+            hasUnlimitedLives: isPremiumCloud || isVerifiedTeacher,
             lastActivityDate: cloudDate > prev.lastActivityDate ? cloudDate : prev.lastActivityDate,
             livesUpdatedAt: profile.lives_updated_at ?? prev.livesUpdatedAt,
           };
@@ -344,7 +358,7 @@ export function useProgress() {
 
   const loseLife = useCallback(() => {
     setProgress((prev) => {
-      if (prev.isPremium) return prev;
+      if (prev.hasUnlimitedLives) return prev;
       const now = new Date().toISOString();
       const newLives = Math.max(0, prev.lives - 1);
       const newProgress = {
@@ -395,7 +409,7 @@ export function useProgress() {
   const setPremium = useCallback(
     (value: boolean) => {
       setProgress((prev) => {
-        const newProgress = { ...prev, isPremium: value };
+        const newProgress = { ...prev, isPremium: value, hasUnlimitedLives: value || prev.hasUnlimitedLives };
         saveLocalProgress(newProgress, user?.id);
         if (user) {
           supabase
@@ -502,6 +516,7 @@ function mergeProgress(a: UserProgress, b: UserProgress): UserProgress {
     streak: Math.max(a.streak, b.streak),
     lives: Math.max(a.lives, b.lives),
     isPremium: a.isPremium || b.isPremium,
+    hasUnlimitedLives: a.hasUnlimitedLives || b.hasUnlimitedLives,
     lastActivityDate: mergedDate,
     completedLessons: mergedLessons,
     startedLessons: { ...a.startedLessons, ...b.startedLessons },
