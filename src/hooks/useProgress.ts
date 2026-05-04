@@ -232,7 +232,7 @@ export function useProgress() {
       try {
         const { data: profile } = await supabase
           .from("profiles")
-          .select("xp, streak, lives, is_premium, last_activity_date, lives_updated_at")
+          .select("xp, streak, lives, is_premium, last_activity_date, lives_updated_at, teacher_status")
           .eq("user_id", user.id)
           .single();
         if (!profile) return;
@@ -245,12 +245,15 @@ export function useProgress() {
             (profile.xp ?? 0) > prev.xp;
           if (!isCloudNewer) return prev;
 
+          const isPremiumCloud = profile.is_premium ?? prev.isPremium;
+          const isVerifiedTeacher = (profile as any).teacher_status === "verified";
           const merged: UserProgress = {
             ...prev,
             xp: Math.max(prev.xp, profile.xp ?? 0),
             streak: Math.max(prev.streak, profile.streak ?? 0),
             lives: profile.lives ?? prev.lives,
-            isPremium: profile.is_premium ?? prev.isPremium,
+            isPremium: isPremiumCloud,
+            hasUnlimitedLives: isPremiumCloud || isVerifiedTeacher,
             lastActivityDate: cloudDate > prev.lastActivityDate ? cloudDate : prev.lastActivityDate,
             livesUpdatedAt: profile.lives_updated_at ?? prev.livesUpdatedAt,
           };
