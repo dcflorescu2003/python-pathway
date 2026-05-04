@@ -213,14 +213,14 @@ const LessonPage = () => {
               <h2 className="text-xl font-bold text-foreground mb-2">Ai rămas fără vieți!</h2>
               <div className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-4 py-2 text-primary font-bold mb-2">+{xpEarned} XP</div>
               <p className="text-xs text-muted-foreground mb-4">Recompensă de consolare</p>
-              {progress.isPremium ? (
+              {progress.hasUnlimitedLives ? (
                 <p className="text-sm text-muted-foreground mb-4">Reîncepe lecția cu 5 inimi noi.</p>
               ) : (
                 <>
                   <p className="text-sm text-muted-foreground mb-4">Încearcă din nou mai târziu sau vizionează o reclamă pentru a primi 5 inimi.</p>
                   <div className="mb-4">
                     <WatchAdForLivesButton
-                      isPremium={progress.isPremium}
+                      isPremium={progress.hasUnlimitedLives}
                       onLivesGranted={(newLives, livesUpdatedAt) => {
                         setLivesFromReward(newLives, livesUpdatedAt);
                       }}
@@ -233,7 +233,7 @@ const LessonPage = () => {
           <div className="flex gap-3">
             <Button variant="outline" className="flex-1 touch-target" onClick={() => navigate(`/chapter/${chapter.id}`)}>Înapoi</Button>
             {lives > 0 && <Button className="flex-1 touch-target" onClick={() => navigate(`/chapter/${chapter.id}`)}>Continuă</Button>}
-            {lives <= 0 && progress.isPremium && (
+            {lives <= 0 && progress.hasUnlimitedLives && (
               <Button className="flex-1 touch-target" onClick={restartLesson}>Reîncepe</Button>
             )}
           </div>
