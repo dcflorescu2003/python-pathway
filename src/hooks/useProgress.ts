@@ -11,6 +11,12 @@ export interface UserProgress {
   skipUnlockedLessons: Record<string, true>;
   lastActivityDate: string;
   isPremium: boolean;
+  /**
+   * Silent flag: lives never decrement, displayed as ∞.
+   * True for Premium users OR verified teachers (teacher_status='verified').
+   * Verified teachers DO NOT get any other Premium perk; never advertise this in UI.
+   */
+  hasUnlimitedLives: boolean;
   livesUpdatedAt: string;
 }
 
