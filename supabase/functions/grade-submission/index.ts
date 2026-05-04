@@ -371,10 +371,22 @@ function gradeExercise(exercise: any, answerData: any, maxPoints: number): numbe
   if (type === "fill") {
     const blanks = (exercise.blanks || []) as { id: string; answer: string }[];
     if (blanks.length === 0) return 0;
+    const normalize = (s: string) =>
+      s
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/[\u200B-\u200D\uFEFF]/g, "")
+        .replace(/\u00A0/g, " ")
+        .replace(/\s+/g, " ")
+        .toLowerCase()
+        .trim();
     let correct = 0;
     for (const blank of blanks) {
-      const studentAnswer = (answerData.blanks?.[blank.id] || "").trim().toLowerCase();
-      const acceptedAnswers = blank.answer.split(",").map((a: string) => a.trim().toLowerCase());
+      const studentAnswer = normalize(answerData.blanks?.[blank.id] || "");
+      const acceptedAnswers = blank.answer
+        .split(/[,|;/]/)
+        .map((a: string) => normalize(a))
+        .filter(Boolean);
       if (acceptedAnswers.includes(studentAnswer)) correct++;
     }
     return Math.round((correct / blanks.length) * maxPoints);
