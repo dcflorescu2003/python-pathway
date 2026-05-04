@@ -173,7 +173,7 @@ const LessonPage = () => {
           <div className="text-5xl mb-4">💔</div>
           <h2 className="text-xl font-bold text-foreground mb-2">Nu ai inimi</h2>
           <p className="text-sm text-muted-foreground mb-4">
-            Vizionează o reclamă pentru a-ți reumple imediat toate inimile, sau așteaptă 25 de minute și se reîncarcă singure.
+            Vizionează o reclamă pentru a-ți reumple imediat toate inimile, sau așteaptă 30 de minute după ce rămâi fără inimi și se reîncarcă automat.
           </p>
           <div className="mb-4">
             <WatchAdForLivesButton
