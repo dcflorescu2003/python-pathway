@@ -496,23 +496,31 @@ const TestBuilder = ({ onBack, editTestId, teacherStatus }: TestBuilderProps) =>
         <h2 className="text-lg font-bold text-foreground">{isEditing ? "Editează test" : "Creează test"}</h2>
       </div>
 
-      {/* Limits info for Profesor AI */}
-      {isTeacherPremium && (
-        <>
-          <div className="flex flex-wrap gap-2">
-            <div className={`text-xs px-2 py-1 rounded-full border ${testsThisMonth >= MAX_TESTS_PER_MONTH ? 'border-destructive/50 bg-destructive/10 text-destructive' : 'border-border bg-muted text-muted-foreground'}`}>
-              Teste luna aceasta: {testsThisMonth}/{MAX_TESTS_PER_MONTH}
+      {/* Counter teste salvate */}
+      <div className="flex flex-wrap gap-2">
+        {(() => {
+          const ratio = totalTests / testLimit;
+          const cls = ratio >= 0.95
+            ? 'border-destructive/50 bg-destructive/10 text-destructive'
+            : ratio >= 0.8
+            ? 'border-warning/50 bg-warning/10 text-warning'
+            : 'border-border bg-muted text-muted-foreground';
+          return (
+            <div className={`text-xs px-2 py-1 rounded-full border ${cls}`}>
+              Teste salvate: {totalTests}/{testLimit} · {TEACHER_TIER_LABEL[teacherTier]}
             </div>
-            <div className={`text-xs px-2 py-1 rounded-full border ${aiItemCount > MAX_AI_ITEMS_PER_TEST ? 'border-warning/50 bg-warning/10 text-warning' : 'border-border bg-muted text-muted-foreground'}`}>
-              Itemi AI: {aiItemCount} {aiItemCount > MAX_AI_ITEMS_PER_TEST && `(selectează ${MAX_AI_ITEMS_PER_TEST} cu ✨)`}
-            </div>
+          );
+        })()}
+        {isTeacherPremium && (
+          <div className={`text-xs px-2 py-1 rounded-full border ${aiItemCount > MAX_AI_ITEMS_PER_TEST ? 'border-warning/50 bg-warning/10 text-warning' : 'border-border bg-muted text-muted-foreground'}`}>
+            Itemi AI: {aiItemCount} {aiItemCount > MAX_AI_ITEMS_PER_TEST && `(selectează ${MAX_AI_ITEMS_PER_TEST} cu ✨)`}
           </div>
-          {aiItemCount > MAX_AI_ITEMS_PER_TEST && (
-            <p className="text-[10px] text-muted-foreground">
-              Ai {aiItemCount} itemi evaluabili cu AI dar limita e {MAX_AI_ITEMS_PER_TEST}. Bifează ✨ pe itemii doriți ({aiGradingItemIds.length}/{MAX_AI_ITEMS_PER_TEST} selectați).
-            </p>
-          )}
-        </>
+        )}
+      </div>
+      {isTeacherPremium && aiItemCount > MAX_AI_ITEMS_PER_TEST && (
+        <p className="text-[10px] text-muted-foreground">
+          Ai {aiItemCount} itemi evaluabili cu AI dar limita e {MAX_AI_ITEMS_PER_TEST}. Bifează ✨ pe itemii doriți ({aiGradingItemIds.length}/{MAX_AI_ITEMS_PER_TEST} selectați).
+        </p>
       )}
 
       {/* Config */}
