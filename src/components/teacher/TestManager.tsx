@@ -99,10 +99,19 @@ const TestManager = ({ onCreateTest, onEditTest, teacherStatus }: TestManagerPro
 
   if (isLoading) return <p className="text-sm text-muted-foreground">Se încarcă...</p>;
 
+  const counterCls = ratio >= 0.95
+    ? 'border-destructive/50 bg-destructive/10 text-destructive'
+    : ratio >= 0.8
+    ? 'border-warning/50 bg-warning/10 text-warning'
+    : 'border-border bg-muted text-muted-foreground';
+
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-2 flex-wrap">
         <h3 className="text-sm font-semibold text-muted-foreground">Testele mele ({tests.length})</h3>
+        <div className={`text-[11px] px-2 py-0.5 rounded-full border ${counterCls}`} title={TEACHER_TIER_LABEL[teacherTier]}>
+          {totalTests}/{testLimit} teste salvate
+        </div>
       </div>
 
       {tests.map((test) => {
