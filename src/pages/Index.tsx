@@ -109,8 +109,9 @@ const Index = (): JSX.Element => {
           }
         }
 
-        // Lives refilled: lives = 5, ne-premium, dialog nemaifișat azi
-        if (data?.lives === 5 && !data?.is_premium && data?.lives_refilled_dialog_shown_at !== todayStr) {
+        // Lives refilled: lives = 5, fără inimi nelimitate (Premium sau profesor verificat), dialog nemaifișat azi
+        const hasUnlimited = data?.is_premium || data?.teacher_status === "verified";
+        if (data?.lives === 5 && !hasUnlimited && data?.lives_refilled_dialog_shown_at !== todayStr) {
           setShowLivesRefilled(true);
           supabase
             .from("profiles")
