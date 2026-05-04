@@ -104,14 +104,12 @@ const TestBuilder = ({ onBack, editTestId, teacherStatus }: TestBuilderProps) =>
     (i.source_type === "custom" && i.custom_data?.type === "open_answer")
   ).length;
 
-  // Count tests created this month
-  const testsThisMonth = allTests.filter(t => {
-    const created = new Date(t.created_at);
-    const now = new Date();
-    return created.getMonth() === now.getMonth() && created.getFullYear() === now.getFullYear();
-  }).length;
+  const totalTests = allTests.length;
+  const { limit: testLimit, tier: teacherTier } = getTeacherTestLimit({ teacherStatus, isTeacherPremium });
+  const [limitDialogOpen, setLimitDialogOpen] = useState(false);
+  const [premiumDialogOpen, setPremiumDialogOpen] = useState(false);
 
-  const canCreateMoreTests = isEditing || !isTeacherPremium || testsThisMonth < MAX_TESTS_PER_MONTH;
+  const canCreateMoreTests = isEditing || totalTests < testLimit;
 
   const addItem = (sourceType: string, sourceId: string | null, variant: string = "both", customData: any = null) => {
     if (sourceId && items.some((i) => i.source_id === sourceId && i.source_type === sourceType)) {
