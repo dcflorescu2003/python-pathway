@@ -1,35 +1,63 @@
-# Plan: Limită 3 reclame/zi + auto-refill la 30 min
+## Problem
 
-## Modificări
+La lecția "Instrucțiunea if...else", exercițiul fill cu răspuns acceptat `> | >=` respinge `>` deși logica curentă din `src/components/exercises/FillExercise.tsx` ar trebui să-l accepte (split pe `[,|]`, normalize, includes). În testarea izolată funcționează — deci cauza e fie un caracter invizibil salvat din admin (NBSP / zero-width), fie un build vechi servit pe device.
 
-### 1. `supabase/functions/reward-life/index.ts`
-- `MAX_ADS_PER_DAY`: 2 → **3**
-- Când limita e atinsă, returnează un payload mai descriptiv (status `429`) cu un cod `LIMIT_REACHED` ca să-l putem trata frumos pe client.
+## Changes
 
-### 2. `src/hooks/useProgress.ts`
-- `FULL_REGEN_MS`: `25 * 60 * 1000` → **`30 * 60 * 1000`**
-- Actualizez comentariile (25 min → 30 min).
+### 1. `src/components/exercises/FillExercise.tsx` — normalize mai robust
 
-### 3. `src/components/WatchAdForLivesButton.tsx`
-- Înainte de `showRewarded`, fac un pre-check: dacă `data.error === "Daily ad limit reached"` (sau dacă încercăm și primim 429), arătăm un toast prietenos:
-  > "Ai vizionat azi maximul de 3 reclame. Fă o pauză de 30 de minute — inimile se reîncarcă singure."
-  
-  În loc de mesajul actual "Edge Function returned a non-2xx status code".
-- Schimb textul informativ: "25 de minute" → **"30 de minute"**.
-- Opțional: dacă știm deja (din profile) că `ads_watched_today >= 3`, ascundem butonul și afișăm direct mesajul de pauză. Pentru asta, primim opțional `adsWatchedToday` din parent (RefillLivesDialog îl deține deja prin profile fetch — dar pentru simplitate, ne bazăm pe răspunsul edge function și gestionăm eroarea curat).
+Extind `normalize()` să elimine:
+- caractere zero-width (`\u200B-\u200D`, `\uFEFF`)
+- non-breaking spaces (`\u00A0`) tratate ca spațiu normal
+- whitespace interior colapsat (pentru cazuri tip `> =`)
 
-### 4. `src/components/RefillLivesDialog.tsx`
-- Text: "25 de minute" → **"30 de minute"**.
-- (Buton-ul interior se ocupă deja de logica de limită.)
+Și extind separatorii la `[,|;/]` (în plus față de virgulă și pipe) ca să acopăr greșeli comune din editor.
 
-## UX flow după limită atinsă
-1. User apasă "Vizionează reclamă" a 4-a oară.
-2. Edge function răspunde 429 cu `error: "Daily ad limit reached"`.
-3. Client afișează toast neutru (nu roșu de eroare):
-   > **"Limita zilnică atinsă"** — "Ai folosit toate cele 3 reclame de astăzi. Fă o pauză de 30 de minute — inimile se reîncarcă automat după ce rămâi fără ele."
-4. Butonul rămâne, dar utilizatorul știe că trebuie să aștepte.
+```ts
+const normalize = (s: string) =>
+  s
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[\u200B-\u200D\uFEFF]/g, "") // zero-width
+    .replace(/\u00A0/g, " ")               // NBSP -> space
+    .replace(/\s+/g, " ")                  // collapse internal whitespace
+    .toLowerCase()
+    .trim();
 
-## Note tehnice
-- Nu schimbăm schema DB — `ads_watched_today` și `ads_last_reset` există deja.
-- Auto-refill timer (30 min) e ancorat de momentul în care `lives` ajunge la 0 (`lives_updated_at`), exact ca acum.
-- Nu e nevoie de migrare; doar deploy edge function + redeploy mobil cu noul JS.
+// split pe , | ; sau /
+const alternatives = acceptedAnswers.split(/[,|;/]/).map(normalize).filter(Boolean);
+```
+
+### 2. Aceeași logică în `src/pages/TakeTestPage.tsx`
+
+În prezent, validarea fill din testele profesorilor folosește același pattern — aplic și acolo aceeași funcție `normalize` + splitter (probabil deja există, verific și aliniez).
+
+### 3. Test unitar nou: `src/components/exercises/FillExercise.test.tsx`
+
+Acoperă cazurile:
+- `> | >=` cu input `>` → corect
+- `>|>=` cu input `>=` → corect
+- `> | >=` cu input `<` → greșit
+- `int` cu input `INT ` (caps + trailing space) → corect
+- variantă cu NBSP `>\u00A0|\u00A0>=` cu input `>` → corect
+
+### 4. Bump versiune (1.99) pentru iOS și Android
+
+Ca utilizatorii să primească build-ul nou cu logica robustă (în caz că pe device era cache vechi).
+
+- `android/app/build.gradle`: `versionCode 99`, `versionName "1.99"`
+- `ios/App/App.xcodeproj/project.pbxproj`: `MARKETING_VERSION = 1.99`, `CURRENT_PROJECT_VERSION = 99`
+
+## Files modified
+
+- `src/components/exercises/FillExercise.tsx`
+- `src/pages/TakeTestPage.tsx` (aliniere normalizare blanks)
+- `src/components/exercises/FillExercise.test.tsx` (nou)
+- `android/app/build.gradle`
+- `ios/App/App.xcodeproj/project.pbxproj`
+
+## Out of scope
+
+Nu modific datele din DB (nu fac UPDATE pe `blanks`). Logica nouă acoperă variantele oricum.
+
+Confirmi și aplicăm?
