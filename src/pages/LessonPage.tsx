@@ -129,17 +129,17 @@ const LessonPage = () => {
           recordActivity();
         }
       } else {
-        // Scădem inima locală pentru toți (inclusiv Premium); pentru non-Premium scădem și inima reală.
+        // Scădem inima locală pentru toți; pentru cei fără inimi nelimitate scădem și inima reală.
         setLocalLives((l) => Math.max(0, l - 1));
         setWrongCount((w) => w + 1);
-        if (!progress.isPremium) {
+        if (!progress.hasUnlimitedLives) {
           loseLife();
         }
         setFeedback("wrong");
         setLastExplanation(exercise?.explanation || null);
       }
     },
-    [currentIndex, lesson, loseLife, recordActivity, markLessonStarted, progress.isPremium, correctCount, wrongCount, lives, completeLesson, user]
+    [currentIndex, lesson, loseLife, recordActivity, markLessonStarted, progress.hasUnlimitedLives, correctCount, wrongCount, lives, completeLesson, user]
   );
 
   const handleContinue = useCallback(() => {
