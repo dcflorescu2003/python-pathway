@@ -31,11 +31,20 @@ const WatchAdForLivesButton = ({ isPremium, onLivesGranted }: WatchAdForLivesBut
       }
 
       const { data, error } = await supabase.functions.invoke("reward-life");
+      const errMsg = (data as any)?.error || error?.message || "";
       if (error || !data?.success) {
-        const msg = (data as any)?.error || error?.message || "Eroare necunoscută";
+        // Friendly message when the daily ad limit was reached
+        if (errMsg && errMsg.toLowerCase().includes("daily ad limit")) {
+          toast({
+            title: "Limita zilnică atinsă",
+            description:
+              "Ai folosit toate cele 3 reclame de astăzi. Fă o pauză de 30 de minute — inimile se reîncarcă automat după ce rămâi fără ele.",
+          });
+          return;
+        }
         toast({
           title: "Nu s-au putut acorda viețile",
-          description: msg,
+          description: errMsg || "Eroare necunoscută",
           variant: "destructive",
         });
         return;
@@ -77,7 +86,7 @@ const WatchAdForLivesButton = ({ isPremium, onLivesGranted }: WatchAdForLivesBut
       </Button>
       <p className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground text-center">
         <Clock className="h-3 w-3" />
-        Sau așteaptă 25 de minute după ce rămâi fără inimi pentru reumplere completă.
+        Sau așteaptă 30 de minute după ce rămâi fără inimi pentru reumplere completă.
       </p>
     </div>
   );

@@ -6,7 +6,7 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
-const MAX_ADS_PER_DAY = 2;
+const MAX_ADS_PER_DAY = 3;
 const LIVES_PER_AD = 5;
 const MAX_LIVES = 5;
 
