@@ -14,6 +14,9 @@ const normalize = (s: string) =>
   s
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[\u200B-\u200D\uFEFF]/g, "") // zero-width chars
+    .replace(/\u00A0/g, " ")               // NBSP -> space
+    .replace(/\s+/g, " ")                  // collapse internal whitespace
     .toLowerCase()
     .trim();
 
@@ -21,8 +24,11 @@ const FillExercise = ({ exercise, onAnswer, feedback }: Props) => {
   const [answers, setAnswers] = useState<Record<string, string>>({});
 
   const isBlankCorrect = (userAnswer: string, acceptedAnswers: string) => {
-    // Acceptăm atât `,` cât și `|` ca separator între variante alternative.
-    const alternatives = acceptedAnswers.split(/[,|]/).map((a) => normalize(a));
+    // Acceptăm `,`, `|`, `;` sau `/` ca separator între variante alternative.
+    const alternatives = acceptedAnswers
+      .split(/[,|;/]/)
+      .map((a) => normalize(a))
+      .filter(Boolean);
     return alternatives.includes(normalize(userAnswer));
   };
 
@@ -56,7 +62,7 @@ const FillExercise = ({ exercise, onAnswer, feedback }: Props) => {
                 />
                 {feedback === "wrong" && (
                   <span className="text-xs text-primary ml-1">
-                    ({exercise.blanks![i].answer.split(/[,|]/)[0].trim()})
+                    ({exercise.blanks![i].answer.split(/[,|;/]/)[0].trim()})
                   </span>
                 )}
               </>
