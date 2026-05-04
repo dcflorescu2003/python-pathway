@@ -231,9 +231,22 @@ const TestManager = ({ onCreateTest, onEditTest, teacherStatus }: TestManagerPro
         );
       })}
 
-      <Button variant="outline" className="w-full gap-2" onClick={onCreateTest}>
-        <Plus className="h-4 w-4" /> Creează test nou
+      <Button
+        variant="outline"
+        className={`w-full gap-2 ${atLimit ? 'border-destructive/50 text-destructive hover:bg-destructive/10' : ''}`}
+        onClick={handleCreateClick}
+      >
+        <Plus className="h-4 w-4" /> {atLimit ? 'Limită atinsă — vezi opțiuni' : 'Creează test nou'}
       </Button>
+
+      <TestLimitReachedDialog
+        open={limitDialogOpen}
+        onOpenChange={setLimitDialogOpen}
+        tier={teacherTier}
+        limit={testLimit}
+        onUpgrade={() => setPremiumDialogOpen(true)}
+      />
+      <TeacherPremiumDialog open={premiumDialogOpen} onOpenChange={setPremiumDialogOpen} />
     </div>
   );
 };
