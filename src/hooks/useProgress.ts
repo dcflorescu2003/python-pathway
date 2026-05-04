@@ -409,7 +409,7 @@ export function useProgress() {
   const setPremium = useCallback(
     (value: boolean) => {
       setProgress((prev) => {
-        const newProgress = { ...prev, isPremium: value };
+        const newProgress = { ...prev, isPremium: value, hasUnlimitedLives: value || prev.hasUnlimitedLives };
         saveLocalProgress(newProgress, user?.id);
         if (user) {
           supabase
