@@ -163,7 +163,7 @@ export function useProgress() {
       try {
         const { data: profile } = await supabase
           .from("profiles")
-          .select("xp, streak, lives, is_premium, last_activity_date, lives_updated_at")
+          .select("xp, streak, lives, is_premium, last_activity_date, lives_updated_at, teacher_status")
           .eq("user_id", user.id)
           .single();
 
@@ -187,11 +187,15 @@ export function useProgress() {
           cloudSkipUnlocks[row.lesson_id] = true;
         });
 
+        const isPremiumCloud = profile?.is_premium ?? false;
+        const isVerifiedTeacher = (profile as any)?.teacher_status === "verified";
+
         const cloudProgress: UserProgress = {
           xp: profile?.xp ?? 0,
           streak: profile?.streak ?? 0,
           lives: profile?.lives ?? MAX_LIVES,
-          isPremium: profile?.is_premium ?? false,
+          isPremium: isPremiumCloud,
+          hasUnlimitedLives: isPremiumCloud || isVerifiedTeacher,
           lastActivityDate: profile?.last_activity_date ?? getTodayDate(),
           completedLessons: cloudCompleted,
           startedLessons: {},
