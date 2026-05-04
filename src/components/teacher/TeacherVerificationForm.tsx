@@ -352,7 +352,7 @@ const TeacherVerificationForm = ({ onSuccess, onCancel }: Props) => {
             )}
             <input
               type="file"
-              accept="image/*,.pdf"
+              accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.heic,.heif,.webp,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,image/jpeg,image/png,image/heic,image/heif,image/webp"
               className="hidden"
               onChange={(e) => setDocFile(e.target.files?.[0] ?? null)}
             />
