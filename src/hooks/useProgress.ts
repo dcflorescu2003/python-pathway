@@ -15,9 +15,9 @@ export interface UserProgress {
 }
 
 const MAX_LIVES = 5;
-// Full refill happens 25 minutes after the user runs out of lives (lives === 0).
+// Full refill happens 30 minutes after the user runs out of lives (lives === 0).
 // No partial regeneration — between 1 and 4 lives, the only fast refill is a rewarded ad.
-const FULL_REGEN_MS = 25 * 60 * 1000;
+const FULL_REGEN_MS = 30 * 60 * 1000;
 const STORAGE_KEY_PREFIX = "pyro-progress";
 const LEGACY_KEY = "pylearn-progress";
 
@@ -69,7 +69,7 @@ function computeNewStreak(currentStreak: number, lastActivityDate: string): numb
 
 function regenerateLives(p: UserProgress): UserProgress {
   if (p.isPremium || p.lives >= MAX_LIVES) return p;
-  // Only full refill, only when the user is at 0 and 25 minutes have passed.
+  // Only full refill, only when the user is at 0 and 30 minutes have passed.
   if (p.lives !== 0) return p;
   const now = Date.now();
   const lastUpdate = new Date(p.livesUpdatedAt).getTime();
@@ -350,7 +350,7 @@ export function useProgress() {
       const newProgress = {
         ...prev,
         lives: newLives,
-        // Anchor the 25-minute timer to the moment the user hits 0 lives.
+        // Anchor the 30-minute timer to the moment the user hits 0 lives.
         livesUpdatedAt: newLives === 0 ? now : prev.livesUpdatedAt,
       };
       saveLocalProgress(newProgress, user?.id);

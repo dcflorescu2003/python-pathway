@@ -49,7 +49,7 @@ const RefillLivesDialog = ({ open, onOpenChange, lives, isPremium, onLivesGrante
           <div className="flex items-start gap-2 rounded-lg border border-border bg-muted/30 p-3">
             <Clock className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
             <p className="text-xs text-muted-foreground">
-              Sau, după ce rămâi fără inimi, așteaptă <strong className="text-foreground">25 de minute</strong> și toate cele 5 inimi se reîncarcă automat.
+              Sau, după ce rămâi fără inimi, așteaptă <strong className="text-foreground">30 de minute</strong> și toate cele 5 inimi se reîncarcă automat.
             </p>
           </div>
 
