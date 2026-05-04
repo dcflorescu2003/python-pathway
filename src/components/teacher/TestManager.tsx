@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -8,13 +8,18 @@ import { Plus, Trash2, FileText, Clock, Send, ChevronDown, ChevronUp, Users, Pen
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import TestResults from "./TestResults";
+import { useSubscription } from "@/hooks/useSubscription";
+import { getTeacherTestLimit, TEACHER_TIER_LABEL } from "@/lib/teacherLimits";
+import TestLimitReachedDialog from "./TestLimitReachedDialog";
+import TeacherPremiumDialog from "@/components/TeacherPremiumDialog";
 
 interface TestManagerProps {
   onCreateTest: () => void;
   onEditTest: (testId: string) => void;
+  teacherStatus?: string | null;
 }
 
-const TestManager = ({ onCreateTest, onEditTest }: TestManagerProps) => {
+const TestManager = ({ onCreateTest, onEditTest, teacherStatus }: TestManagerProps) => {
   const { data: tests = [], isLoading } = useTeacherTests();
   const deleteTest = useDeleteTest();
   const assignTest = useAssignTest();
@@ -24,6 +29,35 @@ const TestManager = ({ onCreateTest, onEditTest }: TestManagerProps) => {
   const [selectedClassId, setSelectedClassId] = useState<string>("");
   const [windowMinutes, setWindowMinutes] = useState<string>("");
   const [viewingResultsTestId, setViewingResultsTestId] = useState<string | null>(null);
+  const [limitDialogOpen, setLimitDialogOpen] = useState(false);
+  const [premiumDialogOpen, setPremiumDialogOpen] = useState(false);
+  const warnedRef = useRef<{ p80: boolean; p95: boolean }>({ p80: false, p95: false });
+
+  const { isTeacherPremium } = useSubscription();
+  const { limit: testLimit, tier: teacherTier } = getTeacherTestLimit({ teacherStatus, isTeacherPremium });
+  const totalTests = tests.length;
+  const ratio = testLimit > 0 ? totalTests / testLimit : 0;
+  const atLimit = totalTests >= testLimit;
+
+  useEffect(() => {
+    if (isLoading) return;
+    if (ratio >= 0.95 && ratio < 1 && !warnedRef.current.p95) {
+      warnedRef.current.p95 = true;
+      toast.warning(`Aproape ai atins limita (${totalTests}/${testLimit} teste salvate).`);
+    } else if (ratio >= 0.8 && ratio < 0.95 && !warnedRef.current.p80) {
+      warnedRef.current.p80 = true;
+      const remaining = testLimit - totalTests;
+      toast.message(`Mai ai ${remaining} teste până la limita de ${testLimit}.`);
+    }
+  }, [ratio, totalTests, testLimit, isLoading]);
+
+  const handleCreateClick = () => {
+    if (atLimit) {
+      setLimitDialogOpen(true);
+      return;
+    }
+    onCreateTest();
+  };
 
   const { data: assignments = [] } = useTestAssignments(expandedTestId);
   const { data: items = [] } = useTestItems(expandedTestId);
@@ -65,10 +99,19 @@ const TestManager = ({ onCreateTest, onEditTest }: TestManagerProps) => {
 
   if (isLoading) return <p className="text-sm text-muted-foreground">Se încarcă...</p>;
 
+  const counterCls = ratio >= 0.95
+    ? 'border-destructive/50 bg-destructive/10 text-destructive'
+    : ratio >= 0.8
+    ? 'border-warning/50 bg-warning/10 text-warning'
+    : 'border-border bg-muted text-muted-foreground';
+
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-2 flex-wrap">
         <h3 className="text-sm font-semibold text-muted-foreground">Testele mele ({tests.length})</h3>
+        <div className={`text-[11px] px-2 py-0.5 rounded-full border ${counterCls}`} title={TEACHER_TIER_LABEL[teacherTier]}>
+          {totalTests}/{testLimit} teste salvate
+        </div>
       </div>
 
       {tests.map((test) => {
@@ -188,9 +231,22 @@ const TestManager = ({ onCreateTest, onEditTest }: TestManagerProps) => {
         );
       })}
 
-      <Button variant="outline" className="w-full gap-2" onClick={onCreateTest}>
-        <Plus className="h-4 w-4" /> Creează test nou
+      <Button
+        variant="outline"
+        className={`w-full gap-2 ${atLimit ? 'border-destructive/50 text-destructive hover:bg-destructive/10' : ''}`}
+        onClick={handleCreateClick}
+      >
+        <Plus className="h-4 w-4" /> {atLimit ? 'Limită atinsă — vezi opțiuni' : 'Creează test nou'}
       </Button>
+
+      <TestLimitReachedDialog
+        open={limitDialogOpen}
+        onOpenChange={setLimitDialogOpen}
+        tier={teacherTier}
+        limit={testLimit}
+        onUpgrade={() => setPremiumDialogOpen(true)}
+      />
+      <TeacherPremiumDialog open={premiumDialogOpen} onOpenChange={setPremiumDialogOpen} />
     </div>
   );
 };

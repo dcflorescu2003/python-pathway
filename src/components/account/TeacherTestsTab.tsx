@@ -48,6 +48,7 @@ const TeacherTestsTab = ({ teacherStatus }: TeacherTestsTabProps) => {
       <TestManager
         onCreateTest={() => { setEditingTestId(null); setShowTestBuilder(true); }}
         onEditTest={(testId) => { setEditingTestId(testId); setShowTestBuilder(true); }}
+        teacherStatus={teacherStatus}
       />
     </div>
   );

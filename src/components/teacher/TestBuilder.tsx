@@ -16,9 +16,11 @@ import { usePredefinedTests, usePredefinedTestItems } from "@/hooks/usePredefine
 import { ArrowLeft, Plus, Trash2, BookOpen, Code, GripVertical, PenLine, FileCheck, Copy, ChevronDown, ChevronRight, Eye, AlertTriangle, Sparkles } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
+import { getTeacherTestLimit, TEACHER_TIER_LABEL } from "@/lib/teacherLimits";
+import TestLimitReachedDialog from "./TestLimitReachedDialog";
+import TeacherPremiumDialog from "@/components/TeacherPremiumDialog";
 
 const MAX_AI_ITEMS_PER_TEST = 3;
-const MAX_TESTS_PER_MONTH = 10;
 
 interface TestBuilderProps {
   onBack: () => void;
@@ -102,14 +104,12 @@ const TestBuilder = ({ onBack, editTestId, teacherStatus }: TestBuilderProps) =>
     (i.source_type === "custom" && i.custom_data?.type === "open_answer")
   ).length;
 
-  // Count tests created this month
-  const testsThisMonth = allTests.filter(t => {
-    const created = new Date(t.created_at);
-    const now = new Date();
-    return created.getMonth() === now.getMonth() && created.getFullYear() === now.getFullYear();
-  }).length;
+  const totalTests = allTests.length;
+  const { limit: testLimit, tier: teacherTier } = getTeacherTestLimit({ teacherStatus, isTeacherPremium });
+  const [limitDialogOpen, setLimitDialogOpen] = useState(false);
+  const [premiumDialogOpen, setPremiumDialogOpen] = useState(false);
 
-  const canCreateMoreTests = isEditing || !isTeacherPremium || testsThisMonth < MAX_TESTS_PER_MONTH;
+  const canCreateMoreTests = isEditing || totalTests < testLimit;
 
   const addItem = (sourceType: string, sourceId: string | null, variant: string = "both", customData: any = null) => {
     if (sourceId && items.some((i) => i.source_id === sourceId && i.source_type === sourceType)) {
@@ -303,8 +303,8 @@ const TestBuilder = ({ onBack, editTestId, teacherStatus }: TestBuilderProps) =>
   const handleSave = async () => {
     if (!title.trim()) { toast.error("Adaugă un titlu."); return; }
     if (items.length === 0) { toast.error("Adaugă cel puțin un item."); return; }
-    if (!isEditing && isTeacherPremium && testsThisMonth >= MAX_TESTS_PER_MONTH) {
-      toast.error(`Ai atins limita de ${MAX_TESTS_PER_MONTH} teste/lună. Vei putea crea altele luna viitoare.`);
+    if (!isEditing && totalTests >= testLimit) {
+      setLimitDialogOpen(true);
       return;
     }
     try {
@@ -496,23 +496,31 @@ const TestBuilder = ({ onBack, editTestId, teacherStatus }: TestBuilderProps) =>
         <h2 className="text-lg font-bold text-foreground">{isEditing ? "Editează test" : "Creează test"}</h2>
       </div>
 
-      {/* Limits info for Profesor AI */}
-      {isTeacherPremium && (
-        <>
-          <div className="flex flex-wrap gap-2">
-            <div className={`text-xs px-2 py-1 rounded-full border ${testsThisMonth >= MAX_TESTS_PER_MONTH ? 'border-destructive/50 bg-destructive/10 text-destructive' : 'border-border bg-muted text-muted-foreground'}`}>
-              Teste luna aceasta: {testsThisMonth}/{MAX_TESTS_PER_MONTH}
+      {/* Counter teste salvate */}
+      <div className="flex flex-wrap gap-2">
+        {(() => {
+          const ratio = totalTests / testLimit;
+          const cls = ratio >= 0.95
+            ? 'border-destructive/50 bg-destructive/10 text-destructive'
+            : ratio >= 0.8
+            ? 'border-warning/50 bg-warning/10 text-warning'
+            : 'border-border bg-muted text-muted-foreground';
+          return (
+            <div className={`text-xs px-2 py-1 rounded-full border ${cls}`}>
+              Teste salvate: {totalTests}/{testLimit} · {TEACHER_TIER_LABEL[teacherTier]}
             </div>
-            <div className={`text-xs px-2 py-1 rounded-full border ${aiItemCount > MAX_AI_ITEMS_PER_TEST ? 'border-warning/50 bg-warning/10 text-warning' : 'border-border bg-muted text-muted-foreground'}`}>
-              Itemi AI: {aiItemCount} {aiItemCount > MAX_AI_ITEMS_PER_TEST && `(selectează ${MAX_AI_ITEMS_PER_TEST} cu ✨)`}
-            </div>
+          );
+        })()}
+        {isTeacherPremium && (
+          <div className={`text-xs px-2 py-1 rounded-full border ${aiItemCount > MAX_AI_ITEMS_PER_TEST ? 'border-warning/50 bg-warning/10 text-warning' : 'border-border bg-muted text-muted-foreground'}`}>
+            Itemi AI: {aiItemCount} {aiItemCount > MAX_AI_ITEMS_PER_TEST && `(selectează ${MAX_AI_ITEMS_PER_TEST} cu ✨)`}
           </div>
-          {aiItemCount > MAX_AI_ITEMS_PER_TEST && (
-            <p className="text-[10px] text-muted-foreground">
-              Ai {aiItemCount} itemi evaluabili cu AI dar limita e {MAX_AI_ITEMS_PER_TEST}. Bifează ✨ pe itemii doriți ({aiGradingItemIds.length}/{MAX_AI_ITEMS_PER_TEST} selectați).
-            </p>
-          )}
-        </>
+        )}
+      </div>
+      {isTeacherPremium && aiItemCount > MAX_AI_ITEMS_PER_TEST && (
+        <p className="text-[10px] text-muted-foreground">
+          Ai {aiItemCount} itemi evaluabili cu AI dar limita e {MAX_AI_ITEMS_PER_TEST}. Bifează ✨ pe itemii doriți ({aiGradingItemIds.length}/{MAX_AI_ITEMS_PER_TEST} selectați).
+        </p>
       )}
 
       {/* Config */}
@@ -1059,6 +1067,15 @@ const TestBuilder = ({ onBack, editTestId, teacherStatus }: TestBuilderProps) =>
             ? `Salvează modificările (${items.length} itemi)`
             : `Creează test (${items.length} itemi)`}
       </Button>
+
+      <TestLimitReachedDialog
+        open={limitDialogOpen}
+        onOpenChange={setLimitDialogOpen}
+        tier={teacherTier}
+        limit={testLimit}
+        onUpgrade={() => setPremiumDialogOpen(true)}
+      />
+      <TeacherPremiumDialog open={premiumDialogOpen} onOpenChange={setPremiumDialogOpen} />
     </div>
   );
 };
