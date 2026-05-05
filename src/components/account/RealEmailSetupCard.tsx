@@ -130,11 +130,18 @@ const RealEmailSetupCard = () => {
     }
     setBusy(true);
     const { error } = await supabase.auth.updateUser({ password });
-    setBusy(false);
     if (error) {
+      setBusy(false);
       toast.error(error.message || "Nu s-a putut seta parola");
       return;
     }
+    if (user?.id) {
+      await supabase
+        .from("profiles")
+        .update({ has_real_password: true })
+        .eq("user_id", user.id);
+    }
+    setBusy(false);
     toast.success("Parolă setată! Te poți loga de pe orice device.");
     setPassword("");
     setConfirm("");
