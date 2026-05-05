@@ -68,7 +68,17 @@ Deno.serve(async (req) => {
     })
     if (updErr) {
       console.error('updateUserById', updErr)
-      return new Response(JSON.stringify({ error: updErr.message || 'Nu am putut schimba email-ul' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+      const msg = String(updErr.message || '')
+      const code = (updErr as any).code || ''
+      if (
+        code === 'email_exists' ||
+        msg.toLowerCase().includes('already') ||
+        msg.includes('users_email_partial_key') ||
+        msg.includes('duplicate key')
+      ) {
+        return new Response(JSON.stringify({ error: 'Acest email este deja folosit de alt cont. Loghează-te direct cu el sau folosește altă adresă.' }), { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+      }
+      return new Response(JSON.stringify({ error: msg || 'Nu am putut schimba email-ul' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
     }
 
     // Marchează în tabel
