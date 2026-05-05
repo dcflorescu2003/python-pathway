@@ -20,7 +20,7 @@ import PremiumDialog from "@/components/PremiumDialog";
 import TeacherPremiumDialog from "@/components/TeacherPremiumDialog";
 import LevelRoadmap from "@/components/LevelRoadmap";
 import SchoolOnboarding from "@/components/onboarding/SchoolOnboarding";
-import { useInstallPrompt } from "@/hooks/useInstallPrompt";
+
 import { useSubscription } from "@/hooks/useSubscription";
 import CouponExpiredDialog from "@/components/CouponExpiredDialog";
 import { supabase } from "@/integrations/supabase/client";
@@ -33,7 +33,7 @@ import PersonalizedSummary from "@/components/PersonalizedSummary";
 import RefillLivesDialog from "@/components/RefillLivesDialog";
 import LivesRefilledDialog from "@/components/LivesRefilledDialog";
 import ComebackDialog from "@/components/ComebackDialog";
-import { Capacitor } from "@capacitor/core";
+
 
 const Index = (): JSX.Element => {
   const navigate = useNavigate();
@@ -51,7 +51,6 @@ const Index = (): JSX.Element => {
   const [showChallenges, setShowChallenges] = useState(false);
   const [showRoadmap, setShowRoadmap] = useState(false);
   const [showRefillLives, setShowRefillLives] = useState(false);
-  const { isInstalled } = useInstallPrompt();
   const { couponExpired, couponType, dismissCouponExpired, startCheckout } = useSubscription();
   const [schoolSearch, setSchoolSearch] = useState("");
   const [showLevelUp, setShowLevelUp] = useState(false);
@@ -121,51 +120,6 @@ const Index = (): JSX.Element => {
         }
       });
   }, [user]);
-
-  useEffect(() => {
-    // Auto-grant Premium pe instalare standalone se aplică DOAR pe web/PWA.
-    // NICIODATĂ pe build-uri native (Capacitor iOS/Android) — încalcă Apple
-    // Guideline 3.1.1 (bypass IAP) și a cauzat respingerea 2.1(b) din mai 2026
-    // (Apple a văzut „Premium activat" fără să apară fereastra StoreKit).
-    if (Capacitor.isNativePlatform()) return;
-    if (!isInstalled || !user) return;
-    const alreadyGranted = localStorage.getItem("pyro-install-premium-granted");
-    if (alreadyGranted === user.id) return;
-
-    const grantInstallPremium = async () => {
-      try {
-        const { data: existing } = await supabase
-          .from("coupon_redemptions")
-          .select("id")
-          .eq("user_id", user.id)
-          .eq("coupon_id", "42b385ff-eb24-4604-8e36-595e9424387b")
-          .limit(1);
-
-        if (existing && existing.length > 0) {
-          localStorage.setItem("pyro-install-premium-granted", user.id);
-          return;
-        }
-
-        await supabase.from("coupon_redemptions").insert({
-          user_id: user.id,
-          coupon_id: "42b385ff-eb24-4604-8e36-595e9424387b",
-          premium_until: "2026-08-31T23:59:59Z",
-        });
-
-        await supabase.from("profiles").update({ is_premium: true }).eq("user_id", user.id);
-
-        localStorage.setItem("pyro-install-premium-granted", user.id);
-        toast({
-          title: "Premium activat! 🎉",
-          description: "Ai Premium gratuit până pe 31 august 2026!",
-        });
-      } catch (err) {
-        console.error("Failed to grant install premium:", err);
-      }
-    };
-
-    grantInstallPremium();
-  }, [isInstalled, user]);
 
   useEffect(() => {
     if (!user) return;

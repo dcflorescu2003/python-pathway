@@ -11,10 +11,6 @@ export function useInstallPrompt() {
   const [platform, setPlatform] = useState<"ios" | "android" | "other">("other");
 
   useEffect(() => {
-    // ATENȚIE: `isInstalled` returnează true și în Capacitor (iOS/Android nativ),
-    // pentru că WKWebView raportează `display-mode: standalone`. Nu folosi acest
-    // flag pentru a acorda beneficii plătite — încalcă Apple Guideline 3.1.1
-    // (bypass IAP). Vezi src/pages/Index.tsx grantInstallPremium.
     const isStandalone =
       window.matchMedia("(display-mode: standalone)").matches ||
       (navigator as any).standalone === true;
