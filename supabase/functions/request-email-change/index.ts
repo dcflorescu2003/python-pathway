@@ -60,9 +60,20 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: 'Așteaptă un minut înainte să ceri un nou cod' }), { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
     }
 
-    // Verifică unicitatea
-    const { data: existing } = await admin.auth.admin.listUsers({ page: 1, perPage: 1 })
-    // listUsers nu filtrează după email; folosim getUserByEmail dacă există, altfel skipăm.
+    // Pre-flight: verifică dacă emailul este deja folosit
+    try {
+      const { data: existingRows } = await admin
+        .schema('auth' as any)
+        .from('users')
+        .select('id')
+        .ilike('email', newEmail)
+        .limit(1)
+      if (existingRows && existingRows.length > 0) {
+        return new Response(JSON.stringify({ error: 'Acest email este deja folosit de alt cont. Loghează-te direct cu el sau folosește altă adresă.' }), { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+      }
+    } catch (_) {
+      // Dacă query-ul pe schema auth nu merge, lăsăm verify-email-change să prindă conflictul.
+    }
 
     const code = genCode()
     const codeHash = await sha256(code)
