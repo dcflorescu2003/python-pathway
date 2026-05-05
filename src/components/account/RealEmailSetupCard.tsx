@@ -102,6 +102,12 @@ const RealEmailSetupCard = () => {
         await refreshReminder();
         return;
       }
+      if (user?.id) {
+        await supabase
+          .from("profiles")
+          .update({ has_real_password: true })
+          .eq("user_id", user.id);
+      }
     }
     setBusy(false);
     toast.success("Cont configurat! Te poți loga de pe orice device.");
