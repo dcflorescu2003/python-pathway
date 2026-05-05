@@ -29,7 +29,8 @@ const RealEmailSetupCard = () => {
     else if (!hasVerifiedRealEmail) setStep("email");
   }, [loading, hasVerifiedRealEmail, hasPassword]);
 
-  if (loading || !isPrivateRelay) return null;
+  if (loading) return null;
+  if (!isPrivateRelay && !(hasVerifiedRealEmail && !hasPassword)) return null;
 
   // Fully configured → green confirmation
   if (hasVerifiedRealEmail && hasPassword) {
