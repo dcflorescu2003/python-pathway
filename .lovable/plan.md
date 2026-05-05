@@ -1,39 +1,27 @@
-## De ce
+## Problema
 
-Promoția „instalează PWA → Premium gratuit până 31.08.2026" a cauzat respingerea Apple (chiar și gate-uită cu `Capacitor.isNativePlatform()`, e un risc continuu și complică modelul de monetizare). O eliminăm complet și păstrăm doar fluxurile normale: Stripe pe web, IAP pe iOS, Play Billing pe Android, plus cupoanele administrate manual.
+În exercițiile Quiz (și în general în câmpurile rich-text), textul introdus în editorul admin păstrează indentarea Python (vezi imaginea 2: `    print(1)` cu 4 spații). Când userul îl vede (imaginea 1), Markdown colapsează spațiile de la începutul liniilor, așa că apare `print(1)` lipit de margine. Asta strică logica întrebării ("Ce se va afișa?" pentru `if x > 5: print(1)` indentat vs neindentat dă răspunsuri diferite).
 
-## Modificări de cod
+## Cauza
 
-### 1. `src/pages/Index.tsx`
+`src/components/RichContent.tsx` folosește `ReactMarkdown` cu `remark-breaks`. Markdown-ul standard ignoră spațiile de la începutul liniilor care nu sunt într-un bloc de cod (` ``` `). Editorul admin (`RichTextEditor`) stochează conținutul ca text/markdown simplu, fără să încadreze automat snippet-urile de cod în fence-uri, așa că indentarea se pierde la randare.
 
-- Șterg complet `useEffect`-ul de la liniile 125–168 (`grantInstallPremium`).
-- Șterg importul `useInstallPrompt` și variabila `isInstalled` dacă nu mai sunt folosite altundeva în fișier (verific; `isInstalled` apare doar pentru auto-grant).
+## Soluția
 
-### 2. `src/hooks/useInstallPrompt.ts`
+Pre-procesare în `RichContent.tsx`: înainte de a trimite textul către `ReactMarkdown`, convertim spațiile de la începutul fiecărei linii în non-breaking spaces (`\u00A0`), DAR doar în afara blocurilor de cod fenced (` ``` `), pentru a nu strica syntax highlighting-ul. În interiorul fence-urilor indentarea se păstrează deja corect.
 
-- Rămâne neschimbat ca API (e folosit eventual pentru bottom-nav / „add to home screen" prompt). Doar șterg comentariul lung de avertizare despre auto-grant — devine irelevant.
+Algoritm:
+1. Spargem textul în segmente alternând „normal" / „fenced code block" detectând liniile care încep cu ``` .
+2. Pentru segmentele normale, pe fiecare linie înlocuim leading spaces cu `\u00A0` (păstrând și tab-urile ca 4× NBSP).
+3. Pentru segmentele fenced, lăsăm neschimbat.
+4. Concatenăm și trimitem rezultatul în `ReactMarkdown`.
 
-### 3. Memory
+Aceasta rezolvă problema în toate locurile care folosesc `RichContent` (Quiz, Fill, TrueFalse, Card, Order, Match, teorie, manual, etc.) fără modificări în editor sau în datele existente.
 
-- Șterg `mem://features/premium-auto-grant` (feature-ul nu mai există).
-- Scot referința din `mem://index.md`.
-- Adaug o linie scurtă în Core: „Nu există auto-grant Premium pentru instalare PWA — toate upgrade-urile trec prin Stripe / IAP / Play Billing / cupoane manuale."
+## Fișier modificat
 
-## Curățare date existente (opțional, recomandat)
+- `src/components/RichContent.tsx` — adăugat helper `preserveIndentation(text)` și aplicat înainte de randare.
 
-Există useri pe web care au primit deja Premium gratuit prin acest mecanism. Două opțiuni:
+## Notă
 
-- **A. Păstrăm Premium-ul deja acordat** până la 31.08.2026 (nu dezamăgim utilizatorii care l-au primit deja, doar oprim acordarea pentru viitor). Cel mai sigur.
-- **B. Resetăm toți userii cu redemption pe cuponul `42b385ff-...**` la free imediat. Poate genera reclamații.
-
-Recomand **A**. Cuponul rămâne în DB ca istoric, doar nu mai e inserat de aplicație.
-
-## Ordine
-
-1. Șterg `useEffect`-ul din `Index.tsx` + import-urile nefolosite.
-2. Curăț comentariul din `useInstallPrompt.ts`.
-3. Update memory (șterg fișier, actualizez index, adaug regulă în Core).
-
-Confirmi (și alegi A sau B pentru userii existenți)?  
-  
-Confirm si aleg A
+Nu modificăm editorul admin — conținutul existent în baza de date va continua să funcționeze, iar indentarea va apărea corect la userul final imediat după deploy.
