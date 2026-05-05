@@ -18,9 +18,35 @@ interface RichContentProps {
  * - Renders ```python code blocks with syntax highlighting.
  * - Backwards compatible with plain text content (renders identically).
  */
+/**
+ * Preserve leading whitespace on each line by converting it to non-breaking
+ * spaces — but only OUTSIDE fenced code blocks (```), where Markdown already
+ * preserves indentation. Without this, Markdown collapses leading spaces and
+ * Python snippets pasted as plain text lose their indentation, breaking
+ * exercise logic (e.g. `if x > 5:\n    print(1)` vs no indent).
+ */
+const preserveIndentation = (raw: string): string => {
+  const NBSP = "\u00A0";
+  const lines = raw.split("\n");
+  let inFence = false;
+  return lines
+    .map((line) => {
+      if (/^\s*```/.test(line)) {
+        inFence = !inFence;
+        return line;
+      }
+      if (inFence) return line;
+      return line.replace(/^[ \t]+/, (lead) =>
+        lead.replace(/\t/g, "    ").replace(/ /g, NBSP)
+      );
+    })
+    .join("\n");
+};
+
 const RichContent = ({ children, className, inline }: RichContentProps) => {
-  const text = (children ?? "").toString();
-  if (!text.trim()) return null;
+  const raw = (children ?? "").toString();
+  if (!raw.trim()) return null;
+  const text = preserveIndentation(raw);
 
   return (
     <div
