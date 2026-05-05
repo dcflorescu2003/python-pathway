@@ -1,20 +1,28 @@
-## Plan: Mesaj prietenos pentru email duplicat + curățare cont test
+## Fix: pasul 3 (parolă) nu apare după verificarea emailului
 
-### 1. `verify-email-change/index.ts` — mesaj clar pe conflict
-În blocul `updateUserById`, detectez codul `email_exists` / mesajul `users_email_partial_key` / status 422 și returnez 409 cu mesaj:
-> „Acest email este deja folosit de alt cont. Loghează-te direct cu el sau folosește altă adresă."
-
-### 2. `request-email-change/index.ts` — pre-flight check
-Înainte să generez OTP-ul, verific dacă emailul nou există deja folosind `admin.auth.admin.listUsers` (paginare cu filtru) sau o interogare directă în `auth.users` via service client. Dacă există → 409 cu același mesaj prietenos. Evită trimiterea inutilă de email.
-
-### 3. `RealEmailSetupCard.tsx` — afișare eroare
-Toast-urile existente deja afișează `data.error`, deci mesajul backend va apărea direct. Nu sunt modificări UI necesare.
-
-### 4. Migrație SQL — șterge cont test
-```sql
-DELETE FROM auth.users WHERE email = 'cosmin.florescu@fglorca.ro';
+### Problema
+În `RealEmailSetupCard.tsx`:
+```ts
+if (loading || !isPrivateRelay) return null;
 ```
-Cascadează automat la `profiles` și restul tabelelor cu FK pe `auth.users`.
+După schimbarea emailului, `isPrivateRelay` devine `false` (noul email nu mai e `@privaterelay.appleid.com`), așa că tot cardul dispare înainte să se afișeze pasul „Setează parolă".
 
-### 5. Deploy
-Redeploy `request-email-change` și `verify-email-change`.
+### Soluție
+Schimb condiția să păstreze cardul vizibil și pentru utilizatorii care:
+- au email real verificat (`hasVerifiedRealEmail`) DAR
+- încă n-au parolă (`!hasPassword`)
+
+```ts
+if (loading) return null;
+if (!isPrivateRelay && !(hasVerifiedRealEmail && !hasPassword)) return null;
+```
+
+`useEffect`-ul existent setează deja `step = "password"` în acest caz, deci după fix utilizatorul va vedea direct formularul de parolă.
+
+### Pentru contul tău actual
+După ce aplic fixul, intră pe **Contul meu** și vei vedea cardul cu pasul „Setează parolă" — completezi parola și gata, te poți loga pe web cu email + parolă.
+
+### Fișier modificat
+- `src/components/account/RealEmailSetupCard.tsx` (1 linie)
+
+Niciun deploy backend / build mobil necesar.
