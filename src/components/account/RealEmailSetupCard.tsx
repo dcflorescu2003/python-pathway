@@ -1,17 +1,24 @@
 import { useEffect, useState } from "react";
+import { Capacitor } from "@capacitor/core";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Mail, CheckCircle2, ShieldAlert, KeyRound } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 import { useAuthMethods } from "@/hooks/useAuthMethods";
 import { useRealEmailReminder } from "@/hooks/useRealEmailReminder";
 import { toast } from "sonner";
 
 type Step = "email" | "code" | "password_only";
 
+// Only iOS users can encounter Apple Hide-My-Email, so we limit this card
+// to the iOS native runtime to avoid clutter on web/Android.
+const isIOS = Capacitor.getPlatform() === "ios";
+
 const RealEmailSetupCard = () => {
+  const { user } = useAuth();
   const { isPrivateRelay, hasPassword, email, refresh: refreshAuth, loading } = useAuthMethods();
   const { hasVerifiedRealEmail, refresh: refreshReminder } = useRealEmailReminder();
 
@@ -29,6 +36,7 @@ const RealEmailSetupCard = () => {
     else if (!hasVerifiedRealEmail) setStep("email");
   }, [loading, hasVerifiedRealEmail, hasPassword]);
 
+  if (!isIOS) return null;
   if (loading) return null;
   if (!isPrivateRelay && !(hasVerifiedRealEmail && !hasPassword)) return null;
 
@@ -94,6 +102,12 @@ const RealEmailSetupCard = () => {
         await refreshReminder();
         return;
       }
+      if (user?.id) {
+        await supabase
+          .from("profiles")
+          .update({ has_real_password: true })
+          .eq("user_id", user.id);
+      }
     }
     setBusy(false);
     toast.success("Cont configurat! Te poți loga de pe orice device.");
@@ -116,11 +130,18 @@ const RealEmailSetupCard = () => {
     }
     setBusy(true);
     const { error } = await supabase.auth.updateUser({ password });
-    setBusy(false);
     if (error) {
+      setBusy(false);
       toast.error(error.message || "Nu s-a putut seta parola");
       return;
     }
+    if (user?.id) {
+      await supabase
+        .from("profiles")
+        .update({ has_real_password: true })
+        .eq("user_id", user.id);
+    }
+    setBusy(false);
     toast.success("Parolă setată! Te poți loga de pe orice device.");
     setPassword("");
     setConfirm("");

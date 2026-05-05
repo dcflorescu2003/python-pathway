@@ -1051,6 +1051,7 @@ export type Database = {
           created_at: string
           display_name: string | null
           first_name: string | null
+          has_real_password: boolean
           id: string
           is_premium: boolean
           is_teacher: boolean
@@ -1081,6 +1082,7 @@ export type Database = {
           created_at?: string
           display_name?: string | null
           first_name?: string | null
+          has_real_password?: boolean
           id?: string
           is_premium?: boolean
           is_teacher?: boolean
@@ -1111,6 +1113,7 @@ export type Database = {
           created_at?: string
           display_name?: string | null
           first_name?: string | null
+          has_real_password?: boolean
           id?: string
           is_premium?: boolean
           is_teacher?: boolean

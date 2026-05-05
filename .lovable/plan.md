@@ -1,39 +1,42 @@
-## Combinăm pașii 2 și 3 într-unul singur
+## Problema
 
-În loc să fie 3 pași (email → cod → parolă), vor fi doar 2:
+Pe iOS, după Sign in with Apple, Supabase adaugă automat o identitate `email` în `auth.identities` (cu Hide-My-Email). Hook-ul `useAuthMethods` interpretează asta drept "userul are parolă", deci în `RealEmailSetupCard` câmpurile de parolă din pasul 2 sunt ascunse — și flow-ul nu poate fi finalizat niciodată.
 
-1. **Email** → trimite cod
-2. **Cod + Parolă** → confirmă codul ȘI setează parola simultan
+## Soluție
 
-### Modificări
+Înlocuim detecția fragilă din client cu un steag salvat explicit pe profil când userul setează cu adevărat o parolă, plus afișăm întotdeauna câmpurile de parolă în pasul 2 dacă nu suntem siguri.
 
-`**src/components/account/RealEmailSetupCard.tsx**`
+### 1. Sursă de adevăr pentru "are parolă"
 
-- Elimin `Step = "password"` separat. Rămân doar `"email"` și `"code"`.
-- În pasul 2 adaug câmpurile parolă + confirmare parolă lângă codul de 6 cifre.
-- Buton unic „Confirmă și finalizează":
-  1. Apelează `verify-email-change` cu codul
-  2. Dacă userul nu are parolă, apelează `supabase.auth.updateUser({ password })`
-  3. Toast „Cont configurat!" și refresh
-- Header arată „Pasul X din 2" (sau „1 din 1" dacă deja are parolă).
-- Dacă userul are deja parolă (caz rar), pasul 2 nu mai cere parolă — doar codul.
+- Adăugăm coloana `profiles.has_real_password BOOLEAN DEFAULT false`.
+- Backfill: setăm `true` pentru userii care au în `auth.identities` un provider `email` ȘI **nu** au și provider `apple` sau `google` (deci s-au înregistrat clasic cu parolă).
+- Trigger sau update la finalul flow-ului de mai jos pentru a-l comuta pe `true`.
 
-`**useEffect` simplificat**
+### 2. `useAuthMethods` citește din profil
 
-- Dacă `hasVerifiedRealEmail && !hasPassword` → momentan duce la pasul „password". După refactor, acest caz nu mai există ca pas separat. În schimb, dacă userul a verificat deja emailul dar n-are parolă (cont legacy), arăt direct un mini-form doar cu parolă (fără cod) — caz edge pentru utilizatori existenți ca tine acum.
+- Pe lângă `auth.getUser()`, hook-ul face `select has_real_password from profiles where user_id = ...`.
+- `hasPassword` devine `profile.has_real_password === true` (nu mai derivă din identities).
+- Expunem și `hasPasswordKnown` ca să distingem "nu știm încă" de "nu are".
 
-### De ce nu apare la tine acum
+### 3. `RealEmailSetupCard` — pasul 2 afișează mereu parola când e nevoie
 
-`useEffect`-ul setează `step = "password"` doar dacă `hasVerifiedRealEmail && !hasPassword`. Probabil `useRealEmailReminder` nu returnează `true` pentru `hasVerifiedRealEmail` imediat după verificare (sau `refreshReminder` nu propagă rapid). Cu noul flux în 2 pași, parola se setează în aceeași tranzacție cu codul → problema dispare complet.
+- Condiția pentru afișarea câmpurilor de parolă în pasul "code" devine `!hasPassword` calculată din noua sursă.
+- În `verifyAndSetPassword`, după ce `supabase.auth.updateUser({ password })` reușește, facem `update profiles set has_real_password = true where user_id = ...`.
+- Same în `savePasswordOnly`.
 
-### Pentru contul tău actual ([cosmin.florescu@fglorca.ro](mailto:cosmin.florescu@fglorca.ro) deja șters)
+### 4. Curățare cont test
 
-După deploy, faci din nou flow-ul: introduci emailul, primești codul, în același ecran completezi codul + parola dorită, apeși „Finalizează" și gata — te poți loga pe web cu email + parolă.
+Ștergem `cosmin.florescu@fglorca.ro` din nou, ca să poți relua flow-ul de la zero pe iOS cu codul nou.
 
-### Fișier modificat
+## Fișiere atinse
 
-- `src/components/account/RealEmailSetupCard.tsx`
+- migration: adăugare coloană + backfill
+- `src/hooks/useAuthMethods.ts` — citire `has_real_password` din `profiles`
+- `src/components/account/RealEmailSetupCard.tsx` — folosește noul `hasPassword`, scrie `has_real_password = true` după success
+- ștergere user test prin SQL
 
-Niciun edge function nou; logica backend existentă (`request-email-change` + `verify-email-change` + `supabase.auth.updateUser`) rămâne.  
+## Memory
+
+Voi salva o notă în `mem://auth/has-real-password` despre cum se detectează prezența parolei (din `profiles.has_real_password`, nu din `auth.identities`), pentru că Apple/Google adaugă identități `email` care induc în eroare.  
   
-Sa stergi din nou contul [cosmin.florescu@fglorca.ro](mailto:cosmin.florescu@fglorca.ro) si sa imi spui daca trebuie sa fac build nou
+Vreau ca toata treaba asta cu acest cartonas cu emailul real, cod si parola sa apara doar pe iOS
