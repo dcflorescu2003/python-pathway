@@ -123,6 +123,11 @@ const Index = (): JSX.Element => {
   }, [user]);
 
   useEffect(() => {
+    // Auto-grant Premium pe instalare standalone se aplică DOAR pe web/PWA.
+    // NICIODATĂ pe build-uri native (Capacitor iOS/Android) — încalcă Apple
+    // Guideline 3.1.1 (bypass IAP) și a cauzat respingerea 2.1(b) din mai 2026
+    // (Apple a văzut „Premium activat" fără să apară fereastra StoreKit).
+    if (Capacitor.isNativePlatform()) return;
     if (!isInstalled || !user) return;
     const alreadyGranted = localStorage.getItem("pyro-install-premium-granted");
     if (alreadyGranted === user.id) return;
