@@ -79,24 +79,18 @@ Deno.serve(async (req) => {
     })
     if (insErr) throw insErr
 
-    // Trimite email
-    const emailRes = await fetch(`${url}/functions/v1/send-transactional-email`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${serviceKey}`,
-      },
-      body: JSON.stringify({
+    // Trimite email prin clientul admin (semnează corect indiferent de formatul cheii)
+    const { error: emailErr } = await admin.functions.invoke('send-transactional-email', {
+      body: {
         templateName: 'email-change-verification',
         recipientEmail: newEmail,
         idempotencyKey: `email-change-${user.id}-${Date.now()}`,
         templateData: { code },
-      }),
+      },
     })
 
-    if (!emailRes.ok) {
-      const txt = await emailRes.text()
-      console.error('Email send failed', emailRes.status, txt)
+    if (emailErr) {
+      console.error('Email send failed', emailErr)
       return new Response(JSON.stringify({ error: 'Nu am putut trimite email-ul' }), { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
     }
 
