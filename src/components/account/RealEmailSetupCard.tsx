@@ -3,13 +3,13 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Mail, CheckCircle2, ShieldAlert, KeyRound, ArrowRight } from "lucide-react";
+import { Mail, CheckCircle2, ShieldAlert, KeyRound } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuthMethods } from "@/hooks/useAuthMethods";
 import { useRealEmailReminder } from "@/hooks/useRealEmailReminder";
 import { toast } from "sonner";
 
-type Step = "email" | "code" | "password";
+type Step = "email" | "code" | "password_only";
 
 const RealEmailSetupCard = () => {
   const { isPrivateRelay, hasPassword, email, refresh: refreshAuth, loading } = useAuthMethods();
@@ -22,17 +22,16 @@ const RealEmailSetupCard = () => {
   const [confirm, setConfirm] = useState("");
   const [busy, setBusy] = useState(false);
 
-  // Skip already-completed phases when card mounts / auth refreshes
+  // Edge case: legacy user already has verified real email but no password → just password
   useEffect(() => {
     if (loading) return;
-    if (hasVerifiedRealEmail && !hasPassword) setStep("password");
+    if (hasVerifiedRealEmail && !hasPassword) setStep("password_only");
     else if (!hasVerifiedRealEmail) setStep("email");
   }, [loading, hasVerifiedRealEmail, hasPassword]);
 
   if (loading) return null;
   if (!isPrivateRelay && !(hasVerifiedRealEmail && !hasPassword)) return null;
 
-  // Fully configured → green confirmation
   if (hasVerifiedRealEmail && hasPassword) {
     return (
       <Card className="border-green-500/30 bg-green-500/5">
@@ -62,30 +61,51 @@ const RealEmailSetupCard = () => {
     setStep("code");
   };
 
-  const verifyCode = async () => {
-    if (code.length !== 6) return;
+  const verifyAndSetPassword = async () => {
+    if (code.length !== 6) {
+      toast.error("Introdu codul de 6 cifre");
+      return;
+    }
+    if (!hasPassword) {
+      if (password.length < 8) {
+        toast.error("Parola trebuie să aibă cel puțin 8 caractere");
+        return;
+      }
+      if (password !== confirm) {
+        toast.error("Parolele nu coincid");
+        return;
+      }
+    }
     setBusy(true);
     const { data, error } = await supabase.functions.invoke("verify-email-change", {
       body: { code },
     });
-    setBusy(false);
     if (error || (data as any)?.error) {
+      setBusy(false);
       toast.error((data as any)?.error || error?.message || "Cod greșit");
       return;
     }
-    toast.success("Email confirmat!");
-    await refreshAuth();
-    await refreshReminder();
+    if (!hasPassword) {
+      const { error: pwErr } = await supabase.auth.updateUser({ password });
+      if (pwErr) {
+        setBusy(false);
+        toast.error(pwErr.message || "Email confirmat, dar nu am putut seta parola. Reîncearcă din Contul meu.");
+        await refreshAuth();
+        await refreshReminder();
+        return;
+      }
+    }
+    setBusy(false);
+    toast.success("Cont configurat! Te poți loga de pe orice device.");
     setCode("");
     setNewEmail("");
-    if (hasPassword) {
-      // Already had password → done
-      return;
-    }
-    setStep("password");
+    setPassword("");
+    setConfirm("");
+    await refreshAuth();
+    await refreshReminder();
   };
 
-  const savePassword = async () => {
+  const savePasswordOnly = async () => {
     if (password.length < 8) {
       toast.error("Parola trebuie să aibă cel puțin 8 caractere");
       return;
@@ -101,15 +121,15 @@ const RealEmailSetupCard = () => {
       toast.error(error.message || "Nu s-a putut seta parola");
       return;
     }
-    toast.success("Cont configurat! Te poți loga de pe orice device.");
+    toast.success("Parolă setată! Te poți loga de pe orice device.");
     setPassword("");
     setConfirm("");
     await refreshAuth();
     await refreshReminder();
   };
 
-  const stepNumber = step === "email" ? 1 : step === "code" ? 2 : 3;
-  const totalSteps = hasPassword ? 2 : 3;
+  const totalSteps = step === "password_only" ? 1 : 2;
+  const stepNumber = step === "email" ? 1 : step === "code" ? 2 : 1;
 
   return (
     <Card className="border-2 border-amber-500/40 bg-gradient-to-br from-amber-500/10 via-amber-500/5 to-transparent">
@@ -121,7 +141,9 @@ const RealEmailSetupCard = () => {
           <div className="flex-1">
             <h3 className="text-sm font-bold text-foreground">Finalizează contul</h3>
             <p className="text-xs text-muted-foreground mt-1">
-              Adaugă un email real{!hasPassword ? " și o parolă" : ""} pentru a-ți recupera contul și a te loga de pe orice device.
+              {step === "password_only"
+                ? "Setează o parolă pentru a te loga de pe orice device."
+                : `Adaugă un email real${!hasPassword ? " și o parolă" : ""} pentru a-ți recupera contul și a te loga de pe orice device.`}
             </p>
             <p className="text-[10px] text-muted-foreground mt-1">
               Pasul {stepNumber} din {totalSteps}
@@ -150,12 +172,14 @@ const RealEmailSetupCard = () => {
         )}
 
         {step === "code" && (
-          <div className="space-y-2">
+          <div className="space-y-3">
             <p className="text-xs text-muted-foreground">
-              Cod trimis la <strong>{newEmail}</strong>. Introdu cele 6 cifre:
+              Cod trimis la <strong>{newEmail}</strong>. Completează codul {!hasPassword && "și alege o parolă"} pentru a finaliza:
             </p>
-            <div className="flex gap-2">
+            <div className="space-y-1">
+              <Label htmlFor="otp-code" className="text-xs">Cod (6 cifre)</Label>
               <Input
+                id="otp-code"
                 inputMode="numeric"
                 maxLength={6}
                 placeholder="123456"
@@ -164,12 +188,46 @@ const RealEmailSetupCard = () => {
                 disabled={busy}
                 className="text-center font-mono text-lg tracking-widest"
               />
-              <Button onClick={verifyCode} disabled={busy || code.length !== 6} size="sm" className="shrink-0 gap-1">
-                Confirmă <ArrowRight className="h-4 w-4" />
-              </Button>
             </div>
+            {!hasPassword && (
+              <>
+                <div className="space-y-1">
+                  <Label htmlFor="new-pw" className="text-xs">Parolă nouă</Label>
+                  <Input
+                    id="new-pw"
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="min. 8 caractere"
+                    autoComplete="new-password"
+                    disabled={busy}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="confirm-pw" className="text-xs">Confirmă parola</Label>
+                  <Input
+                    id="confirm-pw"
+                    type="password"
+                    value={confirm}
+                    onChange={(e) => setConfirm(e.target.value)}
+                    placeholder="repetă parola"
+                    autoComplete="new-password"
+                    disabled={busy}
+                  />
+                </div>
+              </>
+            )}
+            <Button
+              onClick={verifyAndSetPassword}
+              disabled={busy || code.length !== 6 || (!hasPassword && (!password || !confirm))}
+              size="sm"
+              className="w-full gap-2"
+            >
+              <KeyRound className="h-4 w-4" />
+              {busy ? "Se procesează..." : "Confirmă și finalizează"}
+            </Button>
             <button
-              onClick={() => { setStep("email"); setCode(""); }}
+              onClick={() => { setStep("email"); setCode(""); setPassword(""); setConfirm(""); }}
               className="text-xs text-muted-foreground hover:text-foreground underline"
               disabled={busy}
             >
@@ -178,15 +236,15 @@ const RealEmailSetupCard = () => {
           </div>
         )}
 
-        {step === "password" && (
+        {step === "password_only" && (
           <div className="space-y-2">
             <p className="text-xs text-muted-foreground">
-              Email verificat ✓. Setează o parolă pentru a te loga și de pe alte device-uri.
+              Email verificat ✓ ({email}). Setează o parolă pentru login pe web.
             </p>
             <div className="space-y-1">
-              <Label htmlFor="new-pw" className="text-xs">Parolă nouă</Label>
+              <Label htmlFor="new-pw2" className="text-xs">Parolă nouă</Label>
               <Input
-                id="new-pw"
+                id="new-pw2"
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
@@ -196,9 +254,9 @@ const RealEmailSetupCard = () => {
               />
             </div>
             <div className="space-y-1">
-              <Label htmlFor="confirm-pw" className="text-xs">Confirmă parola</Label>
+              <Label htmlFor="confirm-pw2" className="text-xs">Confirmă parola</Label>
               <Input
-                id="confirm-pw"
+                id="confirm-pw2"
                 type="password"
                 value={confirm}
                 onChange={(e) => setConfirm(e.target.value)}
@@ -207,7 +265,7 @@ const RealEmailSetupCard = () => {
                 disabled={busy}
               />
             </div>
-            <Button onClick={savePassword} disabled={busy || !password || !confirm} size="sm" className="w-full gap-2">
+            <Button onClick={savePasswordOnly} disabled={busy || !password || !confirm} size="sm" className="w-full gap-2">
               <KeyRound className="h-4 w-4" />
               {busy ? "Se salvează..." : "Finalizează"}
             </Button>
