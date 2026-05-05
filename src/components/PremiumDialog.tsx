@@ -233,7 +233,7 @@ const PremiumDialog = ({ open, onOpenChange }: PremiumDialogProps) => {
                   Restaurează achizițiile
                 </Button>
               )}
-              {isIOSNative && (
+              {isIOSNative && import.meta.env.DEV && (
                 <Button
                   variant="ghost"
                   size="sm"
