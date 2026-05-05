@@ -1,37 +1,21 @@
-## Problema
+Am verificat logurile și eroarea este aceeași: `request-email-change` încă primește `401 Invalid JWT` când încearcă să apeleze funcția de trimitere email. Schimbarea anterioară nu a rezolvat cauza deoarece funcția de email are încă validare JWT la gateway, iar apelurile interne cu cheia de backend sunt respinse în formatul actual.
 
-La apăsarea pe „Trimite cod" în cardul „Finalizează contul", apare toast-ul „Edge Function returned a non-2xx status code".
+Planul de fix:
 
-În logurile `request-email-change`:
-```
-ERROR Email send failed 401 {"code":"UNAUTHORIZED_INVALID_JWT_FORMAT","message":"Invalid JWT"}
-```
+1. Ajustez configurarea funcției de email
+   - În `supabase/config.toml`, schimb `send-transactional-email` din `verify_jwt = true` în `verify_jwt = false`.
+   - Este în linie cu arhitectura Lovable Cloud pentru funcții backend: validarea/autorizarea se face în cod sau prin logica internă, nu la gateway, ca să evităm problema `UNAUTHORIZED_INVALID_JWT_FORMAT`.
 
-`request-email-change` apelează `send-transactional-email` printr-un `fetch` direct cu `Authorization: Bearer ${SUPABASE_SERVICE_ROLE_KEY}`. Gateway-ul Supabase respinge tokenul (fie pentru că variabila e goală în runtime, fie pentru că proiectul a trecut la cheile noi `sb_secret_...` care nu mai sunt JWT-uri valide pentru `verify_jwt = true`).
+2. Păstrez apelul sigur din `request-email-change`
+   - Mențin apelul prin clientul admin, nu revin la `fetch` manual.
+   - Dacă este nevoie, voi ajusta apelul să trimită explicit cheia internă potrivită, dar fără să expun nimic în frontend.
 
-## Fix
+3. Redeploy funcțiile afectate
+   - Redeploy pentru `send-transactional-email`.
+   - Redeploy pentru `request-email-change` dacă apar mici ajustări în cod.
 
-În `supabase/functions/request-email-change/index.ts`, înlocuiesc apelul `fetch` cu invocarea prin clientul admin Supabase (care semnează corect cererea, indiferent de formatul cheii):
+4. Validare după deploy
+   - Testez fluxul din funcția backend sau verific logurile imediat după redeploy.
+   - Confirm că eroarea `Invalid JWT` nu mai apare și că, în cel mai rău caz, orice eroare rămasă ar fi legată de email delivery/queue, nu de autentificarea apelului intern.
 
-```ts
-const { error: emailErr } = await admin.functions.invoke('send-transactional-email', {
-  body: {
-    templateName: 'email-change-verification',
-    recipientEmail: newEmail,
-    idempotencyKey: `email-change-${user.id}-${Date.now()}`,
-    templateData: { code },
-  },
-})
-if (emailErr) {
-  console.error('Email send failed', emailErr)
-  return new Response(JSON.stringify({ error: 'Nu am putut trimite email-ul' }), {
-    status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-  })
-}
-```
-
-Atât. Restul fluxului (OTP, rate-limit, validare) rămâne neschimbat.
-
-## Verificare
-
-După deploy, testez „Trimite cod" cu emailul real din TestFlight; trebuie să primesc OTP pe email și răspuns 200 din funcție.
+După aprobare, aplic fixul și îl deployez. Nu ar trebui să fie nevoie de build nou pentru aplicația iOS, deoarece schimbarea este pe backend.
