@@ -306,13 +306,28 @@ const ProblemsEditor = () => {
     </div>
   );
 
+  const isSearching = searchQuery.trim().length > 0;
+  const problemMatches = (p: Problem) => matchesSearch(p.title, searchQuery) || matchesSearch(p.id, searchQuery);
+
   return (
     <div className="space-y-3">
-      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleChapterReorder}>
-        <SortableContext items={problemChapters.map(c => c.id)} strategy={verticalListSortingStrategy}>
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+        <Input
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          placeholder="Caută după ID sau titlu..."
+          className="pl-9"
+        />
+      </div>
+
+      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={isSearching ? () => {} : handleChapterReorder}>
+        <SortableContext items={problemChapters.map(c => c.id)} strategy={verticalListSortingStrategy} disabled={isSearching}>
           {problemChapters.map(ch => {
-            const isExpanded = expandedChapter === ch.id;
-            const chapterProblems = problems.filter(p => p.chapter === ch.id);
+            const allChapterProblems = problems.filter(p => p.chapter === ch.id);
+            const chapterProblems = isSearching ? allChapterProblems.filter(problemMatches) : allChapterProblems;
+            if (isSearching && chapterProblems.length === 0) return null;
+            const isExpanded = isSearching ? true : expandedChapter === ch.id;
 
             return (
               <SortableProblemChapter key={ch.id} id={ch.id}>
