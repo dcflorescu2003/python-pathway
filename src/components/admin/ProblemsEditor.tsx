@@ -382,8 +382,8 @@ const ProblemsEditor = () => {
                     {isExpanded && (
                       <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="border-t border-border">
                         <div className="p-3 space-y-2">
-                          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={(e) => handleProblemReorder(ch.id, e)}>
-                            <SortableContext items={chapterProblems.map(p => p.id)} strategy={verticalListSortingStrategy}>
+                          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={isSearching ? () => {} : (e) => handleProblemReorder(ch.id, e)}>
+                            <SortableContext items={chapterProblems.map(p => p.id)} strategy={verticalListSortingStrategy} disabled={isSearching}>
                               {chapterProblems.map(p => (
                                 <SortableProblem key={p.id} id={p.id}>
                                   <div className="flex items-center gap-2 rounded-lg border border-border bg-secondary/30 p-3">
@@ -392,7 +392,10 @@ const ProblemsEditor = () => {
                                       p.difficulty === "mediu" ? "bg-yellow-500/10 text-yellow-500" :
                                       "bg-red-500/10 text-red-500"
                                     }`}>{p.difficulty}</span>
-                                    <p className="flex-1 text-sm text-foreground truncate">{p.title}</p>
+                                    <div className="flex-1 min-w-0">
+                                      <p className="text-sm text-foreground truncate">{p.title}</p>
+                                      <p className="text-[10px] font-mono text-muted-foreground truncate">{p.id}</p>
+                                    </div>
                                     {p.isPremium && <span className="text-[10px] font-bold text-warning bg-warning/10 px-1.5 py-0.5 rounded">Premium</span>}
                                     <span className="text-[10px] text-muted-foreground">{p.xpReward}XP · {p.testCases.length} teste</span>
                                     <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => startEdit(p)}>
