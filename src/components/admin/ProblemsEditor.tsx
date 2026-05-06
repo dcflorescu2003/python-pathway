@@ -7,7 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ChevronDown, ChevronRight, Edit2, Trash2, Plus, Save, X, GripVertical } from "lucide-react";
+import { ChevronDown, ChevronRight, Edit2, Trash2, Plus, Save, X, GripVertical, Search } from "lucide-react";
+import { matchesSearch } from "@/lib/searchUtils";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import {
