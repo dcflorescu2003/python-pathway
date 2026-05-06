@@ -23,7 +23,7 @@ export function useRealEmailReminder(): ReminderState {
 
   const evaluate = useCallback(async () => {
     if (!user || methodsLoading) return;
-    if (!isPrivateRelay) {
+    if (!isPrivateRelay || hasPassword) {
       setShouldShow(false);
       setHasVerifiedRealEmail(false);
       setLoading(false);
