@@ -37,18 +37,6 @@ interface AdminUser {
 
 const PAGE_SIZE = 50;
 
-const useDebounced = <T,>(value: T, delay = 300) => {
-  const [v, setV] = useState(value);
-  useState(() => {
-    const t = setTimeout(() => setV(value), delay);
-    return () => clearTimeout(t);
-  });
-  // simple debounce using effect
-  return v;
-};
-
-import { useEffect } from "react";
-
 const UsersManager = () => {
   const qc = useQueryClient();
   const [searchInput, setSearchInput] = useState("");
