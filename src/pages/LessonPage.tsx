@@ -197,52 +197,61 @@ const LessonPage = () => {
   }
 
   if (isFinished) {
-    const xpEarned = lives <= 0 ? 1 : Math.max(1, lesson.xpReward - wrongCount);
+    const total = lesson.exercises.filter((e) => e.type !== "card").length;
+    const percent = total === 0 ? 100 : Math.round((correctCount / total) * 100);
+    const xpEarned = Math.max(1, lesson.xpReward - wrongCount);
+    const canRestart = progress.hasUnlimitedLives || progress.lives > 0;
+
+    if (!passed) {
+      return (
+        <div className="fixed inset-0 flex items-center justify-center bg-background p-6 safe-top safe-bottom">
+          <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="w-full max-w-sm rounded-xl border border-border bg-card p-6 text-center">
+            <div className="text-5xl mb-4">📚</div>
+            <h2 className="text-xl font-bold text-foreground mb-2">Nu ai promovat lecția</h2>
+            <p className="text-sm text-muted-foreground mb-2">
+              Ai răspuns corect la {correctCount}/{total} ({percent}%).
+            </p>
+            <p className="text-sm text-muted-foreground mb-4">
+              Ai nevoie de minim <span className="font-bold text-foreground">{PASSING_THRESHOLD}%</span> pentru a continua. Reia lecția pentru a încerca din nou.
+            </p>
+            {!canRestart && (
+              <div className="mb-4">
+                <p className="text-sm text-muted-foreground mb-3">Nu mai ai inimi. Vizionează o reclamă pentru a primi 5 inimi.</p>
+                <WatchAdForLivesButton
+                  isPremium={progress.hasUnlimitedLives}
+                  onLivesGranted={(newLives, livesUpdatedAt) => {
+                    setLivesFromReward(newLives, livesUpdatedAt);
+                  }}
+                />
+              </div>
+            )}
+            <div className="flex gap-3">
+              <Button variant="outline" className="flex-1 touch-target" onClick={() => navigate(`/chapter/${chapter.id}`)}>Înapoi</Button>
+              <Button className="flex-1 touch-target" onClick={restartLesson} disabled={!canRestart}>Reia</Button>
+            </div>
+            <StreakCelebrationDialog open={streakJustIncreased} streakCount={newStreakCount} onClose={dismissStreakCelebration} />
+          </motion.div>
+        </div>
+      );
+    }
+
     return (
       <div className="fixed inset-0 flex items-center justify-center bg-background p-6 safe-top safe-bottom">
         <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="w-full max-w-sm rounded-xl border border-border bg-card p-6 text-center">
-          {lives > 0 ? (
-            <>
-              <div className="text-5xl mb-4">🎉</div>
-              <h2 className="text-xl font-bold text-foreground mb-2">Lecție completă!</h2>
-              <p className="text-sm text-muted-foreground mb-4">Ai răspuns corect la {correctCount}/{lesson.exercises.filter((e) => e.type !== "card").length} exerciții</p>
-              <div className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-4 py-2 text-primary font-bold mb-2">+{xpEarned} XP</div>
-              {wrongCount > 0 && (
-                <p className="text-xs text-muted-foreground mb-6">−1 XP pentru fiecare greșeală ({wrongCount} {wrongCount === 1 ? "greșeală" : "greșeli"})</p>
-              )}
-              {wrongCount === 0 && <div className="mb-6" />}
-            </>
+          <div className="text-5xl mb-4">🎉</div>
+          <h2 className="text-xl font-bold text-foreground mb-2">Lecție completă!</h2>
+          <p className="text-sm text-muted-foreground mb-4">Ai răspuns corect la {correctCount}/{total} exerciții</p>
+          <div className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-4 py-2 text-primary font-bold mb-2">+{xpEarned} XP</div>
+          {wrongCount > 0 ? (
+            <p className="text-xs text-muted-foreground mb-6">−1 XP pentru fiecare greșeală ({wrongCount} {wrongCount === 1 ? "greșeală" : "greșeli"})</p>
           ) : (
-            <>
-              <div className="text-5xl mb-4">💔</div>
-              <h2 className="text-xl font-bold text-foreground mb-2">Ai rămas fără vieți!</h2>
-              <div className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-4 py-2 text-primary font-bold mb-2">+{xpEarned} XP</div>
-              <p className="text-xs text-muted-foreground mb-4">Recompensă de consolare</p>
-              {progress.hasUnlimitedLives ? (
-                <p className="text-sm text-muted-foreground mb-4">Reîncepe lecția cu 5 inimi noi.</p>
-              ) : (
-                <>
-                  <p className="text-sm text-muted-foreground mb-4">Încearcă din nou mai târziu sau vizionează o reclamă pentru a primi 5 inimi.</p>
-                  <div className="mb-4">
-                    <WatchAdForLivesButton
-                      isPremium={progress.hasUnlimitedLives}
-                      onLivesGranted={(newLives, livesUpdatedAt) => {
-                        setLivesFromReward(newLives, livesUpdatedAt);
-                      }}
-                    />
-                  </div>
-                </>
-              )}
-            </>
+            <div className="mb-6" />
           )}
           <div className="flex gap-3">
             <Button variant="outline" className="flex-1 touch-target" onClick={() => navigate(`/chapter/${chapter.id}`)}>Înapoi</Button>
-            {lives > 0 && <Button className="flex-1 touch-target" onClick={() => navigate(`/chapter/${chapter.id}`)}>Continuă</Button>}
-            {lives <= 0 && progress.hasUnlimitedLives && (
-              <Button className="flex-1 touch-target" onClick={restartLesson}>Reîncepe</Button>
-            )}
+            <Button className="flex-1 touch-target" onClick={() => navigate(`/chapter/${chapter.id}`)}>Continuă</Button>
           </div>
-            <StreakCelebrationDialog open={streakJustIncreased} streakCount={newStreakCount} onClose={dismissStreakCelebration} />
+          <StreakCelebrationDialog open={streakJustIncreased} streakCount={newStreakCount} onClose={dismissStreakCelebration} />
         </motion.div>
       </div>
     );
