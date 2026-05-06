@@ -113,6 +113,10 @@ const AdminPage = () => {
             <TeacherApproval />
           </TabsContent>
 
+          <TabsContent value="users">
+            <UsersManager />
+          </TabsContent>
+
           <TabsContent value="settings">
             <div className="space-y-4">
               <AdminPushTester />
