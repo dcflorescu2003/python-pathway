@@ -65,6 +65,7 @@ const LessonPage = () => {
   // pentru ceilalți e minimul dintre contor local și inimile reale (DB).
   const lives = progress.hasUnlimitedLives ? localLives : Math.min(localLives, progress.lives);
   const [isFinished, setIsFinished] = useState(false);
+  const [passed, setPassed] = useState(false);
   const [feedback, setFeedback] = useState<"correct" | "wrong" | null>(null);
   const [lastExplanation, setLastExplanation] = useState<string | null>(null);
   
