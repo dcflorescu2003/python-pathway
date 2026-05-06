@@ -152,7 +152,7 @@ const LessonPage = () => {
         setLastExplanation(exercise?.explanation || null);
       }
     },
-    [currentIndex, lesson, loseLife, recordActivity, markLessonStarted, progress.hasUnlimitedLives, correctCount, wrongCount, lives, completeLesson, user]
+    [currentIndex, lesson, loseLife, recordActivity, markLessonStarted, progress.hasUnlimitedLives, finishLesson]
   );
 
   const handleContinue = useCallback(() => {
@@ -161,19 +161,11 @@ const LessonPage = () => {
     if (!lesson) return;
     const wasCorrect = feedback === "correct";
     if (currentIndex + 1 >= lesson.exercises.length || (!wasCorrect && lives <= 0)) {
-      setIsFinished(true);
-      const total = lesson.exercises.filter((e) => e.type !== "card").length;
-      const percent = total === 0 ? 100 : Math.round((correctCount / total) * 100);
-      const xpEarned = lives <= 0 ? 1 : Math.max(1, lesson.xpReward - wrongCount);
-      completeLesson(lesson.id, xpEarned, percent);
-      if (user && competencyResultsRef.current.length > 0) {
-        recordCompetencyScores(user.id, competencyResultsRef.current);
-        competencyResultsRef.current = [];
-      }
+      finishLesson();
     } else {
       setCurrentIndex((i) => i + 1);
     }
-  }, [currentIndex, correctCount, wrongCount, lives, lesson, feedback, completeLesson, user]);
+  }, [currentIndex, lives, lesson, feedback, finishLesson]);
 
   if (isLoading || !chapters) return <LoadingScreen />;
   if (!lesson || !chapter) return <div className="p-8 text-center text-foreground">Lecție negăsită</div>;
