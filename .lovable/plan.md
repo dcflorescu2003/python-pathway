@@ -1,25 +1,24 @@
-## Problemă
+# Plan: ID-uri și căutare pentru probleme
 
-Lista utilizatorilor e goală pentru că edge function-ul `admin-list-users` crapă cu:
-```
-TypeError: userClient.auth.getClaims is not a function
-```
+## 1. Admin → tab „Probleme" (`src/components/admin/ProblemsEditor.tsx`)
+- Afișez ID-ul fiecărei probleme (font mono, mic) lângă titlu pe rândul din listă.
+- Bară de search globală deasupra listei de capitole care filtrează după **ID** sau **titlu** (diacritic-insensitive prin `matchesSearch` din `src/lib/searchUtils.ts`).
+- Când search-ul e activ:
+  - Capitolele care conțin rezultate se auto-expand.
+  - Capitolele fără match sunt ascunse.
+  - Drag & drop e dezactivat (reorder are nevoie de lista completă).
 
-Versiunea `@supabase/supabase-js@2.45.0` folosită în edge function nu expune `auth.getClaims()` (apărută în versiuni mai noi). Astfel, fiecare apel întoarce 500, iar UI afișează 0 utilizatori.
+## 2. Pagina publică Probleme (`src/pages/ProblemsPage.tsx`)
+Bară de search sub header:
+- **În lista de capitole**: caută în toate problemele după ID sau titlu; rezultatele apar într-o listă plană cu numele capitolului ca subtitlu.
+- **În interiorul unui capitol**: filtrează doar problemele acelui capitol.
+- ID-ul afișat sub titlu ca text mono mic (`text-[10px] text-muted-foreground`).
 
-## Fix
+## 3. Detalii tehnice
+- Reutilizez `matchesSearch` din `src/lib/searchUtils.ts` (gestionează deja diacriticele românești).
+- Search input: `<Input>` cu icon `Search` din lucide. Filtrare client-side, fără debounce.
+- Fără migrations / edge functions — totul e UI; `Problem.id` e deja disponibil.
 
-În `supabase/functions/admin-list-users/index.ts`, înlocuim validarea identității cu `auth.getUser(token)`, care e disponibilă în 2.45 și e pattern-ul standard:
-
-```ts
-const { data: userData, error: userErr } = await userClient.auth.getUser(token);
-if (userErr || !userData?.user?.id) return 401;
-const callerId = userData.user.id;
-```
-
-Restul logicii (verificare rol admin, listare profiluri, agregare emailuri / play subs / cupoane) rămâne neschimbată.
-
-## Pași
-1. Înlocuire `getClaims` → `getUser` în `admin-list-users/index.ts`.
-2. Redeploy automat.
-3. Verificare în tab-ul „Utilizatori" că lista se populează.
+## Fișiere modificate
+- `src/components/admin/ProblemsEditor.tsx`
+- `src/pages/ProblemsPage.tsx`

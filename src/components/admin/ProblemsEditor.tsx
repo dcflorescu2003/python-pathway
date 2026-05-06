@@ -7,7 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ChevronDown, ChevronRight, Edit2, Trash2, Plus, Save, X, GripVertical } from "lucide-react";
+import { ChevronDown, ChevronRight, Edit2, Trash2, Plus, Save, X, GripVertical, Search } from "lucide-react";
+import { matchesSearch } from "@/lib/searchUtils";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import {
@@ -78,6 +79,7 @@ const ProblemsEditor = () => {
   const [editingProblem, setEditingProblem] = useState<string | null>(null);
   const [creatingFor, setCreatingFor] = useState<string | null>(null);
   const [form, setForm] = useState<Omit<Problem, "id"> & { id?: string }>(emptyProblem(""));
+  const [searchQuery, setSearchQuery] = useState("");
 
   // Chapter CRUD state
   const [editingChapter, setEditingChapter] = useState<string | null>(null);
@@ -304,13 +306,28 @@ const ProblemsEditor = () => {
     </div>
   );
 
+  const isSearching = searchQuery.trim().length > 0;
+  const problemMatches = (p: Problem) => matchesSearch(p.title, searchQuery) || matchesSearch(p.id, searchQuery);
+
   return (
     <div className="space-y-3">
-      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleChapterReorder}>
-        <SortableContext items={problemChapters.map(c => c.id)} strategy={verticalListSortingStrategy}>
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+        <Input
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          placeholder="Caută după ID sau titlu..."
+          className="pl-9"
+        />
+      </div>
+
+      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={isSearching ? () => {} : handleChapterReorder}>
+        <SortableContext items={problemChapters.map(c => c.id)} strategy={verticalListSortingStrategy} disabled={isSearching}>
           {problemChapters.map(ch => {
-            const isExpanded = expandedChapter === ch.id;
-            const chapterProblems = problems.filter(p => p.chapter === ch.id);
+            const allChapterProblems = problems.filter(p => p.chapter === ch.id);
+            const chapterProblems = isSearching ? allChapterProblems.filter(problemMatches) : allChapterProblems;
+            if (isSearching && chapterProblems.length === 0) return null;
+            const isExpanded = isSearching ? true : expandedChapter === ch.id;
 
             return (
               <SortableProblemChapter key={ch.id} id={ch.id}>
@@ -365,8 +382,8 @@ const ProblemsEditor = () => {
                     {isExpanded && (
                       <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="border-t border-border">
                         <div className="p-3 space-y-2">
-                          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={(e) => handleProblemReorder(ch.id, e)}>
-                            <SortableContext items={chapterProblems.map(p => p.id)} strategy={verticalListSortingStrategy}>
+                          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={isSearching ? () => {} : (e) => handleProblemReorder(ch.id, e)}>
+                            <SortableContext items={chapterProblems.map(p => p.id)} strategy={verticalListSortingStrategy} disabled={isSearching}>
                               {chapterProblems.map(p => (
                                 <SortableProblem key={p.id} id={p.id}>
                                   <div className="flex items-center gap-2 rounded-lg border border-border bg-secondary/30 p-3">
@@ -375,7 +392,10 @@ const ProblemsEditor = () => {
                                       p.difficulty === "mediu" ? "bg-yellow-500/10 text-yellow-500" :
                                       "bg-red-500/10 text-red-500"
                                     }`}>{p.difficulty}</span>
-                                    <p className="flex-1 text-sm text-foreground truncate">{p.title}</p>
+                                    <div className="flex-1 min-w-0">
+                                      <p className="text-sm text-foreground truncate">{p.title}</p>
+                                      <p className="text-[10px] font-mono text-muted-foreground truncate">{p.id}</p>
+                                    </div>
                                     {p.isPremium && <span className="text-[10px] font-bold text-warning bg-warning/10 px-1.5 py-0.5 rounded">Premium</span>}
                                     <span className="text-[10px] text-muted-foreground">{p.xpReward}XP · {p.testCases.length} teste</span>
                                     <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => startEdit(p)}>
