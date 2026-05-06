@@ -22,6 +22,8 @@ import { recordCompetencyScores, type CompetencyItemResult } from "@/lib/compete
 
 import React from "react";
 
+const PASSING_THRESHOLD = 75;
+
 class ExerciseErrorBoundary extends React.Component<
   { children: React.ReactNode; fallback?: React.ReactNode },
   { hasError: boolean }
