@@ -1,24 +1,16 @@
-# Plan: ID-uri și căutare pentru probleme
+## Problem
+Pe iOS, dialogul "Adaugă un email real" apare chiar și pentru utilizatorii care au deja email + parolă setate. Cauza: `useRealEmailReminder` declanșează reminderul doar pe baza `isPrivateRelay` (email-ul se termină în `@privaterelay.appleid.com`), fără să verifice dacă utilizatorul are deja o parolă reală setată — caz în care contul e deja recuperabil prin email/parolă și reminderul nu mai are sens.
 
-## 1. Admin → tab „Probleme" (`src/components/admin/ProblemsEditor.tsx`)
-- Afișez ID-ul fiecărei probleme (font mono, mic) lângă titlu pe rândul din listă.
-- Bară de search globală deasupra listei de capitole care filtrează după **ID** sau **titlu** (diacritic-insensitive prin `matchesSearch` din `src/lib/searchUtils.ts`).
-- Când search-ul e activ:
-  - Capitolele care conțin rezultate se auto-expand.
-  - Capitolele fără match sunt ascunse.
-  - Drag & drop e dezactivat (reorder are nevoie de lista completă).
+## Fix
+În `src/hooks/useRealEmailReminder.ts`, când evaluăm dacă să arătăm reminderul:
+- Dacă `hasPassword` este `true` (din `useAuthMethods`, bazat pe `profiles.has_real_password`), nu mai arătăm reminderul, indiferent de `isPrivateRelay`.
 
-## 2. Pagina publică Probleme (`src/pages/ProblemsPage.tsx`)
-Bară de search sub header:
-- **În lista de capitole**: caută în toate problemele după ID sau titlu; rezultatele apar într-o listă plană cu numele capitolului ca subtitlu.
-- **În interiorul unui capitol**: filtrează doar problemele acelui capitol.
-- ID-ul afișat sub titlu ca text mono mic (`text-[10px] text-muted-foreground`).
+Practic: condiția devine `if (!isPrivateRelay || hasPassword) → setShouldShow(false)`.
 
-## 3. Detalii tehnice
-- Reutilizez `matchesSearch` din `src/lib/searchUtils.ts` (gestionează deja diacriticele românești).
-- Search input: `<Input>` cu icon `Search` din lucide. Filtrare client-side, fără debounce.
-- Fără migrations / edge functions — totul e UI; `Problem.id` e deja disponibil.
+## De ce e safe
+- `RealEmailSetupCard` din pagina Account va continua să apară pentru cazul edge `hasVerifiedRealEmail && !hasPassword` (logica lui rămâne neschimbată).
+- Apple Class Gating și Real Email Enforcement nu depind de acest popup — au propriile lor verificări.
+- Memoria proiectului (`Real Email Enforcement`) rămâne validă: reminderul rulează doar pentru Hide-My-Email fără parolă reală.
 
-## Fișiere modificate
-- `src/components/admin/ProblemsEditor.tsx`
-- `src/pages/ProblemsPage.tsx`
+## Files changed
+- `src/hooks/useRealEmailReminder.ts` — adăugat `hasPassword` din `useAuthMethods` și exclus din `shouldShow`.

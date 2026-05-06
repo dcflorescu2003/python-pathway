@@ -16,7 +16,7 @@ const HOUR_THRESHOLD = 14; // 14:00 local
 
 export function useRealEmailReminder(): ReminderState {
   const { user } = useAuth();
-  const { isPrivateRelay, loading: methodsLoading } = useAuthMethods();
+  const { isPrivateRelay, hasPassword, loading: methodsLoading } = useAuthMethods();
   const [shouldShow, setShouldShow] = useState(false);
   const [hasVerifiedRealEmail, setHasVerifiedRealEmail] = useState(false);
   const [loading, setLoading] = useState(true);
