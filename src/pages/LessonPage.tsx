@@ -82,10 +82,28 @@ const LessonPage = () => {
     setFeedback(null);
     setLastExplanation(null);
     setIsFinished(false);
+    setPassed(false);
     activityRecordedRef.current = false;
     lessonStartedRef.current = false;
     competencyResultsRef.current = [];
   }, []);
+
+  const finishLesson = useCallback((percentArg?: number) => {
+    if (!lesson) return;
+    const total = lesson.exercises.filter((e) => e.type !== "card").length;
+    const percent = percentArg ?? (total === 0 ? 100 : Math.round((correctCount / total) * 100));
+    const didPass = percent >= PASSING_THRESHOLD;
+    setPassed(didPass);
+    setIsFinished(true);
+    if (didPass) {
+      const xpEarned = Math.max(1, lesson.xpReward - wrongCount);
+      completeLesson(lesson.id, xpEarned, percent);
+    }
+    if (user && competencyResultsRef.current.length > 0) {
+      recordCompetencyScores(user.id, competencyResultsRef.current);
+      competencyResultsRef.current = [];
+    }
+  }, [lesson, correctCount, wrongCount, completeLesson, user]);
 
   const handleAnswer = useCallback(
     (isCorrect: boolean) => {
