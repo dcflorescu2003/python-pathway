@@ -57,7 +57,7 @@ export function useRealEmailReminder(): ReminderState {
     const alreadyShown = data?.last_shown_date === todayStr;
     setShouldShow(!alreadyShown);
     setLoading(false);
-  }, [user, isPrivateRelay, methodsLoading]);
+  }, [user, isPrivateRelay, hasPassword, methodsLoading]);
 
   useEffect(() => {
     evaluate();
