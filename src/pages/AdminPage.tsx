@@ -75,6 +75,10 @@ const AdminPage = () => {
               <GraduationCap className="h-4 w-4" />
               Profesori
             </TabsTrigger>
+            <TabsTrigger value="users" className="flex-1 gap-2">
+              <Users className="h-4 w-4" />
+              Utilizatori
+            </TabsTrigger>
             <TabsTrigger value="settings" className="flex-1 gap-2">
               <Settings className="h-4 w-4" />
               Setări
