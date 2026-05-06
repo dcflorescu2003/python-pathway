@@ -1752,6 +1752,10 @@ export type Database = {
       }
     }
     Functions: {
+      admin_set_premium: {
+        Args: { p_premium: boolean; p_user_id: string }
+        Returns: undefined
+      }
       approve_teacher_request: {
         Args: { p_notes?: string; p_request_id: string }
         Returns: undefined
