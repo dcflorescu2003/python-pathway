@@ -113,15 +113,7 @@ const LessonPage = () => {
         setLastExplanation(null);
         if (!lesson) return;
         if (currentIndex + 1 >= lesson.exercises.length) {
-          setIsFinished(true);
-          const total = lesson.exercises.filter((e) => e.type !== "card").length;
-          const percent = total === 0 ? 100 : Math.round((correctCount / total) * 100);
-          const xpEarned = lives <= 0 ? 1 : Math.max(1, lesson.xpReward - wrongCount);
-          completeLesson(lesson.id, xpEarned, percent);
-          if (user && competencyResultsRef.current.length > 0) {
-            recordCompetencyScores(user.id, competencyResultsRef.current);
-            competencyResultsRef.current = [];
-          }
+          finishLesson();
         } else {
           setCurrentIndex((i) => i + 1);
         }
