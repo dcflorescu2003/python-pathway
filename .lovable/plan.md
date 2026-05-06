@@ -1,42 +1,50 @@
-## Problema
+# Prag de promovare 75% pentru lecții
 
-Pe iOS, după Sign in with Apple, Supabase adaugă automat o identitate `email` în `auth.identities` (cu Hide-My-Email). Hook-ul `useAuthMethods` interpretează asta drept "userul are parolă", deci în `RealEmailSetupCard` câmpurile de parolă din pasul 2 sunt ascunse — și flow-ul nu poate fi finalizat niciodată.
+## Logica curentă
 
-## Soluție
+În `LessonPage.tsx`, când termini exercițiile (sau rămâi fără inimi), apelăm `completeLesson(lesson.id, xpEarned, percent)` indiferent de scor. Asta marchează lecția ca `completed: true` în `completed_lessons`, deci poți merge mai departe în capitol chiar și cu 0% corect.
 
-Înlocuim detecția fragilă din client cu un steag salvat explicit pe profil când userul setează cu adevărat o parolă, plus afișăm întotdeauna câmpurile de parolă în pasul 2 dacă nu suntem siguri.
+## Schimbare propusă
 
-### 1. Sursă de adevăr pentru "are parolă"
+Lecția se consideră **promovată** doar dacă scorul ≥ **75%**. Sub 75%:
 
-- Adăugăm coloana `profiles.has_real_password BOOLEAN DEFAULT false`.
-- Backfill: setăm `true` pentru userii care au în `auth.identities` un provider `email` ȘI **nu** au și provider `apple` sau `google` (deci s-au înregistrat clasic cu parolă).
-- Trigger sau update la finalul flow-ului de mai jos pentru a-l comuta pe `true`.
+- nu se salvează ca finalizată (nu se deblochează lecția următoare)
+- nu se acordă XP din lecție (păstrăm doar XP-ul pe stradă deja câștigat per răspuns corect, dacă există — în prezent XP-ul vine din `completeLesson`, deci pur și simplu nu îl acordăm)
+- ecranul final devine „Nu ai promovat — reia lecția" cu butoane **Reia** și **Înapoi**
+- inima se pierde normal pe parcurs (mecanica nu se schimbă)
 
-### 2. `useAuthMethods` citește din profil
+Peste 75% → flow-ul actual rămâne identic (se salvează scor, se acordă XP, se afișează „Lecție completă").
 
-- Pe lângă `auth.getUser()`, hook-ul face `select has_real_password from profiles where user_id = ...`.
-- `hasPassword` devine `profile.has_real_password === true` (nu mai derivă din identities).
-- Expunem și `hasPasswordKnown` ca să distingem "nu știm încă" de "nu are".
+### Edge cases
 
-### 3. `RealEmailSetupCard` — pasul 2 afișează mereu parola când e nevoie
+- **Lives = 0 înainte de 75%**: în prezent se finalizează cu 1 XP de consolare. Noua logică: dacă scorul < 75%, NU se finalizează — același ecran „Reia lecția" (cu opțiunea de a urmări reclamă pentru inimi pentru a putea reîncerca). Fără XP de consolare.
+- **Redo cu scor mai bun**: păstrăm comportamentul existent (`Math.max(previousEntry.score, score)` în `useProgress`) — dacă ai luat 80% acum și 60% data viitoare, rămâne 80% și completed.
+- **Scor ≥ 75% dar < 100%**: finalizat, XP normal (cu penalizare per greșeală).
+- **Lecții fără exerciții non-card** (doar carduri): rămân la 100% automat (deja așa e).
 
-- Condiția pentru afișarea câmpurilor de parolă în pasul "code" devine `!hasPassword` calculată din noua sursă.
-- În `verifyAndSetPassword`, după ce `supabase.auth.updateUser({ password })` reușește, facem `update profiles set has_real_password = true where user_id = ...`.
-- Same în `savePasswordOnly`.
+## Modificări în cod
 
-### 4. Curățare cont test
+`**src/pages/LessonPage.tsx**`
 
-Ștergem `cosmin.florescu@fglorca.ro` din nou, ca să poți relua flow-ul de la zero pe iOS cu codul nou.
+- Constantă `PASSING_THRESHOLD = 75`.
+- În `handleAnswer` (ramura `card` finală) și `handleContinue`, când se atinge finalul:
+  - calculează `percent` ca acum
+  - dacă `percent >= 75` → `completeLesson(...)` ca acum
+  - dacă `percent < 75` → setează `isFinished = true`, dar **nu** apelează `completeLesson`. Salvăm într-un state nou `passed: boolean` pentru ecranul final.
+- Aceeași logică pentru cazul `lives <= 0` cu scor sub prag (în prezent acordă 1 XP — eliminăm).
+- Ecranul `isFinished`:
+  - dacă `passed` → ecranul actual de succes
+  - dacă `!passed` → ecran nou:
+    - „Nu ai promovat lecția"
+    - „Ai răspuns corect la X/Y (Z%). Pentru a finaliza ai nevoie de minim 75%."
+    - Buton **Reia lecția** (apelează `restartLesson()`, care există deja) — dezactivat dacă `noLives` și nu e Premium, cu CTA la reclamă
+    - Buton **Înapoi**
 
-## Fișiere atinse
+**Niciun alt fișier nu necesită modificări** — `useProgress.completeLesson` rămâne intact, `ChapterPage` deja respectă `completedLessons[id].completed`, deci dacă nu apelăm completeLesson, lecția următoare rămâne blocată automat.
 
-- migration: adăugare coloană + backfill
-- `src/hooks/useAuthMethods.ts` — citire `has_real_password` din `profiles`
-- `src/components/account/RealEmailSetupCard.tsx` — folosește noul `hasPassword`, scrie `has_real_password = true` după success
-- ștergere user test prin SQL
+## Întrebări
 
-## Memory
-
-Voi salva o notă în `mem://auth/has-real-password` despre cum se detectează prezența parolei (din `profiles.has_real_password`, nu din `auth.identities`), pentru că Apple/Google adaugă identități `email` care induc în eroare.  
+- **Activitate zilnică / streak**: în prezent `recordActivity()` se apelează la primul răspuns corect. Îl păstrăm așa (chiar și cu lecție nepromovată) sau îl mutăm să se înregistreze doar la promovare? Recomand să-l las cum e — userul a făcut efort, streak-ul e meritat.
+- **Pragul 75%**: îl fac constantă în cod (ușor de schimbat). OK?  
   
-Vreau ca toata treaba asta cu acest cartonas cu emailul real, cod si parola sa apara doar pe iOS
+Da, pastram streak, si da fa pragul constanta

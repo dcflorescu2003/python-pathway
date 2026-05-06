@@ -22,6 +22,8 @@ import { recordCompetencyScores, type CompetencyItemResult } from "@/lib/compete
 
 import React from "react";
 
+const PASSING_THRESHOLD = 75;
+
 class ExerciseErrorBoundary extends React.Component<
   { children: React.ReactNode; fallback?: React.ReactNode },
   { hasError: boolean }
@@ -63,6 +65,7 @@ const LessonPage = () => {
   // pentru ceilalți e minimul dintre contor local și inimile reale (DB).
   const lives = progress.hasUnlimitedLives ? localLives : Math.min(localLives, progress.lives);
   const [isFinished, setIsFinished] = useState(false);
+  const [passed, setPassed] = useState(false);
   const [feedback, setFeedback] = useState<"correct" | "wrong" | null>(null);
   const [lastExplanation, setLastExplanation] = useState<string | null>(null);
   
@@ -79,10 +82,28 @@ const LessonPage = () => {
     setFeedback(null);
     setLastExplanation(null);
     setIsFinished(false);
+    setPassed(false);
     activityRecordedRef.current = false;
     lessonStartedRef.current = false;
     competencyResultsRef.current = [];
   }, []);
+
+  const finishLesson = useCallback((percentArg?: number) => {
+    if (!lesson) return;
+    const total = lesson.exercises.filter((e) => e.type !== "card").length;
+    const percent = percentArg ?? (total === 0 ? 100 : Math.round((correctCount / total) * 100));
+    const didPass = percent >= PASSING_THRESHOLD;
+    setPassed(didPass);
+    setIsFinished(true);
+    if (didPass) {
+      const xpEarned = Math.max(1, lesson.xpReward - wrongCount);
+      completeLesson(lesson.id, xpEarned, percent);
+    }
+    if (user && competencyResultsRef.current.length > 0) {
+      recordCompetencyScores(user.id, competencyResultsRef.current);
+      competencyResultsRef.current = [];
+    }
+  }, [lesson, correctCount, wrongCount, completeLesson, user]);
 
   const handleAnswer = useCallback(
     (isCorrect: boolean) => {
@@ -92,15 +113,7 @@ const LessonPage = () => {
         setLastExplanation(null);
         if (!lesson) return;
         if (currentIndex + 1 >= lesson.exercises.length) {
-          setIsFinished(true);
-          const total = lesson.exercises.filter((e) => e.type !== "card").length;
-          const percent = total === 0 ? 100 : Math.round((correctCount / total) * 100);
-          const xpEarned = lives <= 0 ? 1 : Math.max(1, lesson.xpReward - wrongCount);
-          completeLesson(lesson.id, xpEarned, percent);
-          if (user && competencyResultsRef.current.length > 0) {
-            recordCompetencyScores(user.id, competencyResultsRef.current);
-            competencyResultsRef.current = [];
-          }
+          finishLesson();
         } else {
           setCurrentIndex((i) => i + 1);
         }
@@ -139,7 +152,7 @@ const LessonPage = () => {
         setLastExplanation(exercise?.explanation || null);
       }
     },
-    [currentIndex, lesson, loseLife, recordActivity, markLessonStarted, progress.hasUnlimitedLives, correctCount, wrongCount, lives, completeLesson, user]
+    [currentIndex, lesson, loseLife, recordActivity, markLessonStarted, progress.hasUnlimitedLives, finishLesson]
   );
 
   const handleContinue = useCallback(() => {
@@ -148,19 +161,11 @@ const LessonPage = () => {
     if (!lesson) return;
     const wasCorrect = feedback === "correct";
     if (currentIndex + 1 >= lesson.exercises.length || (!wasCorrect && lives <= 0)) {
-      setIsFinished(true);
-      const total = lesson.exercises.filter((e) => e.type !== "card").length;
-      const percent = total === 0 ? 100 : Math.round((correctCount / total) * 100);
-      const xpEarned = lives <= 0 ? 1 : Math.max(1, lesson.xpReward - wrongCount);
-      completeLesson(lesson.id, xpEarned, percent);
-      if (user && competencyResultsRef.current.length > 0) {
-        recordCompetencyScores(user.id, competencyResultsRef.current);
-        competencyResultsRef.current = [];
-      }
+      finishLesson();
     } else {
       setCurrentIndex((i) => i + 1);
     }
-  }, [currentIndex, correctCount, wrongCount, lives, lesson, feedback, completeLesson, user]);
+  }, [currentIndex, lives, lesson, feedback, finishLesson]);
 
   if (isLoading || !chapters) return <LoadingScreen />;
   if (!lesson || !chapter) return <div className="p-8 text-center text-foreground">Lecție negăsită</div>;
@@ -192,52 +197,61 @@ const LessonPage = () => {
   }
 
   if (isFinished) {
-    const xpEarned = lives <= 0 ? 1 : Math.max(1, lesson.xpReward - wrongCount);
+    const total = lesson.exercises.filter((e) => e.type !== "card").length;
+    const percent = total === 0 ? 100 : Math.round((correctCount / total) * 100);
+    const xpEarned = Math.max(1, lesson.xpReward - wrongCount);
+    const canRestart = progress.hasUnlimitedLives || progress.lives > 0;
+
+    if (!passed) {
+      return (
+        <div className="fixed inset-0 flex items-center justify-center bg-background p-6 safe-top safe-bottom">
+          <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="w-full max-w-sm rounded-xl border border-border bg-card p-6 text-center">
+            <div className="text-5xl mb-4">📚</div>
+            <h2 className="text-xl font-bold text-foreground mb-2">Nu ai promovat lecția</h2>
+            <p className="text-sm text-muted-foreground mb-2">
+              Ai răspuns corect la {correctCount}/{total} ({percent}%).
+            </p>
+            <p className="text-sm text-muted-foreground mb-4">
+              Ai nevoie de minim <span className="font-bold text-foreground">{PASSING_THRESHOLD}%</span> pentru a continua. Reia lecția pentru a încerca din nou.
+            </p>
+            {!canRestart && (
+              <div className="mb-4">
+                <p className="text-sm text-muted-foreground mb-3">Nu mai ai inimi. Vizionează o reclamă pentru a primi 5 inimi.</p>
+                <WatchAdForLivesButton
+                  isPremium={progress.hasUnlimitedLives}
+                  onLivesGranted={(newLives, livesUpdatedAt) => {
+                    setLivesFromReward(newLives, livesUpdatedAt);
+                  }}
+                />
+              </div>
+            )}
+            <div className="flex gap-3">
+              <Button variant="outline" className="flex-1 touch-target" onClick={() => navigate(`/chapter/${chapter.id}`)}>Înapoi</Button>
+              <Button className="flex-1 touch-target" onClick={restartLesson} disabled={!canRestart}>Reia</Button>
+            </div>
+            <StreakCelebrationDialog open={streakJustIncreased} streakCount={newStreakCount} onClose={dismissStreakCelebration} />
+          </motion.div>
+        </div>
+      );
+    }
+
     return (
       <div className="fixed inset-0 flex items-center justify-center bg-background p-6 safe-top safe-bottom">
         <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="w-full max-w-sm rounded-xl border border-border bg-card p-6 text-center">
-          {lives > 0 ? (
-            <>
-              <div className="text-5xl mb-4">🎉</div>
-              <h2 className="text-xl font-bold text-foreground mb-2">Lecție completă!</h2>
-              <p className="text-sm text-muted-foreground mb-4">Ai răspuns corect la {correctCount}/{lesson.exercises.filter((e) => e.type !== "card").length} exerciții</p>
-              <div className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-4 py-2 text-primary font-bold mb-2">+{xpEarned} XP</div>
-              {wrongCount > 0 && (
-                <p className="text-xs text-muted-foreground mb-6">−1 XP pentru fiecare greșeală ({wrongCount} {wrongCount === 1 ? "greșeală" : "greșeli"})</p>
-              )}
-              {wrongCount === 0 && <div className="mb-6" />}
-            </>
+          <div className="text-5xl mb-4">🎉</div>
+          <h2 className="text-xl font-bold text-foreground mb-2">Lecție completă!</h2>
+          <p className="text-sm text-muted-foreground mb-4">Ai răspuns corect la {correctCount}/{total} exerciții</p>
+          <div className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-4 py-2 text-primary font-bold mb-2">+{xpEarned} XP</div>
+          {wrongCount > 0 ? (
+            <p className="text-xs text-muted-foreground mb-6">−1 XP pentru fiecare greșeală ({wrongCount} {wrongCount === 1 ? "greșeală" : "greșeli"})</p>
           ) : (
-            <>
-              <div className="text-5xl mb-4">💔</div>
-              <h2 className="text-xl font-bold text-foreground mb-2">Ai rămas fără vieți!</h2>
-              <div className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-4 py-2 text-primary font-bold mb-2">+{xpEarned} XP</div>
-              <p className="text-xs text-muted-foreground mb-4">Recompensă de consolare</p>
-              {progress.hasUnlimitedLives ? (
-                <p className="text-sm text-muted-foreground mb-4">Reîncepe lecția cu 5 inimi noi.</p>
-              ) : (
-                <>
-                  <p className="text-sm text-muted-foreground mb-4">Încearcă din nou mai târziu sau vizionează o reclamă pentru a primi 5 inimi.</p>
-                  <div className="mb-4">
-                    <WatchAdForLivesButton
-                      isPremium={progress.hasUnlimitedLives}
-                      onLivesGranted={(newLives, livesUpdatedAt) => {
-                        setLivesFromReward(newLives, livesUpdatedAt);
-                      }}
-                    />
-                  </div>
-                </>
-              )}
-            </>
+            <div className="mb-6" />
           )}
           <div className="flex gap-3">
             <Button variant="outline" className="flex-1 touch-target" onClick={() => navigate(`/chapter/${chapter.id}`)}>Înapoi</Button>
-            {lives > 0 && <Button className="flex-1 touch-target" onClick={() => navigate(`/chapter/${chapter.id}`)}>Continuă</Button>}
-            {lives <= 0 && progress.hasUnlimitedLives && (
-              <Button className="flex-1 touch-target" onClick={restartLesson}>Reîncepe</Button>
-            )}
+            <Button className="flex-1 touch-target" onClick={() => navigate(`/chapter/${chapter.id}`)}>Continuă</Button>
           </div>
-            <StreakCelebrationDialog open={streakJustIncreased} streakCount={newStreakCount} onClose={dismissStreakCelebration} />
+          <StreakCelebrationDialog open={streakJustIncreased} streakCount={newStreakCount} onClose={dismissStreakCelebration} />
         </motion.div>
       </div>
     );
