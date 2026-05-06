@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Capacitor } from "@capacitor/core";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -8,6 +9,11 @@ import { Ticket, Loader2, CheckCircle } from "lucide-react";
 import { toast } from "sonner";
 
 const CouponRedemption = () => {
+  // Apple Guideline 3.1.1: hide alternative unlock mechanisms on iOS native builds.
+  if (Capacitor.isNativePlatform() && Capacitor.getPlatform() === "ios") {
+    return null;
+  }
+
   const { session } = useAuth();
   const [code, setCode] = useState("");
   const [loading, setLoading] = useState(false);
