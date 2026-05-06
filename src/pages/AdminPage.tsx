@@ -12,9 +12,10 @@ import ManualEditor from "@/components/admin/ManualEditor";
 import TeacherApproval from "@/components/admin/TeacherApproval";
 import EvalBankEditor from "@/components/admin/EvalBankEditor";
 import PredefinedTestEditor from "@/components/admin/PredefinedTestEditor";
+import UsersManager from "@/components/admin/UsersManager";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { BookOpen, Ticket, Code2, Settings, FileText, GraduationCap, Database, ClipboardList } from "lucide-react";
+import { BookOpen, Ticket, Code2, Settings, FileText, GraduationCap, Database, ClipboardList, Users } from "lucide-react";
 
 const AdminPage = () => {
   const navigate = useNavigate();
