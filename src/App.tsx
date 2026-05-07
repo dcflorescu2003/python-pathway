@@ -181,7 +181,7 @@ const AppComponent = () => {
     const RELOAD_FLAG = "pyro-startup-reload-attempt";
     const READY_FLAG = "pyro-startup-ready";
     const isNative = Capacitor.isNativePlatform();
-    const timeoutMs = isNative ? 14000 : 7000;
+    const timeoutMs = isNative ? 8000 : 7000;
 
     const watchdog = setTimeout(() => {
       const alreadyReloaded = sessionStorage.getItem(RELOAD_FLAG);
@@ -189,18 +189,14 @@ const AppComponent = () => {
       if (isReady) return;
       if (alreadyReloaded) return; // nu intrăm în buclă
 
-      // Dacă există deja o sesiune Supabase persistată, NU facem reload —
-      // restaurarea e probabil doar lentă, iar reload-ul ar putea o întrerupe.
-      try {
-        for (let i = 0; i < localStorage.length; i++) {
-          const key = localStorage.key(i);
-          if (key && (key.startsWith("sb-") || key.includes("supabase.auth"))) {
-            return;
-          }
-        }
-      } catch {
-        // ignore
-      }
+      // Heuristică ecran negru: dacă root-ul React nu are nimic randat după
+      // timeout, înseamnă că WebView-ul e blocat (tipic la prima deschidere
+      // după update Android). În acest caz facem un reload — sesiunea
+      // Supabase e oricum persistată în @capacitor/preferences și va fi
+      // rehidratată de installNativeAuthPersistence la următorul boot.
+      const root = document.getElementById("root");
+      const hasContent = !!root && root.childElementCount > 0;
+      if (hasContent) return;
 
       sessionStorage.setItem(RELOAD_FLAG, String(Date.now()));
       try {
