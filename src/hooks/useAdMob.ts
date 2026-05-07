@@ -7,14 +7,19 @@ const TEST_REWARDED_IOS = "ca-app-pub-3940256099942544/1712485313";
 
 // Production rewarded ad unit IDs
 const PROD_REWARDED_ANDROID = "ca-app-pub-8441862030200888/4681915410";
-// TODO: Replace with iOS production unit ID when iOS app is registered in AdMob
-const PROD_REWARDED_IOS = TEST_REWARDED_IOS;
+// iOS production unit ID — completează când e creat în AdMob.
+// Cât timp e gol, iOS folosește test ID (reclamele de refill funcționează,
+// doar că sunt test ads, nu generează venit).
+const PROD_REWARDED_IOS = "";
 
 const isDev = import.meta.env.DEV;
 
 function getAdUnitId(): string {
   const platform = Capacitor.getPlatform();
-  if (platform === "ios") return isDev ? TEST_REWARDED_IOS : PROD_REWARDED_IOS;
+  if (platform === "ios") {
+    if (isDev) return TEST_REWARDED_IOS;
+    return PROD_REWARDED_IOS || TEST_REWARDED_IOS;
+  }
   return isDev ? TEST_REWARDED_ANDROID : PROD_REWARDED_ANDROID;
 }
 
