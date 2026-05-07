@@ -138,16 +138,30 @@ const AppComponent = () => {
   });
 
   useEffect(() => {
-    // Hide native splash as soon as React mounts (covers black-screen gap on cold start / after update).
-    // Apelăm de două ori: imediat și după un mic delay, ca să acoperim cazurile când pluginul
-    // nu e încă pregătit la primul tick.
+    // Ascundem splash-ul nativ DOAR după ce browser-ul a făcut primul paint real
+    // (2 rAF garantează commit DOM + paint). Dacă-l ascundem prea devreme,
+    // utilizatorul vede ecran negru — exact problema raportată după update Android.
     if (Capacitor.isNativePlatform()) {
-      CapSplashScreen.hide({ fadeOutDuration: 250 }).catch(() => undefined);
-      const t = setTimeout(() => {
-        CapSplashScreen.hide({ fadeOutDuration: 250 }).catch(() => undefined);
-      }, 800);
-      // best-effort, nu returnăm clean-up (timeout scurt)
-      void t;
+      let cancelled = false;
+      const hideNow = () =>
+        CapSplashScreen.hide({ fadeOutDuration: 200 }).catch(() => undefined);
+
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          if (!cancelled) hideNow();
+        });
+      });
+
+      // Plasă de siguranță: chiar dacă rAF nu s-a declanșat (rar, dar posibil
+      // pe WebView-uri foarte lente), ascundem oricum după 6s ca să nu blocăm.
+      const safety = setTimeout(hideNow, 6000);
+
+      // Best-effort cleanup: marcăm cancelled pentru rAF-ul care eventual mai vine
+      // (deja nu mai contează, hide e idempotent).
+      void (() => {
+        cancelled = false; // noop, păstrat pentru claritate
+      });
+      void safety;
     }
 
     if (showSplash) {
@@ -167,7 +181,7 @@ const AppComponent = () => {
     const RELOAD_FLAG = "pyro-startup-reload-attempt";
     const READY_FLAG = "pyro-startup-ready";
     const isNative = Capacitor.isNativePlatform();
-    const timeoutMs = isNative ? 14000 : 7000;
+    const timeoutMs = isNative ? 8000 : 7000;
 
     const watchdog = setTimeout(() => {
       const alreadyReloaded = sessionStorage.getItem(RELOAD_FLAG);
@@ -175,18 +189,14 @@ const AppComponent = () => {
       if (isReady) return;
       if (alreadyReloaded) return; // nu intrăm în buclă
 
-      // Dacă există deja o sesiune Supabase persistată, NU facem reload —
-      // restaurarea e probabil doar lentă, iar reload-ul ar putea o întrerupe.
-      try {
-        for (let i = 0; i < localStorage.length; i++) {
-          const key = localStorage.key(i);
-          if (key && (key.startsWith("sb-") || key.includes("supabase.auth"))) {
-            return;
-          }
-        }
-      } catch {
-        // ignore
-      }
+      // Heuristică ecran negru: dacă root-ul React nu are nimic randat după
+      // timeout, înseamnă că WebView-ul e blocat (tipic la prima deschidere
+      // după update Android). În acest caz facem un reload — sesiunea
+      // Supabase e oricum persistată în @capacitor/preferences și va fi
+      // rehidratată de installNativeAuthPersistence la următorul boot.
+      const root = document.getElementById("root");
+      const hasContent = !!root && root.childElementCount > 0;
+      if (hasContent) return;
 
       sessionStorage.setItem(RELOAD_FLAG, String(Date.now()));
       try {
