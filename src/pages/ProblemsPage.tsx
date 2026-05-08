@@ -122,6 +122,29 @@ const ProblemsPage = () => {
             />
           </div>
         </div>
+        {selectedChapter && (
+          <div className="px-4 pb-3 flex items-center justify-between gap-3 flex-wrap">
+            <div className="flex items-center gap-1.5 flex-wrap">
+              {(["all", ...DIFFICULTIES] as const).map((d) => (
+                <button
+                  key={d}
+                  onClick={() => setDifficultyFilter(d)}
+                  className={`text-[11px] px-2.5 py-1 rounded-full border transition-colors ${
+                    difficultyFilter === d
+                      ? "bg-primary/20 text-primary border-primary/40"
+                      : "bg-muted/40 text-muted-foreground border-border"
+                  }`}
+                >
+                  {d === "all" ? "toate" : d}
+                </button>
+              ))}
+            </div>
+            <div className="flex items-center gap-2">
+              <Label htmlFor="hide-solved" className="text-xs text-muted-foreground cursor-pointer">Ascunde rezolvate</Label>
+              <Switch id="hide-solved" checked={hideSolved} onCheckedChange={setHideSolved} />
+            </div>
+          </div>
+        )}
       </header>
 
       <div className="px-4 pt-3 space-y-3">
