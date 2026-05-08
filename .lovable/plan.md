@@ -1,21 +1,24 @@
-## Aliniem editorul de probleme cu cel de lecții
+## Tagging microcompetențe înainte de salvare la probleme
 
-În `src/components/admin/ProblemsEditor.tsx`, câmpurile **Descriere** și **Soluție** folosesc acum `Textarea` simplu — fără bold, fără preview. La lecții (`ExerciseEditor.tsx`) se folosește `RichTextEditor` (cu toolbar bold/italic/cod + preview Markdown) pentru text și `CodeBlockEditor` pentru cod Python.
+La lecții (`ExerciseEditor.tsx`), ID-ul exercițiului se generează la deschiderea formularului, deci `CompetencyTagger` poate fi folosit imediat. La probleme, ID-ul se generează abia în `saveProblem`, așa că taggerul afișează „Salvează problema, apoi revino aici…”.
 
-### Modificări
+### Modificări în `src/components/admin/ProblemsEditor.tsx`
 
-**1. Descriere problemă (Markdown)** → înlocuim `Textarea` cu `RichTextEditor` (același folosit la întrebări de lecții).
-   - Toolbar: bold, italic, cod inline, code block, preview live.
-   - Păstrăm `rows={4}`.
+1. **Generează ID-ul la creare**: `emptyProblem(chapterId)` returnează acum și un `id` precompletat (`p-${Date.now()}-${rand}`). Tipul devine `Problem` (cu id), nu `Omit<Problem, "id">`.
 
-**2. Hint** → înlocuim `Input` cu `RichTextEditor` (`rows={2}`), ca să poată avea bold/cod ca explicațiile din lecții.
+2. **Pasează ID-ul la `CompetencyTagger`**:
+   - Schimbă `itemId={editingProblem}` → `itemId={form.id}` (existent atât la creare, cât și la editare).
+   - Elimină `emptyHint` (nu mai e nevoie).
 
-**3. Soluție (cod Python)** → înlocuim `Textarea` cu `CodeBlockEditor` (același folosit la cartonașe în lecții pentru cod Python). Are highlight, indentare auto și preview cod.
+3. **Folosește ID-ul existent la salvare**:
+   - În `saveProblem`, ramura de creare folosește `form.id` în loc de `p-${Date.now()}`. Astfel mapările deja atașate rămân legate de problema nouă.
 
-### Ce NU schimbăm
-- Câmpurile de cazuri de test rămân `Input` simplu (sunt input/output brut, nu Markdown).
-- Restul logicii (save, validare, structură DB) rămâne identic — `RichTextEditor` și `CodeBlockEditor` returnează string, exact ca `Textarea`.
-- Renderingul în `ProblemSolvePage` și `ProblemExercise` deja folosește `RichContent` pentru `description`/`hint`, deci bold-ul va apărea corect fără alte modificări.
+4. **Cleanup la anulare** (ca la lecții):
+   - În handler-ul „Anulează” pentru o problemă nouă (`creatingFor && !editingProblem`), rulează `supabase.from("item_competencies").delete().eq("item_type", "problem").eq("item_id", form.id)` best-effort.
+
+### Ce nu se schimbă
+- Schema DB, RLS, hook-urile `useCompetencies` — toate rămân identice.
+- Editarea unei probleme existente funcționează deja, doar că acum și varianta de creare se aliniază.
 
 ### Fișiere atinse
-- `src/components/admin/ProblemsEditor.tsx` (3 câmpuri schimbate + 2 importuri)
+- `src/components/admin/ProblemsEditor.tsx`
