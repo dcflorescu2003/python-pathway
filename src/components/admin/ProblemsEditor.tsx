@@ -83,7 +83,7 @@ const ProblemsEditor = () => {
   const [expandedChapter, setExpandedChapter] = useState<string | null>(null);
   const [editingProblem, setEditingProblem] = useState<string | null>(null);
   const [creatingFor, setCreatingFor] = useState<string | null>(null);
-  const [form, setForm] = useState<Omit<Problem, "id"> & { id?: string }>(emptyProblem(""));
+  const [form, setForm] = useState<Problem>(emptyProblem(""));
   const [searchQuery, setSearchQuery] = useState("");
 
   // Chapter CRUD state
