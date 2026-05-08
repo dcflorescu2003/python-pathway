@@ -313,14 +313,35 @@ const ProblemsEditor = () => {
       <div className="rounded-md border border-border bg-muted/30 p-3">
         <CompetencyTagger
           itemType="problem"
-          itemId={editingProblem}
-          emptyHint="Salvează problema, apoi revino aici pentru a atașa microcompetențe."
+          itemId={form.id}
         />
       </div>
 
       <div className="flex gap-2 pt-2">
         <Button size="sm" onClick={saveProblem} className="flex-1"><Save className="h-4 w-4 mr-1" />Salvează</Button>
-        <Button size="sm" variant="outline" onClick={() => { setEditingProblem(null); setCreatingFor(null); }} className="flex-1">Anulează</Button>
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={async () => {
+            // Cleanup mapări orfane dacă userul anulează o problemă nouă
+            if (creatingFor && !editingProblem) {
+              try {
+                await supabase
+                  .from("item_competencies")
+                  .delete()
+                  .eq("item_type", "problem")
+                  .eq("item_id", form.id);
+              } catch {
+                // best-effort
+              }
+            }
+            setEditingProblem(null);
+            setCreatingFor(null);
+          }}
+          className="flex-1"
+        >
+          Anulează
+        </Button>
       </div>
     </div>
   );
