@@ -248,7 +248,12 @@ const ProblemsEditor = () => {
 
       <div>
         <Label className="text-foreground text-xs">Descriere (Markdown)</Label>
-        <Textarea value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} rows={4} className="font-mono text-sm" />
+        <RichTextEditor
+          value={form.description}
+          onChange={(v) => setForm(f => ({ ...f, description: v }))}
+          placeholder="Descrierea problemei..."
+          rows={4}
+        />
       </div>
 
       <div className="grid grid-cols-2 gap-3">
@@ -256,20 +261,30 @@ const ProblemsEditor = () => {
           <Label className="text-foreground text-xs">XP Reward</Label>
           <Input type="number" value={form.xpReward} onChange={e => setForm(f => ({ ...f, xpReward: parseInt(e.target.value) || 0 }))} />
         </div>
-        <div>
-          <Label className="text-foreground text-xs">Hint</Label>
-          <Input value={form.hint || ""} onChange={e => setForm(f => ({ ...f, hint: e.target.value }))} />
+        <div className="flex items-center gap-2 pt-6">
+          <input type="checkbox" id="problem-premium" checked={form.isPremium} onChange={e => setForm(f => ({ ...f, isPremium: e.target.checked }))} />
+          <Label htmlFor="problem-premium" className="text-foreground text-xs cursor-pointer">Premium (doar conturi premium)</Label>
         </div>
       </div>
 
-      <div className="flex items-center gap-2">
-        <input type="checkbox" id="problem-premium" checked={form.isPremium} onChange={e => setForm(f => ({ ...f, isPremium: e.target.checked }))} />
-        <Label htmlFor="problem-premium" className="text-foreground text-xs cursor-pointer">Premium (doar conturi premium)</Label>
+      <div>
+        <Label className="text-foreground text-xs">Hint</Label>
+        <RichTextEditor
+          value={form.hint || ""}
+          onChange={(v) => setForm(f => ({ ...f, hint: v }))}
+          placeholder="Indiciu pentru elev..."
+          rows={2}
+        />
       </div>
 
       <div>
         <Label className="text-foreground text-xs">Soluție (cod Python)</Label>
-        <Textarea value={form.solution} onChange={e => setForm(f => ({ ...f, solution: e.target.value }))} rows={4} className="font-mono text-sm" />
+        <CodeBlockEditor
+          value={form.solution}
+          onChange={(v) => setForm(f => ({ ...f, solution: v }))}
+          placeholder="# soluția în Python"
+          rows={4}
+        />
       </div>
 
       <div>
