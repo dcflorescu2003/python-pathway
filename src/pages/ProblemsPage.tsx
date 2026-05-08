@@ -5,12 +5,17 @@ import { Code, ChevronRight, ArrowLeft, Lock, Search } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import { useProblems } from "@/hooks/useProblems";
 import { useProgress } from "@/hooks/useProgress";
 import { useSubscription } from "@/hooks/useSubscription";
 import PremiumDialog from "@/components/PremiumDialog";
 import LoadingScreen from "@/components/states/LoadingScreen";
 import { matchesSearch } from "@/lib/searchUtils";
+
+type Difficulty = "ușor" | "mediu" | "greu";
+const DIFFICULTIES: Difficulty[] = ["ușor", "mediu", "greu"];
 
 const difficultyConfig = {
   "ușor": { color: "bg-primary/20 text-primary border-primary/30" },
@@ -26,6 +31,8 @@ const ProblemsPage = () => {
   const [selectedChapter, setSelectedChapter] = useState<string | null>(null);
   const [showPremium, setShowPremium] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [difficultyFilter, setDifficultyFilter] = useState<Difficulty | "all">("all");
+  const [hideSolved, setHideSolved] = useState(false);
 
   if (isLoading || !data) return <LoadingScreen />;
 
@@ -33,13 +40,18 @@ const ProblemsPage = () => {
   const isSearching = searchQuery.trim().length > 0;
   const problemMatches = (p: typeof problems[0]) =>
     matchesSearch(p.title, searchQuery) || matchesSearch(p.id, searchQuery);
+  const isSolved = (p: typeof problems[0]) => !!progress.completedLessons[`problem-${p.id}`]?.completed;
+  const passesFilters = (p: typeof problems[0]) =>
+    (difficultyFilter === "all" || p.difficulty === difficultyFilter) &&
+    (!hideSolved || !isSolved(p));
 
   const chapterProblems = selectedChapter
     ? problems.filter((p) => p.chapter === selectedChapter)
     : [];
-  const filteredChapterProblems = isSearching
+  const filteredChapterProblems = (isSearching
     ? chapterProblems.filter(problemMatches)
-    : chapterProblems;
+    : chapterProblems
+  ).filter(passesFilters);
   const globalSearchResults = isSearching ? problems.filter(problemMatches) : [];
 
   const selectedChapterData = problemChapters.find((c) => c.id === selectedChapter);
@@ -110,6 +122,29 @@ const ProblemsPage = () => {
             />
           </div>
         </div>
+        {selectedChapter && (
+          <div className="px-4 pb-3 flex items-center justify-between gap-3 flex-wrap">
+            <div className="flex items-center gap-1.5 flex-wrap">
+              {(["all", ...DIFFICULTIES] as const).map((d) => (
+                <button
+                  key={d}
+                  onClick={() => setDifficultyFilter(d)}
+                  className={`text-[11px] px-2.5 py-1 rounded-full border transition-colors ${
+                    difficultyFilter === d
+                      ? "bg-primary/20 text-primary border-primary/40"
+                      : "bg-muted/40 text-muted-foreground border-border"
+                  }`}
+                >
+                  {d === "all" ? "toate" : d}
+                </button>
+              ))}
+            </div>
+            <div className="flex items-center gap-2">
+              <Label htmlFor="hide-solved" className="text-xs text-muted-foreground cursor-pointer">Ascunde rezolvate</Label>
+              <Switch id="hide-solved" checked={hideSolved} onCheckedChange={setHideSolved} />
+            </div>
+          </div>
+        )}
       </header>
 
       <div className="px-4 pt-3 space-y-3">
