@@ -31,6 +31,8 @@ const ProblemsPage = () => {
   const [selectedChapter, setSelectedChapter] = useState<string | null>(null);
   const [showPremium, setShowPremium] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [difficultyFilter, setDifficultyFilter] = useState<Difficulty | "all">("all");
+  const [hideSolved, setHideSolved] = useState(false);
 
   if (isLoading || !data) return <LoadingScreen />;
 
@@ -38,13 +40,18 @@ const ProblemsPage = () => {
   const isSearching = searchQuery.trim().length > 0;
   const problemMatches = (p: typeof problems[0]) =>
     matchesSearch(p.title, searchQuery) || matchesSearch(p.id, searchQuery);
+  const isSolved = (p: typeof problems[0]) => !!progress.completedLessons[`problem-${p.id}`]?.completed;
+  const passesFilters = (p: typeof problems[0]) =>
+    (difficultyFilter === "all" || p.difficulty === difficultyFilter) &&
+    (!hideSolved || !isSolved(p));
 
   const chapterProblems = selectedChapter
     ? problems.filter((p) => p.chapter === selectedChapter)
     : [];
-  const filteredChapterProblems = isSearching
+  const filteredChapterProblems = (isSearching
     ? chapterProblems.filter(problemMatches)
-    : chapterProblems;
+    : chapterProblems
+  ).filter(passesFilters);
   const globalSearchResults = isSearching ? problems.filter(problemMatches) : [];
 
   const selectedChapterData = problemChapters.find((c) => c.id === selectedChapter);
