@@ -61,7 +61,10 @@ interface TestCaseForm {
   hidden?: boolean;
 }
 
-const emptyProblem = (chapterId: string): Omit<Problem, "id"> => ({
+const generateProblemId = () => `p-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+
+const emptyProblem = (chapterId: string): Problem => ({
+  id: generateProblemId(),
   title: "",
   description: "",
   difficulty: "ușor",
