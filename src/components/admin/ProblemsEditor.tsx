@@ -166,10 +166,9 @@ const ProblemsEditor = () => {
       if (error) { toast.error(error.message); return; }
       toast.success("Problemă salvată!");
     } else {
-      const newId = `p-${Date.now()}`;
       const chapterProblems = data?.problems.filter(p => p.chapter === form.chapter) || [];
       const sortOrder = chapterProblems.length;
-      const { error } = await supabase.from("problems").insert({ ...row, id: newId, sort_order: sortOrder } as any);
+      const { error } = await supabase.from("problems").insert({ ...row, id: form.id, sort_order: sortOrder } as any);
       if (error) { toast.error(error.message); return; }
       toast.success("Problemă creată!");
     }
