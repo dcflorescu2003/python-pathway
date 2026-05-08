@@ -5,12 +5,17 @@ import { Code, ChevronRight, ArrowLeft, Lock, Search } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import { useProblems } from "@/hooks/useProblems";
 import { useProgress } from "@/hooks/useProgress";
 import { useSubscription } from "@/hooks/useSubscription";
 import PremiumDialog from "@/components/PremiumDialog";
 import LoadingScreen from "@/components/states/LoadingScreen";
 import { matchesSearch } from "@/lib/searchUtils";
+
+type Difficulty = "ușor" | "mediu" | "greu";
+const DIFFICULTIES: Difficulty[] = ["ușor", "mediu", "greu"];
 
 const difficultyConfig = {
   "ușor": { color: "bg-primary/20 text-primary border-primary/30" },
