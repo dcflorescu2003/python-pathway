@@ -399,11 +399,12 @@ function ExercisesList({ lessonId, editingExercise, setEditingExercise, mutation
           ))}
         </SortableContext>
       </DndContext>
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 flex-wrap">
         <Button variant="ghost" size="sm" className="flex-1 text-xs" onClick={() => setEditingExercise({ lessonId })}>
           <Plus className="h-3 w-3 mr-1" />Exercițiu nou
         </Button>
         <CsvImporter targetTable="eval_exercises" lessonId={lessonId} existingCount={exercises.length} existingExercises={exercises} onSuccess={invalidateAll} />
+        <EvalProblemsCsvImporter lessonId={lessonId} existingCount={exercises.length} onSuccess={invalidateAll} />
       </div>
     </>
   );
