@@ -61,6 +61,7 @@ const TestBuilder = ({ onBack, editTestId, teacherStatus }: TestBuilderProps) =>
   const [editLoaded, setEditLoaded] = useState(false);
   const [aiGradingItemIds, setAiGradingItemIds] = useState<string[]>([]);
   const [officePoints, setOfficePoints] = useState(10);
+  const [evalItemsCache, setEvalItemsCache] = useState<Record<string, any>>({});
 
   // Browser state
   const [selectedChapterId, setSelectedChapterId] = useState<string>("");
