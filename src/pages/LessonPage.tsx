@@ -182,19 +182,28 @@ const LessonPage = () => {
           <div className="text-5xl mb-4">💔</div>
           <h2 className="text-xl font-bold text-foreground mb-2">Nu ai inimi</h2>
           <p className="text-sm text-muted-foreground mb-4">
-            Vizionează o reclamă pentru a-ți reumple imediat toate inimile, sau așteaptă 30 de minute după ce rămâi fără inimi și se reîncarcă automat.
+            {isNative
+              ? "Vizionează o reclamă pentru a-ți reumple imediat toate inimile, sau așteaptă 30 de minute după ce rămâi fără inimi și se reîncarcă automat."
+              : "Inimile se reîncarcă automat în 30 de minute după ce rămâi fără ele. Sau treci pe Premium pentru inimi nelimitate."}
           </p>
           <div className="mb-4">
-            <WatchAdForLivesButton
-              isPremium={progress.hasUnlimitedLives}
-              onLivesGranted={(newLives, livesUpdatedAt) => {
-                setLivesFromReward(newLives, livesUpdatedAt);
-              }}
-            />
+            {isNative ? (
+              <WatchAdForLivesButton
+                isPremium={progress.hasUnlimitedLives}
+                onLivesGranted={(newLives, livesUpdatedAt) => {
+                  setLivesFromReward(newLives, livesUpdatedAt);
+                }}
+              />
+            ) : (
+              <Button className="w-full touch-target" onClick={() => setShowPremium(true)}>
+                Activează Premium
+              </Button>
+            )}
           </div>
           <Button variant="outline" className="w-full touch-target" onClick={() => navigate(`/chapter/${chapter.id}`)}>
             Înapoi
           </Button>
+          <PremiumDialog open={showPremium} onOpenChange={setShowPremium} />
         </motion.div>
       </div>
     );
