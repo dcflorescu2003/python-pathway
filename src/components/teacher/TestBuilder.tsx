@@ -153,6 +153,10 @@ const TestBuilder = ({ onBack, editTestId, teacherStatus }: TestBuilderProps) =>
     if (item.source_type === "custom" && item.custom_data) {
       return (item.custom_data.question || item.custom_data.statement || "Întrebare custom").substring(0, 60);
     }
+    if (item.source_id && item.source_id.startsWith("eval-") && evalItemsCache[item.source_id]) {
+      const ev = evalItemsCache[item.source_id];
+      return (ev.question || "").substring(0, 60) || item.source_id;
+    }
     if (item.source_type === "exercise" && item.source_id) {
       for (const ch of chapters) {
         const lesson = ch.lessons.find((l) => l.exercises?.some((e) => e.id === item.source_id));
