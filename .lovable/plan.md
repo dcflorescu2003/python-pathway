@@ -1,56 +1,80 @@
+
 ## Obiectiv
-ID-uri ușor de memorat pentru probleme, după capitol: prefix + număr consecutiv.
 
-## Mapare prefixe
+Adăugare buton **Import CSV** și **Export CSV** pentru probleme, similar cu cel de la exerciții, cu suport pentru import per-capitol. Editorul rich text + preview există deja în formularul de problemă (RichTextEditor pe Descriere și Hint).
 
-| Capitol | Prefix |
-|---|---|
-| cap1 — Recapitulare & Fundamente | `rec` |
-| cap2 — Prelucrări Numerice | `pr` |
-| cap3 — Liste | `lst` |
-| cap4 — Generare și Sortare | `gs` |
-| cap5 — Subprograme | `sub` |
-| cap6 — Fișiere și Interfețe | `fis` |
+## Format CSV propus
 
-Format final: `rec1`, `rec2`, …, `pr1`, `pr2`, … (fără separator, lowercase).
+Coloane (separator detectat automat `,` sau `;`):
 
-## 1. Migrare ID-uri existente (62 probleme)
+```
+title, description, difficulty, xp_reward, hint, solution, is_premium, test_cases, competencies
+```
 
-Numerotare după `sort_order` în fiecare capitol → `rec1..rec12`, `pr1..pr10`, `lst1..lst10`, `gs1..gs10`, `sub1..sub10`, `fis1..fis10`.
+- `title` (obligatoriu)
+- `description` (Markdown — bold, culori HTML, etc.)
+- `difficulty` — `ușor` | `mediu` | `greu` (default `ușor`)
+- `xp_reward` — număr (default 10)
+- `hint` — text/markdown (opțional)
+- `solution` — cod Python (opțional, multi-linie cu ghilimele duble)
+- `is_premium` — `true`/`false` (default false)
+- `test_cases` — format compact: `input1>>output1>>0;input2>>output2>>1` 
+  - `>>` separă input/output/hidden(0/1) într-un caz
+  - `;` separă cazurile
+  - input multi-valoare: `\n` literal (ex: `5\n10>>15>>0`)
+- `competencies` — coduri CG/CS/M separate prin `|` (opțional, ex: `CG.1|CS.2.1`)
 
-Migrare SQL într-o singură tranzacție care actualizează în cascadă:
-- `problems.id`
-- `item_competencies.item_id` (181 rânduri, where `item_type='problem'`)
-- `completed_lessons.lesson_id` (61 rânduri, formatul `problem-<oldId>` → `problem-<newId>`)
-- `test_items.source_id` (1 rând, where `source_type='problem'`)
-- `predefined_test_items.source_id` (0, dar aplicăm pentru siguranță)
-- `challenges.item_id` (0, dar aplicăm pentru siguranță)
+ID-urile se generează automat folosind prefixul capitolului existent (`rec`, `pr`, `lst`, `gs`, `sub`, `fis`) — următor după ultimul existent.
 
-Strategia tehnică: tabel temporar `_problem_id_map(old_id, new_id)`, apoi `UPDATE` pe fiecare tabel folosind map-ul. Pentru `completed_lessons`/`skip_unlocked_lessons` se aplică prefixul `problem-`.
+## Modificări
 
-## 2. Generator nou pentru ID-uri (probleme noi)
+### 1. `src/components/admin/problemsCsvParser.ts` (nou)
+- `parseProblemsCSV(text)` → `{ problems: ParsedProblem[], errors: string[] }`
+- `problemToDbRow(p, chapterId, sortOrder, id)` → row pentru `problems`
+- `generateProblemsExportCSV(problems[])` → text CSV
+- `getProblemsTemplateCSV()` → template descărcabil cu 2 exemple
+- Reutilizează helper-ele `splitLogicalLines`, `parseCSVLine`, `detectSeparator` din `csvParser.ts` (le exportăm acolo dacă nu sunt deja).
 
-În `src/components/admin/ProblemsEditor.tsx`:
+### 2. `src/components/admin/ProblemsCsvImporter.tsx` (nou)
+- Componentă similară cu `CsvImporter.tsx`, dar:
+  - target table = `problems`
+  - primește `chapterId`, `existingProblemIds`, `existingProblemsCount`, `existingProblems` (pentru export), `onSuccess`
+  - generează ID-uri secvențiale folosind `generateProblemId` (deja exportat din ProblemsEditor — îl mutăm într-un helper sau îl re-exportăm)
+  - mapează `competencies` → `item_competencies` cu `item_type='problem'` (logica copiată din `CsvImporter.tsx`)
+  - butoane: **Import CSV** + **Export** (apare dacă există probleme în capitol)
 
-- Înlocuiesc `generateProblemId()` cu o funcție care primește `chapterId` + lista existentă și întoarce `<prefix><N+1>`, unde `N` este max-ul numerelor existente cu prefixul respectiv. Ex.: dacă `rec12` există, următoarea este `rec13`.
-- Map prefix definit ca obiect `CHAPTER_PREFIX: Record<string, string>`.
-- `emptyProblem(chapterId)` recalculează ID-ul pe baza listei curente la deschiderea formularului de creare.
-- Când utilizatorul schimbă capitolul în formular pentru o problemă **nouă**, ID-ul se regenerează automat cu noul prefix. Pentru editare (problemă existentă), ID-ul rămâne neschimbat.
-- Fallback dacă apare un capitol fără prefix definit: folosesc primele 3 litere din `chapter_id` (ex. `cap`) + număr — improbabil cu maparea de mai sus, dar safe.
+### 3. `src/components/admin/ProblemsEditor.tsx`
+- În header-ul fiecărui capitol, lângă butonul "Adaugă problemă", adăugăm `<ProblemsCsvImporter chapterId={ch.id} ... onSuccess={invalidate} />`.
+- Extragere `generateProblemId` / `getChapterPrefix` în `src/components/admin/problemIds.ts` (mic helper, reutilizat în importer).
+- Fără alte schimbări la formular — RichTextEditor cu preview există deja.
 
-## 3. Fără modificări în alte zone
+### 4. Nimic la backend
+- Tabelul `problems` are deja toate coloanele necesare.
+- RLS permite admin INSERT.
+- `item_competencies` are deja policy admin INSERT.
 
-- `useProblems`, `ProblemSolvePage`, `ProblemsPage`, `ChallengeAssigner` etc. tratează `id` ca string opac — nu necesită modificări.
-- `progress.completedLessons["problem-<id>"]` continuă să funcționeze (ID-ul nou e tot string).
-- Cache-ul local `localStorage` pentru progress se sincronizează din cloud la următorul login (memoria spune cloud-first), deci datele migrate vor fi corecte. Nu e nevoie să curăț cache-ul.
+## UX
 
-## Detalii tehnice
+În fiecare capitol expandat, linia de butoane devine:
+```
+[+ Adaugă problemă]   [⬆ Import CSV]   [⬇ Export]
+```
 
-Pașii de execuție în ordine strictă:
-1. Rulez migrația SQL (tabel temp + UPDATE-uri în cascadă) — un singur fișier de migrare.
-2. După aprobarea migrației, modific `ProblemsEditor.tsx` cu noul generator.
+Dialog-ul de import arată:
+- Buton "Alege fișier CSV"
+- Preview cu lista problemelor parse-uite (titlu, dificultate, nr. test cases, competențe)
+- Erori per-rând cu icon roșu
+- Buton final "Importă N probleme"
+- Link "Descarcă template" în footer
 
-## Riscuri și mitigare
+## Note tehnice
 
-- **Progress local stale**: dacă un user a deschis app-ul recent, `localStorage` poate avea key-urile vechi `problem-absolute-value`. Cloud-ul are deja `problem-rec1` post-migrare, deci la următorul refetch se sincronizează. Nu intervine niciun blocaj.
-- **Ordine `sort_order` egală**: dacă există ties în `sort_order`, folosesc `ORDER BY sort_order, id` ca tie-breaker stabil.
+- Pentru `test_cases` cu newline-uri în input, parser-ul transformă `\n` literal (4 caractere) în newline real.
+- `solution` poate fi multi-linie dacă e încadrat în `"..."` — `splitLogicalLines` deja respectă quotes.
+- Validări: titlu obligatoriu, difficulty în set valid, xp_reward număr valid; altfel rândul primește `error`.
+- Codurile de competențe necunoscute → toast warning (la fel ca la exerciții).
+
+## Out of scope
+
+- Modificări la editorul rich text (există deja Bold/Italic/Listă/Cod/Culori/Preview).
+- Schimbări de schemă DB.
