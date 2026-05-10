@@ -314,6 +314,25 @@ const TestBuilder = ({ onBack, editTestId, teacherStatus }: TestBuilderProps) =>
     setEditLoaded(true);
   }, [isEditing, existingItems, editLoaded]);
 
+  // Fetch eval_exercises for any item with id prefix `eval-` so previews render
+  useEffect(() => {
+    const missing = items
+      .map((i) => i.source_id)
+      .filter((id): id is string => typeof id === "string" && id.startsWith("eval-") && !evalItemsCache[id]);
+    if (missing.length === 0) return;
+    (async () => {
+      const supa = (await import("@/integrations/supabase/client")).supabase;
+      const { data } = await supa.from("eval_exercises").select("*").in("id", missing);
+      if (data && data.length) {
+        setEvalItemsCache((prev) => {
+          const next = { ...prev };
+          for (const ev of data) next[ev.id] = ev;
+          return next;
+        });
+      }
+    })();
+  }, [items, evalItemsCache]);
+
   const handleSave = async () => {
     if (!title.trim()) { toast.error("Adaugă un titlu."); return; }
     if (items.length === 0) { toast.error("Adaugă cel puțin un item."); return; }
