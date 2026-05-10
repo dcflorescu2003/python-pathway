@@ -543,11 +543,13 @@ async function syncToCloud(userId: string, p: UserProgress) {
     .update({
       xp: p.xp,
       streak: p.streak,
-      lives: p.lives,
+      // Do NOT write `lives` or `lives_updated_at` here. Those are managed
+      // exclusively by loseLife / setLivesFromReward / regenerateLives so that
+      // a page refresh or a stale localStorage copy cannot reset the 30-min
+      // regeneration timer on web.
       is_premium: p.isPremium,
       last_activity_date: p.lastActivityDate,
       best_streak: newBest,
-      lives_updated_at: p.livesUpdatedAt,
     })
     .eq("user_id", userId);
 
