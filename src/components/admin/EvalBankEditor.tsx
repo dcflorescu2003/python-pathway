@@ -4,6 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useEvalChapters, useEvalLessons, useEvalExercises, useEvalBankMutations, EvalExercise, EvalChapter } from "@/hooks/useEvalBank";
 import CsvImporter from "./CsvImporter";
 import CsvLessonImporter from "./CsvLessonImporter";
+import EvalProblemsCsvImporter from "./EvalProblemsCsvImporter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
