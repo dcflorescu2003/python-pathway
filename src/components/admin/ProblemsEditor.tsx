@@ -164,7 +164,7 @@ const ProblemsEditor = () => {
   const startCreate = (chapterId: string) => {
     setCreatingFor(chapterId);
     setEditingProblem(null);
-    setForm(emptyProblem(chapterId));
+    setForm(emptyProblem(chapterId, (data?.problems || []).map((p) => p.id)));
   };
 
   const saveProblem = async () => {
