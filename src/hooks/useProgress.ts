@@ -514,14 +514,17 @@ function mergeProgress(a: UserProgress, b: UserProgress): UserProgress {
   return {
     xp: Math.max(a.xp, b.xp),
     streak: Math.max(a.streak, b.streak),
-    lives: Math.max(a.lives, b.lives),
+    // IMPORTANT: lives & livesUpdatedAt are server-authoritative.
+    // Never take max(local, cloud) — that would let a refresh reset the 30-min
+    // regen timer (web bypass). Always trust the cloud copy (param `b`).
+    lives: b.lives,
+    livesUpdatedAt: b.livesUpdatedAt,
     isPremium: a.isPremium || b.isPremium,
     hasUnlimitedLives: a.hasUnlimitedLives || b.hasUnlimitedLives,
     lastActivityDate: mergedDate,
     completedLessons: mergedLessons,
     startedLessons: { ...a.startedLessons, ...b.startedLessons },
     skipUnlockedLessons: mergedSkipUnlocks,
-    livesUpdatedAt: a.livesUpdatedAt > b.livesUpdatedAt ? a.livesUpdatedAt : b.livesUpdatedAt,
   };
 }
 
@@ -540,11 +543,13 @@ async function syncToCloud(userId: string, p: UserProgress) {
     .update({
       xp: p.xp,
       streak: p.streak,
-      lives: p.lives,
+      // Do NOT write `lives` or `lives_updated_at` here. Those are managed
+      // exclusively by loseLife / setLivesFromReward / regenerateLives so that
+      // a page refresh or a stale localStorage copy cannot reset the 30-min
+      // regeneration timer on web.
       is_premium: p.isPremium,
       last_activity_date: p.lastActivityDate,
       best_streak: newBest,
-      lives_updated_at: p.livesUpdatedAt,
     })
     .eq("user_id", userId);
 
