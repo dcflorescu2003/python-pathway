@@ -14,6 +14,7 @@ import { ArrowLeft, Clock, ChevronLeft, ChevronRight, Send, Play, CheckCircle, X
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import CodeEditor from "@/components/CodeEditor";
+import RichContent from "@/components/RichContent";
 import LoadingScreen from "@/components/states/LoadingScreen";
 import {
   DndContext,
@@ -704,7 +705,7 @@ const ExerciseRenderer = ({ exercise, answer, onAnswer }: { exercise: any; answe
     const options = (exercise.options || []) as { id: string; text: string }[];
     return (
       <div className="space-y-2" role="radiogroup" aria-label={exercise.question}>
-        <p className="text-sm font-medium text-foreground" id="quiz-question">{exercise.question}</p>
+        <RichContent className="text-sm font-medium text-foreground" >{exercise.question}</RichContent>
         {options.map((opt) => (
           <button
             key={opt.id}
@@ -727,7 +728,7 @@ const ExerciseRenderer = ({ exercise, answer, onAnswer }: { exercise: any; answe
   if (type === "truefalse") {
     return (
       <div className="space-y-3" role="radiogroup" aria-label={exercise.statement || exercise.question}>
-        <p className="text-sm font-medium text-foreground">{exercise.statement || exercise.question}</p>
+        <RichContent className="text-sm font-medium text-foreground">{exercise.statement || exercise.question}</RichContent>
         <div className="flex gap-3">
           {[true, false].map((val) => (
             <button
@@ -791,7 +792,7 @@ const ExerciseRenderer = ({ exercise, answer, onAnswer }: { exercise: any; answe
 
     return (
       <div className="space-y-3">
-        <p className="text-sm font-medium text-foreground">{exercise.question}</p>
+        <RichContent className="text-sm font-medium text-foreground">{exercise.question}</RichContent>
         {renderCodeWithBlanks()}
       </div>
     );
