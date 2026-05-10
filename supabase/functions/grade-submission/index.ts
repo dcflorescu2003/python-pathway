@@ -177,7 +177,9 @@ Deno.serve(async (req) => {
       let score = 0;
       let feedback = "";
 
-      if (item.source_type === "exercise" && item.source_id) {
+      const isEvalBank = typeof item.source_id === "string" && item.source_id.startsWith("eval-");
+
+      if (item.source_type === "exercise" && item.source_id && !isEvalBank) {
         const { data: exercise } = await supabase
           .from("exercises")
           .select("*")
@@ -187,12 +189,33 @@ Deno.serve(async (req) => {
         if (exercise) {
           score = gradeExercise(exercise, answer.answer_data, item.points);
         }
-      } else if (item.source_type === "problem" && item.source_id) {
-        const { data: problem } = await supabase
-          .from("problems")
-          .select("test_cases, solution, title")
+      } else if (item.source_type === "exercise" && item.source_id && isEvalBank) {
+        const { data: ev } = await supabase
+          .from("eval_exercises")
+          .select("*")
           .eq("id", item.source_id)
           .single();
+        if (ev) {
+          score = gradeExercise(ev, answer.answer_data, item.points);
+        }
+      } else if (item.source_type === "problem" && item.source_id) {
+        const problemSource = isEvalBank ? "eval_exercises" : "problems";
+        const selectCols = isEvalBank ? "test_cases, solution, question" : "test_cases, solution, title";
+        const { data: problemRow } = await supabase
+          .from(problemSource)
+          .select(selectCols)
+          .eq("id", item.source_id)
+          .single();
+
+        const problem = problemRow
+          ? (isEvalBank
+              ? {
+                  test_cases: (problemRow as any).test_cases,
+                  solution: (problemRow as any).solution ?? "",
+                  title: ((problemRow as any).question ?? "").split("\n")[0]?.substring(0, 80) || item.source_id,
+                }
+              : (problemRow as any))
+          : null;
 
         if (problem && answer.answer_data?.code) {
           const result = gradeProblemBasic(problem, answer.answer_data.code, item.points);
