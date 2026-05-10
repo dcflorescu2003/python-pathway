@@ -160,20 +160,47 @@ const TakeTestPage = () => {
             points: item.points,
           };
 
-          if (item.source_type === "exercise" && item.source_id) {
+          // Eval bank items have ids prefixed with "eval-" and live in eval_exercises
+          // (problems imported into the bank are stored there with type='problem').
+          const isEvalBank = typeof item.source_id === "string" && item.source_id.startsWith("eval-");
+
+          if (item.source_type === "exercise" && item.source_id && !isEvalBank) {
             const { data: ex } = await supabase
               .from("exercises")
               .select("*")
               .eq("id", item.source_id)
               .single();
             enriched.exercise_data = ex;
-          } else if (item.source_type === "problem" && item.source_id) {
+          } else if (item.source_type === "problem" && item.source_id && !isEvalBank) {
             const { data: prob } = await supabase
               .from("problems")
               .select("id, title, description, test_cases, hint, difficulty")
               .eq("id", item.source_id)
               .single();
             enriched.problem_data = prob;
+          } else if (isEvalBank && item.source_id) {
+            const { data: ev } = await supabase
+              .from("eval_exercises")
+              .select("*")
+              .eq("id", item.source_id)
+              .single();
+            if (ev) {
+              if (ev.type === "problem") {
+                // Treat eval-bank problem as a Problem item
+                enriched.source_type = "problem";
+                enriched.problem_data = {
+                  id: ev.id,
+                  title: "",
+                  description: ev.question,
+                  test_cases: ev.test_cases,
+                  hint: null,
+                  difficulty: null,
+                } as any;
+              } else {
+                enriched.source_type = "exercise";
+                enriched.exercise_data = ev as any;
+              }
+            }
           } else if (item.source_type === "custom") {
             // RPC already returns custom data fields inline
             enriched.exercise_data = {
