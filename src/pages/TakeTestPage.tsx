@@ -705,7 +705,7 @@ const ExerciseRenderer = ({ exercise, answer, onAnswer }: { exercise: any; answe
     const options = (exercise.options || []) as { id: string; text: string }[];
     return (
       <div className="space-y-2" role="radiogroup" aria-label={exercise.question}>
-        <RichContent className="text-sm font-medium text-foreground" >{exercise.question}</RichContent>
+        <RichContent className="text-sm font-medium text-foreground">{exercise.question}</RichContent>
         {options.map((opt) => (
           <button
             key={opt.id}
@@ -809,7 +809,7 @@ const ExerciseRenderer = ({ exercise, answer, onAnswer }: { exercise: any; answe
   // Fallback
   return (
     <div className="space-y-2">
-      <p className="text-sm font-medium text-foreground">{exercise.question}</p>
+      <RichContent className="text-sm font-medium text-foreground">{exercise.question}</RichContent>
       <CodeEditor
         placeholder="Scrie răspunsul tău..."
         value={answer?.text || ""}
@@ -925,7 +925,7 @@ const TestMatchRenderer = ({ exercise, answer, onAnswer }: { exercise: any; answ
   return (
     <div className="space-y-5" role="group" aria-label="Exercițiu de asociere">
       <div>
-        <p className="text-sm font-medium text-foreground">{exercise.question}</p>
+        <RichContent className="text-sm font-medium text-foreground">{exercise.question}</RichContent>
         <p className="text-xs text-muted-foreground mt-1">
           Selectează un element din stânga, apoi perechea lui din dreapta.
         </p>
