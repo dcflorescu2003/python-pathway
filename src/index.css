@@ -89,8 +89,8 @@
     /* Public safe-area tokens with a minimum floor for devices without notch/home indicator.
        On iPhone notch/Dynamic Island (~44-59px) and home indicator (~34px) the raw value wins,
        so no extra space is added. On Android edge-to-edge without insets the floor kicks in. */
-    --sat: max(var(--sat-raw), 24px);
-    --sab: max(var(--sab-raw), 28px);
+    --sat: max(calc(var(--sat-raw) * 0.95), 22px);
+    --sab: max(calc(var(--sab-raw) * 0.95), 26px);
     --sal: max(env(safe-area-inset-left, 0px), var(--android-sail, 0px), 0px);
     --sar: max(env(safe-area-inset-right, 0px), var(--android-sair, 0px), 0px);
   }
