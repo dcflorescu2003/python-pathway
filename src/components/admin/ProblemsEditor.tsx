@@ -27,6 +27,8 @@ import { CSS } from "@dnd-kit/utilities";
 import { CompetencyTagger } from "./CompetencyTagger";
 import RichTextEditor from "./RichTextEditor";
 import CodeBlockEditor from "./CodeBlockEditor";
+import ProblemsCsvImporter from "./ProblemsCsvImporter";
+import { generateProblemId } from "./problemIds";
 
 // --- Sortable wrappers ---
 function SortableProblemChapter({ id, children }: { id: string; children: React.ReactNode }) {
