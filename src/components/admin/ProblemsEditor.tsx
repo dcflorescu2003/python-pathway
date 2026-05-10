@@ -61,10 +61,31 @@ interface TestCaseForm {
   hidden?: boolean;
 }
 
-const generateProblemId = () => `p-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+const CHAPTER_PREFIX: Record<string, string> = {
+  cap1: "rec",
+  cap2: "pr",
+  cap3: "lst",
+  cap4: "gs",
+  cap5: "sub",
+  cap6: "fis",
+};
 
-const emptyProblem = (chapterId: string): Problem => ({
-  id: generateProblemId(),
+const getChapterPrefix = (chapterId: string) =>
+  CHAPTER_PREFIX[chapterId] || (chapterId ? chapterId.slice(0, 3).toLowerCase() : "p");
+
+const generateProblemId = (chapterId: string, existingIds: string[] = []) => {
+  const prefix = getChapterPrefix(chapterId);
+  const re = new RegExp(`^${prefix}(\\d+)$`);
+  let max = 0;
+  for (const id of existingIds) {
+    const m = id.match(re);
+    if (m) max = Math.max(max, parseInt(m[1], 10));
+  }
+  return `${prefix}${max + 1}`;
+};
+
+const emptyProblem = (chapterId: string, existingIds: string[] = []): Problem => ({
+  id: generateProblemId(chapterId, existingIds),
   title: "",
   description: "",
   difficulty: "ușor",
@@ -143,7 +164,7 @@ const ProblemsEditor = () => {
   const startCreate = (chapterId: string) => {
     setCreatingFor(chapterId);
     setEditingProblem(null);
-    setForm(emptyProblem(chapterId));
+    setForm(emptyProblem(chapterId, (data?.problems || []).map((p) => p.id)));
   };
 
   const saveProblem = async () => {
