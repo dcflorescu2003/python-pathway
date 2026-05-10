@@ -1060,23 +1060,21 @@ const TestBuilder = ({ onBack, editTestId, teacherStatus }: TestBuilderProps) =>
                         </SelectContent>
                       </Select>
                     )}
-                    {/* AI checkbox for problem/open_answer items when >3 AI items and teacher is premium */}
-                    {isTeacherPremium && aiItemCount > MAX_AI_ITEMS_PER_TEST && (
-                      item.source_type === "problem" || (item.source_type === "custom" && item.custom_data?.type === "open_answer")
-                    ) && (
-                      <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                    {/* AI checkbox: shown for any AI-eligible item when teacher has Profesor AI */}
+                    {isTeacherPremium && aiEligible && (
+                      <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()} title="Corectare cu AI">
                         <Checkbox
-                          checked={aiGradingItemIds.includes(itemKey)}
+                          checked={aiGradingItemIds.includes(aiKey)}
                           onCheckedChange={(checked) => {
                             if (checked && aiGradingItemIds.length >= MAX_AI_ITEMS_PER_TEST) {
                               toast.error(`Maxim ${MAX_AI_ITEMS_PER_TEST} itemi pot fi corectați cu AI.`);
                               return;
                             }
                             setAiGradingItemIds(prev =>
-                              checked ? [...prev, itemKey] : prev.filter(id => id !== itemKey)
+                              checked ? [...prev, aiKey] : prev.filter(id => id !== aiKey)
                             );
                           }}
-                          disabled={!aiGradingItemIds.includes(itemKey) && aiGradingItemIds.length >= MAX_AI_ITEMS_PER_TEST}
+                          disabled={!aiGradingItemIds.includes(aiKey) && aiGradingItemIds.length >= MAX_AI_ITEMS_PER_TEST}
                         />
                         <Sparkles className="h-3 w-3 text-primary" />
                       </div>
