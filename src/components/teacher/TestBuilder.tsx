@@ -1010,6 +1010,8 @@ const TestBuilder = ({ onBack, editTestId, teacherStatus }: TestBuilderProps) =>
             <p className="text-xs font-semibold text-muted-foreground">Itemi selectați ({items.length})</p>
             {items.map((item, idx) => {
               const itemKey = `sel-${idx}`;
+              const aiKey = getAIKey(item);
+              const aiEligible = isItemAIEligible(item);
               return (
                 <div key={idx}>
                   <div
