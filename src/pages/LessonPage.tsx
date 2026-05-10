@@ -229,13 +229,24 @@ const LessonPage = () => {
             </p>
             {!canRestart && (
               <div className="mb-4">
-                <p className="text-sm text-muted-foreground mb-3">Nu mai ai inimi. Vizionează o reclamă pentru a primi 5 inimi.</p>
-                <WatchAdForLivesButton
-                  isPremium={progress.hasUnlimitedLives}
-                  onLivesGranted={(newLives, livesUpdatedAt) => {
-                    setLivesFromReward(newLives, livesUpdatedAt);
-                  }}
-                />
+                {isNative ? (
+                  <>
+                    <p className="text-sm text-muted-foreground mb-3">Nu mai ai inimi. Vizionează o reclamă pentru a primi 5 inimi.</p>
+                    <WatchAdForLivesButton
+                      isPremium={progress.hasUnlimitedLives}
+                      onLivesGranted={(newLives, livesUpdatedAt) => {
+                        setLivesFromReward(newLives, livesUpdatedAt);
+                      }}
+                    />
+                  </>
+                ) : (
+                  <>
+                    <p className="text-sm text-muted-foreground mb-3">Nu mai ai inimi. Așteaptă 30 de minute pentru reîncărcare automată sau treci pe Premium pentru inimi nelimitate.</p>
+                    <Button className="w-full touch-target" onClick={() => setShowPremium(true)}>
+                      Activează Premium
+                    </Button>
+                  </>
+                )}
               </div>
             )}
             <div className="flex gap-3">
@@ -243,6 +254,7 @@ const LessonPage = () => {
               <Button className="flex-1 touch-target" onClick={restartLesson} disabled={!canRestart}>Reia</Button>
             </div>
             <StreakCelebrationDialog open={streakJustIncreased} streakCount={newStreakCount} onClose={dismissStreakCelebration} />
+            <PremiumDialog open={showPremium} onOpenChange={setShowPremium} />
           </motion.div>
         </div>
       );
