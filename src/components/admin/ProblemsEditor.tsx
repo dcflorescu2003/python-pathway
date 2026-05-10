@@ -468,9 +468,17 @@ const ProblemsEditor = () => {
                           {(editingProblem && problems.find(p => p.id === editingProblem)?.chapter === ch.id) || creatingFor === ch.id
                             ? renderForm()
                             : (
-                              <Button variant="outline" size="sm" className="w-full" onClick={() => startCreate(ch.id)}>
-                                <Plus className="h-4 w-4 mr-1" /> Adaugă problemă
-                              </Button>
+                              <div className="flex items-center gap-2">
+                                <Button variant="outline" size="sm" className="flex-1" onClick={() => startCreate(ch.id)}>
+                                  <Plus className="h-4 w-4 mr-1" /> Adaugă problemă
+                                </Button>
+                                <ProblemsCsvImporter
+                                  chapterId={ch.id}
+                                  existingProblems={allChapterProblems}
+                                  allExistingIds={problems.map(p => p.id)}
+                                  onSuccess={invalidate}
+                                />
+                              </div>
                             )}
                         </div>
                       </motion.div>
