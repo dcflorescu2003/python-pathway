@@ -19,6 +19,7 @@ import { toast } from "sonner";
 import { getTeacherTestLimit, TEACHER_TIER_LABEL } from "@/lib/teacherLimits";
 import TestLimitReachedDialog from "./TestLimitReachedDialog";
 import TeacherPremiumDialog from "@/components/TeacherPremiumDialog";
+import RichContent from "@/components/RichContent";
 
 const MAX_AI_ITEMS_PER_TEST = 3;
 
