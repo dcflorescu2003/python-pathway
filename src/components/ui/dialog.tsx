@@ -1,6 +1,7 @@
 import * as React from "react";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { X } from "lucide-react";
+import { Capacitor } from "@capacitor/core";
 
 import { cn } from "@/lib/utils";
 
