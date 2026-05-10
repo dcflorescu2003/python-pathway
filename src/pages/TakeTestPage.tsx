@@ -1112,7 +1112,7 @@ const TestOrderRenderer = ({ exercise, answer, onAnswer }: { exercise: any; answ
 
   return (
     <div className="space-y-2" role="group" aria-label="Exercițiu de ordonare">
-      <p className="text-sm font-medium text-foreground">{exercise.question}</p>
+      <RichContent className="text-sm font-medium text-foreground">{exercise.question}</RichContent>
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd} modifiers={[restrictToVerticalAxis]}>
         <SortableContext items={ordered} strategy={verticalListSortingStrategy}>
           <div className="space-y-2" role="list" aria-label="Linii de cod — trage sau folosește butoanele ▲ ▼">
@@ -1159,7 +1159,7 @@ const ProblemRenderer = ({ problem, answer, onAnswer, allowRunTests }: { problem
   return (
     <div className="space-y-3" role="group" aria-label={`Problemă: ${problem.title}`}>
       <h3 className="text-sm font-bold text-foreground">{problem.title}</h3>
-      <p className="text-xs text-muted-foreground whitespace-pre-wrap">{problem.description}</p>
+      <RichContent className="text-xs text-muted-foreground">{problem.description}</RichContent>
       {problem.hint && (
         <p className="text-[10px] text-muted-foreground italic">💡 {problem.hint}</p>
       )}
