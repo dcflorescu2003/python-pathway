@@ -359,8 +359,9 @@ const TestBuilder = ({ onBack, editTestId, teacherStatus }: TestBuilderProps) =>
     setTitle(template.title);
     if (template.time_limit_minutes) { setTimeLimitEnabled(true); setTimeLimit(template.time_limit_minutes); }
     setVariantMode(template.variant_mode);
+    const supa = (await import("@/integrations/supabase/client")).supabase;
     // Fetch items for this predefined test
-    const { data: predefinedItems } = await (await import("@/integrations/supabase/client")).supabase
+    const { data: predefinedItems } = await supa
       .from("predefined_test_items")
       .select("*")
       .eq("test_id", template.id)
@@ -369,15 +370,32 @@ const TestBuilder = ({ onBack, editTestId, teacherStatus }: TestBuilderProps) =>
       toast.info("Acest test nu are itemi definiți.");
       return;
     }
-    // Convert eval_exercise items to exercise-compatible format
-    const newItems: TestItem[] = predefinedItems.map((pi: any, i: number) => ({
-      variant: pi.variant,
-      sort_order: i,
-      source_type: pi.source_type === "eval_exercise" ? "exercise" : pi.source_type,
-      source_id: pi.source_id,
-      custom_data: pi.custom_data,
-      points: pi.points,
-    }));
+    // Fetch eval_exercises in bulk for items that come from the eval bank
+    const evalIds = predefinedItems
+      .map((pi: any) => pi.source_id)
+      .filter((id: string | null) => typeof id === "string" && id.startsWith("eval-"));
+    let evalMap: Record<string, any> = {};
+    if (evalIds.length > 0) {
+      const { data: evals } = await supa.from("eval_exercises").select("*").in("id", evalIds);
+      for (const ev of (evals ?? [])) evalMap[ev.id] = ev;
+      setEvalItemsCache((prev) => ({ ...prev, ...evalMap }));
+    }
+    // Map predefined items to test_items shape; problems from eval bank become source_type='problem'
+    const newItems: TestItem[] = predefinedItems.map((pi: any, i: number) => {
+      let sourceType = pi.source_type;
+      if (pi.source_type === "eval_exercise") {
+        const ev = evalMap[pi.source_id];
+        sourceType = ev?.type === "problem" ? "problem" : "exercise";
+      }
+      return {
+        variant: pi.variant,
+        sort_order: i,
+        source_type: sourceType,
+        source_id: pi.source_id,
+        custom_data: pi.custom_data,
+        points: pi.points,
+      };
+    });
     setItems(newItems);
     toast.success(`${newItems.length} itemi adăugați din testul predefinit.`);
   };
