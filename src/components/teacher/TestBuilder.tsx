@@ -19,6 +19,7 @@ import { toast } from "sonner";
 import { getTeacherTestLimit, TEACHER_TIER_LABEL } from "@/lib/teacherLimits";
 import TestLimitReachedDialog from "./TestLimitReachedDialog";
 import TeacherPremiumDialog from "@/components/TeacherPremiumDialog";
+import RichContent from "@/components/RichContent";
 
 const MAX_AI_ITEMS_PER_TEST = 3;
 
@@ -211,14 +212,16 @@ const TestBuilder = ({ onBack, editTestId, teacherStatus }: TestBuilderProps) =>
   // Render exercise preview
   const renderExercisePreview = (ex: any) => {
     if (!ex) return null;
+    const codeTemplate: string = ex.code_template || ex.codeTemplate || "";
     return (
       <div className="mt-2 p-3 bg-muted/30 rounded-lg border border-border/50 space-y-2">
-        <p className="text-xs font-medium text-foreground">{ex.question || ex.statement}</p>
+        <RichContent className="text-sm font-medium text-foreground">{ex.question || ex.statement}</RichContent>
         {ex.type === "quiz" && ex.options && (
           <div className="space-y-1">
             {(ex.options as any[]).map((opt: any) => (
-              <div key={opt.id} className="text-[11px] px-2 py-1 text-muted-foreground">
-                {opt.id?.toUpperCase?.() || "•"}) {opt.text}
+              <div key={opt.id} className="text-[11px] px-2 py-1 text-muted-foreground flex gap-1">
+                <span className="font-semibold">{opt.id?.toUpperCase?.() || "•"})</span>
+                <RichContent inline className="text-[11px]">{opt.text}</RichContent>
               </div>
             ))}
           </div>
@@ -226,24 +229,40 @@ const TestBuilder = ({ onBack, editTestId, teacherStatus }: TestBuilderProps) =>
         {ex.type === "truefalse" && (
           <p className="text-[11px] text-muted-foreground">Adevărat / Fals</p>
         )}
-        {ex.type === "fill" && ex.blanks && (
-          <div className="space-y-0.5">
-            {(ex.blanks as any[]).map((b: any, i: number) => (
-              <p key={b.id || i} className="text-[11px] text-muted-foreground">Spațiu {i + 1}: ___</p>
-            ))}
-          </div>
+        {ex.type === "fill" && (
+          codeTemplate ? (
+            <pre className="bg-muted/50 border border-border rounded-md p-2 whitespace-pre-wrap font-mono text-[11px] text-foreground">
+              {codeTemplate.split("___").map((part: string, i: number, arr: string[]) => (
+                <span key={i}>
+                  {part}
+                  {i < arr.length - 1 && (
+                    <span className="inline-block px-2 mx-0.5 rounded bg-primary/10 text-primary border border-primary/40">___</span>
+                  )}
+                </span>
+              ))}
+            </pre>
+          ) : ex.blanks && (
+            <div className="space-y-0.5">
+              {(ex.blanks as any[]).map((b: any, i: number) => (
+                <p key={b.id || i} className="text-[11px] text-muted-foreground">Spațiu {i + 1}: ___</p>
+              ))}
+            </div>
+          )
         )}
         {ex.type === "order" && ex.lines && (
           <div className="space-y-0.5">
             {(ex.lines as any[]).map((l: any, i: number) => (
-              <p key={l.id || i} className="text-[11px] font-mono text-muted-foreground">{i + 1}. {l.text}</p>
+              <p key={l.id || i} className="text-[11px] font-mono text-muted-foreground whitespace-pre-wrap">{i + 1}. {l.text}</p>
             ))}
           </div>
         )}
         {ex.type === "match" && ex.pairs && (
           <div className="space-y-0.5">
             {(ex.pairs as any[]).map((p: any) => (
-              <p key={p.id} className="text-[11px] text-muted-foreground">{p.left} → ___</p>
+              <div key={p.id} className="text-[11px] text-muted-foreground flex items-center gap-1">
+                <RichContent inline className="text-[11px]">{p.left}</RichContent>
+                <span>→ ___</span>
+              </div>
             ))}
           </div>
         )}
@@ -256,12 +275,13 @@ const TestBuilder = ({ onBack, editTestId, teacherStatus }: TestBuilderProps) =>
     if (!prob) return null;
     return (
       <div className="mt-2 p-3 bg-muted/30 rounded-lg border border-border/50 space-y-2">
-        <p className="text-xs font-bold text-foreground">{prob.title}</p>
-        <p className="text-[11px] text-muted-foreground whitespace-pre-wrap line-clamp-4">{prob.description}</p>
+        {prob.title && <p className="text-xs font-bold text-foreground">{prob.title}</p>}
+        <RichContent className="text-xs text-muted-foreground">{prob.description}</RichContent>
         {prob.difficulty && <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary">{prob.difficulty}</span>}
       </div>
     );
   };
+
 
   // Generic item preview renderer
   const renderItemPreview = (item: TestItem) => {
