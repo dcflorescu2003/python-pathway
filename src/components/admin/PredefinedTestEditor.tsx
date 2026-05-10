@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import RichContent from "@/components/RichContent";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Card, CardContent } from "@/components/ui/card";
@@ -208,7 +209,7 @@ function PreviewExerciseRenderer({ exercise, answer, onAnswer }: { exercise: any
     const options = (exercise.options || []) as { id: string; text: string }[];
     return (
       <div className="space-y-2">
-        <p className="text-sm font-medium text-foreground">{exercise.question}</p>
+        <RichContent className="text-sm font-medium text-foreground">{exercise.question}</RichContent>
         {options.map((opt) => (
           <button
             key={opt.id}
@@ -227,7 +228,7 @@ function PreviewExerciseRenderer({ exercise, answer, onAnswer }: { exercise: any
   if (type === "truefalse") {
     return (
       <div className="space-y-3">
-        <p className="text-sm font-medium text-foreground">{exercise.statement || exercise.question}</p>
+        <RichContent className="text-sm font-medium text-foreground">{exercise.statement || exercise.question}</RichContent>
         <div className="flex gap-3">
           {[true, false].map((val) => (
             <button
@@ -253,7 +254,7 @@ function PreviewExerciseRenderer({ exercise, answer, onAnswer }: { exercise: any
     if (!codeTemplate) {
       return (
         <div className="space-y-2">
-          <p className="text-sm font-medium text-foreground">{exercise.question}</p>
+          <RichContent className="text-sm font-medium text-foreground">{exercise.question}</RichContent>
           {blanks.map((blank, idx) => (
             <Input key={blank.id} placeholder={`Spațiu ${idx + 1}`} value={currentAnswers[blank.id] || ""} onChange={(e) => onAnswer({ blanks: { ...currentAnswers, [blank.id]: e.target.value } })} className="text-sm" />
           ))}
@@ -264,7 +265,7 @@ function PreviewExerciseRenderer({ exercise, answer, onAnswer }: { exercise: any
     const parts = codeTemplate.split("___");
     return (
       <div className="space-y-3">
-        <p className="text-sm font-medium text-foreground">{exercise.question}</p>
+        <RichContent className="text-sm font-medium text-foreground">{exercise.question}</RichContent>
         <pre className="bg-muted/50 border border-border rounded-lg p-3 whitespace-pre-wrap font-mono text-sm text-foreground">
           {parts.map((part: string, i: number) => (
             <span key={i}>
@@ -292,7 +293,7 @@ function PreviewExerciseRenderer({ exercise, answer, onAnswer }: { exercise: any
 
     return (
       <div className="space-y-2">
-        <p className="text-sm font-medium text-foreground">{exercise.question}</p>
+        <RichContent className="text-sm font-medium text-foreground">{exercise.question}</RichContent>
         {ordered.map((lineId: string, idx: number) => {
           const line = lines.find((l) => l.id === lineId);
           return (
@@ -313,7 +314,7 @@ function PreviewExerciseRenderer({ exercise, answer, onAnswer }: { exercise: any
   // Fallback
   return (
     <div className="space-y-2">
-      <p className="text-sm font-medium text-foreground">{exercise.question}</p>
+      <RichContent className="text-sm font-medium text-foreground">{exercise.question}</RichContent>
       <Textarea placeholder="Scrie răspunsul tău..." value={answer?.text || ""} onChange={(e) => onAnswer({ text: e.target.value })} />
     </div>
   );

@@ -14,6 +14,7 @@ import { ArrowLeft, Clock, ChevronLeft, ChevronRight, Send, Play, CheckCircle, X
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import CodeEditor from "@/components/CodeEditor";
+import RichContent from "@/components/RichContent";
 import LoadingScreen from "@/components/states/LoadingScreen";
 import {
   DndContext,
@@ -704,7 +705,7 @@ const ExerciseRenderer = ({ exercise, answer, onAnswer }: { exercise: any; answe
     const options = (exercise.options || []) as { id: string; text: string }[];
     return (
       <div className="space-y-2" role="radiogroup" aria-label={exercise.question}>
-        <p className="text-sm font-medium text-foreground" id="quiz-question">{exercise.question}</p>
+        <RichContent className="text-sm font-medium text-foreground">{exercise.question}</RichContent>
         {options.map((opt) => (
           <button
             key={opt.id}
@@ -727,7 +728,7 @@ const ExerciseRenderer = ({ exercise, answer, onAnswer }: { exercise: any; answe
   if (type === "truefalse") {
     return (
       <div className="space-y-3" role="radiogroup" aria-label={exercise.statement || exercise.question}>
-        <p className="text-sm font-medium text-foreground">{exercise.statement || exercise.question}</p>
+        <RichContent className="text-sm font-medium text-foreground">{exercise.statement || exercise.question}</RichContent>
         <div className="flex gap-3">
           {[true, false].map((val) => (
             <button
@@ -791,7 +792,7 @@ const ExerciseRenderer = ({ exercise, answer, onAnswer }: { exercise: any; answe
 
     return (
       <div className="space-y-3">
-        <p className="text-sm font-medium text-foreground">{exercise.question}</p>
+        <RichContent className="text-sm font-medium text-foreground">{exercise.question}</RichContent>
         {renderCodeWithBlanks()}
       </div>
     );
@@ -808,7 +809,7 @@ const ExerciseRenderer = ({ exercise, answer, onAnswer }: { exercise: any; answe
   // Fallback
   return (
     <div className="space-y-2">
-      <p className="text-sm font-medium text-foreground">{exercise.question}</p>
+      <RichContent className="text-sm font-medium text-foreground">{exercise.question}</RichContent>
       <CodeEditor
         placeholder="Scrie răspunsul tău..."
         value={answer?.text || ""}
@@ -924,7 +925,7 @@ const TestMatchRenderer = ({ exercise, answer, onAnswer }: { exercise: any; answ
   return (
     <div className="space-y-5" role="group" aria-label="Exercițiu de asociere">
       <div>
-        <p className="text-sm font-medium text-foreground">{exercise.question}</p>
+        <RichContent className="text-sm font-medium text-foreground">{exercise.question}</RichContent>
         <p className="text-xs text-muted-foreground mt-1">
           Selectează un element din stânga, apoi perechea lui din dreapta.
         </p>
@@ -1111,7 +1112,7 @@ const TestOrderRenderer = ({ exercise, answer, onAnswer }: { exercise: any; answ
 
   return (
     <div className="space-y-2" role="group" aria-label="Exercițiu de ordonare">
-      <p className="text-sm font-medium text-foreground">{exercise.question}</p>
+      <RichContent className="text-sm font-medium text-foreground">{exercise.question}</RichContent>
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd} modifiers={[restrictToVerticalAxis]}>
         <SortableContext items={ordered} strategy={verticalListSortingStrategy}>
           <div className="space-y-2" role="list" aria-label="Linii de cod — trage sau folosește butoanele ▲ ▼">
@@ -1158,7 +1159,7 @@ const ProblemRenderer = ({ problem, answer, onAnswer, allowRunTests }: { problem
   return (
     <div className="space-y-3" role="group" aria-label={`Problemă: ${problem.title}`}>
       <h3 className="text-sm font-bold text-foreground">{problem.title}</h3>
-      <p className="text-xs text-muted-foreground whitespace-pre-wrap">{problem.description}</p>
+      <RichContent className="text-xs text-muted-foreground">{problem.description}</RichContent>
       {problem.hint && (
         <p className="text-[10px] text-muted-foreground italic">💡 {problem.hint}</p>
       )}
