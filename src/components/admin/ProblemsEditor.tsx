@@ -27,6 +27,8 @@ import { CSS } from "@dnd-kit/utilities";
 import { CompetencyTagger } from "./CompetencyTagger";
 import RichTextEditor from "./RichTextEditor";
 import CodeBlockEditor from "./CodeBlockEditor";
+import ProblemsCsvImporter from "./ProblemsCsvImporter";
+import { generateProblemId } from "./problemIds";
 
 // --- Sortable wrappers ---
 function SortableProblemChapter({ id, children }: { id: string; children: React.ReactNode }) {
@@ -60,29 +62,6 @@ interface TestCaseForm {
   expectedOutput: string;
   hidden?: boolean;
 }
-
-const CHAPTER_PREFIX: Record<string, string> = {
-  cap1: "rec",
-  cap2: "pr",
-  cap3: "lst",
-  cap4: "gs",
-  cap5: "sub",
-  cap6: "fis",
-};
-
-const getChapterPrefix = (chapterId: string) =>
-  CHAPTER_PREFIX[chapterId] || (chapterId ? chapterId.slice(0, 3).toLowerCase() : "p");
-
-const generateProblemId = (chapterId: string, existingIds: string[] = []) => {
-  const prefix = getChapterPrefix(chapterId);
-  const re = new RegExp(`^${prefix}(\\d+)$`);
-  let max = 0;
-  for (const id of existingIds) {
-    const m = id.match(re);
-    if (m) max = Math.max(max, parseInt(m[1], 10));
-  }
-  return `${prefix}${max + 1}`;
-};
 
 const emptyProblem = (chapterId: string, existingIds: string[] = []): Problem => ({
   id: generateProblemId(chapterId, existingIds),
@@ -489,9 +468,17 @@ const ProblemsEditor = () => {
                           {(editingProblem && problems.find(p => p.id === editingProblem)?.chapter === ch.id) || creatingFor === ch.id
                             ? renderForm()
                             : (
-                              <Button variant="outline" size="sm" className="w-full" onClick={() => startCreate(ch.id)}>
-                                <Plus className="h-4 w-4 mr-1" /> Adaugă problemă
-                              </Button>
+                              <div className="flex items-center gap-2">
+                                <Button variant="outline" size="sm" className="flex-1" onClick={() => startCreate(ch.id)}>
+                                  <Plus className="h-4 w-4 mr-1" /> Adaugă problemă
+                                </Button>
+                                <ProblemsCsvImporter
+                                  chapterId={ch.id}
+                                  existingProblems={allChapterProblems}
+                                  allExistingIds={problems.map(p => p.id)}
+                                  onSuccess={invalidate}
+                                />
+                              </div>
                             )}
                         </div>
                       </motion.div>
