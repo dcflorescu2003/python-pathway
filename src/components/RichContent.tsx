@@ -27,18 +27,30 @@ interface RichContentProps {
  */
 const preserveIndentation = (raw: string): string => {
   const NBSP = "\u00A0";
-  const lines = raw.split("\n");
+  const lines = raw.replace(/\r\n/g, "\n").split("\n");
   let inFence = false;
   return lines
-    .map((line) => {
+    .map((line, i) => {
       if (/^\s*```/.test(line)) {
         inFence = !inFence;
         return line;
       }
       if (inFence) return line;
-      return line.replace(/^[ \t]+/, (lead) =>
+      const withIndent = line.replace(/^[ \t]+/, (lead) =>
         lead.replace(/\t/g, "    ").replace(/ /g, NBSP)
       );
+      // Force a Markdown hard break (two trailing spaces) so single \n
+      // becomes <br> reliably, regardless of remark-breaks behavior.
+      const next = lines[i + 1];
+      if (
+        next !== undefined &&
+        next.trim() !== "" &&
+        withIndent.trim() !== "" &&
+        !/  $/.test(withIndent)
+      ) {
+        return withIndent + "  ";
+      }
+      return withIndent;
     })
     .join("\n");
 };
