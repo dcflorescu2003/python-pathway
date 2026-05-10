@@ -70,6 +70,8 @@ const LessonPage = () => {
   const [passed, setPassed] = useState(false);
   const [feedback, setFeedback] = useState<"correct" | "wrong" | null>(null);
   const [lastExplanation, setLastExplanation] = useState<string | null>(null);
+  const [showPremium, setShowPremium] = useState(false);
+  const isNative = Capacitor.isNativePlatform();
   
 
   // Lecția nu poate începe sau continua dacă userul nu are inimi (excepție: inimi nelimitate)
