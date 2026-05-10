@@ -1,59 +1,27 @@
-## Problem
+## Problema
 
-În baza de date, întrebarea are linii separate prin `\n` (verificat cu psql — 154 caractere, primul `\n` la poziția 23). Totuși, în:
+Pe testul tău cu item AI bifat, AI-ul nu a corectat — a rămas doar feedback-ul structural „Punctaj structural: 4/10. Evaluarea completă necesită AI review.”
 
-- editorul de teste predefinite (Admin)
-- preview-ul din `TestBuilder` profesor
-- pagina `TakeTestPage` văzută de elev
+Cauza: edge function-ul `grade-submission` verifică „Profesor AI” **doar prin Stripe**. Tu ai Premium profesor printr-un cupon (`PROF-…`, `coupon_type='teacher'`, valabil până în 2029), nu prin Stripe — deci `teacherHasAI` rămâne `false` și itemul bifat nu se trimite la AI, indiferent că este selectat în `ai_grading_item_ids`.
 
-textul apare pe o singură linie. Toate cele trei locuri folosesc deja `RichContent`, deci problema e în lanțul de randare al `RichContent.tsx` (`react-markdown` + `remark-breaks` + `rehype-raw`): la conținut care nu este Markdown formatat (cod Python liber, fără gard ` ``` `), single-line breaks nu sunt transformate fiabil în `<br>` în toate cazurile (interacțiune între `rehype-raw` și nodurile `break` produse de `remark-breaks`).
+În aplicație (`useSubscription` / `check-subscription`) accesul Profesor AI vine din 3 surse: Stripe, cupon teacher, sau Play/iOS billing. În `grade-submission` se verifică doar Stripe — de aici discrepanța.
 
-## Soluție
+## Plan (doar `supabase/functions/grade-submission/index.ts`)
 
-Forțăm păstrarea line-break-urilor la nivel de pre-procesare în `RichContent`, în loc să ne bazăm pe `remark-breaks`.
+Aliniem detecția `teacherHasAI` cu logica din `check-subscription`:
 
-### `src/components/RichContent.tsx`
+1. După ce determinăm `teacher_id`, verificăm în paralel:
+   - **Cupon teacher**: `coupon_redemptions` cu `user_id = teacher_id`, `coupon_type = 'teacher'`, `premium_until > now()` → `teacherHasAI = true`.
+   - **Play / iOS billing**: `play_billing_subscriptions` activ cu `product_id` în `TEACHER_PRODUCT_IDS` și `expiry_time > now()` → `teacherHasAI = true`.
+   - **Stripe** (logica existentă) rămâne ca fallback.
+2. Dacă oricare dintre cele trei e activă, oprim verificarea (short‑circuit) și continuăm fluxul existent. Nimic altceva în funcție nu se schimbă — `ai_grading_item_ids`, `getAIKey`, `batchAIReview`, scoring rămân la fel.
+3. Profilul trebuie să fie `teacher_status = 'verified'` (păstrăm gating-ul actual).
 
-Modific funcția `preserveIndentation` (sau adaug una nouă `preserveLineBreaks`) care, **în afara blocurilor cu gard ` ``` `**:
+Nicio modificare în UI, în baza de date sau în alte funcții.
 
-1. Normalizează `\r\n` → `\n`.
-2. La fiecare linie care nu e ultima dintr-un paragraf și nu e linie goală, adaugă două spații înainte de `\n` (sintaxa Markdown pentru hard break: `"  \n"`). Asta garantează că `react-markdown` produce `<br>` indiferent de plugin.
-3. Păstrează în continuare conversia spațiilor de la început în NBSP (există deja).
+## Verificare după deploy
 
-Rezultat: chiar și fără `remark-breaks`, fiecare `\n` din text → break vizibil.
-
-### Verificare după implementare
-
-- Reîncarc pagina `/test/...` cu testul predefinit; întrebarea cu `for i in range(1, 6)` trebuie să apară pe mai multe rânduri, cu indentare păstrată.
-- Verific că în `TestBuilder` preview-ul afișează aceeași formatare.
-- Verific că în `PredefinedTestEditor` (Admin) textul în preview e formatat corect.
-- Verific că fișierele cu blocuri ` ```python ` continuă să randeze corect (nu adăugăm hard breaks în interiorul fence-urilor).
-- Verific că exercițiile existente din lecții (care folosesc `RichContent inline`) nu se strică — `inline` păstrează comportamentul curent (`prose-p:inline`).
-
-## Detalii tehnice
-
-```ts
-const preserveFormatting = (raw: string): string => {
-  const NBSP = "\u00A0";
-  const lines = raw.replace(/\r\n/g, "\n").split("\n");
-  let inFence = false;
-  return lines
-    .map((line, i) => {
-      if (/^\s*```/.test(line)) { inFence = !inFence; return line; }
-      if (inFence) return line;
-      // Convert leading spaces to NBSP
-      const withIndent = line.replace(/^[ \t]+/, (lead) =>
-        lead.replace(/\t/g, "    ").replace(/ /g, NBSP)
-      );
-      // Force hard break: append two spaces if next line exists and isn't blank
-      const next = lines[i + 1];
-      if (next !== undefined && next.trim() !== "" && withIndent.trim() !== "") {
-        return withIndent + "  ";
-      }
-      return withIndent;
-    })
-    .join("\n");
-};
-```
-
-Nu sunt necesare modificări de date sau migrații — fix curat doar în componenta de randare.
+- Re-trimit (re-grade) submission-ul existent (sau elevul retrimite testul) și verificăm:
+  - `test_answers.ai_reviewed = true` pentru itemul `eval-e-1778420025177-2-q1pp`.
+  - `feedback` actualizat cu textul AI, scor potențial > 4.
+- Logs în `grade-submission` confirmă ramura coupon-teacher.

@@ -116,35 +116,79 @@ Deno.serve(async (req) => {
           .single();
 
         if (profile?.teacher_status === "verified") {
-          // Check Stripe for Profesor AI subscription
-          const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
-          if (stripeKey) {
+          const nowIso = new Date().toISOString();
+
+          // 1) Coupon-based teacher premium
+          try {
+            const { data: redemptions } = await supabase
+              .from("coupon_redemptions")
+              .select("premium_until, coupon_type")
+              .eq("user_id", test.teacher_id)
+              .eq("coupon_type", "teacher")
+              .gt("premium_until", nowIso)
+              .order("premium_until", { ascending: false })
+              .limit(1);
+            if (redemptions && redemptions.length > 0) {
+              teacherHasAI = true;
+              console.log("[grade-submission] teacherHasAI via coupon");
+            }
+          } catch (e) {
+            console.error("Coupon check error:", e);
+          }
+
+          // 2) Native (Play / iOS) billing for Profesor AI products
+          if (!teacherHasAI) {
             try {
-              const { data: authUser } = await supabase.auth.admin.getUserById(test.teacher_id);
-              if (authUser?.user?.email) {
-                const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
-                const customers = await stripe.customers.list({ email: authUser.user.email, limit: 1 });
-                if (customers.data.length > 0) {
-                  const subs = await stripe.subscriptions.list({
-                    customer: customers.data[0].id,
-                    status: "active",
-                    limit: 10,
-                  });
-                  for (const sub of subs.data) {
-                    const productId = sub.items?.data?.[0]?.price?.product;
-                    const prodStr = typeof productId === "string" ? productId : productId?.id;
-                    if (prodStr && TEACHER_PRODUCT_IDS.includes(prodStr)) {
-                      teacherHasAI = true;
-                      break;
+              const { data: nativeSubs } = await supabase
+                .from("play_billing_subscriptions")
+                .select("product_id, expiry_time, is_active")
+                .eq("user_id", test.teacher_id)
+                .eq("is_active", true)
+                .gt("expiry_time", nowIso)
+                .in("product_id", TEACHER_PRODUCT_IDS)
+                .limit(1);
+              if (nativeSubs && nativeSubs.length > 0) {
+                teacherHasAI = true;
+                console.log("[grade-submission] teacherHasAI via native billing");
+              }
+            } catch (e) {
+              console.error("Native billing check error:", e);
+            }
+          }
+
+          // 3) Stripe fallback
+          if (!teacherHasAI) {
+            const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
+            if (stripeKey) {
+              try {
+                const { data: authUser } = await supabase.auth.admin.getUserById(test.teacher_id);
+                if (authUser?.user?.email) {
+                  const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
+                  const customers = await stripe.customers.list({ email: authUser.user.email, limit: 1 });
+                  if (customers.data.length > 0) {
+                    const subs = await stripe.subscriptions.list({
+                      customer: customers.data[0].id,
+                      status: "active",
+                      limit: 10,
+                    });
+                    for (const sub of subs.data) {
+                      const productId = sub.items?.data?.[0]?.price?.product;
+                      const prodStr = typeof productId === "string" ? productId : productId?.id;
+                      if (prodStr && TEACHER_PRODUCT_IDS.includes(prodStr)) {
+                        teacherHasAI = true;
+                        console.log("[grade-submission] teacherHasAI via stripe");
+                        break;
+                      }
                     }
                   }
                 }
+              } catch (e) {
+                console.error("Stripe check error:", e);
               }
-            } catch (e) {
-              console.error("Stripe check error:", e);
             }
           }
         }
+
       }
     }
 
