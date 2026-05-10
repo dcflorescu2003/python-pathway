@@ -100,11 +100,28 @@ const TestBuilder = ({ onBack, editTestId, teacherStatus }: TestBuilderProps) =>
     });
   };
 
-  // Count AI-graded items (problems + open_answer) in current test
-  const aiItemCount = items.filter(i => 
-    i.source_type === "problem" || 
-    (i.source_type === "custom" && i.custom_data?.type === "open_answer")
-  ).length;
+  // Eligibility for AI grading: problems, open_answer custom, or eval-bank items of type problem/open_answer
+  const isItemAIEligible = (i: TestItem): boolean => {
+    if (i.source_type === "problem") return true;
+    if (i.source_type === "custom" && i.custom_data?.type === "open_answer") return true;
+    if (typeof i.source_id === "string" && i.source_id.startsWith("eval-")) {
+      const ev = evalItemsCache[i.source_id];
+      if (ev && (ev.type === "problem" || ev.type === "open_answer")) return true;
+    }
+    return false;
+  };
+
+  // Stable AI key — survives saves and reorders. For custom items we attach a UUID inside custom_data._ai_key.
+  const getAIKey = (i: TestItem): string => {
+    if (i.source_type === "custom") {
+      const k = i.custom_data?._ai_key;
+      return k ? `custom:${k}` : `custom:unknown`;
+    }
+    return `${i.source_type}:${i.source_id ?? ""}`;
+  };
+
+  // Count AI-graded items (problems + open_answer + eval bank problem/open_answer) in current test
+  const aiItemCount = items.filter(isItemAIEligible).length;
 
   const totalTests = allTests.length;
   const { limit: testLimit, tier: teacherTier } = getTeacherTestLimit({ teacherStatus, isTeacherPremium });
