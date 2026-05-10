@@ -1,24 +1,23 @@
-## Tagging microcompetențe înainte de salvare la probleme
+## Multi-valoare la Input/Output în probleme
 
-La lecții (`ExerciseEditor.tsx`), ID-ul exercițiului se generează la deschiderea formularului, deci `CompetencyTagger` poate fi folosit imediat. La probleme, ID-ul se generează abia în `saveProblem`, așa că taggerul afișează „Salvează problema, apoi revino aici…”.
+### Cum funcționează deja motorul (nu se schimbă)
+- `usePyodide.ts` ia `tc.input`, îl împarte după `\n` și fiecare linie devine o valoare returnată de `input()`. Deci pentru 2 valori scrii pe 2 rânduri.
+- `tc.expectedOutput` este comparat exact cu stdout-ul complet al programului (inclusiv newline-uri între `print`-uri).
 
-### Modificări în `src/components/admin/ProblemsEditor.tsx`
+### Problema în UI
+În `src/components/admin/ProblemsEditor.tsx` câmpurile Input și Output sunt `<Input>` (single-line) — nu se poate apăsa Enter pentru a introduce mai multe valori.
 
-1. **Generează ID-ul la creare**: `emptyProblem(chapterId)` returnează acum și un `id` precompletat (`p-${Date.now()}-${rand}`). Tipul devine `Problem` (cu id), nu `Omit<Problem, "id">`.
+### Modificări (doar UI)
 
-2. **Pasează ID-ul la `CompetencyTagger`**:
-   - Schimbă `itemId={editingProblem}` → `itemId={form.id}` (existent atât la creare, cât și la editare).
-   - Elimină `emptyHint` (nu mai e nevoie).
-
-3. **Folosește ID-ul existent la salvare**:
-   - În `saveProblem`, ramura de creare folosește `form.id` în loc de `p-${Date.now()}`. Astfel mapările deja atașate rămân legate de problema nouă.
-
-4. **Cleanup la anulare** (ca la lecții):
-   - În handler-ul „Anulează” pentru o problemă nouă (`creatingFor && !editingProblem`), rulează `supabase.from("item_competencies").delete().eq("item_type", "problem").eq("item_id", form.id)` best-effort.
+**`src/components/admin/ProblemsEditor.tsx`** (în jurul liniilor 294-310):
+1. Înlocuiesc cele două `<Input>` pentru `tc.input` și `tc.expectedOutput` cu `<Textarea>` (rows=2, font-mono, text-xs).
+2. Placeholder-uri explicative:
+   - Input: `O valoare pe linie (ex:\n5\n10)`
+   - Output: `Stdout așteptat (ex:\n15)`
+3. Adaug un mic `<p className="text-xs text-muted-foreground">` deasupra listei de teste:
+   > „Pentru mai multe valori `input()`, scrie fiecare pe o linie nouă. Output-ul se compară cu tot ce printează programul."
 
 ### Ce nu se schimbă
-- Schema DB, RLS, hook-urile `useCompetencies` — toate rămân identice.
-- Editarea unei probleme existente funcționează deja, doar că acum și varianta de creare se aliniază.
-
-### Fișiere atinse
-- `src/components/admin/ProblemsEditor.tsx`
+- Schema DB (`test_cases` rămâne `{input, expectedOutput, hidden}` cu string-uri multi-line).
+- `usePyodide`, `ProblemSolvePage`, `ProblemExercise` — deja tratează newline-urile corect (afișarea înlocuiește `\n` cu `↵`).
+- Importul CSV (`csvParser.ts`) — rămâne cu separatorii actuali.
