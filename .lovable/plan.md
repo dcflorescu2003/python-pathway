@@ -1,35 +1,33 @@
-## Problema
+## Problem
 
-Când profesorul importă un test predefinit în TestBuilder:
+Profesorul, după ce importă un test predefinit, deschide Preview-ul unui item în TestBuilder și vede:
+- cerința redată ca text simplu pe un singur rând (fără formatare Markdown — `**bold**`, liste, paragrafe noi);
+- pentru exercițiile de tip „Completează" nu apare **code_template-ul** cu spațiile libere (vede doar „Spațiu 1: ___");
+- pentru probleme, descrierea este tăiată cu `line-clamp-4` și nu păstrează formatarea Markdown.
 
-1. **Preview-ul nu afișează nimic** — `getExerciseDetails`/`getProblemDetails` caută doar în `chapters`/`allProblems` locale, dar itemii din testul predefinit au `source_id` de tip `eval-...` (din `eval_exercises`), care nu există acolo.
-2. **Problemele nu sunt marcate ca AI-gradable** — `applyPredefinedTemplate` convertește toți itemii `eval_exercise` în `source_type: "exercise"`, deci o problemă reală (din eval_exercises cu `type='problem'`) ajunge cu `source_type='exercise'` și nu intră în `aiItemCount` (care numără doar `source_type==='problem'` sau `custom.type==='open_answer'`).
-3. **Edge function-ul `grade-submission`** caută în tabelul `problems`/`exercises` după `source_id`, deci itemii cu prefix `eval-` nu sunt găsiți și nu primesc evaluare AI.
+Cauza: `renderExercisePreview` și `renderProblemPreview` din `src/components/teacher/TestBuilder.tsx` folosesc `<p>` simplu și `line-clamp-4`, în loc de componenta `RichContent` care randează Markdown + cod.
 
-`TakeTestPage` are deja logica care detectează prefixul `eval-` și interoghează `eval_exercises` (rezolvat anterior), dar TestBuilder + grade-submission nu.
+## Schimbări (doar UI, doar `src/components/teacher/TestBuilder.tsx`)
 
-## Soluție
+1. Importă `RichContent` din `@/components/RichContent`.
 
-### 1. `src/components/teacher/TestBuilder.tsx`
+2. În `renderExercisePreview`:
+   - Înlocuiește `<p className="text-xs font-medium text-foreground">{ex.question || ex.statement}</p>` cu `<RichContent className="text-sm font-medium text-foreground">{ex.question || ex.statement}</RichContent>`.
+   - Pentru `type === "fill"`: dacă `ex.code_template` există, afișează template-ul cu spațiile completate ca `___` (înlocuind `___` cu spații vizibile) într-un `<pre>` monospaced; altfel păstrează lista actuală „Spațiu N: ___".
+   - Pentru `type === "quiz"`: randează `opt.text` cu `<RichContent inline>` ca să prindă cod inline.
+   - Pentru `type === "order"`: păstrează randarea monospaced a liniilor.
+   - Pentru `type === "match"`: păstrează formatul `left → ___`, dar randează `left` ca text (acceptă și inline code).
 
-- În `applyPredefinedTemplate`: înainte de a construi `newItems`, fetch în bulk `eval_exercises` pentru toate `source_id`-urile cu prefix `eval-`. Mapează:
-  - `ev.type === "problem"` → `source_type: "problem"` (păstrează `source_id` cu prefix `eval-`)
-  - altfel → `source_type: "exercise"`
-- Stochează lista de eval_exercises încărcate într-un state (`evalItemsCache`) ca să fie disponibile pentru preview.
-- Extinde `getExerciseDetails` și `getProblemDetails` să caute mai întâi în `evalItemsCache` când `source_id` începe cu `eval-`. Pentru itemii eval cu type='problem', construiește un obiect compatibil cu `renderProblemPreview` (`title`, `description: ev.question`, `difficulty: null`).
-- La încărcarea testului existent (`useEffect` cu `existingItems`), fetch-uiește la fel `eval_exercises` pentru toate `source_id`-urile cu prefix `eval-` din itemi, ca preview-ul să funcționeze și la editare.
+3. În `renderProblemPreview`:
+   - Elimină `line-clamp-4` și `whitespace-pre-wrap` de pe descriere.
+   - Înlocuiește `<p>` cu `<RichContent className="text-xs text-muted-foreground">{prob.description}</RichContent>`.
+   - Dacă `prob.title` lipsește (cazul eval-bank, unde titlul e gol), nu mai afișa rândul de titlu (descrierea conține deja titlul ca `**...**`).
 
-Nu sunt necesare alte modificări la AI-counting: odată ce eval problems devin `source_type='problem'`, `aiItemCount` le include automat.
+Niciun alt fișier nu se modifică. Logică de business / fetch / RPC / grading rămân neatinse.
 
-### 2. `supabase/functions/grade-submission/index.ts`
+## Verificare
 
-În bucla de grading, detectează prefixul `eval-` pe `source_id`:
-- Dacă `source_type === "exercise"` și `source_id` începe cu `eval-` → fetch din `eval_exercises` în loc de `exercises`, apoi treci la `gradeExercise(ev, answer.answer_data, item.points)` (forma este compatibilă, doar verificat).
-- Dacă `source_type === "problem"` și `source_id` începe cu `eval-` → fetch din `eval_exercises` (`test_cases`, `solution`, `question`), folosește `question` ca `title` pentru ramura AI și treci prin aceeași logică `gradeProblemBasic` + `itemsForAI`.
-
-Astfel, pentru profesorii cu Profesor AI, problemele și răspunsurile deschise importate din testul predefinit primesc evaluare AI, iar profesorul vede în builder cerința și variantele de răspuns la fiecare item, inclusiv în preview.
-
-## Fișiere atinse
-
-- `src/components/teacher/TestBuilder.tsx` (preview lookup + import mapping pentru eval-bank)
-- `supabase/functions/grade-submission/index.ts` (suport eval- prefix la fetch)
+- Deschide ca profesor un test creat din șablonul predefinit; click pe ochiul Preview la:
+  - un item „Completează" → trebuie să apară code-template-ul (`x = 7\nprint(x > 3 ___ x < 5)`) cu spații marcate;
+  - o problemă (de ex. „Campania de reciclare") → întreaga descriere cu `**bold**` randat și fără tăiere;
+  - un quiz cu enunț pe mai multe rânduri (ex. cel cu `x = 2 + 3 * 4`) → blocul de cod afișat corect.
