@@ -521,6 +521,9 @@ const TestBuilder = ({ onBack, editTestId, teacherStatus }: TestBuilderProps) =>
       };
     }
 
+    if (customData) {
+      customData._ai_key = (typeof crypto !== "undefined" && crypto.randomUUID) ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+    }
     addItem("custom", null, "both", customData);
     resetCustomEditor();
     toast.success("Întrebare custom adăugată!");
