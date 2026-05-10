@@ -177,6 +177,9 @@ const TestBuilder = ({ onBack, editTestId, teacherStatus }: TestBuilderProps) =>
 
   // Get exercise details for preview
   const getExerciseDetails = (exerciseId: string) => {
+    if (exerciseId.startsWith("eval-") && evalItemsCache[exerciseId]) {
+      return evalItemsCache[exerciseId];
+    }
     for (const ch of chapters) {
       for (const lesson of ch.lessons) {
         const ex = lesson.exercises?.find((e) => e.id === exerciseId);
@@ -188,6 +191,16 @@ const TestBuilder = ({ onBack, editTestId, teacherStatus }: TestBuilderProps) =>
 
   // Get problem details for preview
   const getProblemDetails = (problemId: string) => {
+    if (problemId.startsWith("eval-") && evalItemsCache[problemId]) {
+      const ev = evalItemsCache[problemId];
+      return {
+        id: ev.id,
+        title: ev.question?.split("\n")[0]?.substring(0, 80) || "Problemă",
+        description: ev.question,
+        difficulty: null,
+        test_cases: ev.test_cases,
+      };
+    }
     return allProblems.find((p) => p.id === problemId) || null;
   };
 
