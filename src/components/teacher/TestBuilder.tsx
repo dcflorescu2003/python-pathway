@@ -100,11 +100,28 @@ const TestBuilder = ({ onBack, editTestId, teacherStatus }: TestBuilderProps) =>
     });
   };
 
-  // Count AI-graded items (problems + open_answer) in current test
-  const aiItemCount = items.filter(i => 
-    i.source_type === "problem" || 
-    (i.source_type === "custom" && i.custom_data?.type === "open_answer")
-  ).length;
+  // Eligibility for AI grading: problems, open_answer custom, or eval-bank items of type problem/open_answer
+  const isItemAIEligible = (i: TestItem): boolean => {
+    if (i.source_type === "problem") return true;
+    if (i.source_type === "custom" && i.custom_data?.type === "open_answer") return true;
+    if (typeof i.source_id === "string" && i.source_id.startsWith("eval-")) {
+      const ev = evalItemsCache[i.source_id];
+      if (ev && (ev.type === "problem" || ev.type === "open_answer")) return true;
+    }
+    return false;
+  };
+
+  // Stable AI key — survives saves and reorders. For custom items we attach a UUID inside custom_data._ai_key.
+  const getAIKey = (i: TestItem): string => {
+    if (i.source_type === "custom") {
+      const k = i.custom_data?._ai_key;
+      return k ? `custom:${k}` : `custom:unknown`;
+    }
+    return `${i.source_type}:${i.source_id ?? ""}`;
+  };
+
+  // Count AI-graded items (problems + open_answer + eval bank problem/open_answer) in current test
+  const aiItemCount = items.filter(isItemAIEligible).length;
 
   const totalTests = allTests.length;
   const { limit: testLimit, tier: teacherTier } = getTeacherTestLimit({ teacherStatus, isTeacherPremium });
@@ -118,8 +135,12 @@ const TestBuilder = ({ onBack, editTestId, teacherStatus }: TestBuilderProps) =>
       toast.info("Itemul este deja adăugat.");
       return;
     }
-    // Check AI item limit for problems and open_answer — only block non-premium teachers
-    const isAIItem = sourceType === "problem" || (sourceType === "custom" && customData?.type === "open_answer");
+    // Check AI item limit for problems and open_answer (incl. eval bank) — only block non-premium teachers
+    let isAIItem = sourceType === "problem" || (sourceType === "custom" && customData?.type === "open_answer");
+    if (!isAIItem && typeof sourceId === "string" && sourceId.startsWith("eval-")) {
+      const ev = evalItemsCache[sourceId];
+      if (ev && (ev.type === "problem" || ev.type === "open_answer")) isAIItem = true;
+    }
     if (isAIItem && !isTeacherPremium && aiItemCount >= MAX_AI_ITEMS_PER_TEST) {
       toast.error(`Limita de ${MAX_AI_ITEMS_PER_TEST} itemi AI/test a fost atinsă.`);
       return;
@@ -500,6 +521,9 @@ const TestBuilder = ({ onBack, editTestId, teacherStatus }: TestBuilderProps) =>
       };
     }
 
+    if (customData) {
+      customData._ai_key = (typeof crypto !== "undefined" && crypto.randomUUID) ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+    }
     addItem("custom", null, "both", customData);
     resetCustomEditor();
     toast.success("Întrebare custom adăugată!");
@@ -986,6 +1010,8 @@ const TestBuilder = ({ onBack, editTestId, teacherStatus }: TestBuilderProps) =>
             <p className="text-xs font-semibold text-muted-foreground">Itemi selectați ({items.length})</p>
             {items.map((item, idx) => {
               const itemKey = `sel-${idx}`;
+              const aiKey = getAIKey(item);
+              const aiEligible = isItemAIEligible(item);
               return (
                 <div key={idx}>
                   <div
@@ -1034,23 +1060,21 @@ const TestBuilder = ({ onBack, editTestId, teacherStatus }: TestBuilderProps) =>
                         </SelectContent>
                       </Select>
                     )}
-                    {/* AI checkbox for problem/open_answer items when >3 AI items and teacher is premium */}
-                    {isTeacherPremium && aiItemCount > MAX_AI_ITEMS_PER_TEST && (
-                      item.source_type === "problem" || (item.source_type === "custom" && item.custom_data?.type === "open_answer")
-                    ) && (
-                      <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                    {/* AI checkbox: shown for any AI-eligible item when teacher has Profesor AI */}
+                    {isTeacherPremium && aiEligible && (
+                      <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()} title="Corectare cu AI">
                         <Checkbox
-                          checked={aiGradingItemIds.includes(itemKey)}
+                          checked={aiGradingItemIds.includes(aiKey)}
                           onCheckedChange={(checked) => {
                             if (checked && aiGradingItemIds.length >= MAX_AI_ITEMS_PER_TEST) {
                               toast.error(`Maxim ${MAX_AI_ITEMS_PER_TEST} itemi pot fi corectați cu AI.`);
                               return;
                             }
                             setAiGradingItemIds(prev =>
-                              checked ? [...prev, itemKey] : prev.filter(id => id !== itemKey)
+                              checked ? [...prev, aiKey] : prev.filter(id => id !== aiKey)
                             );
                           }}
-                          disabled={!aiGradingItemIds.includes(itemKey) && aiGradingItemIds.length >= MAX_AI_ITEMS_PER_TEST}
+                          disabled={!aiGradingItemIds.includes(aiKey) && aiGradingItemIds.length >= MAX_AI_ITEMS_PER_TEST}
                         />
                         <Sparkles className="h-3 w-3 text-primary" />
                       </div>

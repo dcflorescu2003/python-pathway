@@ -168,6 +168,15 @@ Deno.serve(async (req) => {
     }
     const itemsForAI: ItemForAI[] = [];
 
+    // Helper: stable AI key matching the one produced by TestBuilder UI
+    const getAIKey = (item: any): string => {
+      if (item.source_type === "custom") {
+        const k = item.custom_data?._ai_key;
+        return k ? `custom:${k}` : `custom:unknown`;
+      }
+      return `${item.source_type}:${item.source_id ?? ""}`;
+    };
+
     for (let i = 0; i < answers.length; i++) {
       const answer = answers[i];
       const item = answer.test_items;
@@ -178,6 +187,7 @@ Deno.serve(async (req) => {
       let feedback = "";
 
       const isEvalBank = typeof item.source_id === "string" && item.source_id.startsWith("eval-");
+      const itemAIKey = getAIKey(item);
 
       if (item.source_type === "exercise" && item.source_id && !isEvalBank) {
         const { data: exercise } = await supabase
@@ -196,7 +206,32 @@ Deno.serve(async (req) => {
           .eq("id", item.source_id)
           .single();
         if (ev) {
-          score = gradeExercise(ev, answer.answer_data, item.points);
+          if (ev.type === "open_answer") {
+            // Eval-bank open_answer: same flow as custom open_answer
+            score = 0;
+            feedback = "Necesită evaluare manuală sau AI.";
+            const shouldAIGrade = aiGradingItemIds.length > 0
+              ? aiGradingItemIds.includes(itemAIKey)
+              : itemsForAI.length < MAX_AI_ITEMS_PER_TEST;
+            if (teacherHasAI && answer.answer_data?.text && shouldAIGrade) {
+              itemsForAI.push({
+                answerId: answer.id,
+                answerIdx: i,
+                studentCode: "",
+                solution: "",
+                testCases: null,
+                maxPoints: item.points,
+                basicScore: 0,
+                basicFeedback: feedback,
+                problemTitle: (ev.question ?? "").split("\n")[0]?.substring(0, 80) || "Răspuns deschis",
+                aiType: "open_answer",
+                studentText: answer.answer_data.text,
+                questionText: ev.question,
+              });
+            }
+          } else {
+            score = gradeExercise(ev, answer.answer_data, item.points);
+          }
         }
       } else if (item.source_type === "problem" && item.source_id) {
         const problemSource = isEvalBank ? "eval_exercises" : "problems";
@@ -224,7 +259,7 @@ Deno.serve(async (req) => {
 
           // Collect for batch AI if teacher has Profesor AI and score < max
           const shouldAIGrade = aiGradingItemIds.length > 0
-            ? aiGradingItemIds.includes(item.id)
+            ? aiGradingItemIds.includes(itemAIKey)
             : itemsForAI.length < MAX_AI_ITEMS_PER_TEST;
           if (teacherHasAI && score < item.points && shouldAIGrade) {
             itemsForAI.push({
@@ -247,7 +282,7 @@ Deno.serve(async (req) => {
           score = 0;
           feedback = "Necesită evaluare manuală sau AI.";
           const shouldAIGrade = aiGradingItemIds.length > 0
-            ? aiGradingItemIds.includes(item.id)
+            ? aiGradingItemIds.includes(itemAIKey)
             : itemsForAI.length < MAX_AI_ITEMS_PER_TEST;
           if (teacherHasAI && answer.answer_data?.text && shouldAIGrade) {
             itemsForAI.push({
