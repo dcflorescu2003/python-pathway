@@ -291,12 +291,15 @@ const ProblemsEditor = () => {
 
       <div>
         <Label className="text-foreground text-xs">Cazuri de test</Label>
+        <p className="text-[10px] text-muted-foreground mt-1">
+          Pentru mai multe valori <code>input()</code>, scrie fiecare pe o linie nouă. Output-ul se compară exact cu tot ce printează programul.
+        </p>
         {form.testCases.map((tc, i) => (
           <div key={i} className="flex items-start gap-2 mt-2 p-2 rounded border border-border bg-card">
             <span className="text-[10px] text-muted-foreground mt-2">#{i + 1}</span>
             <div className="flex-1 space-y-1">
-              <Input value={tc.input} onChange={e => updateTestCase(i, "input", e.target.value)} placeholder="Input" className="text-xs font-mono" />
-              <Input value={tc.expectedOutput} onChange={e => updateTestCase(i, "expectedOutput", e.target.value)} placeholder="Output așteptat" className="text-xs font-mono" />
+              <Textarea value={tc.input} onChange={e => updateTestCase(i, "input", e.target.value)} placeholder={"Input (o valoare pe linie)\nex:\n5\n10"} rows={2} className="text-xs font-mono min-h-0" />
+              <Textarea value={tc.expectedOutput} onChange={e => updateTestCase(i, "expectedOutput", e.target.value)} placeholder={"Output așteptat\nex:\n15"} rows={2} className="text-xs font-mono min-h-0" />
               <label className="flex items-center gap-1 text-[10px] text-muted-foreground">
                 <input type="checkbox" checked={tc.hidden || false} onChange={e => updateTestCase(i, "hidden", e.target.checked)} />
                 Ascuns
