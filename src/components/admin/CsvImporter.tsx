@@ -63,6 +63,10 @@ export default function CsvImporter({ targetTable, lessonId, existingCount, exis
         if (targetTable === "manual_exercises") {
           return { ...r, pairs: null, hint: null, solution: r.solution || "", test_cases: r.test_cases || [] };
         }
+        if (targetTable === "eval_exercises") {
+          const { xp, ...rest } = r;
+          return rest;
+        }
         return r;
       });
 
