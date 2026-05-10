@@ -1,80 +1,74 @@
-
 ## Obiectiv
 
-Adăugare buton **Import CSV** și **Export CSV** pentru probleme, similar cu cel de la exerciții, cu suport pentru import per-capitol. Editorul rich text + preview există deja în formularul de problemă (RichTextEditor pe Descriere și Hint).
+În **Banca de teste**, în interiorul unei lecții, lângă butonul existent „Exercițiu nou" + „Import CSV (exerciții)", adăugăm un al doilea buton **„Import probleme CSV"** care folosește exact formatul CSV de la probleme (`title, description, difficulty, xp_reward, hint, solution, is_premium, test_cases, competencies`) și inserează rândurile în tabela `eval_exercises` ca exerciții de tip `problem`.
 
-## Format CSV propus
+## De ce o componentă nouă (nu reutilizăm direct ProblemsCsvImporter)
 
-Coloane (separator detectat automat `,` sau `;`):
-
-```
-title, description, difficulty, xp_reward, hint, solution, is_premium, test_cases, competencies
-```
-
-- `title` (obligatoriu)
-- `description` (Markdown — bold, culori HTML, etc.)
-- `difficulty` — `ușor` | `mediu` | `greu` (default `ușor`)
-- `xp_reward` — număr (default 10)
-- `hint` — text/markdown (opțional)
-- `solution` — cod Python (opțional, multi-linie cu ghilimele duble)
-- `is_premium` — `true`/`false` (default false)
-- `test_cases` — format compact: `input1>>output1>>0;input2>>output2>>1` 
-  - `>>` separă input/output/hidden(0/1) într-un caz
-  - `;` separă cazurile
-  - input multi-valoare: `\n` literal (ex: `5\n10>>15>>0`)
-- `competencies` — coduri CG/CS/M separate prin `|` (opțional, ex: `CG.1|CS.2.1`)
-
-ID-urile se generează automat folosind prefixul capitolului existent (`rec`, `pr`, `lst`, `gs`, `sub`, `fis`) — următor după ultimul existent.
+`ProblemsCsvImporter` inserează în tabela `problems` (cu prefixe de capitol `rec/pr/...` și mapare `item_type='problem'`). În banca de teste avem nevoie de:
+- target = `eval_exercises`
+- ID-uri stil `eval-e-{timestamp}-{n}` (la fel ca la `EvalExerciseEditor` linia 432)
+- maparea coloanelor problemă → coloane `eval_exercises`:
+  - `title` → ignorat la nivel de exercițiu (sau prepended la `question`); cel mai curat: folosim `title` ca prefix bold în `question` SAU îl ignorăm. **Decizie:** îl punem ca primă linie bold în `question` (markdown `**Title**\n\n` + description), pentru că `eval_exercises` nu are coloană `title`.
+  - `description` → `question` (Markdown păstrat)
+  - `solution` → `solution`
+  - `test_cases` (format `input>>output>>hidden;...`) → `test_cases` jsonb (`[{input, expected_output, hidden}]`)
+  - `hint` → ignorat (nu există coloană în `eval_exercises`); afișăm warning în preview dacă există hint
+  - `difficulty`, `xp_reward`, `is_premium` → ignorate (nu există în schema `eval_exercises`); afișăm subtle hint în preview că nu sunt importate
+  - `competencies` → maps la `item_competencies` cu `item_type='eval_exercise'`
+  - `type` setat fix pe `'problem'`
+  - `code_template` → null (sau preluat din `solution` dacă nu e setat)
 
 ## Modificări
 
-### 1. `src/components/admin/problemsCsvParser.ts` (nou)
-- `parseProblemsCSV(text)` → `{ problems: ParsedProblem[], errors: string[] }`
-- `problemToDbRow(p, chapterId, sortOrder, id)` → row pentru `problems`
-- `generateProblemsExportCSV(problems[])` → text CSV
-- `getProblemsTemplateCSV()` → template descărcabil cu 2 exemple
-- Reutilizează helper-ele `splitLogicalLines`, `parseCSVLine`, `detectSeparator` din `csvParser.ts` (le exportăm acolo dacă nu sunt deja).
+### 1. `src/components/admin/EvalProblemsCsvImporter.tsx` (nou)
+- Componentă similară `ProblemsCsvImporter`, dar:
+  - Props: `lessonId`, `existingCount`, `onSuccess`
+  - Reutilizează `parseProblemsCSV` și `getProblemsTemplateCSV` din `problemsCsvParser.ts` (deja există).
+  - Funcție de mapare la `eval_exercises`:
+    ```ts
+    {
+      id: `eval-e-${Date.now()}-${i}`,
+      lesson_id: lessonId,
+      type: 'problem',
+      question: `**${p.title}**\n\n${p.description}`,
+      solution: p.solution,
+      test_cases: p.test_cases, // [{input, expected_output, hidden}]
+      code_template: null,
+      sort_order: existingCount + i,
+      // restul coloanelor null/default
+    }
+    ```
+  - Inserează în `eval_exercises`, apoi pentru fiecare cu `competencies` non-vide → maps la `item_competencies` cu `item_type='eval_exercise'`.
+  - Buton: **„Import probleme CSV"** + link „Descarcă template" (același template ca la probleme).
+  - Preview: titlu, dificultate (info-only), nr. test cases, nr. competențe; avertizări pentru câmpurile ignorate (`hint`, `xp_reward`, `is_premium`, `difficulty`).
 
-### 2. `src/components/admin/ProblemsCsvImporter.tsx` (nou)
-- Componentă similară cu `CsvImporter.tsx`, dar:
-  - target table = `problems`
-  - primește `chapterId`, `existingProblemIds`, `existingProblemsCount`, `existingProblems` (pentru export), `onSuccess`
-  - generează ID-uri secvențiale folosind `generateProblemId` (deja exportat din ProblemsEditor — îl mutăm într-un helper sau îl re-exportăm)
-  - mapează `competencies` → `item_competencies` cu `item_type='problem'` (logica copiată din `CsvImporter.tsx`)
-  - butoane: **Import CSV** + **Export** (apare dacă există probleme în capitol)
+### 2. `src/components/admin/EvalBankEditor.tsx` (modificat)
+- În `ExercisesList`, în footer-ul cu butoane (linia 401-406), adăugăm un al doilea buton:
+  ```
+  [+ Exercițiu nou]   [⬆ Import CSV exerciții]   [⬆ Import probleme CSV]
+  ```
+- Importăm și randăm `<EvalProblemsCsvImporter lessonId={lessonId} existingCount={exercises.length} onSuccess={invalidateAll} />`.
 
-### 3. `src/components/admin/ProblemsEditor.tsx`
-- În header-ul fiecărui capitol, lângă butonul "Adaugă problemă", adăugăm `<ProblemsCsvImporter chapterId={ch.id} ... onSuccess={invalidate} />`.
-- Extragere `generateProblemId` / `getChapterPrefix` în `src/components/admin/problemIds.ts` (mic helper, reutilizat în importer).
-- Fără alte schimbări la formular — RichTextEditor cu preview există deja.
-
-### 4. Nimic la backend
-- Tabelul `problems` are deja toate coloanele necesare.
-- RLS permite admin INSERT.
-- `item_competencies` are deja policy admin INSERT.
+### 3. Nimic la backend / schema DB
+- `eval_exercises` are deja toate coloanele necesare (`type`, `question`, `solution`, `test_cases`, `code_template`).
+- RLS: admins pot face ALL pe `eval_exercises`; `item_competencies` admin INSERT permis.
 
 ## UX
 
-În fiecare capitol expandat, linia de butoane devine:
+Pe fiecare lecție extinsă, sub lista de exerciții:
 ```
-[+ Adaugă problemă]   [⬆ Import CSV]   [⬇ Export]
+[ + Exercițiu nou ]   [ Import CSV ]   [ Import probleme CSV ]
 ```
 
-Dialog-ul de import arată:
-- Buton "Alege fișier CSV"
-- Preview cu lista problemelor parse-uite (titlu, dificultate, nr. test cases, competențe)
-- Erori per-rând cu icon roșu
-- Buton final "Importă N probleme"
-- Link "Descarcă template" în footer
-
-## Note tehnice
-
-- Pentru `test_cases` cu newline-uri în input, parser-ul transformă `\n` literal (4 caractere) în newline real.
-- `solution` poate fi multi-linie dacă e încadrat în `"..."` — `splitLogicalLines` deja respectă quotes.
-- Validări: titlu obligatoriu, difficulty în set valid, xp_reward număr valid; altfel rândul primește `error`.
-- Codurile de competențe necunoscute → toast warning (la fel ca la exerciții).
+Dialog import probleme:
+- Buton „Alege fișier CSV" + dropzone
+- Preview: listă probleme parse-uite cu badge `Problemă`, nr. test cases, competențe
+- Note vizibile: „`hint`, `xp_reward`, `difficulty`, `is_premium` nu se importă în banca de teste — folosește pagina de Probleme pentru aceste câmpuri."
+- Buton final „Importă N probleme"
+- Link „Descarcă template" (template comun cu cel de la probleme)
 
 ## Out of scope
 
-- Modificări la editorul rich text (există deja Bold/Italic/Listă/Cod/Culori/Preview).
-- Schimbări de schemă DB.
+- Modificări la formatul CSV de la probleme.
+- Câmpuri specifice problemelor care nu există în `eval_exercises` (păstrate ca warning).
+- Modificări la editorul rich text / preview existent.
