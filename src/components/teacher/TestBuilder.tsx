@@ -61,6 +61,7 @@ const TestBuilder = ({ onBack, editTestId, teacherStatus }: TestBuilderProps) =>
   const [editLoaded, setEditLoaded] = useState(false);
   const [aiGradingItemIds, setAiGradingItemIds] = useState<string[]>([]);
   const [officePoints, setOfficePoints] = useState(10);
+  const [evalItemsCache, setEvalItemsCache] = useState<Record<string, any>>({});
 
   // Browser state
   const [selectedChapterId, setSelectedChapterId] = useState<string>("");
@@ -152,6 +153,10 @@ const TestBuilder = ({ onBack, editTestId, teacherStatus }: TestBuilderProps) =>
     if (item.source_type === "custom" && item.custom_data) {
       return (item.custom_data.question || item.custom_data.statement || "Întrebare custom").substring(0, 60);
     }
+    if (item.source_id && item.source_id.startsWith("eval-") && evalItemsCache[item.source_id]) {
+      const ev = evalItemsCache[item.source_id];
+      return (ev.question || "").substring(0, 60) || item.source_id;
+    }
     if (item.source_type === "exercise" && item.source_id) {
       for (const ch of chapters) {
         const lesson = ch.lessons.find((l) => l.exercises?.some((e) => e.id === item.source_id));
@@ -176,6 +181,9 @@ const TestBuilder = ({ onBack, editTestId, teacherStatus }: TestBuilderProps) =>
 
   // Get exercise details for preview
   const getExerciseDetails = (exerciseId: string) => {
+    if (exerciseId.startsWith("eval-") && evalItemsCache[exerciseId]) {
+      return evalItemsCache[exerciseId];
+    }
     for (const ch of chapters) {
       for (const lesson of ch.lessons) {
         const ex = lesson.exercises?.find((e) => e.id === exerciseId);
@@ -187,6 +195,16 @@ const TestBuilder = ({ onBack, editTestId, teacherStatus }: TestBuilderProps) =>
 
   // Get problem details for preview
   const getProblemDetails = (problemId: string) => {
+    if (problemId.startsWith("eval-") && evalItemsCache[problemId]) {
+      const ev = evalItemsCache[problemId];
+      return {
+        id: ev.id,
+        title: ev.question?.split("\n")[0]?.substring(0, 80) || "Problemă",
+        description: ev.question,
+        difficulty: null,
+        test_cases: ev.test_cases,
+      };
+    }
     return allProblems.find((p) => p.id === problemId) || null;
   };
 
@@ -300,6 +318,25 @@ const TestBuilder = ({ onBack, editTestId, teacherStatus }: TestBuilderProps) =>
     setEditLoaded(true);
   }, [isEditing, existingItems, editLoaded]);
 
+  // Fetch eval_exercises for any item with id prefix `eval-` so previews render
+  useEffect(() => {
+    const missing = items
+      .map((i) => i.source_id)
+      .filter((id): id is string => typeof id === "string" && id.startsWith("eval-") && !evalItemsCache[id]);
+    if (missing.length === 0) return;
+    (async () => {
+      const supa = (await import("@/integrations/supabase/client")).supabase;
+      const { data } = await supa.from("eval_exercises").select("*").in("id", missing);
+      if (data && data.length) {
+        setEvalItemsCache((prev) => {
+          const next = { ...prev };
+          for (const ev of data) next[ev.id] = ev;
+          return next;
+        });
+      }
+    })();
+  }, [items, evalItemsCache]);
+
   const handleSave = async () => {
     if (!title.trim()) { toast.error("Adaugă un titlu."); return; }
     if (items.length === 0) { toast.error("Adaugă cel puțin un item."); return; }
@@ -345,8 +382,9 @@ const TestBuilder = ({ onBack, editTestId, teacherStatus }: TestBuilderProps) =>
     setTitle(template.title);
     if (template.time_limit_minutes) { setTimeLimitEnabled(true); setTimeLimit(template.time_limit_minutes); }
     setVariantMode(template.variant_mode);
+    const supa = (await import("@/integrations/supabase/client")).supabase;
     // Fetch items for this predefined test
-    const { data: predefinedItems } = await (await import("@/integrations/supabase/client")).supabase
+    const { data: predefinedItems } = await supa
       .from("predefined_test_items")
       .select("*")
       .eq("test_id", template.id)
@@ -355,15 +393,32 @@ const TestBuilder = ({ onBack, editTestId, teacherStatus }: TestBuilderProps) =>
       toast.info("Acest test nu are itemi definiți.");
       return;
     }
-    // Convert eval_exercise items to exercise-compatible format
-    const newItems: TestItem[] = predefinedItems.map((pi: any, i: number) => ({
-      variant: pi.variant,
-      sort_order: i,
-      source_type: pi.source_type === "eval_exercise" ? "exercise" : pi.source_type,
-      source_id: pi.source_id,
-      custom_data: pi.custom_data,
-      points: pi.points,
-    }));
+    // Fetch eval_exercises in bulk for items that come from the eval bank
+    const evalIds = predefinedItems
+      .map((pi: any) => pi.source_id)
+      .filter((id: string | null) => typeof id === "string" && id.startsWith("eval-"));
+    let evalMap: Record<string, any> = {};
+    if (evalIds.length > 0) {
+      const { data: evals } = await supa.from("eval_exercises").select("*").in("id", evalIds);
+      for (const ev of (evals ?? [])) evalMap[ev.id] = ev;
+      setEvalItemsCache((prev) => ({ ...prev, ...evalMap }));
+    }
+    // Map predefined items to test_items shape; problems from eval bank become source_type='problem'
+    const newItems: TestItem[] = predefinedItems.map((pi: any, i: number) => {
+      let sourceType = pi.source_type;
+      if (pi.source_type === "eval_exercise") {
+        const ev = evalMap[pi.source_id];
+        sourceType = ev?.type === "problem" ? "problem" : "exercise";
+      }
+      return {
+        variant: pi.variant,
+        sort_order: i,
+        source_type: sourceType,
+        source_id: pi.source_id,
+        custom_data: pi.custom_data,
+        points: pi.points,
+      };
+    });
     setItems(newItems);
     toast.success(`${newItems.length} itemi adăugați din testul predefinit.`);
   };
