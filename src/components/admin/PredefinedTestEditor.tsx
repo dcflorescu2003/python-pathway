@@ -506,7 +506,7 @@ function TestForm({ testId, onBack, mutations }: { testId: string | null; onBack
   // Load existing items
   if (testId && existingItems.length > 0 && !loaded) {
     setItems(existingItems.map(i => ({ variant: i.variant, source_type: i.source_type, source_id: i.source_id, custom_data: i.custom_data, points: i.points })));
-    if (test) { setTitle(test.title); setDescription(test.description); setDifficulty(test.difficulty); setTimeLimitEnabled(!!test.time_limit_minutes); setTimeLimit(test.time_limit_minutes || 45); setVariantMode(test.variant_mode); }
+    if (test) { setTitle(test.title); setDescription(test.description); setDifficulty(test.difficulty); setTimeLimitEnabled(!!test.time_limit_minutes); setTimeLimit(test.time_limit_minutes || 45); setVariantMode(test.variant_mode); setChapterId(test.chapter_id || ""); }
     setLoaded(true);
   }
 
