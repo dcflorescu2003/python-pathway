@@ -10,7 +10,7 @@ const PROD_REWARDED_ANDROID = "ca-app-pub-8441862030200888/4681915410";
 // iOS production unit ID — completează când e creat în AdMob.
 // Cât timp e gol, iOS folosește test ID (reclamele de refill funcționează,
 // doar că sunt test ads, nu generează venit).
-const PROD_REWARDED_IOS = "";
+const PROD_REWARDED_IOS = "ca-app-pub-8441862030200888/2233406545";
 
 const isDev = import.meta.env.DEV;
 
