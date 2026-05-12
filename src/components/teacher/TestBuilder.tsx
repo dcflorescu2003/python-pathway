@@ -53,6 +53,7 @@ const TestBuilder = ({ onBack, editTestId, teacherStatus }: TestBuilderProps) =>
   const { data: predefinedTests = [] } = usePredefinedTests();
   const { data: evalChapters = [] } = useEvalChapters();
   const { data: allEvalExercises = [] } = useAllEvalExercises();
+  const { data: allEvalLessons = [] } = useAllEvalLessons();
   const isEditing = !!editTestId;
 
   const [title, setTitle] = useState("");
