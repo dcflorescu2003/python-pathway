@@ -1,23 +1,37 @@
-# Web: CTA Premium în loc de reclamă AdMob
+# Adăugare iOS Production Rewarded Ad Unit ID
 
-Pe web, `@capacitor-community/admob` nu rulează, așa că mesajul „watch ad" nu are sens. Înlocuim cu un CTA spre Premium. Pe iOS/Android totul rămâne neschimbat.
+## Context
+Mesajul GDPR și IDFA sunt publicate. Tocmai am creat în AdMob unitatea Rewarded pentru iOS cu ID-ul `ca-app-pub-8441862030200888/2233406545`. Codul are deja toată logica de rewarded ads — lipsește doar ID-ul de producție.
 
-## Modificări (doar `src/pages/LessonPage.tsx`)
+## Modificare
 
-1. Import `Capacitor` din `@capacitor/core` și `PremiumDialog`.
-2. Stare nouă: `const [showPremium, setShowPremium] = useState(false)`.
-3. `const isNative = Capacitor.isNativePlatform()`.
-4. **Start gate** (când `noLives && !lessonStarted`):
-   - Native: păstrează textul curent + `WatchAdForLivesButton`.
-   - Web: text „Vieți epuizate. Se reîncarcă automat în 30 de minute. Sau treci pe Premium pentru vieți nelimitate." + buton „Activează Premium" care deschide `PremiumDialog`.
-5. **Failure screen** (`!passed && !canRestart`):
-   - Native: păstrează mesajul curent cu reclamă.
-   - Web: înlocuiește cu același tip de mesaj + buton „Activează Premium".
-6. Adaugă `<PremiumDialog open={showPremium} onOpenChange={setShowPremium} />` în pagină.
+### `src/hooks/useAdMob.ts`
+Înlocuiește:
+```ts
+const PROD_REWARDED_IOS = "";
+```
+cu:
+```ts
+const PROD_REWARDED_IOS = "ca-app-pub-8441862030200888/2233406545";
+```
+
+Atât. Restul logicii din `getAdUnitId()` deja preferă production-ul când există, altfel cade pe test ID.
+
+## Bump versiune (pentru build-ul iOS care va include modificarea)
+
+### `ios/App/App.xcodeproj/project.pbxproj`
+- Incrementează `CURRENT_PROJECT_VERSION` (build number) cu 1, pentru ambele config (Debug + Release).
+- `MARKETING_VERSION` rămâne neschimbată (e doar o modificare internă de config, nu feature nou).
+
+Android nu se atinge — nu e afectat.
 
 ## Ce NU se schimbă
+- Nu se modifică Info.plist (deja are toate cheile).
+- Nu se modifică AdMob App ID (`GADApplicationIdentifier` rămâne `ca-app-pub-8441862030200888~3251970590`).
+- Nu se modifică logica de afișare reclame, limita de 2/zi sau acordarea de vieți.
 
-- Logica vieților (deja corectată în `useProgress`).
-- Comportamentul native (AdMob rewarded continuă să funcționeze).
-- Nu se integrează AdSense pe web (ar necesita setup separat + consent GDPR).
-- Fără buton secundar.
+## Validare post-implementare
+1. `npx cap sync ios` (după git pull pe Mac)
+2. Build iOS în Xcode → instalează pe device real
+3. La prima deschidere: pre-prompt IDFA → prompt nativ ATT
+4. În lecție fără vieți: tap pe „Privește o reclamă" → reclamă rewarded reală (nu mai e test ad) → +5 vieți
