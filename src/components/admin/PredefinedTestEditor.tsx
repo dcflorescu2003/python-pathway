@@ -68,10 +68,34 @@ const PredefinedTestEditor = () => {
     });
   };
 
-  const groupedChapters = [
-    ...chapters.map((ch) => ({ chapter: ch, tests: tests.filter((t) => t.chapter_id === ch.id) })),
-    { chapter: null, tests: tests.filter((t) => !t.chapter_id) },
-  ].filter((g) => g.chapter !== null || g.tests.length > 0);
+  const sortedChapters = [...chapters].sort((a, b) => a.sort_order - b.sort_order);
+  const noChapterTests = tests.filter((t) => !t.chapter_id);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
+
+  const handleChapterReorder = async (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const oldIndex = sortedChapters.findIndex((c) => c.id === active.id);
+    const newIndex = sortedChapters.findIndex((c) => c.id === over.id);
+    if (oldIndex < 0 || newIndex < 0) return;
+    const reordered = arrayMove(sortedChapters, oldIndex, newIndex);
+    try {
+      await Promise.all(
+        reordered.map((ch, i) =>
+          ch.sort_order !== i
+            ? chapterMutations.updateChapter.mutateAsync({ id: ch.id, sort_order: i })
+            : Promise.resolve()
+        )
+      );
+      toast.success("Ordinea capitolelor actualizată!");
+    } catch {
+      toast.error("Eroare la reordonare.");
+    }
+  };
 
   const renderTest = (test: PredefinedTest) => (
     <div key={test.id} className="rounded-xl border border-border bg-card p-4 flex items-center gap-3">
