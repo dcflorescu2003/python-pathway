@@ -940,6 +940,7 @@ export type Database = {
       }
       predefined_tests: {
         Row: {
+          chapter_id: string | null
           created_at: string
           description: string
           difficulty: string
@@ -950,6 +951,7 @@ export type Database = {
           variant_mode: string
         }
         Insert: {
+          chapter_id?: string | null
           created_at?: string
           description?: string
           difficulty?: string
@@ -960,6 +962,7 @@ export type Database = {
           variant_mode?: string
         }
         Update: {
+          chapter_id?: string | null
           created_at?: string
           description?: string
           difficulty?: string
@@ -969,7 +972,15 @@ export type Database = {
           title?: string
           variant_mode?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "predefined_tests_chapter_id_fkey"
+            columns: ["chapter_id"]
+            isOneToOne: false
+            referencedRelation: "test_chapters"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       problem_chapters: {
         Row: {
@@ -1522,6 +1533,27 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      test_chapters: {
+        Row: {
+          icon: string
+          id: string
+          sort_order: number
+          title: string
+        }
+        Insert: {
+          icon?: string
+          id: string
+          sort_order?: number
+          title: string
+        }
+        Update: {
+          icon?: string
+          id?: string
+          sort_order?: number
+          title?: string
+        }
+        Relationships: []
       }
       test_items: {
         Row: {

@@ -10,6 +10,7 @@ export interface PredefinedTest {
   variant_mode: string;
   sort_order: number;
   created_at: string;
+  chapter_id: string | null;
 }
 
 export interface PredefinedTestItem {

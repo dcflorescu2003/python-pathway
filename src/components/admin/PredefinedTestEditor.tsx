@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { usePredefinedTests, usePredefinedTestItems, usePredefinedTestMutations, PredefinedTest } from "@/hooks/usePredefinedTests";
+import { useTestChapters, useTestChapterMutations, TestChapter } from "@/hooks/useTestChapters";
 import { useEvalChapters, useEvalLessons, useAllEvalExercises } from "@/hooks/useEvalBank";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -37,10 +38,15 @@ interface TestItemDraft {
 
 const PredefinedTestEditor = () => {
   const { data: tests = [], isLoading } = usePredefinedTests();
+  const { data: chapters = [] } = useTestChapters();
+  const chapterMutations = useTestChapterMutations();
   const mutations = usePredefinedTestMutations();
   const [editingTest, setEditingTest] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [previewTestId, setPreviewTestId] = useState<string | null>(null);
+  const [editingChapter, setEditingChapter] = useState<TestChapter | null>(null);
+  const [creatingChapter, setCreatingChapter] = useState(false);
+  const [expandedChapters, setExpandedChapters] = useState<Set<string>>(new Set());
 
   if (isLoading) return <p className="text-sm text-muted-foreground p-4">Se încarcă...</p>;
 
@@ -54,30 +60,94 @@ const PredefinedTestEditor = () => {
     );
   }
 
+  const toggleChapter = (id: string) => {
+    setExpandedChapters((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const groupedChapters = [
+    ...chapters.map((ch) => ({ chapter: ch, tests: tests.filter((t) => t.chapter_id === ch.id) })),
+    { chapter: null, tests: tests.filter((t) => !t.chapter_id) },
+  ].filter((g) => g.chapter !== null || g.tests.length > 0);
+
+  const renderTest = (test: PredefinedTest) => (
+    <div key={test.id} className="rounded-xl border border-border bg-card p-4 flex items-center gap-3">
+      <div className="flex-1 min-w-0">
+        <h3 className="font-bold text-foreground text-sm truncate">{test.title}</h3>
+        <p className="text-xs text-muted-foreground">{test.description || "Fără descriere"}</p>
+        <div className="flex gap-2 mt-1">
+          <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary">{test.difficulty}</span>
+          {test.time_limit_minutes && <span className="text-[10px] px-1.5 py-0.5 rounded bg-accent/10 text-accent-foreground">{test.time_limit_minutes} min</span>}
+          <span className="text-[10px] px-1.5 py-0.5 rounded bg-secondary text-secondary-foreground">{test.variant_mode}</span>
+        </div>
+      </div>
+      <Button variant="ghost" size="icon" onClick={() => setPreviewTestId(test.id)} title="Previzualizare"><Eye className="h-4 w-4" /></Button>
+      <Button variant="ghost" size="icon" onClick={() => setEditingTest(test.id)}><Edit2 className="h-4 w-4" /></Button>
+      <AlertDialog>
+        <AlertDialogTrigger asChild><Button variant="ghost" size="icon" className="text-destructive"><Trash2 className="h-4 w-4" /></Button></AlertDialogTrigger>
+        <AlertDialogContent>
+          <AlertDialogHeader><AlertDialogTitle>Șterge testul?</AlertDialogTitle><AlertDialogDescription>Această acțiune este ireversibilă.</AlertDialogDescription></AlertDialogHeader>
+          <AlertDialogFooter><AlertDialogCancel>Anulează</AlertDialogCancel><AlertDialogAction onClick={async () => { await mutations.deleteTest.mutateAsync(test.id); toast.success("Test șters!"); }}>Șterge</AlertDialogAction></AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  );
+
   return (
     <div className="space-y-3">
-      {tests.map(test => (
-        <div key={test.id} className="rounded-xl border border-border bg-card p-4 flex items-center gap-3">
-          <div className="flex-1 min-w-0">
-            <h3 className="font-bold text-foreground text-sm truncate">{test.title}</h3>
-            <p className="text-xs text-muted-foreground">{test.description || "Fără descriere"}</p>
-            <div className="flex gap-2 mt-1">
-              <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary">{test.difficulty}</span>
-              {test.time_limit_minutes && <span className="text-[10px] px-1.5 py-0.5 rounded bg-accent/10 text-accent-foreground">{test.time_limit_minutes} min</span>}
-              <span className="text-[10px] px-1.5 py-0.5 rounded bg-secondary text-secondary-foreground">{test.variant_mode}</span>
+      <Button variant="outline" className="w-full" onClick={() => setCreatingChapter(true)}>
+        <Plus className="h-4 w-4 mr-2" />Capitol nou
+      </Button>
+
+      {groupedChapters.map(({ chapter, tests: chapterTests }) => {
+        const key = chapter?.id ?? "__none__";
+        const isOpen = expandedChapters.has(key);
+        return (
+          <div key={key} className="rounded-xl border border-border bg-card overflow-hidden">
+            <div className="flex items-center gap-2 p-3 bg-secondary/30">
+              <button onClick={() => toggleChapter(key)} className="flex items-center gap-2 flex-1 text-left">
+                {isOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                <span className="text-lg">{chapter?.icon ?? "📭"}</span>
+                <span className="text-sm font-bold text-foreground">{chapter?.title ?? "Fără capitol"}</span>
+                <span className="text-[10px] text-muted-foreground">({chapterTests.length})</span>
+              </button>
+              {chapter && (
+                <>
+                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setEditingChapter(chapter)}><Edit2 className="h-3.5 w-3.5" /></Button>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive"><Trash2 className="h-3.5 w-3.5" /></Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Șterge capitolul?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          {chapterTests.length > 0
+                            ? `Cele ${chapterTests.length} teste din acest capitol vor rămâne fără capitol.`
+                            : "Capitolul e gol. Această acțiune este ireversibilă."}
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Anulează</AlertDialogCancel>
+                        <AlertDialogAction onClick={async () => { await chapterMutations.deleteChapter.mutateAsync(chapter.id); toast.success("Capitol șters!"); }}>Șterge</AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </>
+              )}
             </div>
+            {isOpen && (
+              <div className="p-3 space-y-2">
+                {chapterTests.length === 0 && <p className="text-xs text-muted-foreground italic">Niciun test în acest capitol.</p>}
+                {chapterTests.map(renderTest)}
+              </div>
+            )}
           </div>
-          <Button variant="ghost" size="icon" onClick={() => setPreviewTestId(test.id)} title="Previzualizare"><Eye className="h-4 w-4" /></Button>
-          <Button variant="ghost" size="icon" onClick={() => setEditingTest(test.id)}><Edit2 className="h-4 w-4" /></Button>
-          <AlertDialog>
-            <AlertDialogTrigger asChild><Button variant="ghost" size="icon" className="text-destructive"><Trash2 className="h-4 w-4" /></Button></AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader><AlertDialogTitle>Șterge testul?</AlertDialogTitle><AlertDialogDescription>Această acțiune este ireversibilă.</AlertDialogDescription></AlertDialogHeader>
-              <AlertDialogFooter><AlertDialogCancel>Anulează</AlertDialogCancel><AlertDialogAction onClick={async () => { await mutations.deleteTest.mutateAsync(test.id); toast.success("Test șters!"); }}>Șterge</AlertDialogAction></AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-        </div>
-      ))}
+        );
+      })}
 
       <Button variant="outline" className="w-full" onClick={() => setCreating(true)}>
         <Plus className="h-4 w-4 mr-2" />Test predefinit nou
@@ -90,9 +160,71 @@ const PredefinedTestEditor = () => {
           onClose={() => setPreviewTestId(null)}
         />
       )}
+
+      {(creatingChapter || editingChapter) && (
+        <ChapterDialog
+          chapter={editingChapter}
+          existingIds={chapters.map((c) => c.id)}
+          onClose={() => { setCreatingChapter(false); setEditingChapter(null); }}
+          mutations={chapterMutations}
+        />
+      )}
     </div>
   );
 };
+
+function ChapterDialog({ chapter, existingIds, onClose, mutations }: {
+  chapter: TestChapter | null;
+  existingIds: string[];
+  onClose: () => void;
+  mutations: ReturnType<typeof useTestChapterMutations>;
+}) {
+  const [id, setId] = useState(chapter?.id ?? "");
+  const [title, setTitle] = useState(chapter?.title ?? "");
+  const [icon, setIcon] = useState(chapter?.icon ?? "📘");
+  const [sortOrder, setSortOrder] = useState(chapter?.sort_order ?? 0);
+  const isEdit = !!chapter;
+
+  const handleSave = async () => {
+    if (!title.trim()) { toast.error("Titlul e obligatoriu."); return; }
+    if (!isEdit) {
+      const slug = id.trim() || title.trim().toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
+      if (!slug) { toast.error("ID invalid."); return; }
+      if (existingIds.includes(slug)) { toast.error("ID deja folosit."); return; }
+      await mutations.createChapter.mutateAsync({ id: slug, title: title.trim(), icon: icon || "📘", sort_order: sortOrder });
+      toast.success("Capitol creat!");
+    } else {
+      await mutations.updateChapter.mutateAsync({ id: chapter!.id, title: title.trim(), icon: icon || "📘", sort_order: sortOrder });
+      toast.success("Capitol actualizat!");
+    }
+    onClose();
+  };
+
+  return (
+    <Dialog open onOpenChange={() => onClose()}>
+      <DialogContent className="max-w-sm">
+        <DialogHeader><DialogTitle>{isEdit ? "Editează capitol" : "Capitol nou"}</DialogTitle></DialogHeader>
+        <div className="space-y-3">
+          {!isEdit && (
+            <div>
+              <Label className="text-xs text-foreground">ID (slug, lăsat gol → din titlu)</Label>
+              <Input value={id} onChange={(e) => setId(e.target.value)} placeholder="ex: bacalaureat" />
+            </div>
+          )}
+          <div><Label className="text-xs text-foreground">Titlu</Label><Input value={title} onChange={(e) => setTitle(e.target.value)} /></div>
+          <div className="grid grid-cols-2 gap-3">
+            <div><Label className="text-xs text-foreground">Icon</Label><Input value={icon} onChange={(e) => setIcon(e.target.value)} /></div>
+            <div><Label className="text-xs text-foreground">Ordine</Label><Input type="number" value={sortOrder} onChange={(e) => setSortOrder(Number(e.target.value))} /></div>
+          </div>
+          <div className="flex gap-2 justify-end">
+            <Button variant="outline" onClick={onClose}>Anulează</Button>
+            <Button onClick={handleSave}><Save className="h-4 w-4 mr-2" />Salvează</Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
 
 // --- Test Preview Dialog (student view) ---
 function TestPreviewDialog({ testId, tests, onClose }: { testId: string; tests: PredefinedTest[]; onClose: () => void }) {
@@ -364,6 +496,8 @@ function TestForm({ testId, onBack, mutations }: { testId: string | null; onBack
   const [timeLimitEnabled, setTimeLimitEnabled] = useState(!!test?.time_limit_minutes);
   const [timeLimit, setTimeLimit] = useState(test?.time_limit_minutes || 45);
   const [variantMode, setVariantMode] = useState(test?.variant_mode || "shuffle");
+  const [chapterId, setChapterId] = useState<string>(test?.chapter_id || "");
+  const { data: testChapters = [] } = useTestChapters();
   const [items, setItems] = useState<TestItemDraft[]>(
     existingItems.map(i => ({ variant: i.variant, source_type: i.source_type, source_id: i.source_id, custom_data: i.custom_data, points: i.points }))
   );
@@ -372,7 +506,7 @@ function TestForm({ testId, onBack, mutations }: { testId: string | null; onBack
   // Load existing items
   if (testId && existingItems.length > 0 && !loaded) {
     setItems(existingItems.map(i => ({ variant: i.variant, source_type: i.source_type, source_id: i.source_id, custom_data: i.custom_data, points: i.points })));
-    if (test) { setTitle(test.title); setDescription(test.description); setDifficulty(test.difficulty); setTimeLimitEnabled(!!test.time_limit_minutes); setTimeLimit(test.time_limit_minutes || 45); setVariantMode(test.variant_mode); }
+    if (test) { setTitle(test.title); setDescription(test.description); setDifficulty(test.difficulty); setTimeLimitEnabled(!!test.time_limit_minutes); setTimeLimit(test.time_limit_minutes || 45); setVariantMode(test.variant_mode); setChapterId(test.chapter_id || ""); }
     setLoaded(true);
   }
 
@@ -420,12 +554,14 @@ function TestForm({ testId, onBack, mutations }: { testId: string | null; onBack
         const created = await mutations.createTest.mutateAsync({
           title: title.trim(), description: description.trim(), difficulty,
           time_limit_minutes: timeLimitEnabled ? timeLimit : null, variant_mode: variantMode,
+          chapter_id: chapterId || null,
         });
         id = created.id;
       } else {
         await mutations.updateTest.mutateAsync({
           id, title: title.trim(), description: description.trim(), difficulty,
           time_limit_minutes: timeLimitEnabled ? timeLimit : null, variant_mode: variantMode,
+          chapter_id: chapterId || null,
         });
       }
       await mutations.saveItems.mutateAsync({
@@ -452,6 +588,18 @@ function TestForm({ testId, onBack, mutations }: { testId: string | null; onBack
       <div className="rounded-xl border border-border bg-card p-4 space-y-3">
         <div><Label className="text-xs text-foreground">Titlu</Label><Input value={title} onChange={e => setTitle(e.target.value)} /></div>
         <div><Label className="text-xs text-foreground">Descriere</Label><Textarea value={description} onChange={e => setDescription(e.target.value)} rows={2} /></div>
+        <div>
+          <Label className="text-xs text-foreground">Capitol</Label>
+          <Select value={chapterId || "__none__"} onValueChange={(v) => setChapterId(v === "__none__" ? "" : v)}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__none__">— Fără capitol —</SelectItem>
+              {testChapters.map((ch) => (
+                <SelectItem key={ch.id} value={ch.id}>{ch.icon} {ch.title}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
         <div className="grid grid-cols-3 gap-3">
           <div>
             <Label className="text-xs text-foreground">Dificultate</Label>

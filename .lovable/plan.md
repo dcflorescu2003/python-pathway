@@ -1,54 +1,62 @@
-## Restructurare tab-uri TestBuilder
+## Capitole pentru testele predefinite
 
-Reorganizez bara de surse din `src/components/teacher/TestBuilder.tsx` într-o structură cu 3 tab-uri principale, fiecare cu sub-tab-uri unde e cazul. Toată logica de adăugare item, preview, limite AI, etc. rămâne neschimbată — doar layout-ul tab-urilor se modifică.
+Adaug suport pentru gruparea testelor predefinite pe capitole, similar cu exercițiile (`eval_chapters`) și problemele (`problem_chapters`).
 
-### Structura nouă
+### 1. Bază de date (migrație)
 
-```
-[ Banca testare ] [ Publice ] [ Custom ]
-       │              │            │
-       │              │            └── editor întrebări custom (cel actual)
-       │              │
-       │              ├── Exerciții (din lecțiile publice — actualul tab "Exerciții")
-       │              └── Probleme  (din capitolele publice — actualul tab "Probleme")
-       │
-       ├── Teste     (testele predefinite — actualul tab "Predefinite")
-       ├── Exerciții (toate exercițiile din eval bank, filtrate pe capitol)
-       └── Probleme  (toate exercițiile cu type="problem" din eval bank, filtrate pe capitol)
+**Tabel nou `test_chapters**`
+
+```text
+id text PK | title text | icon text default '📘' | sort_order int default 0
 ```
 
-### Comportament pentru "Banca testare"
+- RLS: `SELECT` pentru `authenticated`; `ALL` pentru admin (același pattern ca `eval_chapters`).
 
-- Sub-tab **Teste**: identic cu actualul "Predefinite" (lista `predefinedTests` cu butonul Duplică). Disponibil doar pentru profesori verificați (păstrăm gating-ul actual `teacherStatus === "verified"`); pentru ceilalți afișăm un mesaj scurt că e necesară verificarea.
-- Sub-tab **Exerciții**: select cu capitolele din `eval_chapters`. La selecție, se afișează *toate* exercițiile din toate lecțiile capitolului ales unde `type !== "problem"` (quiz, truefalse, fill, order, match, open_answer). Preview cu același `renderExercisePreview`. Adăugare prin `addItem("exercise", ev.id)` (același flux ca azi pentru itemii `eval-*`).
-- Sub-tab **Probleme**: select cu capitolele din `eval_chapters`. Listă cu exercițiile din capitol unde `type === "problem"`. Adăugare prin `addItem("problem", ev.id)`. Preview cu `renderProblemPreview` (cache-ul `evalItemsCache` deja gestionează asta).
+**Modificare `predefined_tests**`
 
-### Comportament pentru "Publice"
+- Adaug coloana `chapter_id text` (nullable inițial pentru migrare lină).
+- Seed: insert capitol `recapitulare` cu titlu „Recapitulare" și update `predefined_tests.chapter_id = 'recapitulare'` pentru toate testele existente.
 
-- Sub-tab **Exerciții**: identic cu actualul "Exerciții" (select pe `chapters` din `useChapters`, lecții collapsible, exerciții din `lesson.exercises`).
-- Sub-tab **Probleme**: identic cu actualul "Probleme" (select pe `problemChapters`, listă `filteredProblems`).
+### 2. Admin
 
-### Comportament pentru "Custom"
+`**PredefinedTestEditor.tsx**`
 
-Identic cu actualul tab "Custom" — editor de întrebări custom.
+- Lista testelor devine grupată pe capitol (collapsible per capitol, cu titlu + icon + count), aceeași abordare ca `ProblemsEditor`.
+- Buton „Capitol nou" + edit/delete inline pe fiecare capitol (dialog simplu cu titlu + icon + sort_order).
+- Reordonare capitole + teste cu @dnd-kit (existent în fișier).
+- În `TestForm`: select obligatoriu „Capitol" lângă titlu/dificultate. Se salvează în `chapter_id`.
 
-### Detalii tehnice
+### 3. Hook nou
 
-**Fișiere modificate**
-- `src/components/teacher/TestBuilder.tsx` — singura modificare. Înlocuiesc blocul `<Tabs>` curent (liniile ~684-cap fișier pentru selectorul de surse) cu `<Tabs>` exterior (3 valori: `bank` / `public` / `custom`) și `<Tabs>` interioare pentru sub-tab-uri.
+`**useTestChapters.ts**` — hook similar cu `useEvalChapters`:
 
-**Date necesare**
-- Adaug hook-ul `useEvalChapters` și `useAllEvalExercises` din `src/hooks/useEvalBank.ts` (deja existente). Le folosesc pentru a popula select-urile de capitol și pentru a derive listele de exerciții/probleme filtrate.
-- Populez `evalItemsCache` cu rezultatele lui `useAllEvalExercises` la load, ca preview-urile să funcționeze imediat fără round-trip suplimentar.
+- `useTestChapters()` → listă capitole sortate
+- `useTestChapterMutations()` → create / update / delete
 
-**State nou**
-- `selectedBankExerciseChapterId: string` și `selectedBankProblemChapterId: string` pentru cele două select-uri din "Banca testare". Independente de `selectedChapterId` / `selectedProblemChapterId` (care rămân pentru "Publice").
-- Tab-ul activ exterior default-ează la `"bank"` pentru profesori verificați, altfel `"public"`.
+`usePredefinedTests` rămâne la fel; consumatorii filtrează pe `chapter_id` în memorie.
 
-**Ce nu se schimbă**
-- `addItem`, `removeItem`, gating-ul AI (`MAX_AI_ITEMS_PER_TEST`), preview-urile, salvarea, variantele, întreaga logică de business.
-- `TestManager`, `TeacherTestsTab`, hook-urile, schema DB.
+### 4. UI profesor — `TestBuilder.tsx`
 
-### Întrebare deschisă (răspunde dacă vrei altceva)
+În subtab-ul „Banca testare" → „Teste":
 
-Pentru profesorii **neverificați**, în "Banca testare" → "Teste" am afișat doar mesajul de gating (cum e azi). Vrei să le ascund complet sub-tabul "Teste" pentru ei, sau să-l las vizibil cu mesajul? Implicit îl las vizibil cu mesaj, ca să vadă că există feature-ul.
+- Adaug `<Select>` „Capitol" deasupra listei, populat din `useTestChapters`.
+- Filtrez `predefinedTests` după `selectedTestChapterId`. Default: primul capitol (sau toate, dacă nu există capitol).
+- State nou: `selectedBankTestChapterId`.
+
+Restul logicii (gating verificat, duplicare test, preview) rămâne neschimbat.
+
+### Fișiere atinse
+
+- migrație SQL nouă (tabel + coloană + seed Recapitulare + assign teste existente)
+- `src/hooks/useTestChapters.ts` (nou)
+- `src/integrations/supabase/types.ts` — regenerat automat după migrare
+- `src/components/admin/PredefinedTestEditor.tsx`
+- `src/components/teacher/TestBuilder.tsx`
+
+### Întrebări
+
+1. Pentru icon-ul implicit pe capitole de teste vrei ceva specific (📝 / 🧪 / 📊) sau e ok 📘 ca la probleme?
+2. Capitolul devine **obligatoriu** la crearea unui test nou, sau permit „Fără capitol" (afișat ca grup separat)? Implicit aleg **obligatoriu** după migrare.  
+  
+1) Ca la probleme  
+2) Permitem Fără categorie
