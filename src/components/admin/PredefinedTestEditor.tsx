@@ -241,16 +241,18 @@ function SortableChapterGroup({ chapter, chapterTests, isOpen, onToggle, onEdit,
   );
 }
 
-function ChapterDialog({ chapter, existingIds, onClose, mutations }: {
+function ChapterDialog({ chapter, existingIds, nextSortOrder, onClose, mutations }: {
   chapter: TestChapter | null;
   existingIds: string[];
+  nextSortOrder: number;
   onClose: () => void;
   mutations: ReturnType<typeof useTestChapterMutations>;
 }) {
   const [id, setId] = useState(chapter?.id ?? "");
   const [title, setTitle] = useState(chapter?.title ?? "");
   const [icon, setIcon] = useState(chapter?.icon ?? "📘");
-  const [sortOrder, setSortOrder] = useState(chapter?.sort_order ?? 0);
+  const [sortOrder, setSortOrder] = useState(chapter?.sort_order ?? nextSortOrder);
+  const isEdit = !!chapter;
   const isEdit = !!chapter;
 
   const handleSave = async () => {
