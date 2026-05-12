@@ -588,6 +588,18 @@ function TestForm({ testId, onBack, mutations }: { testId: string | null; onBack
       <div className="rounded-xl border border-border bg-card p-4 space-y-3">
         <div><Label className="text-xs text-foreground">Titlu</Label><Input value={title} onChange={e => setTitle(e.target.value)} /></div>
         <div><Label className="text-xs text-foreground">Descriere</Label><Textarea value={description} onChange={e => setDescription(e.target.value)} rows={2} /></div>
+        <div>
+          <Label className="text-xs text-foreground">Capitol</Label>
+          <Select value={chapterId || "__none__"} onValueChange={(v) => setChapterId(v === "__none__" ? "" : v)}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__none__">— Fără capitol —</SelectItem>
+              {testChapters.map((ch) => (
+                <SelectItem key={ch.id} value={ch.id}>{ch.icon} {ch.title}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
         <div className="grid grid-cols-3 gap-3">
           <div>
             <Label className="text-xs text-foreground">Dificultate</Label>
