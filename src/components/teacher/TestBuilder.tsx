@@ -566,6 +566,20 @@ const TestBuilder = ({ onBack, editTestId, teacherStatus }: TestBuilderProps) =>
   const selectedChapter = chapters.find((c) => c.id === selectedChapterId);
   const filteredProblems = allProblems.filter((p) => p.chapter === selectedProblemChapterId);
 
+  // Bank filtering: lessons in chosen eval chapter → exercises split by type
+  const bankExLessonIds = new Set(
+    allEvalLessons.filter((l) => l.chapter_id === selectedBankExChapterId).map((l) => l.id)
+  );
+  const bankProbLessonIds = new Set(
+    allEvalLessons.filter((l) => l.chapter_id === selectedBankProbChapterId).map((l) => l.id)
+  );
+  const bankExercises = selectedBankExChapterId
+    ? allEvalExercises.filter((e) => bankExLessonIds.has(e.lesson_id) && e.type !== "problem")
+    : [];
+  const bankProblems = selectedBankProbChapterId
+    ? allEvalExercises.filter((e) => bankProbLessonIds.has(e.lesson_id) && e.type === "problem")
+    : [];
+
   // Independent variant order state
   const [variantOrderA, setVariantOrderA] = useState<number[]>([]);
   const [variantOrderB, setVariantOrderB] = useState<number[]>([]);
