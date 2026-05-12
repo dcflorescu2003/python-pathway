@@ -554,12 +554,14 @@ function TestForm({ testId, onBack, mutations }: { testId: string | null; onBack
         const created = await mutations.createTest.mutateAsync({
           title: title.trim(), description: description.trim(), difficulty,
           time_limit_minutes: timeLimitEnabled ? timeLimit : null, variant_mode: variantMode,
+          chapter_id: chapterId || null,
         });
         id = created.id;
       } else {
         await mutations.updateTest.mutateAsync({
           id, title: title.trim(), description: description.trim(), difficulty,
           time_limit_minutes: timeLimitEnabled ? timeLimit : null, variant_mode: variantMode,
+          chapter_id: chapterId || null,
         });
       }
       await mutations.saveItems.mutateAsync({
