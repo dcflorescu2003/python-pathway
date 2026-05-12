@@ -13,7 +13,7 @@ import { useProblems } from "@/hooks/useProblems";
 import { useCreateTest, useUpdateTest, useTestItems, useTeacherTests, TestItem } from "@/hooks/useTests";
 import { useSubscription } from "@/hooks/useSubscription";
 import { usePredefinedTests, usePredefinedTestItems } from "@/hooks/usePredefinedTests";
-import { useEvalChapters, useAllEvalExercises } from "@/hooks/useEvalBank";
+import { useEvalChapters, useAllEvalExercises, useAllEvalLessons } from "@/hooks/useEvalBank";
 import { ArrowLeft, Plus, Trash2, BookOpen, Code, GripVertical, PenLine, FileCheck, Copy, ChevronDown, ChevronRight, Eye, AlertTriangle, Sparkles, Library, Globe } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
