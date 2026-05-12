@@ -93,6 +93,20 @@ export function useAllEvalExercises() {
   });
 }
 
+export function useAllEvalLessons() {
+  return useQuery({
+    queryKey: ["eval-lessons-all"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("eval_lessons")
+        .select("*")
+        .order("sort_order");
+      if (error) throw error;
+      return data as EvalLesson[];
+    },
+  });
+}
+
 export function useEvalBankMutations() {
   const qc = useQueryClient();
 
