@@ -13,7 +13,8 @@ import { useProblems } from "@/hooks/useProblems";
 import { useCreateTest, useUpdateTest, useTestItems, useTeacherTests, TestItem } from "@/hooks/useTests";
 import { useSubscription } from "@/hooks/useSubscription";
 import { usePredefinedTests, usePredefinedTestItems } from "@/hooks/usePredefinedTests";
-import { ArrowLeft, Plus, Trash2, BookOpen, Code, GripVertical, PenLine, FileCheck, Copy, ChevronDown, ChevronRight, Eye, AlertTriangle, Sparkles } from "lucide-react";
+import { useEvalChapters, useAllEvalExercises } from "@/hooks/useEvalBank";
+import { ArrowLeft, Plus, Trash2, BookOpen, Code, GripVertical, PenLine, FileCheck, Copy, ChevronDown, ChevronRight, Eye, AlertTriangle, Sparkles, Library, Globe } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { getTeacherTestLimit, TEACHER_TIER_LABEL } from "@/lib/teacherLimits";
@@ -50,6 +51,8 @@ const TestBuilder = ({ onBack, editTestId, teacherStatus }: TestBuilderProps) =>
   const { data: allTests = [] } = useTeacherTests();
   const { isTeacherPremium } = useSubscription();
   const { data: predefinedTests = [] } = usePredefinedTests();
+  const { data: evalChapters = [] } = useEvalChapters();
+  const { data: allEvalExercises = [] } = useAllEvalExercises();
   const isEditing = !!editTestId;
 
   const [title, setTitle] = useState("");
