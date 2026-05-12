@@ -756,25 +756,46 @@ const TestBuilder = ({ onBack, editTestId, teacherStatus }: TestBuilderProps) =>
               ) : (
                 <>
                   <p className="text-xs text-muted-foreground">Duplică un test predefinit în testul tău. Poți personaliza itemii, punctajele și timpul după duplicare.</p>
-                  {predefinedTests.length === 0 && <p className="text-xs text-muted-foreground italic">Nu există teste predefinite încă.</p>}
-                  {predefinedTests.map((tmpl) => (
-                    <div key={tmpl.id} className="w-full p-3 rounded-lg border border-border hover:border-primary/50 transition-colors">
-                      <div className="flex items-center gap-2">
-                        <Copy className="h-4 w-4 text-primary shrink-0" />
-                        <div className="min-w-0 flex-1">
-                          <p className="text-sm font-medium text-foreground">{tmpl.title}</p>
-                          <p className="text-[10px] text-muted-foreground">{tmpl.description}</p>
-                          <div className="flex gap-1 mt-1">
-                            <span className="text-[9px] px-1 py-0.5 rounded bg-primary/10 text-primary">{tmpl.difficulty}</span>
-                            {tmpl.time_limit_minutes && <span className="text-[9px] px-1 py-0.5 rounded bg-accent/10 text-accent-foreground">{tmpl.time_limit_minutes} min</span>}
+                  <Select value={selectedBankTestChapterId} onValueChange={setSelectedBankTestChapterId}>
+                    <SelectTrigger className="h-8 text-xs">
+                      <SelectValue placeholder="Filtrează pe capitol" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Toate capitolele</SelectItem>
+                      {testChapters.map((ch) => (
+                        <SelectItem key={ch.id} value={ch.id}>{ch.icon} {ch.title}</SelectItem>
+                      ))}
+                      <SelectItem value="__none__">Fără capitol</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  {(() => {
+                    const filtered = predefinedTests.filter((t: any) => {
+                      if (selectedBankTestChapterId === "all") return true;
+                      if (selectedBankTestChapterId === "__none__") return !t.chapter_id;
+                      return t.chapter_id === selectedBankTestChapterId;
+                    });
+                    if (filtered.length === 0) {
+                      return <p className="text-xs text-muted-foreground italic">Nu există teste predefinite în acest capitol.</p>;
+                    }
+                    return filtered.map((tmpl) => (
+                      <div key={tmpl.id} className="w-full p-3 rounded-lg border border-border hover:border-primary/50 transition-colors">
+                        <div className="flex items-center gap-2">
+                          <Copy className="h-4 w-4 text-primary shrink-0" />
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-medium text-foreground">{tmpl.title}</p>
+                            <p className="text-[10px] text-muted-foreground">{tmpl.description}</p>
+                            <div className="flex gap-1 mt-1">
+                              <span className="text-[9px] px-1 py-0.5 rounded bg-primary/10 text-primary">{tmpl.difficulty}</span>
+                              {tmpl.time_limit_minutes && <span className="text-[9px] px-1 py-0.5 rounded bg-accent/10 text-accent-foreground">{tmpl.time_limit_minutes} min</span>}
+                            </div>
                           </div>
+                          <Button size="sm" variant="outline" className="text-xs gap-1 shrink-0" onClick={() => applyPredefinedTemplate(tmpl)}>
+                            <Copy className="h-3 w-3" /> Duplică
+                          </Button>
                         </div>
-                        <Button size="sm" variant="outline" className="text-xs gap-1 shrink-0" onClick={() => applyPredefinedTemplate(tmpl)}>
-                          <Copy className="h-3 w-3" /> Duplică
-                        </Button>
                       </div>
-                    </div>
-                  ))}
+                    ));
+                  })()}
                 </>
               )}
             </TabsContent>
