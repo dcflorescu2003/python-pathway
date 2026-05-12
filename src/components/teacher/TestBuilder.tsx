@@ -384,6 +384,16 @@ const TestBuilder = ({ onBack, editTestId, teacherStatus }: TestBuilderProps) =>
     })();
   }, [items, evalItemsCache]);
 
+  // Hydrate eval cache with all bank exercises so previews render instantly
+  useEffect(() => {
+    if (allEvalExercises.length === 0) return;
+    setEvalItemsCache((prev) => {
+      const next = { ...prev };
+      for (const ev of allEvalExercises) if (!next[ev.id]) next[ev.id] = ev;
+      return next;
+    });
+  }, [allEvalExercises]);
+
   const handleSave = async () => {
     if (!title.trim()) { toast.error("Adaugă un titlu."); return; }
     if (items.length === 0) { toast.error("Adaugă cel puțin un item."); return; }
