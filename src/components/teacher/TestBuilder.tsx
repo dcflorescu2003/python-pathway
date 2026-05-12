@@ -70,6 +70,8 @@ const TestBuilder = ({ onBack, editTestId, teacherStatus }: TestBuilderProps) =>
   // Browser state
   const [selectedChapterId, setSelectedChapterId] = useState<string>("");
   const [selectedProblemChapterId, setSelectedProblemChapterId] = useState<string>("");
+  const [selectedBankExChapterId, setSelectedBankExChapterId] = useState<string>("");
+  const [selectedBankProbChapterId, setSelectedBankProbChapterId] = useState<string>("");
   const [expandedLessons, setExpandedLessons] = useState<Set<string>>(new Set());
   const [previewItemId, setPreviewItemId] = useState<string | null>(null);
   const [previewVariantKey, setPreviewVariantKey] = useState<string | null>(null);
