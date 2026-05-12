@@ -68,10 +68,34 @@ const PredefinedTestEditor = () => {
     });
   };
 
-  const groupedChapters = [
-    ...chapters.map((ch) => ({ chapter: ch, tests: tests.filter((t) => t.chapter_id === ch.id) })),
-    { chapter: null, tests: tests.filter((t) => !t.chapter_id) },
-  ].filter((g) => g.chapter !== null || g.tests.length > 0);
+  const sortedChapters = [...chapters].sort((a, b) => a.sort_order - b.sort_order);
+  const noChapterTests = tests.filter((t) => !t.chapter_id);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
+
+  const handleChapterReorder = async (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const oldIndex = sortedChapters.findIndex((c) => c.id === active.id);
+    const newIndex = sortedChapters.findIndex((c) => c.id === over.id);
+    if (oldIndex < 0 || newIndex < 0) return;
+    const reordered = arrayMove(sortedChapters, oldIndex, newIndex);
+    try {
+      await Promise.all(
+        reordered.map((ch, i) =>
+          ch.sort_order !== i
+            ? chapterMutations.updateChapter.mutateAsync({ id: ch.id, sort_order: i })
+            : Promise.resolve()
+        )
+      );
+      toast.success("Ordinea capitolelor actualizată!");
+    } catch {
+      toast.error("Eroare la reordonare.");
+    }
+  };
 
   const renderTest = (test: PredefinedTest) => (
     <div key={test.id} className="rounded-xl border border-border bg-card p-4 flex items-center gap-3">
@@ -102,52 +126,41 @@ const PredefinedTestEditor = () => {
         <Plus className="h-4 w-4 mr-2" />Capitol nou
       </Button>
 
-      {groupedChapters.map(({ chapter, tests: chapterTests }) => {
-        const key = chapter?.id ?? "__none__";
-        const isOpen = expandedChapters.has(key);
-        return (
-          <div key={key} className="rounded-xl border border-border bg-card overflow-hidden">
-            <div className="flex items-center gap-2 p-3 bg-secondary/30">
-              <button onClick={() => toggleChapter(key)} className="flex items-center gap-2 flex-1 text-left">
-                {isOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-                <span className="text-lg">{chapter?.icon ?? "📭"}</span>
-                <span className="text-sm font-bold text-foreground">{chapter?.title ?? "Fără capitol"}</span>
-                <span className="text-[10px] text-muted-foreground">({chapterTests.length})</span>
-              </button>
-              {chapter && (
-                <>
-                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setEditingChapter(chapter)}><Edit2 className="h-3.5 w-3.5" /></Button>
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive"><Trash2 className="h-3.5 w-3.5" /></Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>Șterge capitolul?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          {chapterTests.length > 0
-                            ? `Cele ${chapterTests.length} teste din acest capitol vor rămâne fără capitol.`
-                            : "Capitolul e gol. Această acțiune este ireversibilă."}
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Anulează</AlertDialogCancel>
-                        <AlertDialogAction onClick={async () => { await chapterMutations.deleteChapter.mutateAsync(chapter.id); toast.success("Capitol șters!"); }}>Șterge</AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
-                </>
-              )}
-            </div>
-            {isOpen && (
-              <div className="p-3 space-y-2">
-                {chapterTests.length === 0 && <p className="text-xs text-muted-foreground italic">Niciun test în acest capitol.</p>}
-                {chapterTests.map(renderTest)}
-              </div>
-            )}
+      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleChapterReorder}>
+        <SortableContext items={sortedChapters.map((c) => c.id)} strategy={verticalListSortingStrategy}>
+          {sortedChapters.map((chapter) => {
+            const chapterTests = tests.filter((t) => t.chapter_id === chapter.id);
+            return (
+              <SortableChapterGroup
+                key={chapter.id}
+                chapter={chapter}
+                chapterTests={chapterTests}
+                isOpen={expandedChapters.has(chapter.id)}
+                onToggle={() => toggleChapter(chapter.id)}
+                onEdit={() => setEditingChapter(chapter)}
+                onDelete={async () => { await chapterMutations.deleteChapter.mutateAsync(chapter.id); toast.success("Capitol șters!"); }}
+                renderTest={renderTest}
+              />
+            );
+          })}
+        </SortableContext>
+      </DndContext>
+
+      {noChapterTests.length > 0 && (
+        <div className="rounded-xl border border-border bg-card overflow-hidden">
+          <div className="flex items-center gap-2 p-3 bg-secondary/30">
+            <button onClick={() => toggleChapter("__none__")} className="flex items-center gap-2 flex-1 text-left">
+              {expandedChapters.has("__none__") ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+              <span className="text-lg">📭</span>
+              <span className="text-sm font-bold text-foreground">Fără capitol</span>
+              <span className="text-[10px] text-muted-foreground">({noChapterTests.length})</span>
+            </button>
           </div>
-        );
-      })}
+          {expandedChapters.has("__none__") && (
+            <div className="p-3 space-y-2">{noChapterTests.map(renderTest)}</div>
+          )}
+        </div>
+      )}
 
       <Button variant="outline" className="w-full" onClick={() => setCreating(true)}>
         <Plus className="h-4 w-4 mr-2" />Test predefinit nou
@@ -165,6 +178,7 @@ const PredefinedTestEditor = () => {
         <ChapterDialog
           chapter={editingChapter}
           existingIds={chapters.map((c) => c.id)}
+          nextSortOrder={chapters.length}
           onClose={() => { setCreatingChapter(false); setEditingChapter(null); }}
           mutations={chapterMutations}
         />
@@ -173,16 +187,71 @@ const PredefinedTestEditor = () => {
   );
 };
 
-function ChapterDialog({ chapter, existingIds, onClose, mutations }: {
+function SortableChapterGroup({ chapter, chapterTests, isOpen, onToggle, onEdit, onDelete, renderTest }: {
+  chapter: TestChapter;
+  chapterTests: PredefinedTest[];
+  isOpen: boolean;
+  onToggle: () => void;
+  onEdit: () => void;
+  onDelete: () => void;
+  renderTest: (t: PredefinedTest) => JSX.Element;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: chapter.id });
+  const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.5 : 1, zIndex: isDragging ? 50 : "auto" as any };
+  return (
+    <div ref={setNodeRef} style={style} className="rounded-xl border border-border bg-card overflow-hidden">
+      <div className="flex items-center gap-2 p-3 bg-secondary/30">
+        <div className="cursor-grab active:cursor-grabbing" {...attributes} {...listeners}>
+          <GripVertical className="h-4 w-4 text-muted-foreground/60" />
+        </div>
+        <button onClick={onToggle} className="flex items-center gap-2 flex-1 text-left">
+          {isOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+          <span className="text-lg">{chapter.icon}</span>
+          <span className="text-sm font-bold text-foreground">{chapter.title}</span>
+          <span className="text-[10px] text-muted-foreground">({chapterTests.length})</span>
+        </button>
+        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onEdit}><Edit2 className="h-3.5 w-3.5" /></Button>
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive"><Trash2 className="h-3.5 w-3.5" /></Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Șterge capitolul?</AlertDialogTitle>
+              <AlertDialogDescription>
+                {chapterTests.length > 0
+                  ? `Cele ${chapterTests.length} teste din acest capitol vor rămâne fără capitol.`
+                  : "Capitolul e gol. Această acțiune este ireversibilă."}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Anulează</AlertDialogCancel>
+              <AlertDialogAction onClick={onDelete}>Șterge</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </div>
+      {isOpen && (
+        <div className="p-3 space-y-2">
+          {chapterTests.length === 0 && <p className="text-xs text-muted-foreground italic">Niciun test în acest capitol.</p>}
+          {chapterTests.map(renderTest)}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ChapterDialog({ chapter, existingIds, nextSortOrder, onClose, mutations }: {
   chapter: TestChapter | null;
   existingIds: string[];
+  nextSortOrder: number;
   onClose: () => void;
   mutations: ReturnType<typeof useTestChapterMutations>;
 }) {
   const [id, setId] = useState(chapter?.id ?? "");
   const [title, setTitle] = useState(chapter?.title ?? "");
   const [icon, setIcon] = useState(chapter?.icon ?? "📘");
-  const [sortOrder, setSortOrder] = useState(chapter?.sort_order ?? 0);
+  const [sortOrder, setSortOrder] = useState(chapter?.sort_order ?? nextSortOrder);
   const isEdit = !!chapter;
 
   const handleSave = async () => {
