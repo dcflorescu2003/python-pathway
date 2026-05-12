@@ -253,7 +253,6 @@ function ChapterDialog({ chapter, existingIds, nextSortOrder, onClose, mutations
   const [icon, setIcon] = useState(chapter?.icon ?? "📘");
   const [sortOrder, setSortOrder] = useState(chapter?.sort_order ?? nextSortOrder);
   const isEdit = !!chapter;
-  const isEdit = !!chapter;
 
   const handleSave = async () => {
     if (!title.trim()) { toast.error("Titlul e obligatoriu."); return; }
