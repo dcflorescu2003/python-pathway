@@ -13,7 +13,7 @@ import { useProblems } from "@/hooks/useProblems";
 import { useCreateTest, useUpdateTest, useTestItems, useTeacherTests, TestItem } from "@/hooks/useTests";
 import { useSubscription } from "@/hooks/useSubscription";
 import { usePredefinedTests, usePredefinedTestItems } from "@/hooks/usePredefinedTests";
-import { useEvalChapters, useAllEvalExercises } from "@/hooks/useEvalBank";
+import { useEvalChapters, useAllEvalExercises, useAllEvalLessons } from "@/hooks/useEvalBank";
 import { ArrowLeft, Plus, Trash2, BookOpen, Code, GripVertical, PenLine, FileCheck, Copy, ChevronDown, ChevronRight, Eye, AlertTriangle, Sparkles, Library, Globe } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
@@ -53,6 +53,7 @@ const TestBuilder = ({ onBack, editTestId, teacherStatus }: TestBuilderProps) =>
   const { data: predefinedTests = [] } = usePredefinedTests();
   const { data: evalChapters = [] } = useEvalChapters();
   const { data: allEvalExercises = [] } = useAllEvalExercises();
+  const { data: allEvalLessons = [] } = useAllEvalLessons();
   const isEditing = !!editTestId;
 
   const [title, setTitle] = useState("");
@@ -70,6 +71,8 @@ const TestBuilder = ({ onBack, editTestId, teacherStatus }: TestBuilderProps) =>
   // Browser state
   const [selectedChapterId, setSelectedChapterId] = useState<string>("");
   const [selectedProblemChapterId, setSelectedProblemChapterId] = useState<string>("");
+  const [selectedBankExChapterId, setSelectedBankExChapterId] = useState<string>("");
+  const [selectedBankProbChapterId, setSelectedBankProbChapterId] = useState<string>("");
   const [expandedLessons, setExpandedLessons] = useState<Set<string>>(new Set());
   const [previewItemId, setPreviewItemId] = useState<string | null>(null);
   const [previewVariantKey, setPreviewVariantKey] = useState<string | null>(null);
@@ -381,6 +384,16 @@ const TestBuilder = ({ onBack, editTestId, teacherStatus }: TestBuilderProps) =>
     })();
   }, [items, evalItemsCache]);
 
+  // Hydrate eval cache with all bank exercises so previews render instantly
+  useEffect(() => {
+    if (allEvalExercises.length === 0) return;
+    setEvalItemsCache((prev) => {
+      const next = { ...prev };
+      for (const ev of allEvalExercises) if (!next[ev.id]) next[ev.id] = ev;
+      return next;
+    });
+  }, [allEvalExercises]);
+
   const handleSave = async () => {
     if (!title.trim()) { toast.error("Adaugă un titlu."); return; }
     if (items.length === 0) { toast.error("Adaugă cel puțin un item."); return; }
@@ -553,6 +566,20 @@ const TestBuilder = ({ onBack, editTestId, teacherStatus }: TestBuilderProps) =>
   const selectedChapter = chapters.find((c) => c.id === selectedChapterId);
   const filteredProblems = allProblems.filter((p) => p.chapter === selectedProblemChapterId);
 
+  // Bank filtering: lessons in chosen eval chapter → exercises split by type
+  const bankExLessonIds = new Set(
+    allEvalLessons.filter((l) => l.chapter_id === selectedBankExChapterId).map((l) => l.id)
+  );
+  const bankProbLessonIds = new Set(
+    allEvalLessons.filter((l) => l.chapter_id === selectedBankProbChapterId).map((l) => l.id)
+  );
+  const bankExercises = selectedBankExChapterId
+    ? allEvalExercises.filter((e) => bankExLessonIds.has(e.lesson_id) && e.type !== "problem")
+    : [];
+  const bankProblems = selectedBankProbChapterId
+    ? allEvalExercises.filter((e) => bankProbLessonIds.has(e.lesson_id) && e.type === "problem")
+    : [];
+
   // Independent variant order state
   const [variantOrderA, setVariantOrderA] = useState<number[]>([]);
   const [variantOrderB, setVariantOrderB] = useState<number[]>([]);
@@ -684,139 +711,242 @@ const TestBuilder = ({ onBack, editTestId, teacherStatus }: TestBuilderProps) =>
         </CardContent>
       </Card>
 
-      {/* Item source tabs */}
-      <Tabs defaultValue={teacherStatus === "verified" ? "templates" : "exercises"} className="w-full">
+      {/* Item source — outer tabs */}
+      <Tabs defaultValue="bank" className="w-full">
         <TabsList className="w-full">
-          {teacherStatus === "verified" && (
-            <TabsTrigger value="templates" className="flex-1 text-xs gap-1">
-              <FileCheck className="h-3 w-3" /> Predefinite
-            </TabsTrigger>
-          )}
-          <TabsTrigger value="exercises" className="flex-1 text-xs gap-1">
-            <BookOpen className="h-3 w-3" /> Exerciții
+          <TabsTrigger value="bank" className="flex-1 text-xs gap-1">
+            <Library className="h-3 w-3" /> Banca testare
           </TabsTrigger>
-          <TabsTrigger value="problems" className="flex-1 text-xs gap-1">
-            <Code className="h-3 w-3" /> Probleme
+          <TabsTrigger value="public" className="flex-1 text-xs gap-1">
+            <Globe className="h-3 w-3" /> Publice
           </TabsTrigger>
           <TabsTrigger value="custom" className="flex-1 text-xs gap-1">
             <PenLine className="h-3 w-3" /> Custom
           </TabsTrigger>
         </TabsList>
 
-        {/* Templates tab - only for verified teachers */}
-        <TabsContent value="templates" className="space-y-2 mt-2">
-          <p className="text-xs text-muted-foreground">Duplică un test predefinit în testul tău. Poți personaliza itemii, punctajele și timpul după duplicare.</p>
-          {predefinedTests.length === 0 && <p className="text-xs text-muted-foreground italic">Nu există teste predefinite încă.</p>}
-          {predefinedTests.map((tmpl) => (
-            <div
-              key={tmpl.id}
-              className="w-full p-3 rounded-lg border border-border hover:border-primary/50 transition-colors"
-            >
-              <div className="flex items-center gap-2">
-                <Copy className="h-4 w-4 text-primary shrink-0" />
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium text-foreground">{tmpl.title}</p>
-                  <p className="text-[10px] text-muted-foreground">{tmpl.description}</p>
-                  <div className="flex gap-1 mt-1">
-                    <span className="text-[9px] px-1 py-0.5 rounded bg-primary/10 text-primary">{tmpl.difficulty}</span>
-                    {tmpl.time_limit_minutes && <span className="text-[9px] px-1 py-0.5 rounded bg-accent/10 text-accent-foreground">{tmpl.time_limit_minutes} min</span>}
-                  </div>
-                </div>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="text-xs gap-1 shrink-0"
-                  onClick={() => applyPredefinedTemplate(tmpl)}
-                >
-                  <Copy className="h-3 w-3" /> Duplică
-                </Button>
-              </div>
-            </div>
-          ))}
-        </TabsContent>
+        {/* ============ TAB 1: Banca testare ============ */}
+        <TabsContent value="bank" className="mt-2">
+          <Tabs defaultValue={teacherStatus === "verified" ? "bank-tests" : "bank-exercises"} className="w-full">
+            <TabsList className="w-full">
+              <TabsTrigger value="bank-tests" className="flex-1 text-xs gap-1">
+                <FileCheck className="h-3 w-3" /> Teste
+              </TabsTrigger>
+              <TabsTrigger value="bank-exercises" className="flex-1 text-xs gap-1">
+                <BookOpen className="h-3 w-3" /> Exerciții
+              </TabsTrigger>
+              <TabsTrigger value="bank-problems" className="flex-1 text-xs gap-1">
+                <Code className="h-3 w-3" /> Probleme
+              </TabsTrigger>
+            </TabsList>
 
-        {/* Exercises tab - collapsible by lesson */}
-        <TabsContent value="exercises" className="space-y-2 mt-2">
-          <Select value={selectedChapterId} onValueChange={setSelectedChapterId}>
-            <SelectTrigger className="h-8 text-xs">
-              <SelectValue placeholder="Alege capitol" />
-            </SelectTrigger>
-            <SelectContent>
-              {chapters.map((ch) => (
-                <SelectItem key={ch.id} value={ch.id}>{ch.title}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          {selectedChapter?.lessons.map((lesson) => (
-            <Collapsible key={lesson.id} open={expandedLessons.has(lesson.id)} onOpenChange={() => toggleLesson(lesson.id)}>
-              <CollapsibleTrigger className="w-full flex items-center gap-2 px-2 py-2 rounded-lg hover:bg-muted/50 transition-colors">
-                {expandedLessons.has(lesson.id)
-                  ? <ChevronDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                  : <ChevronRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                }
-                <span className="text-xs font-medium text-foreground text-left flex-1">{lesson.title}</span>
-                <span className="text-[10px] text-muted-foreground">{lesson.exercises?.length || 0} ex.</span>
-              </CollapsibleTrigger>
-              <CollapsibleContent className="pl-4 space-y-1 mt-1">
-                {lesson.exercises?.map((ex) => (
-                  <div key={ex.id}>
-                    <div className="flex items-center gap-1">
-                      <button
-                        onClick={() => addItem("exercise", ex.id)}
-                        className="flex-1 text-left px-2 py-1.5 rounded-md text-xs text-foreground hover:bg-muted/80 transition-colors flex items-center gap-2 min-w-0"
-                      >
-                        <Plus className="h-3 w-3 text-primary shrink-0" />
-                        <span className="truncate">{ex.question?.substring(0, 80)}</span>
-                        <span className="text-[10px] text-muted-foreground shrink-0 ml-auto">{ex.type}</span>
-                      </button>
-                      <button
-                        onClick={() => setPreviewItemId(previewItemId === ex.id ? null : ex.id)}
-                        className="p-1 text-muted-foreground hover:text-primary shrink-0"
-                      >
-                        <Eye className="h-3.5 w-3.5" />
-                      </button>
+            {/* Bank → Teste (predefined) */}
+            <TabsContent value="bank-tests" className="space-y-2 mt-2">
+              {teacherStatus !== "verified" ? (
+                <Card className="border-primary/30 bg-primary/5">
+                  <CardContent className="p-3">
+                    <p className="text-xs text-muted-foreground">
+                      🔒 Testele predefinite sunt disponibile după verificarea contului de profesor.
+                    </p>
+                  </CardContent>
+                </Card>
+              ) : (
+                <>
+                  <p className="text-xs text-muted-foreground">Duplică un test predefinit în testul tău. Poți personaliza itemii, punctajele și timpul după duplicare.</p>
+                  {predefinedTests.length === 0 && <p className="text-xs text-muted-foreground italic">Nu există teste predefinite încă.</p>}
+                  {predefinedTests.map((tmpl) => (
+                    <div key={tmpl.id} className="w-full p-3 rounded-lg border border-border hover:border-primary/50 transition-colors">
+                      <div className="flex items-center gap-2">
+                        <Copy className="h-4 w-4 text-primary shrink-0" />
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-medium text-foreground">{tmpl.title}</p>
+                          <p className="text-[10px] text-muted-foreground">{tmpl.description}</p>
+                          <div className="flex gap-1 mt-1">
+                            <span className="text-[9px] px-1 py-0.5 rounded bg-primary/10 text-primary">{tmpl.difficulty}</span>
+                            {tmpl.time_limit_minutes && <span className="text-[9px] px-1 py-0.5 rounded bg-accent/10 text-accent-foreground">{tmpl.time_limit_minutes} min</span>}
+                          </div>
+                        </div>
+                        <Button size="sm" variant="outline" className="text-xs gap-1 shrink-0" onClick={() => applyPredefinedTemplate(tmpl)}>
+                          <Copy className="h-3 w-3" /> Duplică
+                        </Button>
+                      </div>
                     </div>
-                    {previewItemId === ex.id && renderExercisePreview(ex)}
+                  ))}
+                </>
+              )}
+            </TabsContent>
+
+            {/* Bank → Exerciții (filtered by eval chapter) */}
+            <TabsContent value="bank-exercises" className="space-y-2 mt-2">
+              <Select value={selectedBankExChapterId} onValueChange={setSelectedBankExChapterId}>
+                <SelectTrigger className="h-8 text-xs">
+                  <SelectValue placeholder="Alege capitol din banca de testare" />
+                </SelectTrigger>
+                <SelectContent>
+                  {evalChapters.map((ch) => (
+                    <SelectItem key={ch.id} value={ch.id}>{ch.icon} {ch.title}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {!selectedBankExChapterId && <p className="text-[11px] text-muted-foreground italic">Alege un capitol pentru a vedea exercițiile.</p>}
+              {selectedBankExChapterId && bankExercises.length === 0 && <p className="text-[11px] text-muted-foreground italic">Niciun exercițiu în acest capitol.</p>}
+              {bankExercises.map((ex) => (
+                <div key={ex.id}>
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => addItem("exercise", ex.id)}
+                      className="flex-1 text-left px-2 py-1.5 rounded-md text-xs text-foreground hover:bg-muted/80 transition-colors flex items-center gap-2 min-w-0"
+                    >
+                      <Plus className="h-3 w-3 text-primary shrink-0" />
+                      <span className="truncate">{ex.question?.substring(0, 80) || ex.id}</span>
+                      <span className="text-[10px] text-muted-foreground shrink-0 ml-auto">{ex.type}</span>
+                    </button>
+                    <button
+                      onClick={() => setPreviewItemId(previewItemId === ex.id ? null : ex.id)}
+                      className="p-1 text-muted-foreground hover:text-primary shrink-0"
+                    >
+                      <Eye className="h-3.5 w-3.5" />
+                    </button>
                   </div>
-                ))}
-              </CollapsibleContent>
-            </Collapsible>
-          ))}
+                  {previewItemId === ex.id && renderExercisePreview(ex)}
+                </div>
+              ))}
+            </TabsContent>
+
+            {/* Bank → Probleme (eval items with type=problem) */}
+            <TabsContent value="bank-problems" className="space-y-2 mt-2">
+              <Select value={selectedBankProbChapterId} onValueChange={setSelectedBankProbChapterId}>
+                <SelectTrigger className="h-8 text-xs">
+                  <SelectValue placeholder="Alege capitol din banca de testare" />
+                </SelectTrigger>
+                <SelectContent>
+                  {evalChapters.map((ch) => (
+                    <SelectItem key={ch.id} value={ch.id}>{ch.icon} {ch.title}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {!selectedBankProbChapterId && <p className="text-[11px] text-muted-foreground italic">Alege un capitol pentru a vedea problemele.</p>}
+              {selectedBankProbChapterId && bankProblems.length === 0 && <p className="text-[11px] text-muted-foreground italic">Nicio problemă în acest capitol.</p>}
+              {bankProblems.map((prob) => (
+                <div key={prob.id}>
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => addItem("problem", prob.id)}
+                      className="flex-1 text-left px-2 py-1.5 rounded-md text-xs text-foreground hover:bg-muted/80 transition-colors flex items-center gap-2 min-w-0"
+                    >
+                      <Plus className="h-3 w-3 text-primary shrink-0" />
+                      <span className="truncate">{prob.question?.split("\n")[0]?.substring(0, 80) || prob.id}</span>
+                    </button>
+                    <button
+                      onClick={() => setPreviewItemId(previewItemId === prob.id ? null : prob.id)}
+                      className="p-1 text-muted-foreground hover:text-primary shrink-0"
+                    >
+                      <Eye className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                  {previewItemId === prob.id && renderProblemPreview(getProblemDetails(prob.id))}
+                </div>
+              ))}
+            </TabsContent>
+          </Tabs>
         </TabsContent>
 
-        {/* Problems tab */}
-        <TabsContent value="problems" className="space-y-2 mt-2">
-          <Select value={selectedProblemChapterId} onValueChange={setSelectedProblemChapterId}>
-            <SelectTrigger className="h-8 text-xs">
-              <SelectValue placeholder="Alege capitol" />
-            </SelectTrigger>
-            <SelectContent>
-              {problemChapters.map((ch) => (
-                <SelectItem key={ch.id} value={ch.id}>{ch.title}</SelectItem>
+        {/* ============ TAB 2: Publice ============ */}
+        <TabsContent value="public" className="mt-2">
+          <Tabs defaultValue="public-exercises" className="w-full">
+            <TabsList className="w-full">
+              <TabsTrigger value="public-exercises" className="flex-1 text-xs gap-1">
+                <BookOpen className="h-3 w-3" /> Exerciții
+              </TabsTrigger>
+              <TabsTrigger value="public-problems" className="flex-1 text-xs gap-1">
+                <Code className="h-3 w-3" /> Probleme
+              </TabsTrigger>
+            </TabsList>
+
+            {/* Public → Exerciții (collapsible by lesson) */}
+            <TabsContent value="public-exercises" className="space-y-2 mt-2">
+              <Select value={selectedChapterId} onValueChange={setSelectedChapterId}>
+                <SelectTrigger className="h-8 text-xs">
+                  <SelectValue placeholder="Alege capitol" />
+                </SelectTrigger>
+                <SelectContent>
+                  {chapters.map((ch) => (
+                    <SelectItem key={ch.id} value={ch.id}>{ch.title}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {selectedChapter?.lessons.map((lesson) => (
+                <Collapsible key={lesson.id} open={expandedLessons.has(lesson.id)} onOpenChange={() => toggleLesson(lesson.id)}>
+                  <CollapsibleTrigger className="w-full flex items-center gap-2 px-2 py-2 rounded-lg hover:bg-muted/50 transition-colors">
+                    {expandedLessons.has(lesson.id)
+                      ? <ChevronDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                      : <ChevronRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                    }
+                    <span className="text-xs font-medium text-foreground text-left flex-1">{lesson.title}</span>
+                    <span className="text-[10px] text-muted-foreground">{lesson.exercises?.length || 0} ex.</span>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="pl-4 space-y-1 mt-1">
+                    {lesson.exercises?.map((ex) => (
+                      <div key={ex.id}>
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={() => addItem("exercise", ex.id)}
+                            className="flex-1 text-left px-2 py-1.5 rounded-md text-xs text-foreground hover:bg-muted/80 transition-colors flex items-center gap-2 min-w-0"
+                          >
+                            <Plus className="h-3 w-3 text-primary shrink-0" />
+                            <span className="truncate">{ex.question?.substring(0, 80)}</span>
+                            <span className="text-[10px] text-muted-foreground shrink-0 ml-auto">{ex.type}</span>
+                          </button>
+                          <button
+                            onClick={() => setPreviewItemId(previewItemId === ex.id ? null : ex.id)}
+                            className="p-1 text-muted-foreground hover:text-primary shrink-0"
+                          >
+                            <Eye className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                        {previewItemId === ex.id && renderExercisePreview(ex)}
+                      </div>
+                    ))}
+                  </CollapsibleContent>
+                </Collapsible>
               ))}
-            </SelectContent>
-          </Select>
-          {filteredProblems.map((prob) => (
-            <div key={prob.id}>
-              <div className="flex items-center gap-1">
-                <button
-                  onClick={() => addItem("problem", prob.id)}
-                  className="flex-1 text-left px-2 py-1.5 rounded-md text-xs text-foreground hover:bg-muted/80 transition-colors flex items-center gap-2 min-w-0"
-                >
-                  <Plus className="h-3 w-3 text-primary shrink-0" />
-                  <span className="truncate">{prob.title}</span>
-                  <span className="text-[10px] text-muted-foreground shrink-0 ml-auto">{prob.difficulty}</span>
-                </button>
-                <button
-                  onClick={() => setPreviewItemId(previewItemId === prob.id ? null : prob.id)}
-                  className="p-1 text-muted-foreground hover:text-primary shrink-0"
-                >
-                  <Eye className="h-3.5 w-3.5" />
-                </button>
-              </div>
-              {previewItemId === prob.id && renderProblemPreview(prob)}
-            </div>
-          ))}
+            </TabsContent>
+
+            {/* Public → Probleme */}
+            <TabsContent value="public-problems" className="space-y-2 mt-2">
+              <Select value={selectedProblemChapterId} onValueChange={setSelectedProblemChapterId}>
+                <SelectTrigger className="h-8 text-xs">
+                  <SelectValue placeholder="Alege capitol" />
+                </SelectTrigger>
+                <SelectContent>
+                  {problemChapters.map((ch) => (
+                    <SelectItem key={ch.id} value={ch.id}>{ch.title}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {filteredProblems.map((prob) => (
+                <div key={prob.id}>
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => addItem("problem", prob.id)}
+                      className="flex-1 text-left px-2 py-1.5 rounded-md text-xs text-foreground hover:bg-muted/80 transition-colors flex items-center gap-2 min-w-0"
+                    >
+                      <Plus className="h-3 w-3 text-primary shrink-0" />
+                      <span className="truncate">{prob.title}</span>
+                      <span className="text-[10px] text-muted-foreground shrink-0 ml-auto">{prob.difficulty}</span>
+                    </button>
+                    <button
+                      onClick={() => setPreviewItemId(previewItemId === prob.id ? null : prob.id)}
+                      className="p-1 text-muted-foreground hover:text-primary shrink-0"
+                    >
+                      <Eye className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                  {previewItemId === prob.id && renderProblemPreview(prob)}
+                </div>
+              ))}
+            </TabsContent>
+          </Tabs>
         </TabsContent>
 
         {/* Custom questions tab */}
