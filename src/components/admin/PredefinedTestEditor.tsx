@@ -496,6 +496,8 @@ function TestForm({ testId, onBack, mutations }: { testId: string | null; onBack
   const [timeLimitEnabled, setTimeLimitEnabled] = useState(!!test?.time_limit_minutes);
   const [timeLimit, setTimeLimit] = useState(test?.time_limit_minutes || 45);
   const [variantMode, setVariantMode] = useState(test?.variant_mode || "shuffle");
+  const [chapterId, setChapterId] = useState<string>(test?.chapter_id || "");
+  const { data: testChapters = [] } = useTestChapters();
   const [items, setItems] = useState<TestItemDraft[]>(
     existingItems.map(i => ({ variant: i.variant, source_type: i.source_type, source_id: i.source_id, custom_data: i.custom_data, points: i.points }))
   );
