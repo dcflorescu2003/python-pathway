@@ -333,8 +333,17 @@ export function parseLessonCSV(text: string): { meta: ParsedLessonMeta | null; e
   return { meta, exercises, errors };
 }
 
-export function exerciseToDbRow(ex: ParsedExercise, lessonId: string, sortOrder: number, idPrefix: string = "") {
-  const id = `${idPrefix}e-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+export function exerciseToDbRow(ex: ParsedExercise, lessonId: string, sortOrder: number, idPrefix: string = "", batchIndex: number = 0) {
+  // ID garantat unic: timestamp + index în batch + sufix random robust.
+  // Date.now() singur nu ajunge — toate rândurile dintr-un .map() sincron au același timestamp.
+  // Math.random().toString(36) poate avea < 4 caractere (zerouri tăiate) → coliziuni.
+  let randomSuffix: string;
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    randomSuffix = crypto.randomUUID().slice(0, 8);
+  } else {
+    randomSuffix = Math.random().toString(36).slice(2).padStart(8, "0").slice(-8);
+  }
+  const id = `${idPrefix}e-${Date.now()}-${batchIndex}-${randomSuffix}`;
   return {
     id, lesson_id: lessonId, type: ex.type, question: ex.question,
     options: ex.options ? JSON.parse(JSON.stringify(ex.options)) : null,
