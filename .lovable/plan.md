@@ -1,34 +1,28 @@
-## Problema
+## Plan
 
-La import CSV cu 15 exerciții, doar 13 ajung în lecție. Cauza: în `src/components/admin/csvParser.ts` (funcția `exerciseToDbRow`), ID-ul este generat așa:
+Voi corecta problema din admin unde importul CSV confirmă 15 exerciții salvate, dar lista lecției afișează doar 13.
 
-```ts
-const id = `${idPrefix}e-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
-```
+### Ce voi schimba
 
-Toate cele 15 rânduri sunt procesate sincron în același tick → `Date.now()` identic. Unicitatea depinde de 4 caractere random, iar `Math.random().toString(36)` poate produce mai puțin de 4 caractere (zerouri tăiate la final). Două ID-uri identice → Postgres respinge rândurile, restul ajung în DB.
+1. **Fix pentru bucla de render din `CsvLessonImporter`**
+   - `competencyAggregate` este recalculat ca array nou la fiecare render și declanșează `useEffect` continuu.
+   - Voi stabiliza dependențele ca să dispară warning-ul `Maximum update depth exceeded`.
 
-## Soluție
+2. **Fix pentru afișarea incompletă după import**
+   - Cererea de insert salvează toate cele 15 rânduri, dar refetch-ul imediat + starea de expand/collapsible poate afișa o listă incompletă sau stale.
+   - Voi ajusta `useChapters` să grupeze și să sorteze exercițiile explicit per lecție, nu doar să se bazeze pe ordinea globală din query.
+   - După import, voi face invalidare/refetch mai robustă pentru query-ul `chapters`, astfel încât lecția să afișeze toate exercițiile salvate.
 
-Generez ID-uri garantat unice folosind:
-- `idPrefix` + `e-` + `Date.now()` + indexul în batch + sufix random robust (`crypto.randomUUID().slice(0, 8)` cu fallback la `Math.random` zero-padded la 6 caractere).
+3. **Mesaj de succes bazat pe rândurile confirmate**
+   - Pentru importul de exerciții într-o lecție, voi cere backend-ului să returneze rândurile inserate (`select`) și voi afișa numărul confirmat, nu doar numărul din preview.
+   - Dacă există diferență între preview și salvare, utilizatorul va primi mesaj clar.
 
-### Modificări
+### Fișiere vizate
 
-**`src/components/admin/csvParser.ts`** — `exerciseToDbRow`:
-- Adaug parametru opțional `index?: number` care contribuie la ID.
-- Înlocuiesc sufixul fragil cu `crypto.randomUUID()` (suportat în toate browserele moderne) cu fallback la `Math.random().toString(36).padStart(8, "0").slice(-6)`.
-- ID nou: `${idPrefix}e-${Date.now()}-${index}-${randomSuffix}` — combinație garantat unică între rânduri din același batch și între batch-uri.
+- `src/components/admin/CsvImporter.tsx`
+- `src/components/admin/CsvLessonImporter.tsx`
+- `src/hooks/useChapters.ts`
 
-**`src/components/admin/CsvImporter.tsx`**:
-- Pasez indexul `i` la `exerciseToDbRow(ex, lessonId, existingCount + i, prefix, i)`.
+### Rezultat așteptat
 
-**Verificare**: Caut alți consumatori ai `exerciseToDbRow` (probabil `CsvLessonImporter.tsx`) și pasez și acolo indexul.
-
-### De ce nu doar lungesc sufixul random
-
-Indexul în batch elimină complet posibilitatea de coliziune între rândurile aceluiași import (cazul real raportat). Sufixul random previne coliziuni între importuri rapide succesive sau cu ID-uri existente.
-
-## Out of scope
-
-Nu modific schema DB, nu migrez ID-urile existente, nu schimb comportamentul vizual al importerului.
+După import, dacă preview-ul spune 15 importabile, lecția va afișa 15 exerciții, fără warning-ul de `Maximum update depth exceeded`.

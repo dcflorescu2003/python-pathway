@@ -45,9 +45,18 @@ export default function CsvLessonImporter({ mode, chapterId, existingLessonCount
   };
 
   const allowedTypes = mode === "content" ? CONTENT_TYPES : EVAL_TYPES;
-  const validExercises = parsed.filter(ex => !ex.error);
-  const importableExercises = validExercises.filter(ex => allowedTypes.includes(ex.type));
-  const skippedExercises = validExercises.filter(ex => !allowedTypes.includes(ex.type));
+  // Memoize derived arrays from `parsed` so downstream useMemo/useEffect dependencies are stable.
+  // Without memoization, .filter() returns a new array reference on every render and triggers
+  // an infinite render loop in the microcompetency-fetch effect below.
+  const validExercises = useMemo(() => parsed.filter(ex => !ex.error), [parsed]);
+  const importableExercises = useMemo(
+    () => validExercises.filter(ex => allowedTypes.includes(ex.type)),
+    [validExercises, allowedTypes],
+  );
+  const skippedExercises = useMemo(
+    () => validExercises.filter(ex => !allowedTypes.includes(ex.type)),
+    [validExercises, allowedTypes],
+  );
   const totalCompetencyTags = importableExercises.reduce((acc, ex) => acc + (ex.competencies?.length || 0), 0);
 
   // Aggregate competency codes for preview
@@ -62,10 +71,16 @@ export default function CsvLessonImporter({ mode, chapterId, existingLessonCount
     return Array.from(counts.entries()).sort((a, b) => b[1] - a[1]);
   }, [importableExercises]);
 
+  // Stable key derived from codes — avoids depending on the array reference itself.
+  const competencyKey = useMemo(
+    () => competencyAggregate.map(([c]) => c).join(","),
+    [competencyAggregate],
+  );
+
   // Fetch microcompetency titles for preview tooltips & "unknown" marking
   const [microInfo, setMicroInfo] = useState<Map<string, { title: string; id: string }>>(new Map());
   useEffect(() => {
-    const codes = competencyAggregate.map(([c]) => c);
+    const codes = competencyKey ? competencyKey.split(",") : [];
     if (codes.length === 0) { setMicroInfo(new Map()); return; }
     let cancelled = false;
     (async () => {
@@ -79,7 +94,7 @@ export default function CsvLessonImporter({ mode, chapterId, existingLessonCount
       setMicroInfo(m);
     })();
     return () => { cancelled = true; };
-  }, [competencyAggregate]);
+  }, [competencyKey]);
 
   const unknownCodesPreview = competencyAggregate.filter(([c]) => !microInfo.has(c)).map(([c]) => c);
 
@@ -122,9 +137,11 @@ export default function CsvLessonImporter({ mode, chapterId, existingLessonCount
         return dbRow;
       });
 
+      let insertedCount = cleaned.length;
       if (cleaned.length > 0) {
-        const { error } = await supabase.from(table).insert(cleaned as any);
+        const { data: insertedRows, error } = await supabase.from(table).insert(cleaned as any).select("id");
         if (error) throw error;
+        insertedCount = insertedRows?.length ?? cleaned.length;
       }
 
       // ===== Map competency codes → microcompetency UUIDs and insert item_competencies =====
@@ -174,7 +191,10 @@ export default function CsvLessonImporter({ mode, chapterId, existingLessonCount
 
       const distinctCodes = new Set(rows.flatMap(r => r.competencies.map(c => c.toUpperCase())));
       const knownDistinct = distinctCodes.size - unknownCodes.size;
-      let successMsg = `Lecție "${meta.title}" creată cu ${importableExercises.length} exerciții`;
+      let successMsg = `Lecție "${meta.title}" creată cu ${insertedCount} exerciții`;
+      if (insertedCount !== importableExercises.length) {
+        successMsg += ` (din ${importableExercises.length} preview — ${importableExercises.length - insertedCount} respinse)`;
+      }
       if (mappingsCreated > 0) {
         successMsg += ` și ${mappingsCreated} mapări către ${knownDistinct} microcompetențe`;
       }

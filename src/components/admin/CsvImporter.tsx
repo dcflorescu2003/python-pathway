@@ -70,8 +70,9 @@ export default function CsvImporter({ targetTable, lessonId, existingCount, exis
         return r;
       });
 
-      const { error } = await supabase.from(targetTable).insert(cleaned as any);
+      const { data: insertedRows, error } = await supabase.from(targetTable).insert(cleaned as any).select("id");
       if (error) throw error;
+      const insertedCount = insertedRows?.length ?? cleaned.length;
 
       // ===== Map competency codes → microcompetency UUIDs =====
       let mappingsCreated = 0;
@@ -127,7 +128,10 @@ export default function CsvImporter({ targetTable, lessonId, existingCount, exis
       }
 
       const knownDistinct = allCodes.length - unknownCodes.size;
-      let msg = `${importableExercises.length} exerciții importate`;
+      let msg = `${insertedCount} exerciții importate`;
+      if (insertedCount !== importableExercises.length) {
+        msg += ` (din ${importableExercises.length} preview — ${importableExercises.length - insertedCount} respinse de DB)`;
+      }
       if (mappingsCreated > 0) msg += ` · ${mappingsCreated} mapări către ${knownDistinct} microcompetențe`;
       if (unknownCodes.size > 0) msg += ` · ${unknownCodes.size} coduri ignorate`;
       toast.success(msg + "!");
