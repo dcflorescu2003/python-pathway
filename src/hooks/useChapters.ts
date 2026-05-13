@@ -132,17 +132,28 @@ async function fetchChapters(): Promise<Chapter[]> {
     throw lessonsError;
   }
 
-  const { data: exercisesData, error: exercisesError } = await supabase
-    .from("exercises")
-    .select("*")
-    .order("sort_order");
+  // Paginated fetch — Supabase caps single requests at 1000 rows by default,
+  // so admin lessons with high sort_order would silently lose exercises.
+  const exercisesData: any[] = [];
+  const PAGE_SIZE = 1000;
+  for (let from = 0; ; from += PAGE_SIZE) {
+    const { data: page, error: exercisesError } = await supabase
+      .from("exercises")
+      .select("*")
+      .order("sort_order")
+      .order("id")
+      .range(from, from + PAGE_SIZE - 1);
 
-  if (exercisesError) {
-    if (isNativePlatform) {
-      console.error("Failed to load exercises from Supabase, using local fallback:", exercisesError);
-      return getNativeFallbackChapters();
+    if (exercisesError) {
+      if (isNativePlatform) {
+        console.error("Failed to load exercises from Supabase, using local fallback:", exercisesError);
+        return getNativeFallbackChapters();
+      }
+      throw exercisesError;
     }
-    throw exercisesError;
+    if (!page || page.length === 0) break;
+    exercisesData.push(...page);
+    if (page.length < PAGE_SIZE) break;
   }
 
   if (!chaptersData?.length || !lessonsData?.length) {
