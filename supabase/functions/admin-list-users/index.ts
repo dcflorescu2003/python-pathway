@@ -56,7 +56,7 @@ Deno.serve(async (req) => {
     // Fetch profiles with optional name search
     let pq = admin
       .from("profiles")
-      .select("user_id, display_name, first_name, last_name, nickname, is_premium, is_teacher, teacher_status", { count: "exact" });
+      .select("user_id, display_name, first_name, last_name, nickname, is_premium, is_teacher, teacher_status, created_at", { count: "exact" });
 
     if (filter === "premium") pq = pq.eq("is_premium", true);
     if (filter === "free") pq = pq.eq("is_premium", false);
@@ -98,17 +98,17 @@ Deno.serve(async (req) => {
       const s = `%${search}%`;
       const { data, error, count } = await admin
         .from("profiles")
-        .select("user_id, display_name, first_name, last_name, nickname, is_premium, is_teacher, teacher_status", { count: "exact" })
+        .select("user_id, display_name, first_name, last_name, nickname, is_premium, is_teacher, teacher_status, created_at", { count: "exact" })
         .or(
           `user_id.in.(${emailMatchedIds.join(",")}),display_name.ilike.${s},first_name.ilike.${s},last_name.ilike.${s},nickname.ilike.${s}`
         )
-        .order("user_id")
+        .order("created_at", { ascending: false })
         .range(offset, offset + limit - 1);
       if (error) throw error;
       profiles = data || [];
       total = count || 0;
     } else {
-      const { data, error, count } = await pq.order("user_id").range(offset, offset + limit - 1);
+      const { data, error, count } = await pq.order("created_at", { ascending: false }).range(offset, offset + limit - 1);
       if (error) throw error;
       profiles = data || [];
       total = count || 0;
