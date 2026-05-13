@@ -1,62 +1,34 @@
-## Capitole pentru testele predefinite
+## Problema
 
-Adaug suport pentru gruparea testelor predefinite pe capitole, similar cu exercițiile (`eval_chapters`) și problemele (`problem_chapters`).
+La import CSV cu 15 exerciții, doar 13 ajung în lecție. Cauza: în `src/components/admin/csvParser.ts` (funcția `exerciseToDbRow`), ID-ul este generat așa:
 
-### 1. Bază de date (migrație)
-
-**Tabel nou `test_chapters**`
-
-```text
-id text PK | title text | icon text default '📘' | sort_order int default 0
+```ts
+const id = `${idPrefix}e-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
 ```
 
-- RLS: `SELECT` pentru `authenticated`; `ALL` pentru admin (același pattern ca `eval_chapters`).
+Toate cele 15 rânduri sunt procesate sincron în același tick → `Date.now()` identic. Unicitatea depinde de 4 caractere random, iar `Math.random().toString(36)` poate produce mai puțin de 4 caractere (zerouri tăiate la final). Două ID-uri identice → Postgres respinge rândurile, restul ajung în DB.
 
-**Modificare `predefined_tests**`
+## Soluție
 
-- Adaug coloana `chapter_id text` (nullable inițial pentru migrare lină).
-- Seed: insert capitol `recapitulare` cu titlu „Recapitulare" și update `predefined_tests.chapter_id = 'recapitulare'` pentru toate testele existente.
+Generez ID-uri garantat unice folosind:
+- `idPrefix` + `e-` + `Date.now()` + indexul în batch + sufix random robust (`crypto.randomUUID().slice(0, 8)` cu fallback la `Math.random` zero-padded la 6 caractere).
 
-### 2. Admin
+### Modificări
 
-`**PredefinedTestEditor.tsx**`
+**`src/components/admin/csvParser.ts`** — `exerciseToDbRow`:
+- Adaug parametru opțional `index?: number` care contribuie la ID.
+- Înlocuiesc sufixul fragil cu `crypto.randomUUID()` (suportat în toate browserele moderne) cu fallback la `Math.random().toString(36).padStart(8, "0").slice(-6)`.
+- ID nou: `${idPrefix}e-${Date.now()}-${index}-${randomSuffix}` — combinație garantat unică între rânduri din același batch și între batch-uri.
 
-- Lista testelor devine grupată pe capitol (collapsible per capitol, cu titlu + icon + count), aceeași abordare ca `ProblemsEditor`.
-- Buton „Capitol nou" + edit/delete inline pe fiecare capitol (dialog simplu cu titlu + icon + sort_order).
-- Reordonare capitole + teste cu @dnd-kit (existent în fișier).
-- În `TestForm`: select obligatoriu „Capitol" lângă titlu/dificultate. Se salvează în `chapter_id`.
+**`src/components/admin/CsvImporter.tsx`**:
+- Pasez indexul `i` la `exerciseToDbRow(ex, lessonId, existingCount + i, prefix, i)`.
 
-### 3. Hook nou
+**Verificare**: Caut alți consumatori ai `exerciseToDbRow` (probabil `CsvLessonImporter.tsx`) și pasez și acolo indexul.
 
-`**useTestChapters.ts**` — hook similar cu `useEvalChapters`:
+### De ce nu doar lungesc sufixul random
 
-- `useTestChapters()` → listă capitole sortate
-- `useTestChapterMutations()` → create / update / delete
+Indexul în batch elimină complet posibilitatea de coliziune între rândurile aceluiași import (cazul real raportat). Sufixul random previne coliziuni între importuri rapide succesive sau cu ID-uri existente.
 
-`usePredefinedTests` rămâne la fel; consumatorii filtrează pe `chapter_id` în memorie.
+## Out of scope
 
-### 4. UI profesor — `TestBuilder.tsx`
-
-În subtab-ul „Banca testare" → „Teste":
-
-- Adaug `<Select>` „Capitol" deasupra listei, populat din `useTestChapters`.
-- Filtrez `predefinedTests` după `selectedTestChapterId`. Default: primul capitol (sau toate, dacă nu există capitol).
-- State nou: `selectedBankTestChapterId`.
-
-Restul logicii (gating verificat, duplicare test, preview) rămâne neschimbat.
-
-### Fișiere atinse
-
-- migrație SQL nouă (tabel + coloană + seed Recapitulare + assign teste existente)
-- `src/hooks/useTestChapters.ts` (nou)
-- `src/integrations/supabase/types.ts` — regenerat automat după migrare
-- `src/components/admin/PredefinedTestEditor.tsx`
-- `src/components/teacher/TestBuilder.tsx`
-
-### Întrebări
-
-1. Pentru icon-ul implicit pe capitole de teste vrei ceva specific (📝 / 🧪 / 📊) sau e ok 📘 ca la probleme?
-2. Capitolul devine **obligatoriu** la crearea unui test nou, sau permit „Fără capitol" (afișat ca grup separat)? Implicit aleg **obligatoriu** după migrare.  
-  
-1) Ca la probleme  
-2) Permitem Fără categorie
+Nu modific schema DB, nu migrez ID-urile existente, nu schimb comportamentul vizual al importerului.
