@@ -137,9 +137,11 @@ export default function CsvLessonImporter({ mode, chapterId, existingLessonCount
         return dbRow;
       });
 
+      let insertedCount = cleaned.length;
       if (cleaned.length > 0) {
-        const { error } = await supabase.from(table).insert(cleaned as any);
+        const { data: insertedRows, error } = await supabase.from(table).insert(cleaned as any).select("id");
         if (error) throw error;
+        insertedCount = insertedRows?.length ?? cleaned.length;
       }
 
       // ===== Map competency codes → microcompetency UUIDs and insert item_competencies =====
