@@ -165,20 +165,12 @@ async function fetchChapters(): Promise<Chapter[]> {
     return [];
   }
 
-  // Group exercises by lesson
+  // Group exercises by lesson — pages already arrive ordered by (sort_order, id),
+  // so push order is the final per-lesson order.
   const exercisesByLesson: Record<string, Exercise[]> = {};
   for (const ex of exercisesData) {
     if (!exercisesByLesson[ex.lesson_id]) exercisesByLesson[ex.lesson_id] = [];
     exercisesByLesson[ex.lesson_id].push(mapExercise(ex));
-  }
-  // Stable sort per lesson — sort_order then id, so duplicates/ties stay deterministic.
-  for (const lid of Object.keys(exercisesByLesson)) {
-    exercisesByLesson[lid].sort((a: any, b: any) => {
-      const sa = (exercisesData.find(r => r.id === a.id)?.sort_order ?? 0);
-      const sb = (exercisesData.find(r => r.id === b.id)?.sort_order ?? 0);
-      if (sa !== sb) return sa - sb;
-      return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
-    });
   }
 
   // Group lessons by chapter
