@@ -50,7 +50,7 @@ export default function CsvImporter({ targetTable, lessonId, existingCount, exis
     try {
       const prefix = targetTable === "eval_exercises" ? "eval-" : `${lessonId}-`;
       const rowsWithComp = importableExercises.map((ex, i) => ({
-        dbRow: exerciseToDbRow(ex, lessonId, existingCount + i, prefix),
+        dbRow: exerciseToDbRow(ex, lessonId, existingCount + i, prefix, i),
         competencies: ex.competencies || [],
       }));
 
