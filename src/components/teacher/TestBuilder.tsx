@@ -1203,7 +1203,8 @@ const TestBuilder = ({ onBack, editTestId, teacherStatus }: TestBuilderProps) =>
                       value={item.points}
                       onChange={(e) => updateItemPoints(idx, Number(e.target.value))}
                       className="w-14 h-6 text-[10px] text-center"
-                      min={1}
+                      min={0}
+                      step={0.5}
                     />
                     <span className="text-[10px] text-muted-foreground">pct</span>
                     {variantMode === "manual" && (
