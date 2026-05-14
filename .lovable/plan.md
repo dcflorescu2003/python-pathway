@@ -1,19 +1,31 @@
-## Problem
+## Cauză
 
-Pagina Admin → Teste se face neagră cu eroarea „Rendered more hooks than during the previous render".
+Eroarea reală din Postgres: `invalid input syntax for type integer: "7.5"`.
 
-În `src/components/admin/PredefinedTestEditor.tsx` apelurile de hook-uri `useSensors` / `useSensor` (liniile 74-77) sunt plasate **după** două return-uri timpurii:
-- linia 51: `if (isLoading) return ...`
-- linia 53: `if (editingTest || creating) return <TestForm ... />`
+Coloana `predefined_test_items.points` (și foarte probabil și `test_items.points`) este `integer`, dar în UI ai introdus un punctaj cu zecimale (ex. `7.5`). Inserția pică, iar `catch` din `PredefinedTestEditor.handleSave` afișează doar mesajul generic „Eroare la salvare.", fără să spună de ce. Reutilizarea itemilor din bancă nu este cauza — `addItem` deja blochează duplicatele și nu există constrângere de unicitate la nivel DB.
 
-La primul render `isLoading` e `true` → React vede X hook-uri. La al doilea render (după ce datele se încarcă) se execută și `useSensors` → mai multe hook-uri decât înainte → crash. Asta încalcă Rules of Hooks.
+## Fix propus
 
-## Fix
+1. **Migrație DB** — schimb tipul coloanelor `points` și `max_points` din `integer` în `numeric(6,2)` pe tabelele relevante:
+   - `predefined_test_items.points`
+   - `test_items.points`
+   - `test_answers.score`, `test_answers.max_points`
+   - `test_submissions.total_score`, `test_submissions.max_score`
+   - `tests.office_points`
+   
+   Numericul păstrează compatibilitate înapoi (orice `int` se citește OK ca `numeric`).
 
-Mută blocul `useSensors(...)` (și orice alt hook) **înainte** de orice `return` timpuriu, imediat după celelalte hook-uri (`useState`-urile de la liniile 44-49). Logica `sortedChapters` / `noChapterTests` / `toggleChapter` rămâne unde e (nu sunt hook-uri).
+2. **UI** — în `PredefinedTestEditor.tsx` (și, pentru consistență, în `TestBuilder.tsx`):
+   - input-ul de punctaj să accepte `step="0.5"` (sau `0.25`)
+   - în `catch (e)`, afișez mesajul real: `toast.error(e?.message || "Eroare la salvare.")` ca să nu mai pierdem cauza data viitoare.
 
-Niciun alt fișier nu are nevoie de modificări — `TestManager` (testele profesorului) nu e afectat, problema e doar în editorul admin.
+3. **Verificare** — refac salvarea cu un item de 7.5 puncte și confirm că trece, apoi verific că previzualizarea afișează corect totalul.
 
-## Verificare
+## Alternativă (mai simplă, dacă vrei să rămână întreg)
 
-- Reîncarc tab-ul Teste din /admin în preview și confirm că lista se afișează fără eroare în consolă.
+Dacă preferi să forțezi punctaje întregi:
+- păstrăm DB integer
+- în UI rotunjim la `Math.round(points)` înainte de salvare și punem `step="1"` + `min="1"` pe input
+- îmbunătățim oricum `catch`-ul cu mesajul real
+
+Spune-mi care variantă preferi și implementez.
