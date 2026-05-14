@@ -9,6 +9,39 @@ import { BookOpen, Code, Check, ChevronDown, ChevronRight, Eye } from "lucide-re
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import type { Exercise } from "@/hooks/useChapters";
+import type { Problem } from "@/hooks/useProblems";
+
+const ProblemPreview = ({ problem }: { problem: Problem }) => {
+  const visibleTests = problem.testCases.filter((t) => !t.hidden);
+  const hiddenCount = problem.testCases.length - visibleTests.length;
+  const example = visibleTests[0];
+  return (
+    <div className="ml-6 px-3 py-2 bg-muted/50 rounded-md text-xs text-muted-foreground space-y-1.5">
+      <div className="flex items-center gap-2 flex-wrap">
+        <span className="px-1.5 py-0.5 rounded bg-primary/10 text-primary text-[10px] font-semibold uppercase">
+          {problem.difficulty}
+        </span>
+        <span className="text-[10px]">{problem.xpReward} XP</span>
+        <span className="text-[10px]">
+          {problem.testCases.length} test{problem.testCases.length === 1 ? "" : "e"}
+          {hiddenCount > 0 ? `, ${hiddenCount} ascuns${hiddenCount === 1 ? "" : "e"}` : ""}
+        </span>
+      </div>
+      {problem.description && (
+        <p className="text-foreground/80 line-clamp-3 whitespace-pre-wrap">{problem.description}</p>
+      )}
+      {example && (
+        <div className="font-mono text-[11px] bg-background/50 rounded p-1.5 space-y-0.5">
+          <div><span className="text-muted-foreground">in:</span> {example.input || "(gol)"}</div>
+          <div><span className="text-muted-foreground">out:</span> {example.expectedOutput}</div>
+        </div>
+      )}
+      {problem.hint && (
+        <p className="italic text-[11px]">💡 {problem.hint}</p>
+      )}
+    </div>
+  );
+};
 
 interface ChallengeAssignerProps {
   classId: string;
