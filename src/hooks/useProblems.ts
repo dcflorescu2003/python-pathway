@@ -40,12 +40,15 @@ async function fetchProblems(): Promise<{ problems: Problem[]; problemChapters: 
 
   // Fetch direct from `problems` table (RLS allows authenticated SELECT).
   // We exclude `solution` from the select — it's fetched on-demand via get_problem_solution RPC.
-  const { data: problemsData, error: problemsError } = await supabase
-    .from("problems")
-    .select("id, title, description, difficulty, xp_reward, test_cases, hint, chapter_id, sort_order, is_premium")
-    .order("sort_order", { ascending: true });
-
-  if (problemsError) throw problemsError;
+  // Paginated — Supabase caps single selects at 1000 rows; with >1000 problems
+  // globally, problems with higher sort_order would silently disappear.
+  const problemsData = await fetchAllPaginated<any>(() =>
+    supabase
+      .from("problems")
+      .select("id, title, description, difficulty, xp_reward, test_cases, hint, chapter_id, sort_order, is_premium")
+      .order("sort_order", { ascending: true })
+      .order("id", { ascending: true })
+  );
 
   const problemChapters: ProblemChapter[] = (chaptersData || []).map((ch: any) => ({
     id: ch.id,
