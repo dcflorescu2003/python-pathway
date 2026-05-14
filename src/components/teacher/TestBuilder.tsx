@@ -441,7 +441,6 @@ const TestBuilder = ({ onBack, editTestId, teacherStatus }: TestBuilderProps) =>
   const applyPredefinedTemplate = async (template: any) => {
     setTitle(template.title);
     if (template.time_limit_minutes) { setTimeLimitEnabled(true); setTimeLimit(template.time_limit_minutes); }
-    setVariantMode(template.variant_mode);
     const supa = (await import("@/integrations/supabase/client")).supabase;
     // Fetch items for this predefined test
     const { data: predefinedItems } = await supa
@@ -470,8 +469,9 @@ const TestBuilder = ({ onBack, editTestId, teacherStatus }: TestBuilderProps) =>
         const ev = evalMap[pi.source_id];
         sourceType = ev?.type === "problem" ? "problem" : "exercise";
       }
+      const v = pi.variant === "A" || pi.variant === "B" || pi.variant === "both" ? pi.variant : "both";
       return {
-        variant: pi.variant,
+        variant: v,
         sort_order: i,
         source_type: sourceType,
         source_id: pi.source_id,
@@ -479,8 +479,15 @@ const TestBuilder = ({ onBack, editTestId, teacherStatus }: TestBuilderProps) =>
         points: pi.points,
       };
     });
+    // Force manual mode if any item is variant-specific, otherwise use template's mode
+    const hasVariantSpecific = newItems.some((it) => it.variant === "A" || it.variant === "B");
+    setVariantMode(hasVariantSpecific ? "manual" : (template.variant_mode || "shuffle"));
     setItems(newItems);
-    toast.success(`${newItems.length} itemi adăugați din testul predefinit.`);
+    toast.success(
+      hasVariantSpecific
+        ? `${newItems.length} itemi importați pe Nr. 1 / Nr. 2 conform admin-ului.`
+        : `${newItems.length} itemi adăugați din testul predefinit.`
+    );
   };
 
   // Add custom question

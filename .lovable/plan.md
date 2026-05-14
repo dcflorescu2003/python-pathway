@@ -1,31 +1,30 @@
+## Problemă
+
+Când profesorul folosește butonul „Duplică" pe un test predefinit din admin, itemii apar toți pe „Ambele" (Nr. 1 + Nr. 2), chiar dacă în admin fiecare item a fost atribuit explicit variantei A (Nr. 1) sau B (Nr. 2).
+
 ## Cauză
 
-Eroarea reală din Postgres: `invalid input syntax for type integer: "7.5"`.
+În `src/components/teacher/TestBuilder.tsx`, funcția `applyPredefinedTemplate` (liniile 441–484):
 
-Coloana `predefined_test_items.points` (și foarte probabil și `test_items.points`) este `integer`, dar în UI ai introdus un punctaj cu zecimale (ex. `7.5`). Inserția pică, iar `catch` din `PredefinedTestEditor.handleSave` afișează doar mesajul generic „Eroare la salvare.", fără să spună de ce. Reutilizarea itemilor din bancă nu este cauza — `addItem` deja blochează duplicatele și nu există constrângere de unicitate la nivel DB.
+- Setează `setVariantMode(template.variant_mode)` și apoi `setItems(newItems)` cu `variant: pi.variant`.
+- La nivel de date, totul pare corect: în DB tabelele `predefined_tests` au `variant_mode='manual'` pentru testele cu 2 numere, iar `predefined_test_items.variant` are valori `A`/`B` pe rândurile corespunzătoare.
+
+Totuși mapeasem `variant: pi.variant` direct, fără un fallback explicit; și UI-ul (Selectul per item, plus previzualizarea „Nr. 1 / Nr. 2") este afișat **doar** când `variantMode === "manual"`. Există două puncte fragile:
+
+1. Dacă `template.variant_mode` vine `null`/`undefined` (sau dacă admin-ul a salvat testul ca `"shuffle"` din greșeală deși itemii au variante distincte), `variantMode` rămâne `"shuffle"` și UI-ul ascunde Selectul de variantă; itemii apar toți într-o singură listă, ceea ce arată ca „toate sunt la ambele".
+2. Pentru itemii unde `pi.variant` ar fi cumva `null`/lipsă, mapping-ul îi lasă `undefined`, iar Selectul afișează implicit „Ambele".
 
 ## Fix propus
 
-1. **Migrație DB** — schimb tipul coloanelor `points` și `max_points` din `integer` în `numeric(6,2)` pe tabelele relevante:
-   - `predefined_test_items.points`
-   - `test_items.points`
-   - `test_answers.score`, `test_answers.max_points`
-   - `test_submissions.total_score`, `test_submissions.max_score`
-   - `tests.office_points`
-   
-   Numericul păstrează compatibilitate înapoi (orice `int` se citește OK ca `numeric`).
+În `src/components/teacher/TestBuilder.tsx`, în `applyPredefinedTemplate`:
 
-2. **UI** — în `PredefinedTestEditor.tsx` (și, pentru consistență, în `TestBuilder.tsx`):
-   - input-ul de punctaj să accepte `step="0.5"` (sau `0.25`)
-   - în `catch (e)`, afișez mesajul real: `toast.error(e?.message || "Eroare la salvare.")` ca să nu mai pierdem cauza data viitoare.
+1. **Forțează `variantMode = "manual"`** dacă măcar un item importat are `variant === "A"` sau `"B"`. Altfel, păstrează valoarea din template (sau cade pe `"shuffle"`).
+2. **Fallback explicit pentru variantă**: `variant: (pi.variant === "A" || pi.variant === "B" || pi.variant === "both") ? pi.variant : "both"`.
+3. Adaugă un mic toast informativ când se importă într-un mod cu variante: „Itemii au fost importați pe Nr. 1 / Nr. 2 conform definiției din admin."
 
-3. **Verificare** — refac salvarea cu un item de 7.5 puncte și confirm că trece, apoi verific că previzualizarea afișează corect totalul.
+Niciun alt fișier nu trebuie atins. Datele din DB sunt deja corecte — fix-ul e doar pentru a garanta că teacher-side reflectă fidel ce a definit admin-ul.
 
-## Alternativă (mai simplă, dacă vrei să rămână întreg)
+## Verificare
 
-Dacă preferi să forțezi punctaje întregi:
-- păstrăm DB integer
-- în UI rotunjim la `Math.round(points)` înainte de salvare și punem `step="1"` + `min="1"` pe input
-- îmbunătățim oricum `catch`-ul cu mesajul real
-
-Spune-mi care variantă preferi și implementez.
+- Deschid TestBuilder ca profesor → click „Duplică" pe un test predefinit cu variante (ex. „Recapitulare test final 2 numere (usor)").
+- Confirm că `variantMode` devine „Manual (2 numere)", că Selectul per item arată „Nr. 1" / „Nr. 2" conform admin-ului, și că previzualizarea de jos împarte itemii corect între cele două coloane.
