@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchAllPaginated } from "@/lib/supabasePagination";
 
 export interface EvalChapter {
   id: string;
@@ -83,12 +84,15 @@ export function useAllEvalExercises() {
   return useQuery({
     queryKey: ["eval-exercises-all"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("eval_exercises")
-        .select("*")
-        .order("sort_order");
-      if (error) throw error;
-      return data as EvalExercise[];
+      // Paginated to avoid Supabase's implicit 1000-row cap.
+      const data = await fetchAllPaginated<EvalExercise>(() =>
+        supabase
+          .from("eval_exercises")
+          .select("*")
+          .order("sort_order")
+          .order("id")
+      );
+      return data;
     },
   });
 }
@@ -97,12 +101,14 @@ export function useAllEvalLessons() {
   return useQuery({
     queryKey: ["eval-lessons-all"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("eval_lessons")
-        .select("*")
-        .order("sort_order");
-      if (error) throw error;
-      return data as EvalLesson[];
+      const data = await fetchAllPaginated<EvalLesson>(() =>
+        supabase
+          .from("eval_lessons")
+          .select("*")
+          .order("sort_order")
+          .order("id")
+      );
+      return data;
     },
   });
 }
