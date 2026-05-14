@@ -672,6 +672,7 @@ const TestBuilder = ({ onBack, editTestId, teacherStatus }: TestBuilderProps) =>
               className="w-20 h-8 text-sm"
               min={0}
               max={100}
+              step={0.5}
             />
           </div>
           <div className="flex items-center gap-3">
