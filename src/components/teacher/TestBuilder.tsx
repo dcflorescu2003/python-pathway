@@ -441,7 +441,6 @@ const TestBuilder = ({ onBack, editTestId, teacherStatus }: TestBuilderProps) =>
   const applyPredefinedTemplate = async (template: any) => {
     setTitle(template.title);
     if (template.time_limit_minutes) { setTimeLimitEnabled(true); setTimeLimit(template.time_limit_minutes); }
-    setVariantMode(template.variant_mode);
     const supa = (await import("@/integrations/supabase/client")).supabase;
     // Fetch items for this predefined test
     const { data: predefinedItems } = await supa
