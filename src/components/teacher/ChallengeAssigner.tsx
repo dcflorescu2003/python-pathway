@@ -84,6 +84,7 @@ const ChallengeAssigner = ({ classId, existingChallengeIds, onClose }: Challenge
   const [expandedChapter, setExpandedChapter] = useState<string | null>(null);
   const [expandedLesson, setExpandedLesson] = useState<string | null>(null);
   const [previewLesson, setPreviewLesson] = useState<string | null>(null);
+  const [previewProblem, setPreviewProblem] = useState<string | null>(null);
   const [expandedProblemChapter, setExpandedProblemChapter] = useState<string | null>(null);
 
   const toggle = (type: string, id: string) => {
