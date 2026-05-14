@@ -1072,6 +1072,7 @@ export type Database = {
           last_life_refill_at: string | null
           last_name: string | null
           last_teacher_reminder_at: string | null
+          last_unverified_teacher_reminder_at: string | null
           last_weekly_reminder_at: string | null
           lives: number
           lives_refilled_dialog_shown_at: string | null
@@ -1103,6 +1104,7 @@ export type Database = {
           last_life_refill_at?: string | null
           last_name?: string | null
           last_teacher_reminder_at?: string | null
+          last_unverified_teacher_reminder_at?: string | null
           last_weekly_reminder_at?: string | null
           lives?: number
           lives_refilled_dialog_shown_at?: string | null
@@ -1134,6 +1136,7 @@ export type Database = {
           last_life_refill_at?: string | null
           last_name?: string | null
           last_teacher_reminder_at?: string | null
+          last_unverified_teacher_reminder_at?: string | null
           last_weekly_reminder_at?: string | null
           lives?: number
           lives_refilled_dialog_shown_at?: string | null

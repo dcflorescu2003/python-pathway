@@ -36,5 +36,8 @@ verify_jwt = false
 [functions.send-teacher-reminder]
 verify_jwt = false
 
+[functions.send-unverified-teacher-reminder]
+verify_jwt = false
+
 [functions.notify-new-lesson]
 verify_jwt = false
