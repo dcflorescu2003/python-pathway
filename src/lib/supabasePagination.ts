@@ -3,9 +3,6 @@
 // silently drop rows. Apply ordering and filters on the builder before calling.
 export const SUPABASE_PAGE_SIZE = 1000;
 
-type RangeableBuilder<T> = {
-  range: (from: number, to: number) => Promise<{ data: T[] | null; error: any }>;
-};
 
 export async function fetchAllPaginated<T = any>(
   buildQuery: () => { range: (from: number, to: number) => any },
