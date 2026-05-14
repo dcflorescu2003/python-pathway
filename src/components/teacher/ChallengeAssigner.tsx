@@ -234,22 +234,38 @@ const ChallengeAssigner = ({ classId, existingChallengeIds, onClose }: Challenge
                     {chapterProblems.map((problem) => {
                       const already = isExisting(problem.id);
                       const sel = isSelected("problem", problem.id);
+                      const isPreviewing = previewProblem === problem.id;
                       return (
-                        <button
-                          key={problem.id}
-                          onClick={() => !already && toggle("problem", problem.id)}
-                          disabled={already}
-                          className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors flex items-center justify-between ${
-                            already
-                              ? "opacity-40 cursor-not-allowed bg-muted"
-                              : sel
-                              ? "bg-primary/10 text-primary border border-primary/30"
-                              : "hover:bg-secondary"
-                          }`}
-                        >
-                          <span>{problem.title}</span>
-                          {(sel || already) && <Check className="h-4 w-4" />}
-                        </button>
+                        <div key={problem.id}>
+                          <div className="flex items-center gap-1">
+                            <button
+                              onClick={() => !already && toggle("problem", problem.id)}
+                              disabled={already}
+                              className={`flex-1 text-left px-3 py-2 rounded-lg text-sm transition-colors flex items-center justify-between ${
+                                already
+                                  ? "opacity-40 cursor-not-allowed bg-muted"
+                                  : sel
+                                  ? "bg-primary/10 text-primary border border-primary/30"
+                                  : "hover:bg-secondary"
+                              }`}
+                            >
+                              <span>{problem.title}</span>
+                              {(sel || already) && <Check className="h-4 w-4" />}
+                            </button>
+                            <button
+                              onClick={() => setPreviewProblem(isPreviewing ? null : problem.id)}
+                              className="p-1.5 rounded-md hover:bg-secondary text-muted-foreground hover:text-primary shrink-0"
+                              title="Previzualizare"
+                            >
+                              <Eye className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                          {isPreviewing && (
+                            <div className="mt-1 mb-2">
+                              <ProblemPreview problem={problem} />
+                            </div>
+                          )}
+                        </div>
                       );
                     })}
                   </div>
