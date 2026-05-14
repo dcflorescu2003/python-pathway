@@ -672,6 +672,7 @@ const TestBuilder = ({ onBack, editTestId, teacherStatus }: TestBuilderProps) =>
               className="w-20 h-8 text-sm"
               min={0}
               max={100}
+              step={0.5}
             />
           </div>
           <div className="flex items-center gap-3">
@@ -1202,7 +1203,8 @@ const TestBuilder = ({ onBack, editTestId, teacherStatus }: TestBuilderProps) =>
                       value={item.points}
                       onChange={(e) => updateItemPoints(idx, Number(e.target.value))}
                       className="w-14 h-6 text-[10px] text-center"
-                      min={1}
+                      min={0}
+                      step={0.5}
                     />
                     <span className="text-[10px] text-muted-foreground">pct</span>
                     {variantMode === "manual" && (

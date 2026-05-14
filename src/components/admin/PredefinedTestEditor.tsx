@@ -532,7 +532,7 @@ function SortableTestItem({ id, item, idx, ex, typeLabels, getExerciseLabel, upd
       </div>
       {ex && <span className="px-1.5 py-0.5 rounded bg-primary/10 text-primary font-medium">{typeLabels[ex.type] || ex.type}</span>}
       <span className="flex-1 truncate text-foreground">{getExerciseLabel(item)}</span>
-      <Input type="number" value={item.points} onChange={(e: any) => updatePoints(idx, Number(e.target.value))} className="w-16 h-7 text-xs text-center" min={1} />
+      <Input type="number" value={item.points} onChange={(e: any) => updatePoints(idx, Number(e.target.value))} className="w-16 h-7 text-xs text-center" min={0} step={0.5} />
       <span className="text-muted-foreground text-[10px]">pct</span>
       {variantMode === "manual" && (
         <Select value={item.variant} onValueChange={(v: string) => updateVariant(idx, v)}>
@@ -639,8 +639,9 @@ function TestForm({ testId, onBack, mutations }: { testId: string | null; onBack
       });
       toast.success(testId ? "Test actualizat!" : "Test creat!");
       onBack();
-    } catch {
-      toast.error("Eroare la salvare.");
+    } catch (e: any) {
+      console.error("Save predefined test failed:", e);
+      toast.error(e?.message ? `Eroare la salvare: ${e.message}` : "Eroare la salvare.");
     }
   };
 
