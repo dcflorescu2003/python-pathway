@@ -7,8 +7,8 @@ type RangeableBuilder<T> = {
   range: (from: number, to: number) => Promise<{ data: T[] | null; error: any }>;
 };
 
-export async function fetchAllPaginated<T>(
-  buildQuery: () => RangeableBuilder<T>,
+export async function fetchAllPaginated<T = any>(
+  buildQuery: () => { range: (from: number, to: number) => any },
   pageSize: number = SUPABASE_PAGE_SIZE
 ): Promise<T[]> {
   const all: T[] = [];
@@ -16,7 +16,7 @@ export async function fetchAllPaginated<T>(
     const { data, error } = await buildQuery().range(from, from + pageSize - 1);
     if (error) throw error;
     if (!data || data.length === 0) break;
-    all.push(...data);
+    all.push(...(data as T[]));
     if (data.length < pageSize) break;
   }
   return all;
