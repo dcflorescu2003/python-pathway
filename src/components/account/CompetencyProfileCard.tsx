@@ -136,16 +136,27 @@ const CompetencyProfileCard = ({
       const score = g.rows.reduce((s, r) => s + Number(r.score_sum || 0), 0);
       const max = g.rows.reduce((s, r) => s + Number(r.max_sum || 0), 0);
       const attempts = g.rows.reduce((s, r) => s + Number(r.attempts || 0), 0);
-      const mastery = max > 0 ? score / max : null;
+      // Mastery = average of CS percentages, with untouched CS counted as 0%.
+      // This prevents a single 100% CS from making the whole CG appear mastered.
+      const totalCs = g.rows.length;
+      const anyData = g.rows.some((r) => Number(r.max_sum) > 0);
+      const sumPct = g.rows.reduce(
+        (s, r) => s + (Number(r.max_sum) > 0 ? Number(r.score_sum) / Number(r.max_sum) : 0),
+        0
+      );
+      const mastery = anyData && totalCs > 0 ? sumPct / totalCs : null;
       return { ...g, score, max, attempts, mastery };
     });
   }, [data]);
 
   const overall = useMemo(() => {
     if (!generals.length) return null;
-    const score = generals.reduce((s, g) => s + g.score, 0);
-    const max = generals.reduce((s, g) => s + g.max, 0);
-    return max > 0 ? score / max : null;
+    // Average across CGs that have any data; CGs with null mastery are excluded
+    // (they're shown separately as Neevaluat per-CG anyway).
+    const evaluated = generals.filter((g) => g.mastery !== null);
+    if (!evaluated.length) return null;
+    const sum = evaluated.reduce((s, g) => s + (g.mastery as number), 0);
+    return sum / generals.length;
   }, [generals]);
 
   return (

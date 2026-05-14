@@ -1,24 +1,34 @@
 ## Problemă
 
-În dialogul „Atribuie provocări" din `ChallengeAssigner.tsx`, lecțiile au buton de previzualizare (iconița ochi) care arată exercițiile lecției. Problemele nu au această opțiune — vezi doar titlul, fără context.
+În imagine, CG2 apare ca **„Stăpânit” 100%** deși elevul a atins doar **CS 2.4** la 100%, iar restul CS-urilor (2.1, 2.2, 2.3, 2.5) sunt neîncepute.
 
-## Soluție
+Cauza: în `CompetencyProfileCard.tsx` (liniile 135–142), procentul pe CG se calculează ca `sum(score) / sum(max)` peste toate CS-urile. CS-urile neatinse au `max = 0`, deci nu contribuie deloc — CG iese 100% din 100% al unui singur CS.
 
-În `src/components/teacher/ChallengeAssigner.tsx`, secțiunea „Probleme" (liniile 200–220):
+## Soluție propusă
 
-1. Adaug state `previewProblem` (similar cu `previewLesson`).
-2. Refactor butonul problemei într-un wrapper cu două butoane: principal (toggle selecție) + secundar (iconița `Eye`, toggle preview).
-3. Adaug componentă `ProblemPreview` care arată sub item:
-   - Dificultate + XP reward (badge-uri)
-   - Descrierea problemei (trunchiată la ~3 rânduri sau scroll)
-   - Hint dacă există
-   - Numărul de test cases (ex. „3 teste, 1 ascuns")
-   - Primul test case vizibil ca exemplu (input → output) în font mono
+Calculez procentul pe CG ca **media procentajelor pe CS-uri**, considerând CS-urile neîncepute ca `0%`. Astfel un CG cu 1/5 CS la 100% va fi 20% și nu va apărea „Stăpânit”.
 
-Stilizare identică cu `ExercisePreview` (bg-muted/50, text-xs, ml-6) ca să arate consistent.
+**Pragurile pentru etichete rămân aceleași** (definite în `masteryLabel`):
 
-Niciun alt fișier nu trebuie atins. `useProblems` deja întoarce toate câmpurile necesare (`description`, `difficulty`, `xpReward`, `testCases`, `hint`).
+- `≥ 85%` → Stăpânit
+- `≥ 60%` → În progres
+- `≥ 30%` → Început
+- `> 0%` și `< 30%` → Necesită exersare
+- `0` CS-uri atinse → Neevaluat
 
-## Verificare
+## Modificări
 
-- Ca profesor → Clasă → „Atribuie provocări" → tab Probleme → expand un capitol → click pe iconița ochi lângă o problemă → apare preview cu descriere, dificultate, exemplu test case.
+`**src/components/account/CompetencyProfileCard.tsx**` — în `useMemo` pentru `generals`:
+
+- Pentru fiecare CG, calculez mastery = media `(score_sum / max_sum)` pe rândurile cu `max > 0`, împărțit la **numărul total de CS-uri** din CG (inclusiv cele neatinse → contează ca 0).
+- Dacă niciun CS din CG nu are date, mastery rămâne `null` (Neevaluat).
+- `score`/`max` brute le păstrez doar pentru `overall` (procentul global din header rămâne ponderat — e deja relevant).
+
+Opțional: același principiu și pentru `overall` (media pe CG-uri în loc de sumă brută), pentru consistență. **Întrebare mai jos.**
+
+## Întrebare de clarificare
+
+Vrei ca și **procentul global din header** (badge-ul „X%” lângă titlul cardului) să folosească aceeași logică (media pe CG-uri, deci penalizare pentru CG-uri neîncepute)? Sau îl lăsăm cum e acum (raport brut score/max)?
+
+Recomand să-l aliniem — altfel poți avea header 100% dar CG-uri cu „Început”.  
+Da, folosim aceeasi logica
