@@ -639,8 +639,9 @@ function TestForm({ testId, onBack, mutations }: { testId: string | null; onBack
       });
       toast.success(testId ? "Test actualizat!" : "Test creat!");
       onBack();
-    } catch {
-      toast.error("Eroare la salvare.");
+    } catch (e: any) {
+      console.error("Save predefined test failed:", e);
+      toast.error(e?.message ? `Eroare la salvare: ${e.message}` : "Eroare la salvare.");
     }
   };
 
