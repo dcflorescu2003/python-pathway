@@ -48,6 +48,11 @@ const PredefinedTestEditor = () => {
   const [creatingChapter, setCreatingChapter] = useState(false);
   const [expandedChapters, setExpandedChapters] = useState<Set<string>>(new Set());
 
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
+
   if (isLoading) return <p className="text-sm text-muted-foreground p-4">Se încarcă...</p>;
 
   if (editingTest || creating) {
@@ -70,11 +75,6 @@ const PredefinedTestEditor = () => {
 
   const sortedChapters = [...chapters].sort((a, b) => a.sort_order - b.sort_order);
   const noChapterTests = tests.filter((t) => !t.chapter_id);
-
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
-  );
 
   const handleChapterReorder = async (event: DragEndEvent) => {
     const { active, over } = event;
