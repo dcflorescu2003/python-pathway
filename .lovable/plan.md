@@ -1,34 +1,40 @@
-## Problemă
+# Notificări cu navigare la click
 
-În imagine, CG2 apare ca **„Stăpânit” 100%** deși elevul a atins doar **CS 2.4** la 100%, iar restul CS-urilor (2.1, 2.2, 2.3, 2.5) sunt neîncepute.
+Momentan notificările (clopoțelul) doar se marchează ca citite la click. Vreau ca fiecare notificare să ducă la pagina relevantă.
 
-Cauza: în `CompetencyProfileCard.tsx` (liniile 135–142), procentul pe CG se calculează ca `sum(score) / sum(max)` peste toate CS-urile. CS-urile neatinse au `max = 0`, deci nu contribuie deloc — CG iese 100% din 100% al unui singur CS.
+## Abordare
 
-## Soluție propusă
+Adaug o coloană `link` (text, nullable) în tabela `notifications` care stochează ruta internă (ex. `/test/<assignmentId>`, `/problems`, `/account?tab=verification`). La click în `NotificationBell`, dacă există `link`, marchez ca citit + navighez cu React Router.
 
-Calculez procentul pe CG ca **media procentajelor pe CS-uri**, considerând CS-urile neîncepute ca `0%`. Astfel un CG cu 1/5 CS la 100% va fi 20% și nu va apărea „Stăpânit”.
+## Schimbări DB
 
-**Pragurile pentru etichete rămân aceleași** (definite în `masteryLabel`):
+- Migrație: `ALTER TABLE public.notifications ADD COLUMN link text;`
+- Fără modificări de RLS (rămân aceleași).
 
-- `≥ 85%` → Stăpânit
-- `≥ 60%` → În progres
-- `≥ 30%` → Început
-- `> 0%` și `< 30%` → Necesită exersare
-- `0` CS-uri atinse → Neevaluat
+## Mapare tip notificare → rută
 
-## Modificări
 
-`**src/components/account/CompetencyProfileCard.tsx**` — în `useMemo` pentru `generals`:
+| Sursă                                                                                                                                      | Eveniment                        | Link                                          |
+| ------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------- | --------------------------------------------- |
+| `src/hooks/useTests.ts` (assignTest)                                                                                                       | Test nou primit (elev)           | `/test/<assignment_id>`                       |
+| `src/hooks/useTests.ts` (releaseScores)                                                                                                    | Scoruri publicate (elev)         | `/account?tab=tests`                          |
+| `src/components/teacher/ChallengeAssigner.tsx`                                                                                             | Provocare nouă (elev)            | `/problems`                                   |
+| `src/components/teacher/VerificationChat.tsx`                                                                                              | Mesaj nou de la admin (profesor) | `/account?tab=verification`                   |
+| `src/components/admin/TeacherApproval.tsx`                                                                                                 | Profesor aprobat                 | `/account`                                    |
+| Trigger DB `notify_admins_on_verification_request`                                                                                         | Cerere nouă verificare (admin)   | `/admin?tab=teachers`                         |
+| `supabase/functions/notify-new-lesson`                                                                                                     | Lecție nouă                      | `/lesson/<lesson_id>` (sau `/` dacă lipsește) |
+| `send-weekly-comeback`, `send-evening-reminder`, `send-streak-reminder`, `send-lives-refilled`, `send-teacher-reminder`, `_shared/push.ts` | Reminders generale               | rămân fără link sau primesc `/`               |
 
-- Pentru fiecare CG, calculez mastery = media `(score_sum / max_sum)` pe rândurile cu `max > 0`, împărțit la **numărul total de CS-uri** din CG (inclusiv cele neatinse → contează ca 0).
-- Dacă niciun CS din CG nu are date, mastery rămâne `null` (Neevaluat).
-- `score`/`max` brute le păstrez doar pentru `overall` (procentul global din header rămâne ponderat — e deja relevant).
 
-Opțional: același principiu și pentru `overall` (media pe CG-uri în loc de sumă brută), pentru consistență. **Întrebare mai jos.**
+Notă: rutele exacte pentru tab-urile din `/account` și `/admin` le verific la implementare ca să se potrivească cu query params existente.
 
-## Întrebare de clarificare
+## Frontend
 
-Vrei ca și **procentul global din header** (badge-ul „X%” lângă titlul cardului) să folosească aceeași logică (media pe CG-uri, deci penalizare pentru CG-uri neîncepute)? Sau îl lăsăm cum e acum (raport brut score/max)?
+- `src/hooks/useNotifications.ts`: adaug `link?: string | null` în interfața `Notification`.
+- `src/components/NotificationBell.tsx`: import `useNavigate`; la click pe notificare → `markAsRead(id)` + `navigate(n.link)` (+ închidere popover) dacă există link; altfel doar marchează ca citit (comportament actual).
+- Pentru push native (FCM), `data: { type, ...id }` există deja parțial; opțional adaug și `link` în payload pentru deep-link când userul deschide din push (out-of-scope dacă vrei doar in-app — confirm mai jos).
 
-Recomand să-l aliniem — altfel poți avea header 100% dar CG-uri cu „Început”.  
-Da, folosim aceeasi logica
+## Întrebare
+
+Vrei să tratez și deep-link-ul din push notification (când userul atinge push-ul nativ) sau doar comportamentul in-app la click pe clopoțel?  
+Comportamentul in app
