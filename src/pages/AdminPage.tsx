@@ -19,6 +19,8 @@ import { BookOpen, Ticket, Code2, Settings, FileText, GraduationCap, Database, C
 
 const AdminPage = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const initialTab = searchParams.get("tab") || "editor";
   const { user, loading: authLoading } = useAuth();
   const { isAdmin, isLoading: adminLoading } = useAdminAccess();
 
