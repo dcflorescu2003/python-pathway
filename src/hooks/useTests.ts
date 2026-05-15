@@ -505,6 +505,7 @@ export function useToggleScoresReleased() {
                 user_id: m.student_id,
                 title: "Rezultate publicate",
                 body: `Notele pentru testul «${title}» au fost publicate.`,
+                link: "/auth?tab=student",
               }));
               await supabase.from("notifications").insert(notifications);
 
