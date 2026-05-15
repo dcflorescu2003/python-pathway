@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Capacitor } from "@capacitor/core";
 import PyroLogo from "@/components/brand/PyroLogo";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -208,8 +208,10 @@ const AccountView = () => {
   const isTeacher = !!teacherStatus;
   const showStudentTab = isClassMember && !isTeacher;
 
-  const [activeTab, setActiveTab] = useState<string>("profile");
-  const [tabInitialized, setTabInitialized] = useState(false);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tabFromUrl = searchParams.get("tab");
+  const [activeTab, setActiveTab] = useState<string>(tabFromUrl || "profile");
+  const [tabInitialized, setTabInitialized] = useState(!!tabFromUrl);
   useEffect(() => {
     if (!flagsLoaded || tabInitialized) return;
     if (isTeacher) setActiveTab("classes");
@@ -217,6 +219,14 @@ const AccountView = () => {
     else setActiveTab("profile");
     setTabInitialized(true);
   }, [flagsLoaded, isTeacher, isClassMember, tabInitialized]);
+
+  // Sync tab from URL when notification deep-links navigate within /auth
+  useEffect(() => {
+    if (tabFromUrl && tabFromUrl !== activeTab) {
+      setActiveTab(tabFromUrl);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tabFromUrl]);
 
   return (
     <motion.div

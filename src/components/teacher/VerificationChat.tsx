@@ -66,6 +66,7 @@ const VerificationChat = ({ requestId, adminNotes, isAdmin = false, teacherUserI
           user_id: teacherUserId,
           title: "Mesaj nou de la administrator",
           body: "Ai primit un mesaj în conversația de verificare profesor. Verifică secțiunea din contul tău.",
+          link: "/auth?tab=profile",
         });
       }
 

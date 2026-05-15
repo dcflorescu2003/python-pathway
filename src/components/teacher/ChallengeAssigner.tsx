@@ -117,7 +117,7 @@ const ChallengeAssigner = ({ classId, existingChallengeIds, onClose }: Challenge
           const notifTitle = "📚 Provocare nouă!";
           const notifBody = `Ai primit ${selected.length} provocar${selected.length === 1 ? "e" : "i"} noi de la profesor!`;
           await supabase.from("notifications").insert(
-            studentIds.map((sid) => ({ user_id: sid, title: notifTitle, body: notifBody }))
+            studentIds.map((sid) => ({ user_id: sid, title: notifTitle, body: notifBody, link: "/problems" }))
           );
 
           try {

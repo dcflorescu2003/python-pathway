@@ -78,10 +78,13 @@ Deno.serve(async (req) => {
       ? `${chapterTitle} → ${lessonTitle}`
       : lessonTitle;
 
+    const link = lessonId ? `/lesson/${lessonId}` : "/";
+
     const inAppRows = users.map((u: any) => ({
       user_id: u.user_id,
       title,
       body: bodyMsg,
+      link,
     }));
 
     const userMessages: Record<string, { title: string; body: string; data?: Record<string, string> }> = {};

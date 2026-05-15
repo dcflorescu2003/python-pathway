@@ -10,6 +10,7 @@ interface Notification {
   body: string;
   read: boolean;
   created_at: string;
+  link?: string | null;
 }
 
 export const useNotifications = () => {

@@ -198,6 +198,7 @@ export function useAssignTest() {
             user_id: id,
             title: "Test nou disponibil 📝",
             body: `Ai primit testul «${title}». Intră să-l rezolvi!`,
+            link: `/test/${data.id}`,
           }));
           await supabase.from("notifications").insert(notifications);
 
@@ -504,6 +505,7 @@ export function useToggleScoresReleased() {
                 user_id: m.student_id,
                 title: "Rezultate publicate",
                 body: `Notele pentru testul «${title}» au fost publicate.`,
+                link: "/auth?tab=student",
               }));
               await supabase.from("notifications").insert(notifications);
 

@@ -1,4 +1,6 @@
 import { Bell, CheckCheck } from "lucide-react";
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useNotifications } from "@/hooks/useNotifications";
 import { formatDistanceToNow } from "date-fns";
@@ -6,9 +8,19 @@ import { ro } from "date-fns/locale";
 
 const NotificationBell = () => {
   const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications();
+  const navigate = useNavigate();
+  const [open, setOpen] = useState(false);
+
+  const handleClick = (n: { id: string; link?: string | null }) => {
+    markAsRead(n.id);
+    if (n.link) {
+      setOpen(false);
+      navigate(n.link);
+    }
+  };
 
   return (
-    <Popover>
+    <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <button className="relative text-muted-foreground hover:text-foreground active:scale-95 transition-transform">
           <Bell className="h-5 w-5" />
@@ -40,7 +52,7 @@ const NotificationBell = () => {
             notifications.map((n) => (
               <button
                 key={n.id}
-                onClick={() => markAsRead(n.id)}
+                onClick={() => handleClick(n)}
                 className="w-full text-left px-4 py-3 hover:bg-secondary/50 transition-colors border-b border-border last:border-0"
               >
                 <p className="text-sm font-medium text-foreground">{n.title}</p>

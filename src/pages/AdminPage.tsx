@@ -1,5 +1,5 @@
 import { ArrowLeft } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useAdminAccess } from "@/hooks/useAdminAccess";
 import ContentEditor from "@/components/admin/ContentEditor";
@@ -19,6 +19,8 @@ import { BookOpen, Ticket, Code2, Settings, FileText, GraduationCap, Database, C
 
 const AdminPage = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const initialTab = searchParams.get("tab") || "editor";
   const { user, loading: authLoading } = useAuth();
   const { isAdmin, isLoading: adminLoading } = useAdminAccess();
 
@@ -45,7 +47,7 @@ const AdminPage = () => {
       </header>
 
       <main className="px-4 py-4">
-        <Tabs defaultValue="editor" className="w-full">
+        <Tabs defaultValue={initialTab} className="w-full">
           <TabsList className="w-full mb-4">
             <TabsTrigger value="editor" className="flex-1 gap-2">
               <BookOpen className="h-4 w-4" />
