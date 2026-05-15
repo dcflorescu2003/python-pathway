@@ -246,6 +246,11 @@ const TestBuilder = ({ onBack, editTestId, teacherStatus }: TestBuilderProps) =>
     return (
       <div className="mt-2 p-3 bg-muted/30 rounded-lg border border-border/50 space-y-2">
         <RichContent className="text-sm font-medium text-foreground">{ex.question || ex.statement}</RichContent>
+        {codeTemplate && ex.type !== "fill" && (
+          <pre className="bg-muted/50 border border-border rounded-md p-2 whitespace-pre-wrap font-mono text-[11px] text-foreground">
+            {codeTemplate}
+          </pre>
+        )}
         {ex.type === "quiz" && ex.options && (
           <div className="space-y-1">
             {(ex.options as any[]).map((opt: any) => (
