@@ -198,6 +198,7 @@ export function useAssignTest() {
             user_id: id,
             title: "Test nou disponibil 📝",
             body: `Ai primit testul «${title}». Intră să-l rezolvi!`,
+            link: `/test/${data.id}`,
           }));
           await supabase.from("notifications").insert(notifications);
 
