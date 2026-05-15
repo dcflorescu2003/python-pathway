@@ -62,6 +62,7 @@ const RequestsTab = () => {
           user_id: req.user_id,
           title: "Cont de profesor aprobat! 🎓",
           body: "Felicitări! Contul tău de profesor a fost verificat.",
+          link: "/auth?tab=profile",
         });
       }
       qc.invalidateQueries({ queryKey: ["admin-verification-requests"] });
