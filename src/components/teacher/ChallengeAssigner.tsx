@@ -49,30 +49,41 @@ interface ChallengeAssignerProps {
   onClose: () => void;
 }
 
-const ExercisePreview = ({ exercise }: { exercise: Exercise }) => (
-  <div className="ml-6 px-3 py-2 bg-muted/50 rounded-md text-xs text-muted-foreground space-y-0.5">
-    <span className="font-medium text-foreground">{exercise.question}</span>
-    {exercise.type === "quiz" && exercise.options && (
-      <div className="mt-1 space-y-0.5">
-        {exercise.options.map((opt) => (
-          <div key={opt.id} className="pl-2">○ {opt.text}</div>
-        ))}
-      </div>
-    )}
-    {exercise.type === "truefalse" && (
-      <div className="mt-1">Tip: Adevărat / Fals</div>
-    )}
-    {exercise.type === "fill" && (
-      <div className="mt-1">Tip: Completează spațiile</div>
-    )}
-    {exercise.type === "order" && exercise.lines && (
-      <div className="mt-1">Tip: Ordonează ({exercise.lines.length} linii)</div>
-    )}
-    {exercise.type === "match" && exercise.pairs && (
-      <div className="mt-1">Tip: Potrivire ({exercise.pairs.length} perechi)</div>
-    )}
-  </div>
-);
+const ExercisePreview = ({ exercise }: { exercise: Exercise }) => {
+  const prompt = exercise.question || (exercise as any).statement;
+  const code = exercise.codeTemplate;
+  return (
+    <div className="ml-6 px-3 py-2 bg-muted/50 rounded-md text-xs text-muted-foreground space-y-1">
+      {prompt && <RichContent className="font-medium text-foreground text-xs">{prompt}</RichContent>}
+      {code && (
+        <pre className="bg-background/60 border border-border/50 rounded p-2 font-mono text-[11px] text-foreground whitespace-pre-wrap">
+          {code}
+        </pre>
+      )}
+      {exercise.type === "quiz" && exercise.options && (
+        <div className="mt-1 space-y-0.5">
+          {exercise.options.map((opt) => (
+            <div key={opt.id} className="pl-2">
+              <span className="font-semibold">{opt.id?.toUpperCase?.() || "•"})</span> {opt.text}
+            </div>
+          ))}
+        </div>
+      )}
+      {exercise.type === "truefalse" && (
+        <div className="mt-1">Tip: Adevărat / Fals</div>
+      )}
+      {exercise.type === "fill" && (
+        <div className="mt-1">Tip: Completează spațiile</div>
+      )}
+      {exercise.type === "order" && exercise.lines && (
+        <div className="mt-1">Tip: Ordonează ({exercise.lines.length} linii)</div>
+      )}
+      {exercise.type === "match" && exercise.pairs && (
+        <div className="mt-1">Tip: Potrivire ({exercise.pairs.length} perechi)</div>
+      )}
+    </div>
+  );
+};
 
 const ChallengeAssigner = ({ classId, existingChallengeIds, onClose }: ChallengeAssignerProps) => {
   const { data: chapters = [] } = useChapters();
