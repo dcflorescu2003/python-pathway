@@ -188,7 +188,12 @@ Deno.serve(async (req) => {
       users = users.filter((u) => u.premium_source === "coupon");
     }
 
-    return new Response(JSON.stringify({ users, total }), {
+    // Total system-wide user count
+    const { count: totalAll } = await admin
+      .from("profiles")
+      .select("*", { count: "exact", head: true });
+
+    return new Response(JSON.stringify({ users, total, total_all: totalAll || 0 }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {
