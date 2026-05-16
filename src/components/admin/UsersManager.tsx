@@ -59,12 +59,13 @@ const UsersManager = () => {
         body: { search, filter, limit: PAGE_SIZE, offset: page * PAGE_SIZE },
       });
       if (error) throw error;
-      return data as { users: AdminUser[]; total: number };
+      return data as { users: AdminUser[]; total: number; total_all: number };
     },
   });
 
   const users = data?.users || [];
   const total = data?.total || 0;
+  const totalAll = data?.total_all || 0;
   const maxPage = Math.max(0, Math.ceil(total / PAGE_SIZE) - 1);
 
   const togglePremium = async (u: AdminUser, value: boolean) => {
