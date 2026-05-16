@@ -143,8 +143,13 @@ const UsersManager = () => {
           </Button>
         </div>
 
-        <div className="text-xs text-muted-foreground">
-          {isLoading ? "Se încarcă..." : `${total} utilizatori găsiți`}
+        <div className="flex items-center justify-between text-xs text-muted-foreground">
+          <span>{isLoading ? "Se încarcă..." : `${total} utilizatori găsiți`}</span>
+          {!isLoading && (
+            <Badge variant="outline" className="text-xs font-mono">
+              Total în sistem: {totalAll.toLocaleString('ro-RO')}
+            </Badge>
+          )}
         </div>
 
         <div className="rounded-md border border-border overflow-x-auto">
