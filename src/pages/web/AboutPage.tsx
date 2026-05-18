@@ -44,7 +44,7 @@ const AboutPage = () => {
         <title>PyRo — Învață Python pas cu pas, pentru elevi și profesori</title>
         <meta
           name="description"
-          content="PyRo este platforma educațională care învață Python în stil Duolingo. Curriculum aliniat cu clasa a IX-a, editor de cod în browser, unelte complete pentru profesori."
+          content="PyRo este platforma educațională care învață Python prin lecții interactive. Curriculum aliniat cu clasa a IX-a, editor de cod în browser, unelte complete pentru profesori."
         />
         <link rel="canonical" href="https://pyroskill.info/about" />
         <meta property="og:title" content="PyRo — Învață Python pas cu pas" />
