@@ -90,7 +90,7 @@ const AboutPage = () => {
           <div>
             <h2 className="text-3xl font-bold tracking-tight md:text-4xl">Ce este PyRo?</h2>
             <p className="mt-4 text-muted-foreground">
-              Este o platformă educațională în stil Duolingo, construită special pentru limbajul Python.
+              Este o platformă educațională cu lecții interactive scurte, construită special pentru limbajul Python.
               Acoperă întreaga programă de informatică pentru clasa a IX-a, dar funcționează la fel de
               bine pentru oricine vrea să învețe Python de la zero.
             </p>
