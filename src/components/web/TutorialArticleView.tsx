@@ -19,8 +19,11 @@ const TutorialArticleView = ({ articles, basePath, audience }: Props) => {
       <div className="mx-auto max-w-3xl px-4 py-16 text-center">
         <h1 className="text-2xl font-semibold">Articol negăsit</h1>
         <p className="mt-2 text-muted-foreground">Tutorialul căutat nu există sau a fost mutat.</p>
-        <Link to={basePath} className="mt-6 inline-flex items-center gap-2 text-primary">
-          <ArrowLeft className="h-4 w-4" /> Înapoi la lista de tutoriale
+        <Link
+          to={basePath}
+          className="mt-6 inline-flex items-center gap-2 rounded-lg border-2 border-primary bg-primary/10 px-5 py-3 text-base font-semibold text-primary transition-colors hover:bg-primary hover:text-primary-foreground"
+        >
+          <ArrowLeft className="h-5 w-5" /> Înapoi la lista de tutoriale
         </Link>
       </div>
     );
