@@ -52,6 +52,11 @@ const ManualLessonPage = lazy(() => import("./pages/ManualLessonPage"));
 const TakeTestPage = lazy(() => import("./pages/TakeTestPage"));
 const SkipChallengePage = lazy(() => import("./pages/SkipChallengePage"));
 const UnsubscribePage = lazy(() => import("./pages/UnsubscribePage"));
+const AboutPage = lazy(() => import("./pages/web/AboutPage"));
+const StudentTutorialsIndex = lazy(() => import("./pages/web/StudentTutorialsIndex"));
+const StudentTutorialDetail = lazy(() => import("./pages/web/StudentTutorialDetail"));
+const TeacherTutorialsIndex = lazy(() => import("./pages/web/TeacherTutorialsIndex"));
+const TeacherTutorialDetail = lazy(() => import("./pages/web/TeacherTutorialDetail"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 const queryClient = new QueryClient();
