@@ -10,7 +10,7 @@ export const studentTutorials: TutorialArticle[] = [
       {
         heading: "1. Înregistrare",
         body: [
-          "Intră pe pyroskill.info sau deschide aplicația și apasă „Cont". Te poți înregistra cu email și parolă, cu Google sau cu Apple.",
+          "Intră pe pyroskill.info sau deschide aplicația și apasă „Cont”. Te poți înregistra cu email și parolă, cu Google sau cu Apple.",
           "După înregistrare, primești un email de confirmare. Apasă linkul din email ca să-ți activezi contul.",
         ],
         image: { alt: "Ecranul de înregistrare PyRo", placeholder: "Screenshot: pagina /auth" },
@@ -96,7 +96,7 @@ export const studentTutorials: TutorialArticle[] = [
       {
         heading: "Pagina Probleme",
         body: [
-          "Mergi la „Probleme" din meniul de jos. Ai 60 de probleme grupate pe dificultate.",
+          "Mergi la „Probleme” din meniul de jos. Ai 60 de probleme grupate pe dificultate.",
           "Apasă pe o problemă ca să vezi cerința, exemplele de input/output și editorul.",
         ],
         image: { alt: "Lista de probleme", placeholder: "Screenshot: ProblemsPage" },
@@ -105,7 +105,7 @@ export const studentTutorials: TutorialArticle[] = [
         heading: "Editorul",
         body: [
           "Codul tău rulează direct în browser, prin Pyodide. Nu trebuie să instalezi nimic.",
-          "Apasă „Rulează" ca să-ți testezi soluția. Ai timeout de 10 secunde pe execuție.",
+          "Apasă „Rulează” ca să-ți testezi soluția. Ai timeout de 10 secunde pe execuție.",
         ],
         image: { alt: "Editorul de cod", placeholder: "Screenshot: ProblemSolvePage cu editor" },
         tip: "Dacă te blochezi, poți vedea soluția oficială după câteva încercări.",
@@ -121,7 +121,7 @@ export const studentTutorials: TutorialArticle[] = [
       {
         heading: "Codul de clasă",
         body: [
-          "Profesorul îți dă un cod scurt (ex: ABC123). Mergi în pagina Cont → Clase și introdu-l în câmpul „Alătură-te unei clase".",
+          "Profesorul îți dă un cod scurt (ex: ABC123). Mergi în pagina Cont → Clase și introdu-l în câmpul „Alătură-te unei clase”.",
           "După ce te alături, profesorul îți poate trimite teste și provocări care apar în notificări.",
         ],
         image: { alt: "Formular alăturare clasă", placeholder: "Screenshot: StudentTab join class" },

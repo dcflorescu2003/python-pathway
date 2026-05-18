@@ -11,7 +11,7 @@ export const teacherTutorials: TutorialArticle[] = [
         heading: "De ce verificare?",
         body: [
           "Funcțiile de profesor (clase, teste, analitice) sunt rezervate cadrelor didactice reale, ca să protejăm elevii.",
-          "După verificare, contul tău primește rol „profesor" și ai acces la toate uneltele.",
+          "După verificare, contul tău primește rol „profesor” și ai acces la toate uneltele.",
         ],
       },
       {
@@ -36,7 +36,7 @@ export const teacherTutorials: TutorialArticle[] = [
       {
         heading: "Creare clasă",
         body: [
-          "Mergi în Cont → Clase → „Adaugă clasă nouă". Dă-i un nume (ex: „9A — Liceul X 2025-2026").",
+          "Mergi în Cont → Clase → „Adaugă clasă nouă”. Dă-i un nume (ex: „9A — Liceul X 2025-2026”).",
           "Sistemul generează un cod scurt (ex: ABC123). Trimite codul elevilor — îl folosesc ca să se alăture.",
         ],
         image: { alt: "Manager de clase", placeholder: "Screenshot: ClassManager" },
