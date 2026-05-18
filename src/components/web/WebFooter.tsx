@@ -8,7 +8,7 @@ const WebFooter = () => {
         <div className="md:col-span-2">
           <PyroLogo size="sm" />
           <p className="mt-3 max-w-sm text-sm text-muted-foreground">
-            PyRo te învață Python pas cu pas, în stil Duolingo. Curriculum aliniat cu programa de
+            PyRo te învață Python pas cu pas, prin lecții practice. Curriculum aliniat cu programa de
             clasa a IX-a, cu unelte pentru elevi și profesori.
           </p>
         </div>

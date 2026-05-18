@@ -21,7 +21,7 @@ import PyroLogo from "@/components/brand/PyroLogo";
 import { Button } from "@/components/ui/button";
 
 const studentFeatures = [
-  { icon: BookOpen, title: "Lecții în stil Duolingo", description: "6 capitole, 60 de probleme. Lecții scurte, exerciții variate, progres rapid." },
+  { icon: BookOpen, title: "Lecții interactive scurte", description: "6 capitole, 60 de probleme. Lecții scurte, exerciții variate, progres rapid." },
   { icon: Code2, title: "Editor Python în browser", description: "Codul tău rulează direct în browser cu Pyodide. Zero setup, zero instalări." },
   { icon: Target, title: "XP, nivele și avatar", description: "25 de nivele și un avatar șarpe Python care evoluează prin 10 stadii." },
   { icon: Heart, title: "Vieți și streak zilnic", description: "5 vieți care se regenerează. Streak pentru zilele consecutive de practică." },
@@ -44,7 +44,7 @@ const AboutPage = () => {
         <title>PyRo — Învață Python pas cu pas, pentru elevi și profesori</title>
         <meta
           name="description"
-          content="PyRo este platforma educațională care învață Python în stil Duolingo. Curriculum aliniat cu clasa a IX-a, editor de cod în browser, unelte complete pentru profesori."
+          content="PyRo este platforma educațională care învață Python prin lecții interactive. Curriculum aliniat cu clasa a IX-a, editor de cod în browser, unelte complete pentru profesori."
         />
         <link rel="canonical" href="https://pyroskill.info/about" />
         <meta property="og:title" content="PyRo — Învață Python pas cu pas" />
@@ -90,7 +90,7 @@ const AboutPage = () => {
           <div>
             <h2 className="text-3xl font-bold tracking-tight md:text-4xl">Ce este PyRo?</h2>
             <p className="mt-4 text-muted-foreground">
-              Este o platformă educațională în stil Duolingo, construită special pentru limbajul Python.
+              Este o platformă educațională cu lecții interactive scurte, construită special pentru limbajul Python.
               Acoperă întreaga programă de informatică pentru clasa a IX-a, dar funcționează la fel de
               bine pentru oricine vrea să învețe Python de la zero.
             </p>
