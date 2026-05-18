@@ -67,9 +67,9 @@ const TutorialArticleView = ({ articles, basePath, audience }: Props) => {
       <article className="mx-auto max-w-3xl px-4 py-12">
         <Link
           to={basePath}
-          className="mb-6 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
+          className="mb-6 inline-flex items-center gap-2 rounded-lg border-2 border-primary bg-primary/10 px-5 py-3 text-base font-semibold text-primary transition-colors hover:bg-primary hover:text-primary-foreground"
         >
-          <ArrowLeft className="h-4 w-4" /> Tutoriale {audience}
+          <ArrowLeft className="h-5 w-5" /> Tutoriale {audience}
         </Link>
 
         <header className="mb-8">
