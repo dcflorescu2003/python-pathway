@@ -52,6 +52,11 @@ const ManualLessonPage = lazy(() => import("./pages/ManualLessonPage"));
 const TakeTestPage = lazy(() => import("./pages/TakeTestPage"));
 const SkipChallengePage = lazy(() => import("./pages/SkipChallengePage"));
 const UnsubscribePage = lazy(() => import("./pages/UnsubscribePage"));
+const AboutPage = lazy(() => import("./pages/web/AboutPage"));
+const StudentTutorialsIndex = lazy(() => import("./pages/web/StudentTutorialsIndex"));
+const StudentTutorialDetail = lazy(() => import("./pages/web/StudentTutorialDetail"));
+const TeacherTutorialsIndex = lazy(() => import("./pages/web/TeacherTutorialsIndex"));
+const TeacherTutorialDetail = lazy(() => import("./pages/web/TeacherTutorialDetail"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 const queryClient = new QueryClient();
@@ -88,6 +93,11 @@ const AppRoutes = () => {
           <Route path="/manual/:lessonId" element={<ManualLessonPage />} />
           <Route path="/skip-challenge/:lessonId" element={<SkipChallengePage />} />
           <Route path="/unsubscribe" element={<UnsubscribePage />} />
+          <Route path="/about" element={<AboutPage />} />
+          <Route path="/tutoriale/elevi" element={<StudentTutorialsIndex />} />
+          <Route path="/tutoriale/elevi/:slug" element={<StudentTutorialDetail />} />
+          <Route path="/tutoriale/profesori" element={<TeacherTutorialsIndex />} />
+          <Route path="/tutoriale/profesori/:slug" element={<TeacherTutorialDetail />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </AnimatePresence>

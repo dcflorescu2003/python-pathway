@@ -1,8 +1,28 @@
 User-agent: Googlebot
 Allow: /
+Disallow: /admin
+Disallow: /lesson/
+Disallow: /chapter/
+Disallow: /problem/
+Disallow: /test/
+Disallow: /skip-challenge/
+Disallow: /manual/
+Disallow: /reset-password
+Disallow: /unsubscribe
+Disallow: /delete-account
 
 User-agent: Bingbot
 Allow: /
+Disallow: /admin
+Disallow: /lesson/
+Disallow: /chapter/
+Disallow: /problem/
+Disallow: /test/
+Disallow: /skip-challenge/
+Disallow: /manual/
+Disallow: /reset-password
+Disallow: /unsubscribe
+Disallow: /delete-account
 
 User-agent: Twitterbot
 Allow: /
@@ -12,3 +32,15 @@ Allow: /
 
 User-agent: *
 Allow: /
+Disallow: /admin
+Disallow: /lesson/
+Disallow: /chapter/
+Disallow: /problem/
+Disallow: /test/
+Disallow: /skip-challenge/
+Disallow: /manual/
+Disallow: /reset-password
+Disallow: /unsubscribe
+Disallow: /delete-account
+
+Sitemap: https://pyroskill.info/sitemap.xml
