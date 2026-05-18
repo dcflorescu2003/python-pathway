@@ -93,6 +93,11 @@ const AppRoutes = () => {
           <Route path="/manual/:lessonId" element={<ManualLessonPage />} />
           <Route path="/skip-challenge/:lessonId" element={<SkipChallengePage />} />
           <Route path="/unsubscribe" element={<UnsubscribePage />} />
+          <Route path="/about" element={<AboutPage />} />
+          <Route path="/tutoriale/elevi" element={<StudentTutorialsIndex />} />
+          <Route path="/tutoriale/elevi/:slug" element={<StudentTutorialDetail />} />
+          <Route path="/tutoriale/profesori" element={<TeacherTutorialsIndex />} />
+          <Route path="/tutoriale/profesori/:slug" element={<TeacherTutorialDetail />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </AnimatePresence>
