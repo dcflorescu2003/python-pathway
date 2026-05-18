@@ -42,7 +42,7 @@ export const studentTutorials: TutorialArticle[] = [
         heading: "Capitole și lecții",
         body: [
           "PyRo are 6 capitole care acoperă programa de clasa a IX-a: bazele Python, variabile, condiționale, bucle, funcții, liste și structuri.",
-          "Fiecare capitol conține lecții scurte, în stil Duolingo, cu exerciții variate: alege varianta corectă, completează spațiile, ordonează liniile de cod, scrie cod real.",
+          "Fiecare capitol conține lecții scurte și interactive, cu exerciții variate: alege varianta corectă, completează spațiile, ordonează liniile de cod, scrie cod real.",
         ],
         image: { alt: "Harta capitolelor", placeholder: "Screenshot: pagina Index cu capitole" },
       },
