@@ -32,7 +32,7 @@ const studentFeatures = [
 const teacherFeatures = [
   { icon: Users, title: "Clase și roster elevi", description: "Creezi clase, generezi cod de înrolare, urmărești elevii cu numele real." },
   { icon: FileText, title: "Teste predefinite + custom", description: "Folosește Eval Bank sau construiește teste cu propriile exerciții." },
-  { icon: BrainCircuit, title: "Notare automată + AI", description: "Răspunsurile fixe se notează instant. Codul liber e evaluat de Gemini." },
+  { icon: BrainCircuit, title: "Statistici pentru clasă", description: "Răspunsurile fixe se notează instant. Codul liber e evaluat de Gemini." },
   { icon: BarChart3, title: "Analitice clasă", description: "Grafice de performanță, export CSV / PDF pentru rapoarte." },
   { icon: GraduationCap, title: "Profil de competențe", description: "Urmărește competențele generale, specifice și microcompetențele per elev." },
 ];
@@ -147,7 +147,7 @@ print(salut("PyRo"))
           <div className="mb-10 flex flex-col items-start justify-between gap-4 md:flex-row md:items-end">
             <div>
               <p className="mb-2 text-sm font-semibold uppercase tracking-wide text-primary">Pentru profesori</p>
-              <h2 className="text-3xl font-bold tracking-tight md:text-4xl">Unelte complete pentru clasă</h2>
+              <h2 className="text-3xl font-bold tracking-tight md:text-4xl">Instrumente utile pentru clasă</h2>
             </div>
             <Button asChild variant="outline">
               <Link to="/tutoriale/profesori" className="gap-2">

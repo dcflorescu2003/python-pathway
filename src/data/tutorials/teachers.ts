@@ -92,7 +92,7 @@ export const teacherTutorials: TutorialArticle[] = [
   },
   {
     slug: "notare-ai",
-    title: "Cum funcționează notarea automată + AI",
+    title: "Cum funcționează statisticile pentru clasă",
     excerpt: "Exercițiile fixe se notează automat. Codul scris liber e evaluat de AI.",
     durationMin: 4,
     sections: [
