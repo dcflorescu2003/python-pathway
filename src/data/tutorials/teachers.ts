@@ -106,7 +106,7 @@ export const teacherTutorials: TutorialArticle[] = [
         heading: "Notare cu AI (Gemini)",
         body: [
           "Pentru exercițiile cu cod scris liber, AI-ul evaluează soluția în funcție de cerință și-ți dă scor + feedback.",
-          "Pe planul Premium ai max 3 exerciții AI-evaluated per test. Pe AI Teacher, limita e mai mare.",
+          "Cu planul Premiu AI poti include până la 3 itemi subiectivi / test pentru a fi corectați automat.",
         ],
         image: { alt: "Rezultate test cu feedback AI", placeholder: "Screenshot: TestResults" },
         tip: "Tu rămâi profesorul: poți suprascrie manual orice scor dat de AI.",
