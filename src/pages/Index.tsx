@@ -562,6 +562,65 @@ const Index = (): JSX.Element => {
       <RefillLivesDialog open={showRefillLives} onOpenChange={setShowRefillLives} lives={progress.lives} isPremium={progress.hasUnlimitedLives} onLivesGranted={setLivesFromReward} />
       <LivesRefilledDialog open={showLivesRefilled} onOpenChange={setShowLivesRefilled} onStartLesson={() => { setShowLivesRefilled(false); }} />
       <ComebackDialog open={showComeback} onOpenChange={setShowComeback} daysAway={comebackDays} onResume={() => setShowComeback(false)} />
+
+      <AlertDialog open={!!lockedChapterInfo} onOpenChange={(o) => { if (!o) setLockedChapterInfo(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <Lock className="h-5 w-5 text-yellow-500" />
+              Capitol blocat
+            </AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-3 text-left">
+                <p>
+                  Capitolul <span className="font-semibold text-foreground">„{lockedChapterInfo?.chapterTitle}"</span> nu este încă disponibil.
+                </p>
+                <div className="rounded-lg border border-border bg-muted/40 p-3 text-sm">
+                  <p className="flex items-center gap-2 font-medium text-foreground mb-1">
+                    <Info className="h-4 w-4 text-primary" />
+                    Cum îl deblochezi?
+                  </p>
+                  {lockedChapterInfo?.prevChapterTitle ? (
+                    <p>
+                      Termină cel puțin 50% din lecțiile capitolului anterior: <span className="font-semibold text-foreground">„{lockedChapterInfo.prevChapterTitle}"</span>.
+                    </p>
+                  ) : (
+                    <p>Termină capitolul anterior pentru a continua.</p>
+                  )}
+                  <p className="mt-2 text-muted-foreground">
+                    Alternativ, poți încerca o <span className="font-medium text-yellow-500">provocare de skip</span> — răspunzi corect la 20 de întrebări din lecțiile parcurse și deblochezi tot până la acest capitol.
+                  </p>
+                </div>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Înțeles</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (!lockedChapterInfo) return;
+                const info = lockedChapterInfo;
+                setLockedChapterInfo(null);
+                setSkipDialog({ lessonId: info.firstLessonId, title: info.firstLessonTitle, cooldownMs: info.cooldownMs });
+              }}
+              className="gap-1.5"
+            >
+              <Zap className="h-4 w-4" /> Încearcă skip challenge
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {skipDialog && (
+        <SkipChallengeDialog
+          open={!!skipDialog}
+          onOpenChange={(o) => { if (!o) setSkipDialog(null); }}
+          lessonId={skipDialog.lessonId}
+          lessonTitle={skipDialog.title}
+          realLives={progress.lives}
+          cooldownRemainingMs={skipDialog.cooldownMs}
+        />
+      )}
     </motion.div>
       )}
     </AnimatePresence>
