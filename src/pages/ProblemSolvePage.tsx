@@ -150,19 +150,11 @@ const ProblemSolvePage = () => {
 
         {results && (
           <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <h3 className="font-semibold text-foreground">Rezultate</h3>
-                <Badge variant={passedCount === totalCount ? "default" : "destructive"} className={passedCount === totalCount ? "bg-primary/20 text-primary border-0" : ""}>
-                  {passedCount}/{totalCount}
-                </Badge>
-              </div>
-              {results.some((r) => r.hidden) && (
-                <button onClick={() => setShowHiddenTests(!showHiddenTests)} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors">
-                  {showHiddenTests ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
-                  {showHiddenTests ? "Ascunde" : "Arată"} teste ascunse
-                </button>
-              )}
+            <div className="flex items-center gap-2">
+              <h3 className="font-semibold text-foreground">Rezultate</h3>
+              <Badge variant={passedCount === totalCount ? "default" : "destructive"} className={passedCount === totalCount ? "bg-primary/20 text-primary border-0" : ""}>
+                {passedCount}/{totalCount}
+              </Badge>
             </div>
 
             {visibleResults?.map((result, i) => (
@@ -172,10 +164,11 @@ const ProblemSolvePage = () => {
                     {result.passed ? <CheckCircle2 className="h-4 w-4 text-primary flex-shrink-0" /> : <XCircle className="h-4 w-4 text-destructive flex-shrink-0" />}
                     <span className="text-sm font-medium text-foreground">Test {i + 1} {result.hidden ? "(ascuns)" : ""}</span>
                   </div>
-                  <div className="pl-6 space-y-1">
-                    <p className="text-xs text-muted-foreground font-mono">Intrare: {result.input.replace(/\n/g, " ↵ ")}</p>
-                    <p className="text-xs text-muted-foreground font-mono">Așteptat: {result.expectedOutput}</p>
-                    {!result.passed && (
+                  {!result.hidden && (
+                    <div className="pl-6 space-y-1">
+                      <p className="text-xs text-muted-foreground font-mono">Intrare: {result.input.replace(/\n/g, " ↵ ")}</p>
+                      <p className="text-xs text-muted-foreground font-mono">Așteptat: {result.expectedOutput}</p>
+                      {!result.passed && (
                       <p className="text-xs font-mono text-destructive">{result.error ? `Eroare: ${result.error}` : `Primit: ${result.actualOutput || "(gol)"}`}</p>
                     )}
                   </div>
