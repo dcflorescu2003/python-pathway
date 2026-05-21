@@ -14,7 +14,20 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { motion, AnimatePresence } from "framer-motion";
-import { Flame, Heart, Zap, Trophy, Crown, School, ChevronDown, Plus, Target, BookOpen, Code } from "lucide-react";
+import { Flame, Heart, Zap, Trophy, Crown, School, ChevronDown, Plus, Target, BookOpen, Code, Lock, Info } from "lucide-react";
+import SkipChallengeDialog from "@/components/SkipChallengeDialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+
+const COOLDOWN_KEY_PREFIX = "pyro-skip-cooldown:";
 import { toast } from "@/hooks/use-toast";
 import PremiumDialog from "@/components/PremiumDialog";
 import TeacherPremiumDialog from "@/components/TeacherPremiumDialog";
@@ -58,6 +71,14 @@ const Index = (): JSX.Element => {
   const [bestStreak, setBestStreak] = useState(0);
   const [teacherStatus, setTeacherStatus] = useState<string | null>(null);
   const [showTeacherPremium, setShowTeacherPremium] = useState(false);
+  const [lockedChapterInfo, setLockedChapterInfo] = useState<{
+    chapterTitle: string;
+    firstLessonId: string;
+    firstLessonTitle: string;
+    prevChapterTitle: string | null;
+    cooldownMs: number;
+  } | null>(null);
+  const [skipDialog, setSkipDialog] = useState<{ lessonId: string; title: string; cooldownMs: number } | null>(null);
   const [showTeacherPremiumPopup, setShowTeacherPremiumPopup] = useState(false);
   const [showLivesRefilled, setShowLivesRefilled] = useState(false);
   const [showComeback, setShowComeback] = useState(false);
@@ -452,11 +473,33 @@ const Index = (): JSX.Element => {
               return prevCompleted < Math.ceil(prevNonPractice.length * 0.5);
             })();
 
+            const handleChapterClick = () => {
+              if (!isLocked) {
+                navigate(`/chapter/${chapter.id}`);
+                return;
+              }
+              const firstLesson = chapter.lessons[0];
+              if (!firstLesson) return;
+              let cooldownMs = 0;
+              try {
+                const stored = localStorage.getItem(`${COOLDOWN_KEY_PREFIX}${firstLesson.id}`);
+                if (stored) cooldownMs = Math.max(0, parseInt(stored, 10) - Date.now());
+              } catch {}
+              const prevChapter = chapters[idx - 1];
+              setLockedChapterInfo({
+                chapterTitle: chapter.title,
+                firstLessonId: firstLesson.id,
+                firstLessonTitle: firstLesson.title,
+                prevChapterTitle: prevChapter?.title ?? null,
+                cooldownMs,
+              });
+            };
+
             return (
               <motion.div key={chapter.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.06 }}
-                onClick={() => !isLocked && navigate(`/chapter/${chapter.id}`)}
-                className={`group relative overflow-hidden rounded-xl border p-4 transition-all active:scale-[0.98] ${
-                  isLocked ? "border-border/50 bg-card/50 opacity-50 cursor-not-allowed" : "border-border bg-card hover:border-primary/50 cursor-pointer"
+                onClick={handleChapterClick}
+                className={`group relative overflow-hidden rounded-xl border p-4 transition-all active:scale-[0.98] cursor-pointer ${
+                  isLocked ? "border-yellow-500/30 bg-card/50 opacity-70 hover:opacity-90 hover:border-yellow-500/60" : "border-border bg-card hover:border-primary/50"
                 }`}>
                 <div className="flex items-center gap-3">
                   <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl text-xl"
@@ -471,7 +514,14 @@ const Index = (): JSX.Element => {
                       <span className="text-[10px] font-mono text-muted-foreground whitespace-nowrap">{completedCount}/{totalLessons}</span>
                     </div>
                   </div>
-                  {isLocked && <span className="text-lg">🔒</span>}
+                  {isLocked && (
+                    <div className="relative flex items-center">
+                      <Lock className="h-5 w-5 text-muted-foreground" />
+                      <span className="absolute -top-1.5 -right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-yellow-500 text-black shadow-md">
+                        <Zap className="h-2.5 w-2.5" />
+                      </span>
+                    </div>
+                  )}
                   {completedCount === totalLessons && totalLessons > 0 && <Trophy className="h-5 w-5 text-warning" />}
                 </div>
               </motion.div>
@@ -512,6 +562,65 @@ const Index = (): JSX.Element => {
       <RefillLivesDialog open={showRefillLives} onOpenChange={setShowRefillLives} lives={progress.lives} isPremium={progress.hasUnlimitedLives} onLivesGranted={setLivesFromReward} />
       <LivesRefilledDialog open={showLivesRefilled} onOpenChange={setShowLivesRefilled} onStartLesson={() => { setShowLivesRefilled(false); }} />
       <ComebackDialog open={showComeback} onOpenChange={setShowComeback} daysAway={comebackDays} onResume={() => setShowComeback(false)} />
+
+      <AlertDialog open={!!lockedChapterInfo} onOpenChange={(o) => { if (!o) setLockedChapterInfo(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <Lock className="h-5 w-5 text-yellow-500" />
+              Capitol blocat
+            </AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-3 text-left">
+                <p>
+                  Capitolul <span className="font-semibold text-foreground">„{lockedChapterInfo?.chapterTitle}"</span> nu este încă disponibil.
+                </p>
+                <div className="rounded-lg border border-border bg-muted/40 p-3 text-sm">
+                  <p className="flex items-center gap-2 font-medium text-foreground mb-1">
+                    <Info className="h-4 w-4 text-primary" />
+                    Cum îl deblochezi?
+                  </p>
+                  {lockedChapterInfo?.prevChapterTitle ? (
+                    <p>
+                      Termină cel puțin 50% din lecțiile capitolului anterior: <span className="font-semibold text-foreground">„{lockedChapterInfo.prevChapterTitle}"</span>.
+                    </p>
+                  ) : (
+                    <p>Termină capitolul anterior pentru a continua.</p>
+                  )}
+                  <p className="mt-2 text-muted-foreground">
+                    Alternativ, poți încerca o <span className="font-medium text-yellow-500">provocare de skip</span> — răspunzi corect la 20 de întrebări din lecțiile parcurse și deblochezi tot până la acest capitol.
+                  </p>
+                </div>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Înțeles</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (!lockedChapterInfo) return;
+                const info = lockedChapterInfo;
+                setLockedChapterInfo(null);
+                setSkipDialog({ lessonId: info.firstLessonId, title: info.firstLessonTitle, cooldownMs: info.cooldownMs });
+              }}
+              className="gap-1.5"
+            >
+              <Zap className="h-4 w-4" /> Încearcă skip challenge
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {skipDialog && (
+        <SkipChallengeDialog
+          open={!!skipDialog}
+          onOpenChange={(o) => { if (!o) setSkipDialog(null); }}
+          lessonId={skipDialog.lessonId}
+          lessonTitle={skipDialog.title}
+          realLives={progress.lives}
+          cooldownRemainingMs={skipDialog.cooldownMs}
+        />
+      )}
     </motion.div>
       )}
     </AnimatePresence>
