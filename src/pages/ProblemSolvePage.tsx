@@ -95,9 +95,7 @@ const ProblemSolvePage = () => {
     }
   };
 
-  const visibleResults = results
-    ? showHiddenTests ? results : results.filter((r) => !r.hidden)
-    : null;
+  const visibleResults = results ?? null;
 
   const passedCount = results?.filter((r) => r.passed).length ?? 0;
   const totalCount = results?.length ?? 0;
