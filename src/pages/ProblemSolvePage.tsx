@@ -169,9 +169,10 @@ const ProblemSolvePage = () => {
                       <p className="text-xs text-muted-foreground font-mono">Intrare: {result.input.replace(/\n/g, " ↵ ")}</p>
                       <p className="text-xs text-muted-foreground font-mono">Așteptat: {result.expectedOutput}</p>
                       {!result.passed && (
-                      <p className="text-xs font-mono text-destructive">{result.error ? `Eroare: ${result.error}` : `Primit: ${result.actualOutput || "(gol)"}`}</p>
-                    )}
-                  </div>
+                        <p className="text-xs font-mono text-destructive">{result.error ? `Eroare: ${result.error}` : `Primit: ${result.actualOutput || "(gol)"}`}</p>
+                      )}
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             ))}
