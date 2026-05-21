@@ -71,6 +71,14 @@ const Index = (): JSX.Element => {
   const [bestStreak, setBestStreak] = useState(0);
   const [teacherStatus, setTeacherStatus] = useState<string | null>(null);
   const [showTeacherPremium, setShowTeacherPremium] = useState(false);
+  const [lockedChapterInfo, setLockedChapterInfo] = useState<{
+    chapterTitle: string;
+    firstLessonId: string;
+    firstLessonTitle: string;
+    prevChapterTitle: string | null;
+    cooldownMs: number;
+  } | null>(null);
+  const [skipDialog, setSkipDialog] = useState<{ lessonId: string; title: string; cooldownMs: number } | null>(null);
   const [showTeacherPremiumPopup, setShowTeacherPremiumPopup] = useState(false);
   const [showLivesRefilled, setShowLivesRefilled] = useState(false);
   const [showComeback, setShowComeback] = useState(false);
