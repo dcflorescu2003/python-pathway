@@ -30,7 +30,6 @@ const ProblemSolvePage = () => {
   const [code, setCode] = useState("");
   const [results, setResults] = useState<TestResult[] | null>(null);
   const [showHint, setShowHint] = useState(false);
-  const [showHiddenTests, setShowHiddenTests] = useState(false);
   const [showSolution, setShowSolution] = useState(false);
   const [solutionText, setSolutionText] = useState<string | null>(null);
   const [loadingSolution, setLoadingSolution] = useState(false);
