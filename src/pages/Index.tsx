@@ -473,11 +473,33 @@ const Index = (): JSX.Element => {
               return prevCompleted < Math.ceil(prevNonPractice.length * 0.5);
             })();
 
+            const handleChapterClick = () => {
+              if (!isLocked) {
+                navigate(`/chapter/${chapter.id}`);
+                return;
+              }
+              const firstLesson = chapter.lessons[0];
+              if (!firstLesson) return;
+              let cooldownMs = 0;
+              try {
+                const stored = localStorage.getItem(`${COOLDOWN_KEY_PREFIX}${firstLesson.id}`);
+                if (stored) cooldownMs = Math.max(0, parseInt(stored, 10) - Date.now());
+              } catch {}
+              const prevChapter = chapters[idx - 1];
+              setLockedChapterInfo({
+                chapterTitle: chapter.title,
+                firstLessonId: firstLesson.id,
+                firstLessonTitle: firstLesson.title,
+                prevChapterTitle: prevChapter?.title ?? null,
+                cooldownMs,
+              });
+            };
+
             return (
               <motion.div key={chapter.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.06 }}
-                onClick={() => !isLocked && navigate(`/chapter/${chapter.id}`)}
-                className={`group relative overflow-hidden rounded-xl border p-4 transition-all active:scale-[0.98] ${
-                  isLocked ? "border-border/50 bg-card/50 opacity-50 cursor-not-allowed" : "border-border bg-card hover:border-primary/50 cursor-pointer"
+                onClick={handleChapterClick}
+                className={`group relative overflow-hidden rounded-xl border p-4 transition-all active:scale-[0.98] cursor-pointer ${
+                  isLocked ? "border-yellow-500/30 bg-card/50 opacity-70 hover:opacity-90 hover:border-yellow-500/60" : "border-border bg-card hover:border-primary/50"
                 }`}>
                 <div className="flex items-center gap-3">
                   <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl text-xl"
@@ -492,7 +514,14 @@ const Index = (): JSX.Element => {
                       <span className="text-[10px] font-mono text-muted-foreground whitespace-nowrap">{completedCount}/{totalLessons}</span>
                     </div>
                   </div>
-                  {isLocked && <span className="text-lg">🔒</span>}
+                  {isLocked && (
+                    <div className="relative flex items-center">
+                      <Lock className="h-5 w-5 text-muted-foreground" />
+                      <span className="absolute -top-1.5 -right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-yellow-500 text-black shadow-md">
+                        <Zap className="h-2.5 w-2.5" />
+                      </span>
+                    </div>
+                  )}
                   {completedCount === totalLessons && totalLessons > 0 && <Trophy className="h-5 w-5 text-warning" />}
                 </div>
               </motion.div>
