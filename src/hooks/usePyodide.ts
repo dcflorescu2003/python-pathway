@@ -9,6 +9,14 @@ declare global {
 const PYODIDE_CDN = "https://cdn.jsdelivr.net/pyodide/v0.25.1/full/";
 const TIMEOUT_MS = 10_000;
 
+export interface FileResult {
+  name: string;
+  expected: string;
+  actual: string;
+  passed: boolean;
+  missing?: boolean;
+}
+
 export interface TestResult {
   input: string;
   expectedOutput: string;
@@ -16,7 +24,31 @@ export interface TestResult {
   passed: boolean;
   error?: string;
   hidden?: boolean;
+  fileResults?: FileResult[];
 }
+
+export interface TestCaseLike {
+  input?: string;
+  expectedOutput?: string;
+  inputFiles?: Record<string, string>;
+  expectedFiles?: Record<string, string>;
+  hidden?: boolean;
+}
+
+export interface StaticCheck {
+  description: string;
+  type: "import" | "call" | "regex";
+  pattern: string;
+  hidden?: boolean;
+}
+
+export interface StaticCheckResult {
+  description: string;
+  passed: boolean;
+  hidden?: boolean;
+}
+
+const normalize = (s: string) => (s ?? "").replace(/\r\n/g, "\n").replace(/\s+$/g, "");
 
 export function usePyodide() {
   const [loading, setLoading] = useState(false);
@@ -28,7 +60,6 @@ export function usePyodide() {
 
     setLoading(true);
     try {
-      // Load script if not present
       if (!window.loadPyodide) {
         await new Promise<void>((resolve, reject) => {
           const script = document.createElement("script");
@@ -48,21 +79,30 @@ export function usePyodide() {
   }, []);
 
   const runCode = useCallback(
-    async (
-      code: string,
-      testCases: { input: string; expectedOutput: string; hidden?: boolean }[]
-    ): Promise<TestResult[]> => {
+    async (code: string, testCases: TestCaseLike[]): Promise<TestResult[]> => {
       setRunning(true);
       try {
         const pyodide = await ensureLoaded();
         const results: TestResult[] = [];
 
         for (const tc of testCases) {
+          const inputFiles = tc.inputFiles || {};
+          const expectedFiles = tc.expectedFiles || {};
+          const allFileNames = new Set([...Object.keys(inputFiles), ...Object.keys(expectedFiles)]);
+
+          // Cleanup any leftover files from previous tests
+          for (const name of allFileNames) {
+            try { pyodide.FS.unlink(name); } catch { /* not present */ }
+          }
+          // Write input files
+          for (const [name, content] of Object.entries(inputFiles)) {
+            pyodide.FS.writeFile(name, content);
+          }
+
           try {
             const result = await Promise.race([
               (async () => {
-                // Set up input simulation and stdout capture
-                const inputLines = tc.input.split("\n");
+                const inputLines = (tc.input ?? "").split("\n");
                 pyodide.runPython(`
 import sys
 from io import StringIO
@@ -85,19 +125,36 @@ sys.stdout = _stdout_capture
 
                 pyodide.runPython(code);
 
-                const output = pyodide
-                  .runPython("_stdout_capture.getvalue()")
-                  .trim();
-
-                // Reset stdout
+                const output = pyodide.runPython("_stdout_capture.getvalue()").trim();
                 pyodide.runPython("sys.stdout = sys.__stdout__");
 
+                // Read expected output files
+                const fileResults: FileResult[] = [];
+                for (const [name, expected] of Object.entries(expectedFiles)) {
+                  let actual = "";
+                  let missing = false;
+                  try {
+                    actual = pyodide.FS.readFile(name, { encoding: "utf8" }) as string;
+                  } catch {
+                    missing = true;
+                  }
+                  const passed = !missing && normalize(actual) === normalize(expected);
+                  fileResults.push({ name, expected, actual, passed, missing });
+                }
+
+                const stdoutMatch =
+                  tc.expectedOutput === undefined
+                    ? true
+                    : normalize(output) === normalize(tc.expectedOutput);
+                const filesMatch = fileResults.every((f) => f.passed);
+
                 return {
-                  input: tc.input,
-                  expectedOutput: tc.expectedOutput,
+                  input: tc.input ?? "",
+                  expectedOutput: tc.expectedOutput ?? "",
                   actualOutput: output,
-                  passed: output === tc.expectedOutput,
+                  passed: stdoutMatch && filesMatch,
                   hidden: tc.hidden,
+                  fileResults: fileResults.length > 0 ? fileResults : undefined,
                 };
               })(),
               new Promise<TestResult>((_, reject) =>
@@ -106,19 +163,22 @@ sys.stdout = _stdout_capture
             ]);
             results.push(result);
           } catch (err: any) {
-            // Reset stdout on error
             try {
               pyodide.runPython("import sys; sys.stdout = sys.__stdout__");
             } catch {}
-
             results.push({
-              input: tc.input,
-              expectedOutput: tc.expectedOutput,
+              input: tc.input ?? "",
+              expectedOutput: tc.expectedOutput ?? "",
               actualOutput: "",
               passed: false,
               error: err.message || "Eroare necunoscută",
               hidden: tc.hidden,
             });
+          } finally {
+            // Cleanup files between tests
+            for (const name of allFileNames) {
+              try { pyodide.FS.unlink(name); } catch { /* ignore */ }
+            }
           }
         }
 
@@ -130,5 +190,34 @@ sys.stdout = _stdout_capture
     [ensureLoaded]
   );
 
-  return { loading, running, runCode };
+  // Static analysis: no execution. Used for Tkinter etc.
+  const runStaticChecks = useCallback((code: string, checks: StaticCheck[]): StaticCheckResult[] => {
+    return checks.map((c) => {
+      let passed = false;
+      try {
+        if (c.type === "import") {
+          // Match `import X`, `import X as Y`, `from X import ...`, including dotted modules
+          const escaped = c.pattern.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+          const re = new RegExp(
+            `(^|\\n)\\s*(import\\s+${escaped}(\\s|,|$|\\.)|from\\s+${escaped}(\\s|\\.))`,
+            "m"
+          );
+          passed = re.test(code);
+        } else if (c.type === "call") {
+          // Match `NAME(` or `.NAME(` (attribute call). pattern is the bare identifier.
+          const escaped = c.pattern.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+          const re = new RegExp(`(^|[^a-zA-Z0-9_])${escaped}\\s*\\(`, "m");
+          passed = re.test(code);
+        } else if (c.type === "regex") {
+          const re = new RegExp(c.pattern, "m");
+          passed = re.test(code);
+        }
+      } catch {
+        passed = false;
+      }
+      return { description: c.description, passed, hidden: c.hidden };
+    });
+  }, []);
+
+  return { loading, running, runCode, runStaticChecks };
 }
