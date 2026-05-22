@@ -213,8 +213,9 @@ export default function EvalProblemsCsvImporter({ lessonId, existingCount, onSuc
                 <Download className="h-3 w-3 mr-1" />Descarcă template
               </Button>
             </div>
-            <p>Coloane: <code>title, description, difficulty, xp_reward, hint, solution, is_premium, test_cases, competencies</code></p>
+            <p>Coloane: <code>title, description, difficulty, xp_reward, hint, solution, is_premium, kind, test_cases, input_files, expected_files, static_checks, competencies</code></p>
             <p>test_cases: <code>input&gt;&gt;output&gt;&gt;hidden(0/1)</code> separate prin <code>;</code></p>
+            <p>Probleme cu <strong>fișiere</strong> sau <strong>tkinter</strong> (kind=static) sunt acum suportate — vezi template-ul.</p>
             <p>competencies: coduri separate prin <code>|</code> (ex: <code>M18|M20</code>)</p>
           </div>
         </DialogContent>
