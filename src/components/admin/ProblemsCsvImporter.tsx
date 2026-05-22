@@ -201,7 +201,9 @@ export default function ProblemsCsvImporter({ chapterId, existingProblems, allEx
                           "bg-red-500/10 text-red-500"
                         }`}>{p.difficulty}</span>
                         <span className="truncate text-foreground flex-1">{p.title}</span>
-                        <span className="text-muted-foreground shrink-0">{p.test_cases.length} teste</span>
+                        <span className="text-muted-foreground shrink-0">
+                          {p.kind === "static" ? `${p.static_checks.length} verif.` : `${p.test_cases.length} teste`}
+                        </span>
                         {p.competencies.length > 0 && (
                           <span className="flex flex-wrap gap-0.5 shrink-0">
                             {p.competencies.map((c) => (
