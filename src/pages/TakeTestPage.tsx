@@ -1140,21 +1140,37 @@ const TestOrderRenderer = ({ exercise, answer, onAnswer }: { exercise: any; answ
 
 // Problem renderer (code) — with optional Pyodide test runner
 const ProblemRenderer = ({ problem, answer, onAnswer, allowRunTests }: { problem: any; answer: any; onAnswer: (d: any) => void; allowRunTests: boolean }) => {
-  const { loading: pyLoading, running, runCode } = usePyodide();
+  const { loading: pyLoading, running, runCode, runStaticChecks } = usePyodide();
   const [testResults, setTestResults] = useState<TestResult[]>([]);
+  const [staticResults, setStaticResults] = useState<{ description: string; passed: boolean; hidden?: boolean }[]>([]);
 
-  const visibleTests = (problem.test_cases || []).filter((tc: any) => !tc.hidden);
+  // Support both legacy array shape and wrapper { kind, testCases, staticChecks }.
+  const raw = problem.test_cases;
+  const isWrapper = raw && !Array.isArray(raw) && typeof raw === "object";
+  const kind: "execute" | "static" = isWrapper && raw.kind === "static" ? "static" : "execute";
+  const rawTestCases: any[] = isWrapper ? (raw.testCases || []) : Array.isArray(raw) ? raw : [];
+  const staticChecks: any[] = isWrapper ? (raw.staticChecks || []) : [];
+
+  const visibleTests = rawTestCases.filter((tc: any) => !tc.hidden);
 
   const handleRun = async () => {
     const code = answer?.code || "";
     if (!code.trim()) { toast.error("Scrie cod înainte de a rula."); return; }
+    if (kind === "static") {
+      setStaticResults(runStaticChecks(code, staticChecks));
+      return;
+    }
     const results = await runCode(code, visibleTests.map((tc: any) => ({
       input: tc.input,
-      expectedOutput: tc.expectedOutput || tc.expected_output || tc.expected,
+      expectedOutput: tc.expectedOutput ?? tc.expected_output ?? tc.expected,
+      inputFiles: tc.inputFiles,
+      expectedFiles: tc.expectedFiles,
       hidden: false,
     })));
     setTestResults(results);
   };
+
+  const canRun = allowRunTests && (kind === "static" ? staticChecks.length > 0 : visibleTests.length > 0);
 
   return (
     <div className="space-y-3" role="group" aria-label={`Problemă: ${problem.title}`}>
@@ -1168,7 +1184,7 @@ const ProblemRenderer = ({ problem, answer, onAnswer, allowRunTests }: { problem
         value={answer?.code || ""}
         onChange={(val) => onAnswer({ code: val })}
       />
-      {allowRunTests && visibleTests.length > 0 && (
+      {canRun && (
         <div className="space-y-2">
           <Button
             variant="outline"
@@ -1179,18 +1195,33 @@ const ProblemRenderer = ({ problem, answer, onAnswer, allowRunTests }: { problem
             aria-label={pyLoading ? "Se încarcă motorul Python" : running ? "Se rulează testele" : "Rulează testele"}
           >
             {running || pyLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /> : <Play className="h-3.5 w-3.5" aria-hidden="true" />}
-            {pyLoading ? "Se încarcă..." : running ? "Rulează..." : "Rulează teste"}
+            {pyLoading ? "Se încarcă..." : running ? "Rulează..." : kind === "static" ? "Verifică" : "Rulează teste"}
           </Button>
-          {testResults.length > 0 && (
+          {kind === "execute" && testResults.length > 0 && (
             <div className="space-y-1.5" role="list" aria-label="Rezultatele testelor">
               {testResults.map((r, i) => (
                 <div key={i} role="listitem" aria-label={`Test ${i + 1}: ${r.passed ? "trecut" : "picat"}`} className={`flex items-start gap-2 p-2 rounded-lg border text-xs ${r.passed ? "border-primary/30 bg-primary/5" : "border-destructive/30 bg-destructive/5"}`}>
                   {r.passed ? <CheckCircle className="h-3.5 w-3.5 text-primary shrink-0 mt-0.5" aria-hidden="true" /> : <XCircle className="h-3.5 w-3.5 text-destructive shrink-0 mt-0.5" aria-hidden="true" />}
                   <div className="min-w-0">
-                    <p className="font-mono text-muted-foreground">Input: {r.input}</p>
-                    <p className="font-mono text-muted-foreground">Așteptat: {r.expectedOutput}</p>
-                    {!r.passed && <p className="font-mono text-foreground">Primit: {r.error || r.actualOutput}</p>}
+                    {r.input && <p className="font-mono text-muted-foreground">Input: {r.input}</p>}
+                    {r.expectedOutput && <p className="font-mono text-muted-foreground">Așteptat: {r.expectedOutput}</p>}
+                    {r.fileResults && r.fileResults.map((f, j) => (
+                      <p key={j} className={`font-mono ${f.passed ? "text-muted-foreground" : "text-destructive"}`}>
+                        {f.name}: {f.passed ? "OK" : f.missing ? "lipsește" : "diferit"}
+                      </p>
+                    ))}
+                    {!r.passed && <p className="font-mono text-foreground">{r.error ? `Eroare: ${r.error}` : `Primit: ${r.actualOutput || "(gol)"}`}</p>}
                   </div>
+                </div>
+              ))}
+            </div>
+          )}
+          {kind === "static" && staticResults.length > 0 && (
+            <div className="space-y-1.5" role="list" aria-label="Verificări statice">
+              {staticResults.filter((s) => !s.hidden).map((s, i) => (
+                <div key={i} className={`flex items-start gap-2 p-2 rounded-lg border text-xs ${s.passed ? "border-primary/30 bg-primary/5" : "border-destructive/30 bg-destructive/5"}`}>
+                  {s.passed ? <CheckCircle className="h-3.5 w-3.5 text-primary shrink-0 mt-0.5" /> : <XCircle className="h-3.5 w-3.5 text-destructive shrink-0 mt-0.5" />}
+                  <p className="text-foreground">{s.description}</p>
                 </div>
               ))}
             </div>
