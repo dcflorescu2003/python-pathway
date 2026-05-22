@@ -178,7 +178,9 @@ export default function EvalProblemsCsvImporter({ lessonId, existingCount, onSuc
                         <Check className="h-3 w-3 text-primary shrink-0" />
                         <span className="px-1.5 py-0.5 rounded font-medium text-[10px] bg-primary/10 text-primary">Problemă</span>
                         <span className="truncate text-foreground flex-1">{p.title}</span>
-                        <span className="text-muted-foreground shrink-0">{p.test_cases.length} teste</span>
+                        <span className="text-muted-foreground shrink-0">
+                          {p.kind === "static" ? `${p.static_checks.length} verif.` : `${p.test_cases.length} teste`}
+                        </span>
                         {p.competencies.length > 0 && (
                           <span className="flex flex-wrap gap-0.5 shrink-0">
                             {p.competencies.map((c) => (
