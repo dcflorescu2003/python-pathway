@@ -479,7 +479,7 @@ function gradeExercise(exercise: any, answerData: any, maxPoints: number): numbe
         .replace(/[\u0300-\u036f]/g, "")
         .replace(/[\u200B-\u200D\uFEFF]/g, "")
         .replace(/\u00A0/g, " ")
-        .replace(/\s+/g, " ")
+        .replace(/\s+/g, "")
         .toLowerCase()
         .trim();
     let correct = 0;
