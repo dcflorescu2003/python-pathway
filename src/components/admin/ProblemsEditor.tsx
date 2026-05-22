@@ -57,12 +57,6 @@ function SortableProblem({ id, children }: { id: string; children: React.ReactNo
   );
 }
 
-interface TestCaseForm {
-  input: string;
-  expectedOutput: string;
-  hidden?: boolean;
-}
-
 const emptyProblem = (chapterId: string, existingIds: string[] = []): Problem => ({
   id: generateProblemId(chapterId, existingIds),
   title: "",
@@ -70,6 +64,8 @@ const emptyProblem = (chapterId: string, existingIds: string[] = []): Problem =>
   difficulty: "ușor",
   xpReward: 10,
   testCases: [{ input: "", expectedOutput: "", hidden: false }],
+  staticChecks: [],
+  kind: "execute",
   hint: "",
   chapter: chapterId,
   solution: "",
@@ -149,12 +145,19 @@ const ProblemsEditor = () => {
   const saveProblem = async () => {
     if (!form.title.trim()) { toast.error("Titlul e obligatoriu"); return; }
 
+    // Wrap test_cases JSONB with kind + staticChecks so the runtime can branch.
+    const testCasesPayload = {
+      kind: form.kind,
+      testCases: JSON.parse(JSON.stringify(form.testCases || [])),
+      staticChecks: JSON.parse(JSON.stringify(form.staticChecks || [])),
+    };
+
     const row = {
       title: form.title,
       description: form.description,
       difficulty: form.difficulty,
       xp_reward: form.xpReward,
-      test_cases: JSON.parse(JSON.stringify(form.testCases)),
+      test_cases: testCasesPayload,
       hint: form.hint || null,
       chapter_id: form.chapter,
       solution: form.solution,
@@ -184,7 +187,7 @@ const ProblemsEditor = () => {
     invalidate();
   };
 
-  const updateTestCase = (index: number, field: keyof TestCaseForm, value: string | boolean) => {
+  const updateTestCase = (index: number, field: "input" | "expectedOutput" | "hidden", value: string | boolean) => {
     const newCases = [...form.testCases];
     newCases[index] = { ...newCases[index], [field]: value };
     setForm(f => ({ ...f, testCases: newCases }));
@@ -192,6 +195,22 @@ const ProblemsEditor = () => {
 
   const addTestCase = () => setForm(f => ({ ...f, testCases: [...f.testCases, { input: "", expectedOutput: "", hidden: false }] }));
   const removeTestCase = (i: number) => setForm(f => ({ ...f, testCases: f.testCases.filter((_, j) => j !== i) }));
+
+  // --- File I/O helpers (per test case) ---
+  const updateTestFiles = (index: number, bucket: "inputFiles" | "expectedFiles", files: Record<string, string>) => {
+    const newCases = [...form.testCases];
+    newCases[index] = { ...newCases[index], [bucket]: files };
+    setForm(f => ({ ...f, testCases: newCases }));
+  };
+
+  // --- Static checks helpers ---
+  const updateStaticCheck = (index: number, patch: Partial<NonNullable<Problem["staticChecks"]>[number]>) => {
+    const list = [...(form.staticChecks || [])];
+    list[index] = { ...list[index], ...patch };
+    setForm(f => ({ ...f, staticChecks: list }));
+  };
+  const addStaticCheck = () => setForm(f => ({ ...f, staticChecks: [...(f.staticChecks || []), { description: "", type: "import", pattern: "", hidden: false }] }));
+  const removeStaticCheck = (i: number) => setForm(f => ({ ...f, staticChecks: (f.staticChecks || []).filter((_, j) => j !== i) }));
 
   // --- Reorder handlers ---
   const handleChapterReorder = async (event: DragEndEvent) => {
@@ -289,29 +308,127 @@ const ProblemsEditor = () => {
         />
       </div>
 
-      <div>
-        <Label className="text-foreground text-xs">Cazuri de test</Label>
-        <p className="text-[10px] text-muted-foreground mt-1">
-          Pentru mai multe valori <code>input()</code>, scrie fiecare pe o linie nouă. Output-ul se compară exact cu tot ce printează programul.
-        </p>
-        {form.testCases.map((tc, i) => (
-          <div key={i} className="flex items-start gap-2 mt-2 p-2 rounded border border-border bg-card">
-            <span className="text-[10px] text-muted-foreground mt-2">#{i + 1}</span>
-            <div className="flex-1 space-y-1">
-              <Textarea value={tc.input} onChange={e => updateTestCase(i, "input", e.target.value)} placeholder={"Input (o valoare pe linie)\nex:\n5\n10"} rows={2} className="text-xs font-mono min-h-0" />
-              <Textarea value={tc.expectedOutput} onChange={e => updateTestCase(i, "expectedOutput", e.target.value)} placeholder={"Output așteptat\nex:\n15"} rows={2} className="text-xs font-mono min-h-0" />
-              <label className="flex items-center gap-1 text-[10px] text-muted-foreground">
-                <input type="checkbox" checked={tc.hidden || false} onChange={e => updateTestCase(i, "hidden", e.target.checked)} />
-                Ascuns
-              </label>
-            </div>
-            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => removeTestCase(i)}><Trash2 className="h-3.5 w-3.5" /></Button>
-          </div>
-        ))}
-        <Button variant="outline" size="sm" className="mt-2" onClick={addTestCase}>
-          <Plus className="h-4 w-4 mr-1" /> Adaugă caz de test
-        </Button>
+      <div className="rounded-md border border-border bg-muted/20 p-3">
+        <Label className="text-foreground text-xs">Tip problemă</Label>
+        <Select value={form.kind} onValueChange={(v) => setForm(f => ({ ...f, kind: v as "execute" | "static" }))}>
+          <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="execute">Execuție (rulează codul cu teste)</SelectItem>
+            <SelectItem value="static">Verificare statică (Tkinter, fără execuție)</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
+
+      {form.kind === "execute" && (
+        <div>
+          <Label className="text-foreground text-xs">Cazuri de test</Label>
+          <p className="text-[10px] text-muted-foreground mt-1">
+            Stdin: o valoare pe linie. Fișiere intrare se scriu în MEMFS înainte de rulare. Fișiere ieșire se citesc după rulare și se compară exact.
+          </p>
+          {form.testCases.map((tc, i) => {
+            const inputFiles = tc.inputFiles || {};
+            const expectedFiles = tc.expectedFiles || {};
+            const inputFileEntries = Object.entries(inputFiles);
+            const expectedFileEntries = Object.entries(expectedFiles);
+            return (
+              <div key={i} className="flex items-start gap-2 mt-2 p-2 rounded border border-border bg-card">
+                <span className="text-[10px] text-muted-foreground mt-2">#{i + 1}</span>
+                <div className="flex-1 space-y-2">
+                  <Textarea value={tc.input || ""} onChange={e => updateTestCase(i, "input", e.target.value)} placeholder={"Stdin (opțional)"} rows={2} className="text-xs font-mono min-h-0" />
+                  <Textarea value={tc.expectedOutput || ""} onChange={e => updateTestCase(i, "expectedOutput", e.target.value)} placeholder={"Stdout așteptat (opțional)"} rows={2} className="text-xs font-mono min-h-0" />
+
+                  <details className="rounded border border-border/50 bg-muted/20 p-2">
+                    <summary className="text-[10px] font-semibold text-muted-foreground cursor-pointer">📥 Fișiere intrare ({inputFileEntries.length})</summary>
+                    <div className="mt-2 space-y-1">
+                      {inputFileEntries.map(([name, content], fi) => (
+                        <div key={fi} className="flex items-start gap-1">
+                          <Input value={name} onChange={e => {
+                            const copy = { ...inputFiles };
+                            delete copy[name];
+                            copy[e.target.value] = content;
+                            updateTestFiles(i, "inputFiles", copy);
+                          }} placeholder="date.in" className="text-xs font-mono h-7 w-32" />
+                          <Textarea value={content} onChange={e => updateTestFiles(i, "inputFiles", { ...inputFiles, [name]: e.target.value })} rows={2} placeholder="conținut" className="text-xs font-mono min-h-0 flex-1" />
+                          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { const copy = { ...inputFiles }; delete copy[name]; updateTestFiles(i, "inputFiles", copy); }}><Trash2 className="h-3 w-3" /></Button>
+                        </div>
+                      ))}
+                      <Button variant="outline" size="sm" className="h-7 text-[10px]" onClick={() => updateTestFiles(i, "inputFiles", { ...inputFiles, [`file${inputFileEntries.length + 1}.in`]: "" })}>
+                        <Plus className="h-3 w-3 mr-1" /> Adaugă fișier intrare
+                      </Button>
+                    </div>
+                  </details>
+
+                  <details className="rounded border border-border/50 bg-muted/20 p-2">
+                    <summary className="text-[10px] font-semibold text-muted-foreground cursor-pointer">📤 Fișiere ieșire așteptate ({expectedFileEntries.length})</summary>
+                    <div className="mt-2 space-y-1">
+                      {expectedFileEntries.map(([name, content], fi) => (
+                        <div key={fi} className="flex items-start gap-1">
+                          <Input value={name} onChange={e => {
+                            const copy = { ...expectedFiles };
+                            delete copy[name];
+                            copy[e.target.value] = content;
+                            updateTestFiles(i, "expectedFiles", copy);
+                          }} placeholder="date.out" className="text-xs font-mono h-7 w-32" />
+                          <Textarea value={content} onChange={e => updateTestFiles(i, "expectedFiles", { ...expectedFiles, [name]: e.target.value })} rows={2} placeholder="conținut așteptat" className="text-xs font-mono min-h-0 flex-1" />
+                          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { const copy = { ...expectedFiles }; delete copy[name]; updateTestFiles(i, "expectedFiles", copy); }}><Trash2 className="h-3 w-3" /></Button>
+                        </div>
+                      ))}
+                      <Button variant="outline" size="sm" className="h-7 text-[10px]" onClick={() => updateTestFiles(i, "expectedFiles", { ...expectedFiles, [`file${expectedFileEntries.length + 1}.out`]: "" })}>
+                        <Plus className="h-3 w-3 mr-1" /> Adaugă fișier ieșire
+                      </Button>
+                    </div>
+                  </details>
+
+                  <label className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                    <input type="checkbox" checked={tc.hidden || false} onChange={e => updateTestCase(i, "hidden", e.target.checked)} />
+                    Ascuns
+                  </label>
+                </div>
+                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => removeTestCase(i)}><Trash2 className="h-3.5 w-3.5" /></Button>
+              </div>
+            );
+          })}
+          <Button variant="outline" size="sm" className="mt-2" onClick={addTestCase}>
+            <Plus className="h-4 w-4 mr-1" /> Adaugă caz de test
+          </Button>
+        </div>
+      )}
+
+      {form.kind === "static" && (
+        <div>
+          <Label className="text-foreground text-xs">Cerințe de verificare statică</Label>
+          <p className="text-[10px] text-muted-foreground mt-1">
+            Codul elevului NU se rulează (folosit pentru Tkinter). Verificăm că folosește anumite construcții prin import / call / regex.
+          </p>
+          {(form.staticChecks || []).map((sc, i) => (
+            <div key={i} className="flex items-start gap-2 mt-2 p-2 rounded border border-border bg-card">
+              <span className="text-[10px] text-muted-foreground mt-2">#{i + 1}</span>
+              <div className="flex-1 space-y-1">
+                <Input value={sc.description} onChange={e => updateStaticCheck(i, { description: e.target.value })} placeholder="Descriere cerință (ex: Importă tkinter)" className="text-xs" />
+                <div className="flex gap-1">
+                  <Select value={sc.type} onValueChange={(v) => updateStaticCheck(i, { type: v as "import" | "call" | "regex" })}>
+                    <SelectTrigger className="w-28 h-8 text-xs"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="import">import</SelectItem>
+                      <SelectItem value="call">call</SelectItem>
+                      <SelectItem value="regex">regex</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Input value={sc.pattern} onChange={e => updateStaticCheck(i, { pattern: e.target.value })} placeholder={sc.type === "regex" ? "regex pattern" : sc.type === "import" ? "tkinter" : "Button"} className="text-xs font-mono flex-1" />
+                </div>
+                <label className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                  <input type="checkbox" checked={sc.hidden || false} onChange={e => updateStaticCheck(i, { hidden: e.target.checked })} />
+                  Ascunsă
+                </label>
+              </div>
+              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => removeStaticCheck(i)}><Trash2 className="h-3.5 w-3.5" /></Button>
+            </div>
+          ))}
+          <Button variant="outline" size="sm" className="mt-2" onClick={addStaticCheck}>
+            <Plus className="h-4 w-4 mr-1" /> Adaugă cerință
+          </Button>
+        </div>
+      )}
 
       <div className="rounded-md border border-border bg-muted/30 p-3">
         <CompetencyTagger

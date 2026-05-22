@@ -4,10 +4,21 @@ import { useAuth } from "@/hooks/useAuth";
 import { fetchAllPaginated } from "@/lib/supabasePagination";
 
 export interface TestCase {
-  input: string;
-  expectedOutput: string;
+  input?: string;
+  expectedOutput?: string;
+  inputFiles?: Record<string, string>;
+  expectedFiles?: Record<string, string>;
   hidden?: boolean;
 }
+
+export interface StaticCheck {
+  description: string;
+  type: "import" | "call" | "regex";
+  pattern: string;
+  hidden?: boolean;
+}
+
+export type ProblemKind = "execute" | "static";
 
 export interface Problem {
   id: string;
@@ -16,6 +27,8 @@ export interface Problem {
   difficulty: "ușor" | "mediu" | "greu";
   xpReward: number;
   testCases: TestCase[];
+  staticChecks?: StaticCheck[];
+  kind: ProblemKind;
   hint?: string;
   chapter: string;
   solution: string;
@@ -38,10 +51,6 @@ async function fetchProblems(): Promise<{ problems: Problem[]; problemChapters: 
 
   if (chaptersError) throw chaptersError;
 
-  // Fetch direct from `problems` table (RLS allows authenticated SELECT).
-  // We exclude `solution` from the select — it's fetched on-demand via get_problem_solution RPC.
-  // Paginated — Supabase caps single selects at 1000 rows; with >1000 problems
-  // globally, problems with higher sort_order would silently disappear.
   const problemsData = await fetchAllPaginated<any>(() =>
     supabase
       .from("problems")
@@ -57,19 +66,39 @@ async function fetchProblems(): Promise<{ problems: Problem[]; problemChapters: 
     sortOrder: ch.sort_order,
   }));
 
-  const problems: Problem[] = (problemsData || []).map((p: any) => ({
-    id: p.id,
-    title: p.title,
-    description: p.description,
-    difficulty: p.difficulty as "ușor" | "mediu" | "greu",
-    xpReward: p.xp_reward,
-    testCases: (p.test_cases as any[] || []) as TestCase[],
-    hint: p.hint ?? undefined,
-    chapter: p.chapter_id,
-    solution: "", // fetched on-demand via get_problem_solution RPC
-    sortOrder: p.sort_order,
-    isPremium: p.is_premium ?? false,
-  }));
+  const problems: Problem[] = (problemsData || []).map((p: any) => {
+    // test_cases JSONB can be either:
+    //   - legacy: TestCase[]
+    //   - new wrapper: { kind: "static"|"execute", testCases?: [], staticChecks?: [] }
+    const raw = p.test_cases;
+    let kind: ProblemKind = "execute";
+    let testCases: TestCase[] = [];
+    let staticChecks: StaticCheck[] | undefined;
+
+    if (Array.isArray(raw)) {
+      testCases = raw as TestCase[];
+    } else if (raw && typeof raw === "object") {
+      kind = (raw.kind as ProblemKind) || "execute";
+      testCases = Array.isArray(raw.testCases) ? (raw.testCases as TestCase[]) : [];
+      staticChecks = Array.isArray(raw.staticChecks) ? (raw.staticChecks as StaticCheck[]) : undefined;
+    }
+
+    return {
+      id: p.id,
+      title: p.title,
+      description: p.description,
+      difficulty: p.difficulty as "ușor" | "mediu" | "greu",
+      xpReward: p.xp_reward,
+      testCases,
+      staticChecks,
+      kind,
+      hint: p.hint ?? undefined,
+      chapter: p.chapter_id,
+      solution: "",
+      sortOrder: p.sort_order,
+      isPremium: p.is_premium ?? false,
+    };
+  });
 
   return { problems, problemChapters };
 }
@@ -80,7 +109,7 @@ export function useProblems() {
     queryKey: ["problems", user?.id],
     queryFn: fetchProblems,
     enabled: !!user,
-    staleTime: 30 * 1000, // 30s — content updates from admin propagate quickly
+    staleTime: 30 * 1000,
     gcTime: 30 * 60 * 1000,
     retry: 2,
     refetchOnWindowFocus: true,
