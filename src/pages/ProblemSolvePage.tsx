@@ -1,14 +1,14 @@
 import { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ArrowLeft, Play, Loader2, CheckCircle2, XCircle, Lightbulb, BookOpen } from "lucide-react";
+import { ArrowLeft, Play, Loader2, CheckCircle2, XCircle, Lightbulb, BookOpen, FileSearch } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import CodeEditor from "@/components/CodeEditor";
 import RichContent from "@/components/RichContent";
 import { useProblems } from "@/hooks/useProblems";
-import { usePyodide, type TestResult } from "@/hooks/usePyodide";
+import { usePyodide, type TestResult, type StaticCheckResult } from "@/hooks/usePyodide";
 import { useProgress } from "@/hooks/useProgress";
 import { useSubscription } from "@/hooks/useSubscription";
 import { supabase } from "@/integrations/supabase/client";
@@ -23,12 +23,13 @@ const ProblemSolvePage = () => {
   const navigate = useNavigate();
   const { data, isLoading: problemsLoading } = useProblems();
   const problem = data?.problems.find((p) => p.id === problemId);
-  const { loading, running, runCode } = usePyodide();
-  const { progress, completeLesson, recordActivity, streakJustIncreased, newStreakCount, dismissStreakCelebration } = useProgress();
+  const { loading, running, runCode, runStaticChecks } = usePyodide();
+  const { progress, completeLesson, streakJustIncreased, newStreakCount, dismissStreakCelebration } = useProgress();
   const { subscribed } = useSubscription();
   const { user } = useAuth();
   const [code, setCode] = useState("");
   const [results, setResults] = useState<TestResult[] | null>(null);
+  const [staticResults, setStaticResults] = useState<StaticCheckResult[] | null>(null);
   const [showHint, setShowHint] = useState(false);
   const [showSolution, setShowSolution] = useState(false);
   const [solutionText, setSolutionText] = useState<string | null>(null);
@@ -42,7 +43,6 @@ const ProblemSolvePage = () => {
     setLoadingSolution(false);
   }, [problem, solutionText]);
 
-  // Guard: redirect non-premium users from premium problems
   useEffect(() => {
     if (problem && problem.isPremium && !subscribed) {
       toast.error("Această problemă este disponibilă doar cu un cont Premium.");
@@ -61,10 +61,39 @@ const ProblemSolvePage = () => {
   }
 
   const solved = progress.completedLessons[`problem-${problem.id}`]?.completed;
+  const isStatic = problem.kind === "static";
 
   const handleRun = async () => {
     if (!code.trim()) {
-      toast.error("Scrie cod înainte de a rula testele!");
+      toast.error("Scrie cod înainte de a verifica!");
+      return;
+    }
+
+    if (isStatic) {
+      const checks = problem.staticChecks || [];
+      const res = runStaticChecks(code, checks);
+      setStaticResults(res);
+      setShowSolution(false);
+      const passed = res.filter((r) => r.passed).length;
+      const total = res.length;
+
+      if (user && total > 0) {
+        recordCompetencyScores(user.id, [
+          { item_type: "problem", item_id: problem.id, score: passed, max_score: total },
+        ]);
+      }
+
+      if (passed === total && total > 0) {
+        const isRedo = solved;
+        const xpGained = isRedo ? 3 : problem.xpReward;
+        completeLesson(`problem-${problem.id}`, problem.xpReward, 100);
+        toast.success(isRedo
+          ? `Toate cerințele sunt îndeplinite! +${xpGained} XP ✅`
+          : `Felicitări! Ai câștigat ${xpGained} XP! 🎉`
+        );
+      } else {
+        toast.error(`${passed}/${total} cerințe îndeplinite`);
+      }
       return;
     }
 
@@ -75,7 +104,6 @@ const ProblemSolvePage = () => {
     const passed = testResults.filter((r) => r.passed).length;
     const total = testResults.length;
 
-    // Track competency mastery (proportional to passed tests)
     if (user && total > 0) {
       recordCompetencyScores(user.id, [
         { item_type: "problem", item_id: problem.id, score: passed, max_score: total },
@@ -95,10 +123,13 @@ const ProblemSolvePage = () => {
     }
   };
 
-  const visibleResults = results ?? null;
-
-  const passedCount = results?.filter((r) => r.passed).length ?? 0;
-  const totalCount = results?.length ?? 0;
+  const passedCount = isStatic
+    ? (staticResults?.filter((r) => r.passed).length ?? 0)
+    : (results?.filter((r) => r.passed).length ?? 0);
+  const totalCount = isStatic
+    ? (staticResults?.length ?? 0)
+    : (results?.length ?? 0);
+  const hasAnyResults = isStatic ? !!staticResults : !!results;
 
   return (
     <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="min-h-screen bg-background pb-[calc(var(--sab)+16px)]">
@@ -112,6 +143,7 @@ const ProblemSolvePage = () => {
             <div className="flex items-center gap-2">
               <Badge variant="outline" className="text-[10px]">{problem.difficulty}</Badge>
               <span className="text-xs text-muted-foreground">{problem.xpReward} XP</span>
+              {isStatic && <Badge variant="outline" className="text-[10px] border-accent/40 text-accent">verificare statică</Badge>}
               {solved && <span className="text-xs text-primary">✓ Rezolvată</span>}
             </div>
           </div>
@@ -144,20 +176,36 @@ const ProblemSolvePage = () => {
 
         <CodeEditor value={code} onChange={setCode} disabled={running} />
 
-        <Button onClick={handleRun} disabled={running || loading} className="w-full gap-2" size="lg">
-          {loading ? (<><Loader2 className="h-4 w-4 animate-spin" /> Se încarcă Python...</>) : running ? (<><Loader2 className="h-4 w-4 animate-spin" /> Se rulează...</>) : (<><Play className="h-4 w-4" /> Rulează teste</>)}
+        <Button onClick={handleRun} disabled={running || (loading && !isStatic)} className="w-full gap-2" size="lg">
+          {loading && !isStatic ? (<><Loader2 className="h-4 w-4 animate-spin" /> Se încarcă Python...</>) :
+           running ? (<><Loader2 className="h-4 w-4 animate-spin" /> Se rulează...</>) :
+           isStatic ? (<><FileSearch className="h-4 w-4" /> Verifică cod</>) :
+           (<><Play className="h-4 w-4" /> Rulează teste</>)}
         </Button>
 
-        {results && (
+        {hasAnyResults && (
           <div className="space-y-3">
             <div className="flex items-center gap-2">
-              <h3 className="font-semibold text-foreground">Rezultate</h3>
+              <h3 className="font-semibold text-foreground">{isStatic ? "Cerințe" : "Rezultate"}</h3>
               <Badge variant={passedCount === totalCount ? "default" : "destructive"} className={passedCount === totalCount ? "bg-primary/20 text-primary border-0" : ""}>
                 {passedCount}/{totalCount}
               </Badge>
             </div>
 
-            {visibleResults?.map((result, i) => (
+            {isStatic && staticResults?.map((r, i) => (
+              <Card key={i} className={`border ${r.passed ? "border-primary/30 bg-primary/5" : "border-destructive/30 bg-destructive/5"}`}>
+                <CardContent className="p-3">
+                  <div className="flex items-start gap-2">
+                    {r.passed ? <CheckCircle2 className="h-4 w-4 text-primary flex-shrink-0 mt-0.5" /> : <XCircle className="h-4 w-4 text-destructive flex-shrink-0 mt-0.5" />}
+                    <span className="text-sm text-foreground">
+                      {r.hidden ? `Cerință ${i + 1} (ascunsă)` : r.description}
+                    </span>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+
+            {!isStatic && results?.map((result, i) => (
               <Card key={i} className={`border ${result.passed ? "border-primary/30 bg-primary/5" : "border-destructive/30 bg-destructive/5"}`}>
                 <CardContent className="p-3 space-y-1">
                   <div className="flex items-center gap-2">
@@ -166,11 +214,31 @@ const ProblemSolvePage = () => {
                   </div>
                   {!result.hidden && (
                     <div className="pl-6 space-y-1">
-                      <p className="text-xs text-muted-foreground font-mono">Intrare: {result.input.replace(/\n/g, " ↵ ")}</p>
-                      <p className="text-xs text-muted-foreground font-mono">Așteptat: {result.expectedOutput}</p>
-                      {!result.passed && (
-                        <p className="text-xs font-mono text-destructive">{result.error ? `Eroare: ${result.error}` : `Primit: ${result.actualOutput || "(gol)"}`}</p>
+                      {(result.input || result.expectedOutput) && (
+                        <>
+                          {result.input && <p className="text-xs text-muted-foreground font-mono">Intrare: {result.input.replace(/\n/g, " ↵ ")}</p>}
+                          {result.expectedOutput && <p className="text-xs text-muted-foreground font-mono">Așteptat: {result.expectedOutput}</p>}
+                          {!result.passed && result.error && (
+                            <p className="text-xs font-mono text-destructive">Eroare: {result.error}</p>
+                          )}
+                          {!result.passed && !result.error && result.expectedOutput && (
+                            <p className="text-xs font-mono text-destructive">Primit: {result.actualOutput || "(gol)"}</p>
+                          )}
+                        </>
                       )}
+                      {result.fileResults?.map((f) => (
+                        <div key={f.name} className="mt-1 rounded border border-border/60 bg-muted/30 p-2 space-y-0.5">
+                          <p className="text-[10px] font-mono text-muted-foreground flex items-center gap-1">
+                            📄 {f.name} {f.passed ? <CheckCircle2 className="h-3 w-3 text-primary" /> : <XCircle className="h-3 w-3 text-destructive" />}
+                          </p>
+                          <p className="text-[10px] font-mono text-muted-foreground">Așteptat: {f.expected.replace(/\n/g, " ↵ ")}</p>
+                          {!f.passed && (
+                            <p className="text-[10px] font-mono text-destructive">
+                              {f.missing ? "Fișierul nu a fost creat" : `Primit: ${f.actual.replace(/\n/g, " ↵ ") || "(gol)"}`}
+                            </p>
+                          )}
+                        </div>
+                      ))}
                     </div>
                   )}
                 </CardContent>
