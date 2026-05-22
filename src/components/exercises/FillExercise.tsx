@@ -16,7 +16,7 @@ const normalize = (s: string) =>
     .replace(/[\u0300-\u036f]/g, "")
     .replace(/[\u200B-\u200D\uFEFF]/g, "") // zero-width chars
     .replace(/\u00A0/g, " ")               // NBSP -> space
-    .replace(/\s+/g, " ")                  // collapse internal whitespace
+    .replace(/\s+/g, "")                   // strip ALL whitespace (s+d == s + d)
     .toLowerCase()
     .trim();
 
