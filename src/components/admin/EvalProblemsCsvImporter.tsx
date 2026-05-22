@@ -46,20 +46,32 @@ export default function EvalProblemsCsvImporter({ lessonId, existingCount, onSuc
       const baseTs = Date.now();
       const ids = valid.map((_, i) => `eval-e-${baseTs}-${i}-${Math.random().toString(36).slice(2, 6)}`);
 
-      const rows = valid.map((p, i) => ({
-        id: ids[i],
-        lesson_id: lessonId,
-        type: "problem",
-        question: `**${p.title}**\n\n${p.description}`,
-        solution: p.solution,
-        test_cases: p.test_cases.map((tc) => ({
-          input: tc.input,
-          expected_output: tc.expectedOutput,
-          hidden: tc.hidden,
-        })) as any,
-        code_template: null,
-        sort_order: existingCount + i,
-      }));
+      const rows = valid.map((p, i) => {
+        // Same wrapper schema as standalone problems so runtime can branch on kind/files/static.
+        let testCasesPayload: any;
+        if (p.kind === "static") {
+          testCasesPayload = { kind: "static", testCases: [], staticChecks: p.static_checks };
+        } else {
+          const tcs = p.test_cases.map((tc) => {
+            const o: any = { input: tc.input, expectedOutput: tc.expectedOutput, hidden: tc.hidden };
+            if (tc.inputFiles && Object.keys(tc.inputFiles).length > 0) o.inputFiles = tc.inputFiles;
+            if (tc.expectedFiles && Object.keys(tc.expectedFiles).length > 0) o.expectedFiles = tc.expectedFiles;
+            return o;
+          });
+          const hasFiles = tcs.some((t: any) => t.inputFiles || t.expectedFiles);
+          testCasesPayload = hasFiles ? { kind: "execute", testCases: tcs, staticChecks: [] } : tcs;
+        }
+        return {
+          id: ids[i],
+          lesson_id: lessonId,
+          type: "problem",
+          question: `**${p.title}**\n\n${p.description}`,
+          solution: p.solution,
+          test_cases: testCasesPayload,
+          code_template: null,
+          sort_order: existingCount + i,
+        };
+      });
 
       const { error } = await supabase.from("eval_exercises").insert(rows as any);
       if (error) throw error;
@@ -166,7 +178,9 @@ export default function EvalProblemsCsvImporter({ lessonId, existingCount, onSuc
                         <Check className="h-3 w-3 text-primary shrink-0" />
                         <span className="px-1.5 py-0.5 rounded font-medium text-[10px] bg-primary/10 text-primary">Problemă</span>
                         <span className="truncate text-foreground flex-1">{p.title}</span>
-                        <span className="text-muted-foreground shrink-0">{p.test_cases.length} teste</span>
+                        <span className="text-muted-foreground shrink-0">
+                          {p.kind === "static" ? `${p.static_checks.length} verif.` : `${p.test_cases.length} teste`}
+                        </span>
                         {p.competencies.length > 0 && (
                           <span className="flex flex-wrap gap-0.5 shrink-0">
                             {p.competencies.map((c) => (
@@ -199,8 +213,9 @@ export default function EvalProblemsCsvImporter({ lessonId, existingCount, onSuc
                 <Download className="h-3 w-3 mr-1" />Descarcă template
               </Button>
             </div>
-            <p>Coloane: <code>title, description, difficulty, xp_reward, hint, solution, is_premium, test_cases, competencies</code></p>
+            <p>Coloane: <code>title, description, difficulty, xp_reward, hint, solution, is_premium, kind, test_cases, input_files, expected_files, static_checks, competencies</code></p>
             <p>test_cases: <code>input&gt;&gt;output&gt;&gt;hidden(0/1)</code> separate prin <code>;</code></p>
+            <p>Probleme cu <strong>fișiere</strong> sau <strong>tkinter</strong> (kind=static) sunt acum suportate — vezi template-ul.</p>
             <p>competencies: coduri separate prin <code>|</code> (ex: <code>M18|M20</code>)</p>
           </div>
         </DialogContent>
