@@ -1,131 +1,63 @@
-# Probleme cu fișiere și cod Tkinter — Capitolul 4
 
-## Scop
+## Răspuns la întrebarea 2
 
-Două capabilități noi la `/problems` pentru a susține capitolul 4:
+**Nu, importul CSV nu a fost actualizat** la implementarea anterioară. `problemsCsvParser.ts` și `ProblemsCsvImporter.tsx` suportă în continuare doar formatul vechi:
 
-1. **Verificare hibridă** — un test poate avea stdin, fișiere de intrare, fișiere de ieșire așteptate și stdout, în orice combinație.
-2. **Verificare statică pentru Tkinter** — codul elevului NU se rulează, ci se inspectează (parsare Python + pattern matching) ca să confirmăm că folosește anumite construcții.
+```
+title, description, difficulty, xp_reward, hint, solution, is_premium, test_cases, competencies
+```
 
-Schema actuală `test_cases` e `JSONB` în Supabase — nu e nevoie de migrație, doar extindem forma obiectului.
+unde `test_cases` = `input>>output>>hidden;...`.
+
+Pentru probleme „normale" (doar stdin/stdout) nimic nu s-a stricat — sunt 100% backward compatible. Dar **nu poți importa prin CSV** probleme cu fișiere sau cu verificare statică Tkinter. Le poți crea momentan doar din UI-ul de admin.
 
 ---
 
-## 1) Probleme cu fișiere (hibrid stdin/stdout + files)
+## Plan
 
-### Forma nouă a unui test case
+### 1) Extind `problemsCsvParser.ts` cu coloane noi (opționale)
 
-```ts
-type TestCase = {
-  input?: string;              // stdin (ca acum)
-  expectedOutput?: string;     // stdout așteptat (ca acum)
-  inputFiles?: Record<string, string>;     // { "date.in": "5\n1 2 3" }
-  expectedFiles?: Record<string, string>;  // { "date.out": "15" }
-  hidden?: boolean;
-};
-```
+Adăugăm 4 coloane noi, toate opționale (rândurile vechi merg neschimbat):
 
-Toate câmpurile sunt opționale. Dacă lipsesc `expectedOutput` și `expectedFiles`, testul nu are ce verifica → eroare în admin. Compatibilitate înapoi: testele vechi (doar `input` + `expectedOutput`) merg neschimbat.
+| Coloană | Format | Pentru |
+|---|---|---|
+| `kind` | `execute` (default) sau `static` | Tip problemă |
+| `input_files` | `nume1\|conținut1;;nume2\|conținut2` per caz, cazuri separate prin `;` (același separator ca `test_cases`) | Fișiere scrise în MEMFS înainte de rulare |
+| `expected_files` | la fel ca `input_files` | Fișiere comparate după rulare |
+| `static_checks` | `descriere>>type>>pattern>>hidden(0/1);...` cu `type ∈ {import, call, regex}` | Doar pentru `kind=static` |
 
-### Schimbări în `src/hooks/usePyodide.ts`
+Reguli:
+- `\n`, `\t`, `\r` literale rămân escaped ca azi (`unescapeCell`).
+- `input_files`/`expected_files` se aliniază cu cazurile din `test_cases` după index (cazul 1 din `test_cases` ↔ cazul 1 din `input_files`). Dacă lipsesc → caz pur stdin/stdout.
+- Pentru `kind=static` se ignoră `test_cases`/`input_files`/`expected_files` și se folosește `static_checks`.
+- `generateProblemsExportCSV` se extinde simetric ca exportul să fie round-trip.
+- Template-ul (`getProblemsTemplateCSV`) primește 2-3 rânduri noi de exemplu.
 
-Pentru fiecare test:
+### 2) Mic update în `ProblemsCsvImporter.tsx`
 
-1. **Înainte de rulare**: scriem `inputFiles` în MEMFS cu `pyodide.FS.writeFile(name, content)`. Curățăm fișiere reziduale de la testul anterior (păstrăm o listă a fișierelor scrise).
-2. **Rulăm codul** elevului ca acum (cu stdin mock + capture stdout).
-3. **După rulare**: citim fiecare `expectedFiles[name]` cu `pyodide.FS.readFile(name, { encoding: "utf8" })`. Dacă fișierul nu există → fail cu „Fișierul X nu a fost creat".
-4. **Comparație**: `passed = stdoutMatch && allFilesMatch`. Normalizăm `\r\n` → `\n` și trim final.
-5. **Cleanup**: ștergem toate fișierele scrise/citite înainte de testul următor (`FS.unlink`).
+Doar trecem `kind`, `staticChecks` și fișierele în payload-ul scris în `test_cases` JSONB conform formei deja suportate de `useProblems.ts`:
+- `kind=execute` cu fișiere → array de `TestCase` cu `inputFiles`/`expectedFiles`.
+- `kind=static` → wrapper `{ kind: "static", staticChecks: [...] }`.
 
-`TestResult` primește câmpuri noi:
+Fără migrații SQL.
 
-```ts
-{
-  ...,
-  fileResults?: { name: string; expected: string; actual: string; passed: boolean; missing?: boolean }[];
-}
-```
+### 3) Generez un CSV exemplu complet în `/mnt/documents/`
 
-### Schimbări în UI rezultate
+`probleme_exemplu_import.csv` cu 6 rânduri ce acoperă toate cazurile:
 
-`**src/pages/ProblemSolvePage.tsx**` și `**src/components/exercises/ProblemExercise.tsx**`:
+1. **Clasic stdin/stdout** — sumă a două numere (cazuri vizibile + ascunse).
+2. **Doar fișiere** — citește din `date.in`, scrie în `date.out` (cap. 4).
+3. **Hibrid** — citește din fișier + stdin, scrie în fișier + stdout.
+4. **Multi-fișiere** — două fișiere de intrare, un fișier de ieșire.
+5. **Premium + hint + competențe** — verifică `is_premium=true`, `hint`, `competencies=CG.1|CS.2.1`.
+6. **Static Tkinter** — `kind=static` cu 4 `static_checks` (import tkinter, call `Tk`, regex pe `Button(...text="Click")`, call `mainloop`).
 
-- Pentru teste **vizibile** (non-hidden) cu fișiere: arată un mic bloc "📄 date.in" (intrare) și "📄 date.out" (așteptat vs primit) sub cel de stdin existent.
-- Pentru teste **hidden**: la fel ca acum — doar „Test N (ascuns)" cu pass/fail, fără conținut.
+Fiecare rând are comentarii `#` deasupra cu ce demonstrează, exact ca în template-ul actual.
 
-### Schimbări în admin (`src/components/admin/ProblemsEditor.tsx`)
+### 4) Fișiere atinse
 
-Sub fiecare test case adăugăm două secțiuni colapsabile „Fișiere intrare" și „Fișiere ieșire așteptate". Fiecare e o listă de perechi `{nume_fișier, conținut}` cu butoane add/remove. Backward compat: dacă listele sunt goale, nu se salvează.
+- `src/components/admin/problemsCsvParser.ts` — parser + export + template.
+- `src/components/admin/ProblemsCsvImporter.tsx` — mapare payload nou.
+- `/mnt/documents/probleme_exemplu_import.csv` — artifact pentru tine.
 
-### CSV importer (`problemsCsvParser.ts`)
-
-Adăugăm două coloane opționale `input_files` și `expected_files` cu sintaxă:
-
-```
-date.in|5\n1 2 3,,alt.in|text
-```
-
-(fișiere separate prin `,`, nume/conținut prin `|`, `\n` literal devine newline). Dacă lipsesc — comportament identic cu azi.
-
----
-
-## 2) Probleme Tkinter — verificare statică
-
-### Tip nou de problemă
-
-Adăugăm `kind: "execute" | "static"` (default `"execute"`) pe `Problem`. Pentru `static`, în loc de `testCases` folosim `staticChecks`:
-
-```ts
-type StaticCheck = {
-  description: string;         // "Folosește un Button cu textul 'Click'"
-  type: "import" | "call" | "regex" | "ast_node";
-  pattern: string;             // ex: "tkinter.Button", "Button\\(.*text\\s*=\\s*['\"]Click['\"]", "Tk()"
-  hidden?: boolean;
-};
-```
-
-### Execuție în `usePyodide.ts`
-
-Nu rulăm codul. Pentru fiecare check:
-
-- **import**: parsăm cu `ast.parse(code)` în Pyodide (Python stdlib, deja inclus), căutăm `Import`/`ImportFrom` cu numele dat.
-- **call**: căutăm `Call` node cu numele funcției/atributului (ex. `Button`, `mainloop`, `pack`).
-- **regex**: rulează `re.search(pattern, code)`.
-- **ast_node**: căutare generică de nod AST după tip.
-
-Toate sigure — `ast.parse` nu execută cod, deci elevii nu pot strica nimic.
-
-### UI
-
-Componenta de afișare a rezultatelor pentru `static` problems arată:
-
-- Lista cerințelor cu ✓/✗ în loc de teste numerotate.
-- Hidden checks (cele de pe care vrem să nu se „bare" la cerință) → afișate ca „Cerință N (ascunsă)".
-
-Butonul „Rulează teste" se schimbă în „Verifică cod" pentru `static`.
-
-### Admin
-
-În `ProblemsEditor.tsx`, un switch în partea de sus: **Tip: Execuție / Verificare statică**. Dacă „Verificare statică" → ascundem testCases și arătăm un editor de `staticChecks`.
-
----
-
-## 3) Sumar fișiere atinse
-
-- `src/hooks/usePyodide.ts` — MEMFS read/write, cleanup, mod static (AST).
-- `src/hooks/useProblems.ts` — extindere tip `Problem`/`TestCase` cu noile câmpuri.
-- `src/pages/ProblemSolvePage.tsx` — UI rezultate cu fișiere și mod static.
-- `src/components/exercises/ProblemExercise.tsx` — la fel pentru probleme în lecții.
-- `src/components/admin/ProblemsEditor.tsx` — editor fișiere I/O + switch static/exec + editor staticChecks.
-- `src/components/admin/problemsCsvParser.ts` — coloane noi opționale `input_files`, `expected_files`, `static_checks`.
-
-**Fără migrații SQL** — totul intră în `test_cases` JSONB existent (sau câmp nou `static_checks` ca tot JSONB; pot decide la implementare).
-
----
-
-## Limite cunoscute (de comunicat în lecții)
-
-- **Pyodide MEMFS** e izolat per session — fișierele scrise de elev nu persistă între execuții, doar între testele aceleiași rulări.
-- **Tkinter NU rulează în browser**. Pentru cap. 4 elevii văd outputul vizual doar local; în PyRo verificăm că structura codului e corectă. Lecțiile teoretice și flashcards-urile rămân la fel.
-- Timeout-ul de 10s se aplică și la rularea cu fișiere.  
-Genereaza si cate o problema cu fisiere si tk inter la capitolul 4, care practic sa testeze tot ce am discutat noi  
+Fără edge functions, fără SQL, fără schimbări la UI-ul existent al editorului.

@@ -50,23 +50,34 @@ export default function ProblemsCsvImporter({ chapterId, existingProblems, allEx
       const ids = generateProblemIds(chapterId, allExistingIds, valid.length);
       const startSort = existingProblems.length;
 
-      const rows = valid.map((p, i) => ({
-        id: ids[i],
-        chapter_id: chapterId,
-        title: p.title,
-        description: p.description,
-        difficulty: p.difficulty,
-        xp_reward: p.xp_reward,
-        hint: p.hint,
-        solution: p.solution,
-        is_premium: p.is_premium,
-        test_cases: p.test_cases.map((tc) => ({
-          input: tc.input,
-          expectedOutput: tc.expectedOutput,
-          hidden: tc.hidden,
-        })) as any,
-        sort_order: startSort + i,
-      }));
+      const rows = valid.map((p, i) => {
+        let testCasesPayload: any;
+        if (p.kind === "static") {
+          testCasesPayload = { kind: "static", testCases: [], staticChecks: p.static_checks };
+        } else {
+          const tcs = p.test_cases.map((tc) => {
+            const o: any = { input: tc.input, expectedOutput: tc.expectedOutput, hidden: tc.hidden };
+            if (tc.inputFiles && Object.keys(tc.inputFiles).length > 0) o.inputFiles = tc.inputFiles;
+            if (tc.expectedFiles && Object.keys(tc.expectedFiles).length > 0) o.expectedFiles = tc.expectedFiles;
+            return o;
+          });
+          const hasFiles = tcs.some((t: any) => t.inputFiles || t.expectedFiles);
+          testCasesPayload = hasFiles ? { kind: "execute", testCases: tcs, staticChecks: [] } : tcs;
+        }
+        return {
+          id: ids[i],
+          chapter_id: chapterId,
+          title: p.title,
+          description: p.description,
+          difficulty: p.difficulty,
+          xp_reward: p.xp_reward,
+          hint: p.hint,
+          solution: p.solution,
+          is_premium: p.is_premium,
+          test_cases: testCasesPayload,
+          sort_order: startSort + i,
+        };
+      });
 
       const { error } = await supabase.from("problems").insert(rows);
       if (error) throw error;
@@ -190,7 +201,9 @@ export default function ProblemsCsvImporter({ chapterId, existingProblems, allEx
                           "bg-red-500/10 text-red-500"
                         }`}>{p.difficulty}</span>
                         <span className="truncate text-foreground flex-1">{p.title}</span>
-                        <span className="text-muted-foreground shrink-0">{p.test_cases.length} teste</span>
+                        <span className="text-muted-foreground shrink-0">
+                          {p.kind === "static" ? `${p.static_checks.length} verif.` : `${p.test_cases.length} teste`}
+                        </span>
                         {p.competencies.length > 0 && (
                           <span className="flex flex-wrap gap-0.5 shrink-0">
                             {p.competencies.map((c) => (
@@ -223,10 +236,12 @@ export default function ProblemsCsvImporter({ chapterId, existingProblems, allEx
                 <Download className="h-3 w-3 mr-1" />Descarcă template
               </Button>
             </div>
-            <p>Coloane: <code>title, description, difficulty, xp_reward, hint, solution, is_premium, test_cases, competencies</code></p>
-            <p>test_cases: cazuri separate prin <code>;</code>, fiecare: <code>input&gt;&gt;output&gt;&gt;hidden(0/1)</code></p>
-            <p>Folosește <code>\n</code> pentru linii noi în <code>input</code>, <code>solution</code>, <code>description</code>.</p>
-            <p>competencies: coduri separate prin <code>|</code> (ex: <code>CG.1|CS.2.1</code>)</p>
+            <p>Coloane: <code>title, description, difficulty, xp_reward, hint, solution, is_premium, kind, test_cases, input_files, expected_files, static_checks, competencies</code></p>
+            <p><code>kind</code>: <code>execute</code> (default) sau <code>static</code>.</p>
+            <p><code>test_cases</code>: cazuri prin <code>;</code>, fiecare <code>input&gt;&gt;output&gt;&gt;hidden(0/1)</code>.</p>
+            <p><code>input_files</code>/<code>expected_files</code>: cazuri prin <code>@@</code>, fișiere în caz prin <code>;;</code>, <code>nume|conținut</code>.</p>
+            <p><code>static_checks</code>: cazuri prin <code>;</code>, fiecare <code>descriere&gt;&gt;type&gt;&gt;pattern&gt;&gt;hidden(0/1)</code>; type ∈ <code>import|call|regex</code>.</p>
+            <p>Folosește <code>\n</code> pentru linii noi. competencies: coduri separate prin <code>|</code>.</p>
           </div>
         </DialogContent>
       </Dialog>
