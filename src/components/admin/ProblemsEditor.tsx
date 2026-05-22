@@ -145,12 +145,19 @@ const ProblemsEditor = () => {
   const saveProblem = async () => {
     if (!form.title.trim()) { toast.error("Titlul e obligatoriu"); return; }
 
+    // Wrap test_cases JSONB with kind + staticChecks so the runtime can branch.
+    const testCasesPayload = {
+      kind: form.kind,
+      testCases: JSON.parse(JSON.stringify(form.testCases || [])),
+      staticChecks: JSON.parse(JSON.stringify(form.staticChecks || [])),
+    };
+
     const row = {
       title: form.title,
       description: form.description,
       difficulty: form.difficulty,
       xp_reward: form.xpReward,
-      test_cases: JSON.parse(JSON.stringify(form.testCases)),
+      test_cases: testCasesPayload,
       hint: form.hint || null,
       chapter_id: form.chapter,
       solution: form.solution,
@@ -188,6 +195,22 @@ const ProblemsEditor = () => {
 
   const addTestCase = () => setForm(f => ({ ...f, testCases: [...f.testCases, { input: "", expectedOutput: "", hidden: false }] }));
   const removeTestCase = (i: number) => setForm(f => ({ ...f, testCases: f.testCases.filter((_, j) => j !== i) }));
+
+  // --- File I/O helpers (per test case) ---
+  const updateTestFiles = (index: number, bucket: "inputFiles" | "expectedFiles", files: Record<string, string>) => {
+    const newCases = [...form.testCases];
+    newCases[index] = { ...newCases[index], [bucket]: files };
+    setForm(f => ({ ...f, testCases: newCases }));
+  };
+
+  // --- Static checks helpers ---
+  const updateStaticCheck = (index: number, patch: Partial<NonNullable<Problem["staticChecks"]>[number]>) => {
+    const list = [...(form.staticChecks || [])];
+    list[index] = { ...list[index], ...patch };
+    setForm(f => ({ ...f, staticChecks: list }));
+  };
+  const addStaticCheck = () => setForm(f => ({ ...f, staticChecks: [...(f.staticChecks || []), { description: "", type: "import", pattern: "", hidden: false }] }));
+  const removeStaticCheck = (i: number) => setForm(f => ({ ...f, staticChecks: (f.staticChecks || []).filter((_, j) => j !== i) }));
 
   // --- Reorder handlers ---
   const handleChapterReorder = async (event: DragEndEvent) => {
