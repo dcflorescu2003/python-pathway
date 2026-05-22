@@ -236,10 +236,12 @@ export default function ProblemsCsvImporter({ chapterId, existingProblems, allEx
                 <Download className="h-3 w-3 mr-1" />Descarcă template
               </Button>
             </div>
-            <p>Coloane: <code>title, description, difficulty, xp_reward, hint, solution, is_premium, test_cases, competencies</code></p>
-            <p>test_cases: cazuri separate prin <code>;</code>, fiecare: <code>input&gt;&gt;output&gt;&gt;hidden(0/1)</code></p>
-            <p>Folosește <code>\n</code> pentru linii noi în <code>input</code>, <code>solution</code>, <code>description</code>.</p>
-            <p>competencies: coduri separate prin <code>|</code> (ex: <code>CG.1|CS.2.1</code>)</p>
+            <p>Coloane: <code>title, description, difficulty, xp_reward, hint, solution, is_premium, kind, test_cases, input_files, expected_files, static_checks, competencies</code></p>
+            <p><code>kind</code>: <code>execute</code> (default) sau <code>static</code>.</p>
+            <p><code>test_cases</code>: cazuri prin <code>;</code>, fiecare <code>input&gt;&gt;output&gt;&gt;hidden(0/1)</code>.</p>
+            <p><code>input_files</code>/<code>expected_files</code>: cazuri prin <code>@@</code>, fișiere în caz prin <code>;;</code>, <code>nume|conținut</code>.</p>
+            <p><code>static_checks</code>: cazuri prin <code>;</code>, fiecare <code>descriere&gt;&gt;type&gt;&gt;pattern&gt;&gt;hidden(0/1)</code>; type ∈ <code>import|call|regex</code>.</p>
+            <p>Folosește <code>\n</code> pentru linii noi. competencies: coduri separate prin <code>|</code>.</p>
           </div>
         </DialogContent>
       </Dialog>
