@@ -57,12 +57,6 @@ function SortableProblem({ id, children }: { id: string; children: React.ReactNo
   );
 }
 
-interface TestCaseForm {
-  input: string;
-  expectedOutput: string;
-  hidden?: boolean;
-}
-
 const emptyProblem = (chapterId: string, existingIds: string[] = []): Problem => ({
   id: generateProblemId(chapterId, existingIds),
   title: "",
@@ -70,6 +64,8 @@ const emptyProblem = (chapterId: string, existingIds: string[] = []): Problem =>
   difficulty: "ușor",
   xpReward: 10,
   testCases: [{ input: "", expectedOutput: "", hidden: false }],
+  staticChecks: [],
+  kind: "execute",
   hint: "",
   chapter: chapterId,
   solution: "",
