@@ -180,7 +180,7 @@ const ProblemsEditor = () => {
     invalidate();
   };
 
-  const updateTestCase = (index: number, field: keyof TestCaseForm, value: string | boolean) => {
+  const updateTestCase = (index: number, field: "input" | "expectedOutput" | "hidden", value: string | boolean) => {
     const newCases = [...form.testCases];
     newCases[index] = { ...newCases[index], [field]: value };
     setForm(f => ({ ...f, testCases: newCases }));
