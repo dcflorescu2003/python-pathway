@@ -49,4 +49,10 @@ describe("FillExercise blank validation", () => {
   it("supports comma separator", () => {
     expect(submit("==", "==,!=")).toBe(true);
   });
+  it("accepts answer without spaces when canonical has spaces", () => {
+    expect(submit("s+d", "s + d")).toBe(true);
+  });
+  it("accepts multi-operator expression without spaces", () => {
+    expect(submit("n%d==0", "n % d == 0")).toBe(true);
+  });
 });
