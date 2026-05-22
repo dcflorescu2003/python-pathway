@@ -50,23 +50,34 @@ export default function ProblemsCsvImporter({ chapterId, existingProblems, allEx
       const ids = generateProblemIds(chapterId, allExistingIds, valid.length);
       const startSort = existingProblems.length;
 
-      const rows = valid.map((p, i) => ({
-        id: ids[i],
-        chapter_id: chapterId,
-        title: p.title,
-        description: p.description,
-        difficulty: p.difficulty,
-        xp_reward: p.xp_reward,
-        hint: p.hint,
-        solution: p.solution,
-        is_premium: p.is_premium,
-        test_cases: p.test_cases.map((tc) => ({
-          input: tc.input,
-          expectedOutput: tc.expectedOutput,
-          hidden: tc.hidden,
-        })) as any,
-        sort_order: startSort + i,
-      }));
+      const rows = valid.map((p, i) => {
+        let testCasesPayload: any;
+        if (p.kind === "static") {
+          testCasesPayload = { kind: "static", testCases: [], staticChecks: p.static_checks };
+        } else {
+          const tcs = p.test_cases.map((tc) => {
+            const o: any = { input: tc.input, expectedOutput: tc.expectedOutput, hidden: tc.hidden };
+            if (tc.inputFiles && Object.keys(tc.inputFiles).length > 0) o.inputFiles = tc.inputFiles;
+            if (tc.expectedFiles && Object.keys(tc.expectedFiles).length > 0) o.expectedFiles = tc.expectedFiles;
+            return o;
+          });
+          const hasFiles = tcs.some((t: any) => t.inputFiles || t.expectedFiles);
+          testCasesPayload = hasFiles ? { kind: "execute", testCases: tcs, staticChecks: [] } : tcs;
+        }
+        return {
+          id: ids[i],
+          chapter_id: chapterId,
+          title: p.title,
+          description: p.description,
+          difficulty: p.difficulty,
+          xp_reward: p.xp_reward,
+          hint: p.hint,
+          solution: p.solution,
+          is_premium: p.is_premium,
+          test_cases: testCasesPayload,
+          sort_order: startSort + i,
+        };
+      });
 
       const { error } = await supabase.from("problems").insert(rows);
       if (error) throw error;
