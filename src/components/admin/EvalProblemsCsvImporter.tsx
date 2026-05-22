@@ -46,20 +46,32 @@ export default function EvalProblemsCsvImporter({ lessonId, existingCount, onSuc
       const baseTs = Date.now();
       const ids = valid.map((_, i) => `eval-e-${baseTs}-${i}-${Math.random().toString(36).slice(2, 6)}`);
 
-      const rows = valid.map((p, i) => ({
-        id: ids[i],
-        lesson_id: lessonId,
-        type: "problem",
-        question: `**${p.title}**\n\n${p.description}`,
-        solution: p.solution,
-        test_cases: p.test_cases.map((tc) => ({
-          input: tc.input,
-          expected_output: tc.expectedOutput,
-          hidden: tc.hidden,
-        })) as any,
-        code_template: null,
-        sort_order: existingCount + i,
-      }));
+      const rows = valid.map((p, i) => {
+        // Same wrapper schema as standalone problems so runtime can branch on kind/files/static.
+        let testCasesPayload: any;
+        if (p.kind === "static") {
+          testCasesPayload = { kind: "static", testCases: [], staticChecks: p.static_checks };
+        } else {
+          const tcs = p.test_cases.map((tc) => {
+            const o: any = { input: tc.input, expectedOutput: tc.expectedOutput, hidden: tc.hidden };
+            if (tc.inputFiles && Object.keys(tc.inputFiles).length > 0) o.inputFiles = tc.inputFiles;
+            if (tc.expectedFiles && Object.keys(tc.expectedFiles).length > 0) o.expectedFiles = tc.expectedFiles;
+            return o;
+          });
+          const hasFiles = tcs.some((t: any) => t.inputFiles || t.expectedFiles);
+          testCasesPayload = hasFiles ? { kind: "execute", testCases: tcs, staticChecks: [] } : tcs;
+        }
+        return {
+          id: ids[i],
+          lesson_id: lessonId,
+          type: "problem",
+          question: `**${p.title}**\n\n${p.description}`,
+          solution: p.solution,
+          test_cases: testCasesPayload,
+          code_template: null,
+          sort_order: existingCount + i,
+        };
+      });
 
       const { error } = await supabase.from("eval_exercises").insert(rows as any);
       if (error) throw error;
