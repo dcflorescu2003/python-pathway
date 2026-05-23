@@ -285,7 +285,7 @@ Deno.serve(async (req) => {
     // This guarantees the bell shows the message even if the push is dropped
     // by the OS (Focus mode, Low Power, no permission, etc.).
     try {
-      const rows = student_ids.map((uid: string) => ({
+      const rows = effectiveStudentIds.map((uid: string) => ({
         user_id: uid,
         title,
         body: msgBody,
@@ -305,7 +305,7 @@ Deno.serve(async (req) => {
     const { data: tokens, error: tokensError } = await adminClient
       .from("device_tokens")
       .select("token, platform, user_id, apns_environment")
-      .in("user_id", student_ids);
+      .in("user_id", effectiveStudentIds);
 
     console.log("[SEND-PUSH] Device tokens found:", tokens?.length ?? 0, "error:", tokensError?.message ?? "none");
 
@@ -322,7 +322,7 @@ Deno.serve(async (req) => {
       const { data: unread } = await adminClient
         .from("notifications")
         .select("user_id")
-        .in("user_id", student_ids)
+        .in("user_id", effectiveStudentIds)
         .eq("read", false);
       if (unread) {
         for (const r of unread as Array<{ user_id: string }>) {
