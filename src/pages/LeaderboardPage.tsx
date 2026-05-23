@@ -99,7 +99,7 @@ const LeaderboardPage = () => {
     enabled: tab !== "class" || !!classData,
     queryFn: async () => {
       let query = supabase
-        .from("profiles")
+        .from("public_profiles" as any)
         .select("user_id, display_name, nickname, xp, streak, avatar_url, school_id")
         .order("xp", { ascending: false });
 
@@ -127,16 +127,17 @@ const LeaderboardPage = () => {
     enabled: !!user && (tab !== "class" || !!classData),
     queryFn: async () => {
       const { data: profile } = await supabase
-        .from("profiles")
+        .from("public_profiles" as any)
         .select("user_id, display_name, nickname, xp, streak, avatar_url, school_id")
         .eq("user_id", user!.id)
         .single();
       if (!profile) return null;
+      const myProfile = profile as unknown as LeaderboardEntry;
 
       let countQuery = supabase
-        .from("profiles")
+        .from("public_profiles" as any)
         .select("user_id", { count: "exact", head: true })
-        .gt("xp", profile.xp);
+        .gt("xp", myProfile.xp);
 
       if (tab === "class" && classData) {
         countQuery = countQuery.in("user_id", classData.memberIds);
@@ -147,7 +148,7 @@ const LeaderboardPage = () => {
       }
 
       const { count } = await countQuery;
-      return { ...profile, rank: (count || 0) + 1 } as LeaderboardEntry & { rank: number };
+      return { ...myProfile, rank: (count || 0) + 1 } as LeaderboardEntry & { rank: number };
     },
   });
 
