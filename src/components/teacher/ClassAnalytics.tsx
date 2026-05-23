@@ -38,6 +38,15 @@ function escapeCSV(val: string | number | null | undefined): string {
   return s;
 }
 
+function esc(val: unknown): string {
+  return String(val ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 function downloadFile(content: string, filename: string, type: string) {
   const BOM = "\uFEFF";
   const blob = new Blob([BOM + content], { type: `${type};charset=utf-8` });
@@ -112,7 +121,7 @@ function exportPDF(className: string, studentStats: StudentStat[], classAvg: num
 <html>
 <head>
 <meta charset="utf-8">
-<title>Raport ${className}</title>
+<title>Raport ${esc(className)}</title>
 <style>
   @page { size: A4; margin: 20mm; }
   * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -139,8 +148,8 @@ function exportPDF(className: string, studentStats: StudentStat[], classAvg: num
 </head>
 <body>
   <div class="header">
-    <h1>📊 Raport clasă: ${className}</h1>
-    <p>Generat pe ${date} • Python Pathway</p>
+    <h1>📊 Raport clasă: ${esc(className)}</h1>
+    <p>Generat pe ${esc(date)} • Python Pathway</p>
   </div>
   
   <div class="kpis">
@@ -173,7 +182,7 @@ function exportPDF(className: string, studentStats: StudentStat[], classAvg: num
           const badgeClass = s.avgScore >= 80 ? "badge-good" : s.avgScore >= 50 ? "badge-mid" : "badge-bad";
           return `<tr>
             <td>${i + 1}</td>
-            <td>${s.name}</td>
+            <td>${esc(s.name)}</td>
             <td>${s.lessonsCompleted}</td>
             <td><span class="badge ${badgeClass}">${s.avgScore}%</span></td>
             <td>${s.avgTestScore !== null ? `${s.avgTestScore}%` : "-"}</td>
@@ -191,7 +200,7 @@ function exportPDF(className: string, studentStats: StudentStat[], classAvg: num
     <table>
       <thead><tr><th>Lecție</th><th>Medie</th><th>Încercări</th></tr></thead>
       <tbody>
-        ${weakestLessons.map(l => `<tr><td>${l.name}</td><td><span class="badge badge-bad">${l.avgScore}%</span></td><td>${l.attempts}</td></tr>`).join("")}
+        ${weakestLessons.map(l => `<tr><td>${esc(l.name)}</td><td><span class="badge badge-bad">${Number(l.avgScore)}%</span></td><td>${Number(l.attempts)}</td></tr>`).join("")}
       </tbody>
     </table>
   </div>` : ""}
@@ -204,7 +213,7 @@ function exportPDF(className: string, studentStats: StudentStat[], classAvg: num
       <tbody>
         ${testPerformance.map(t => {
           const bc = t.avg >= 80 ? "badge-good" : t.avg >= 50 ? "badge-mid" : "badge-bad";
-          return `<tr><td>${t.name}</td><td><span class="badge ${bc}">${t.avg}%</span></td><td>${t.count}</td></tr>`;
+          return `<tr><td>${esc(t.name)}</td><td><span class="badge ${bc}">${Number(t.avg)}%</span></td><td>${Number(t.count)}</td></tr>`;
         }).join("")}
       </tbody>
     </table>
@@ -216,13 +225,13 @@ function exportPDF(className: string, studentStats: StudentStat[], classAvg: num
     <table>
       <thead><tr><th>Întrebare</th><th>Rată eroare</th><th>Total răspunsuri</th></tr></thead>
       <tbody>
-        ${frequentErrors.map(e => `<tr><td>${e.question}</td><td><span class="badge badge-bad">${e.errorRate}%</span></td><td>${e.total}</td></tr>`).join("")}
+        ${frequentErrors.map(e => `<tr><td>${esc(e.question)}</td><td><span class="badge badge-bad">${Number(e.errorRate)}%</span></td><td>${Number(e.total)}</td></tr>`).join("")}
       </tbody>
     </table>
   </div>` : ""}
   
   <div class="footer">
-    Raport generat automat de Python Pathway • ${date}
+    Raport generat automat de Python Pathway • ${esc(date)}
   </div>
 </body>
 </html>`;
