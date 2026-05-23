@@ -22,7 +22,7 @@ function ConfettiParticle({ delay, x }: { delay: number; x: number }) {
   const color = colors[Math.floor(Math.random() * colors.length)];
   return (
     <motion.div
-      className="absolute rounded-full"
+      className="absolute rounded-full pointer-events-none"
       style={{ width: 6, height: 6, backgroundColor: color, left: `${x}%`, top: "40%" }}
       initial={{ opacity: 1, y: 0, scale: 1 }}
       animate={{ opacity: 0, y: [0, -80, 60], x: [0, (Math.random() - 0.5) * 120], scale: [1, 1.2, 0.5], rotate: [0, 360] }}
@@ -65,7 +65,7 @@ const StreakCelebrationDialog = ({ streakCount, open, onClose }: StreakCelebrati
 
             {/* Glow */}
             <motion.div
-              className="absolute inset-0 rounded-2xl"
+              className="absolute inset-0 rounded-2xl pointer-events-none"
               style={{ background: "radial-gradient(circle at center 40%, hsl(var(--primary) / 0.15), transparent 70%)" }}
               animate={{ opacity: [0.5, 1, 0.5] }}
               transition={{ duration: 2, repeat: Infinity }}
@@ -73,7 +73,7 @@ const StreakCelebrationDialog = ({ streakCount, open, onClose }: StreakCelebrati
 
             {/* Fire icon */}
             <motion.div
-              className="relative mx-auto mb-4 flex h-20 w-20 items-center justify-center"
+              className="relative mx-auto mb-4 flex h-20 w-20 items-center justify-center pointer-events-none"
               animate={{ scale: [1, 1.15, 1], rotate: [0, 5, -5, 0] }}
               transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
             >

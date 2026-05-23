@@ -1,29 +1,20 @@
-# Acceptare automată variante fără spații la Fill
+## Problemă
+La finalul unei lecții reușite, peste ecranul "Lecție completă!" se deschide `StreakCelebrationDialog`. Butonul "Continuă" din dialog nu răspunde la click — utilizatorul e forțat să aștepte cele ~4s până dialogul se auto-închide.
 
-## Problema
-În `FillExercise.tsx`, funcția `normalize` colapsează spațiile multiple într-unul singur, dar nu le elimină. Așa că `s + d` (răspuns) ≠ `s+d` (input user). Profesorul trebuie să adauge manual ambele variante.
+## Cauză
+În `src/components/StreakCelebrationDialog.tsx`:
+1. `ConfettiParticle` (linia 23) randează `<motion.div className="absolute rounded-full">` **fără `pointer-events-none`**. Animația durează 1.5s + delay (până la ~0.85s), apoi particulele rămân în DOM la opacitate 0 dar continuă să capteze pointer events, acoperind zona butonului.
+2. Div-ul de glow (linia 67) — `motion.div className="absolute inset-0"` — la fel, acoperă tot containerul și captează click-uri.
 
-## Soluția
-În `src/components/exercises/FillExercise.tsx`, modific `normalize` să elimine **toate** spațiile (inclusiv cele interne), nu doar să le colapseze. Pentru cod Python, spațiile între operatori/identificatori sunt opționale, deci `s+d`, `s + d`, `s  +  d` devin echivalente.
+Ambele sunt pur decorative și nu trebuie să intercepteze input.
 
-```ts
-// înainte
-.replace(/\s+/g, " ")
-// după
-.replace(/\s+/g, "")
-```
+## Fix
+În `src/components/StreakCelebrationDialog.tsx`:
+- Adaug `pointer-events-none` pe `<motion.div>` din `ConfettiParticle` (linia 24-26).
+- Adaug `pointer-events-none` pe glow `motion.div` (linia 67-72).
+- Adaug `pointer-events-none` și pe wrapper-ul flame icon (linia 75-78) pentru siguranță — e tot decorativ.
 
-## Impact
-- ✅ `s+d` == `s + d` == `s  +  d` → toate corecte
-- ✅ Profesorul nu mai trebuie să listeze variante cu/fără spații
-- ⚠️ Trade-off: răspunsuri text cu spații semnificative (ex: `"hello world"` ca string literal) ar deveni egale cu `"helloworld"`. Pentru exerciții Python de completare cod, acest caz e rar/inexistent (blank-urile sunt expresii scurte: operatori, nume, apeluri).
+Nicio altă modificare de logică, timing, sau text.
 
-## Teste
-Actualizez `FillExercise.test.tsx` adăugând cazuri:
-- `s+d` acceptat când răspunsul e `s + d`
-- `n%d==0` acceptat când răspunsul e `n % d == 0`
-- păstrez testele existente (toate trec, separatorul `|`/`,` rămâne neschimbat)
-
-## Fișiere modificate
-- `src/components/exercises/FillExercise.tsx` — o linie în `normalize`
-- `src/components/exercises/FillExercise.test.tsx` — 2 teste noi
+## Fișier modificat
+- `src/components/StreakCelebrationDialog.tsx` — 3 adăugări de `pointer-events-none` pe elemente decorative absolute.
