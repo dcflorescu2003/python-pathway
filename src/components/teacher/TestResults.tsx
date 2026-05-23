@@ -295,6 +295,13 @@ const TestResults = ({ testId, testTitle, onBack, initialClassId }: TestResultsP
 
   const exportTestPDF = async () => {
     if (submissions.length === 0) return;
+    const esc = (v: unknown) =>
+      String(v ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
     try {
       const subIds = submissions.map((s: any) => s.id);
       const { data: allAnswers } = await supabase
@@ -315,20 +322,20 @@ const TestResults = ({ testId, testTitle, onBack, initialClassId }: TestResultsP
           .good { color: #16a34a; } .bad { color: #dc2626; }
           @media print { body { padding: 0; } }
         </style></head><body>`;
-      html += `<h1>Rezultate Test — ${className}</h1>`;
-      html += `<p style="color:#888;font-size:11px;">Exportat: ${new Date().toLocaleDateString("ro-RO")}</p>`;
+      html += `<h1>Rezultate Test — ${esc(className)}</h1>`;
+      html += `<p style="color:#888;font-size:11px;">Exportat: ${esc(new Date().toLocaleDateString("ro-RO"))}</p>`;
 
       // Summary table
       html += `<table><tr><th>Elev</th><th>Variantă</th><th>Scor</th><th>Maxim</th><th>Procent</th><th>Trimis</th></tr>`;
       sortedSubmissions.forEach((sub: any) => {
         const pct = sub.max_score > 0 ? Math.round((sub.total_score / sub.max_score) * 100) : 0;
         html += `<tr>
-          <td>${sub.profile?.display_name || "Elev"}</td>
-          <td>${sub.variant}</td>
-          <td>${sub.total_score ?? 0}</td>
-          <td>${sub.max_score ?? 0}</td>
+          <td>${esc(sub.profile?.display_name || "Elev")}</td>
+          <td>${esc(sub.variant)}</td>
+          <td>${Number(sub.total_score ?? 0)}</td>
+          <td>${Number(sub.max_score ?? 0)}</td>
           <td class="${pct >= 50 ? "good" : "bad"}">${pct}%</td>
-          <td>${sub.submitted_at ? new Date(sub.submitted_at).toLocaleDateString("ro-RO") : "În curs"}</td>
+          <td>${esc(sub.submitted_at ? new Date(sub.submitted_at).toLocaleDateString("ro-RO") : "În curs")}</td>
         </tr>`;
       });
       html += `</table>`;
@@ -336,16 +343,16 @@ const TestResults = ({ testId, testTitle, onBack, initialClassId }: TestResultsP
       // Per-student details
       for (const sub of sortedSubmissions) {
         const subAnswers = (allAnswers || []).filter((a: any) => a.submission_id === sub.id);
-        html += `<h2>${sub.profile?.display_name || "Elev"} (Nr. ${sub.variant})</h2>`;
+        html += `<h2>${esc(sub.profile?.display_name || "Elev")} (Nr. ${esc(sub.variant)})</h2>`;
         html += `<table><tr><th>Item</th><th>Tip</th><th>Punctaj</th><th>Feedback</th></tr>`;
         subAnswers.forEach((ans: any, idx: number) => {
           const ti = itemMap.get(ans.test_item_id);
           const qInfo = getQuestionInfo(ti);
           html += `<tr>
             <td>Item ${idx + 1}</td>
-            <td>${typeLabel(qInfo.type)}</td>
-            <td>${ans.score ?? 0}/${ans.max_points ?? 0}</td>
-            <td>${ans.feedback || "—"}</td>
+            <td>${esc(typeLabel(qInfo.type))}</td>
+            <td>${Number(ans.score ?? 0)}/${Number(ans.max_points ?? 0)}</td>
+            <td>${esc(ans.feedback || "—")}</td>
           </tr>`;
         });
         html += `</table>`;

@@ -190,25 +190,65 @@ Deno.serve(async (req) => {
   try {
     const apiKey = req.headers.get("apikey");
     const authHeader = req.headers.get("Authorization");
-    const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
 
-    const hasValidApiKey = apiKey && (apiKey === anonKey || apiKey === serviceKey);
-    const hasValidAuth = authHeader?.startsWith("Bearer ");
+    const isServiceRole = apiKey === serviceKey || authHeader === `Bearer ${serviceKey}`;
 
-    if (!hasValidApiKey && !hasValidAuth) {
-      console.log("[SEND-PUSH] REJECTED: No valid credentials");
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401,
-        headers: corsHeaders,
+    let callerId: string | null = null;
+    let callerIsAdmin = false;
+    let callerIsTeacher = false;
+
+    if (!isServiceRole) {
+      if (!authHeader?.startsWith("Bearer ")) {
+        return new Response(JSON.stringify({ error: "Unauthorized" }), {
+          status: 401,
+          headers: corsHeaders,
+        });
+      }
+      const userClient = createClient(supabaseUrl, serviceKey!, {
+        global: { headers: { Authorization: authHeader } },
       });
+      const { data: userData, error: userErr } = await userClient.auth.getUser();
+      if (userErr || !userData.user) {
+        return new Response(JSON.stringify({ error: "Unauthorized" }), {
+          status: 401,
+          headers: corsHeaders,
+        });
+      }
+      callerId = userData.user.id;
     }
-    console.log("[SEND-PUSH] Auth OK");
 
     const adminClient = createClient(
-      Deno.env.get("SUPABASE_URL")!,
+      supabaseUrl,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
+
+    if (callerId) {
+      const { data: roleRow } = await adminClient
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", callerId)
+        .eq("role", "admin")
+        .maybeSingle();
+      callerIsAdmin = !!roleRow;
+
+      if (!callerIsAdmin) {
+        const { data: profile } = await adminClient
+          .from("profiles")
+          .select("is_teacher, teacher_status")
+          .eq("user_id", callerId)
+          .maybeSingle();
+        callerIsTeacher = !!profile?.is_teacher;
+      }
+
+      if (!callerIsAdmin && !callerIsTeacher) {
+        return new Response(JSON.stringify({ error: "Forbidden" }), {
+          status: 403,
+          headers: corsHeaders,
+        });
+      }
+    }
 
     const body = await req.json();
     const { student_ids, title, body: msgBody } = body;
@@ -221,11 +261,31 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Teachers may only push to students in their own classes
+    if (callerIsTeacher && !callerIsAdmin && callerId) {
+      const { data: ownStudents } = await adminClient
+        .from("class_members")
+        .select("student_id, teacher_classes!inner(teacher_id)")
+        .eq("teacher_classes.teacher_id", callerId)
+        .in("student_id", student_ids);
+      const allowed = new Set((ownStudents ?? []).map((r: any) => r.student_id));
+      const filtered = (student_ids as string[]).filter((id) => allowed.has(id));
+      if (filtered.length === 0) {
+        return new Response(JSON.stringify({ error: "No authorized recipients" }), {
+          status: 403,
+          headers: corsHeaders,
+        });
+      }
+      (body as any).student_ids = filtered;
+    }
+    const effectiveStudentIds: string[] = (body as any).student_ids;
+
+
     // Sync to in-app bell: insert one notification row per recipient.
     // This guarantees the bell shows the message even if the push is dropped
     // by the OS (Focus mode, Low Power, no permission, etc.).
     try {
-      const rows = student_ids.map((uid: string) => ({
+      const rows = effectiveStudentIds.map((uid: string) => ({
         user_id: uid,
         title,
         body: msgBody,
@@ -245,7 +305,7 @@ Deno.serve(async (req) => {
     const { data: tokens, error: tokensError } = await adminClient
       .from("device_tokens")
       .select("token, platform, user_id, apns_environment")
-      .in("user_id", student_ids);
+      .in("user_id", effectiveStudentIds);
 
     console.log("[SEND-PUSH] Device tokens found:", tokens?.length ?? 0, "error:", tokensError?.message ?? "none");
 
@@ -262,7 +322,7 @@ Deno.serve(async (req) => {
       const { data: unread } = await adminClient
         .from("notifications")
         .select("user_id")
-        .in("user_id", student_ids)
+        .in("user_id", effectiveStudentIds)
         .eq("read", false);
       if (unread) {
         for (const r of unread as Array<{ user_id: string }>) {
