@@ -123,48 +123,53 @@ serve(async (req) => {
     const saJson = Deno.env.get("GOOGLE_PLAY_SERVICE_ACCOUNT_JSON");
     let expiryTime: Date;
     let autoRenewing = true;
-    const isShortToken = purchaseToken.length < 50;
 
-    if (isShortToken) {
-      // Client sent orderId instead of purchaseToken — store optimistically
-      // and grant premium so the user isn't blocked. Will re-verify when client sends real token.
-      log("Short token (likely orderId) — granting optimistically", { tokenLen: purchaseToken.length });
-      const days = planId === "yearly" ? 365 : 30;
-      expiryTime = new Date(Date.now() + days * 24 * 60 * 60 * 1000);
-    } else if (saJson) {
-      // Real verification with Google Play Developer API
-      const sa: ServiceAccount = JSON.parse(saJson);
-      const accessToken = await getAccessToken(sa);
-
-      const url = `https://androidpublisher.googleapis.com/androidpublisher/v3/applications/${PACKAGE_NAME}/purchases/subscriptionsv2/tokens/${encodeURIComponent(purchaseToken)}`;
-      const playRes = await fetch(url, {
-        headers: { Authorization: `Bearer ${accessToken}` },
-      });
-
-      if (!playRes.ok) {
-        const errText = await playRes.text();
-        log("Play API error", { status: playRes.status, body: errText });
-        throw new Error(`Play API verification failed: ${playRes.status}`);
-      }
-
-      const purchase = await playRes.json();
-      log("Play API response", { state: purchase.subscriptionState });
-
-      const validStates = ["SUBSCRIPTION_STATE_ACTIVE", "SUBSCRIPTION_STATE_IN_GRACE_PERIOD"];
-      if (!validStates.includes(purchase.subscriptionState)) {
-        throw new Error(`Subscription not active: ${purchase.subscriptionState}`);
-      }
-
-      const lineItems = purchase.lineItems || [];
-      const expiry = lineItems[0]?.expiryTime;
-      if (!expiry) throw new Error("No expiry time in Play response");
-      expiryTime = new Date(expiry);
-      autoRenewing = !purchase.canceledStateContext;
-    } else {
-      log("No GOOGLE_PLAY_SERVICE_ACCOUNT_JSON; storing unverified");
-      const days = planId === "yearly" ? 365 : 30;
-      expiryTime = new Date(Date.now() + days * 24 * 60 * 60 * 1000);
+    if (purchaseToken.length < 50) {
+      // SECURITY: previously granted premium optimistically for short tokens,
+      // which allowed any authenticated user to obtain free premium.
+      log("Rejected short purchaseToken — cannot verify with Play API", { tokenLen: purchaseToken.length });
+      return new Response(
+        JSON.stringify({ error: "Invalid purchase token" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
+
+    if (!saJson) {
+      log("GOOGLE_PLAY_SERVICE_ACCOUNT_JSON not configured");
+      return new Response(
+        JSON.stringify({ error: "Server not configured for Play verification" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Real verification with Google Play Developer API
+    const sa: ServiceAccount = JSON.parse(saJson);
+    const accessToken = await getAccessToken(sa);
+
+    const url = `https://androidpublisher.googleapis.com/androidpublisher/v3/applications/${PACKAGE_NAME}/purchases/subscriptionsv2/tokens/${encodeURIComponent(purchaseToken)}`;
+    const playRes = await fetch(url, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+
+    if (!playRes.ok) {
+      const errText = await playRes.text();
+      log("Play API error", { status: playRes.status, body: errText });
+      throw new Error(`Play API verification failed: ${playRes.status}`);
+    }
+
+    const purchase = await playRes.json();
+    log("Play API response", { state: purchase.subscriptionState });
+
+    const validStates = ["SUBSCRIPTION_STATE_ACTIVE", "SUBSCRIPTION_STATE_IN_GRACE_PERIOD"];
+    if (!validStates.includes(purchase.subscriptionState)) {
+      throw new Error(`Subscription not active: ${purchase.subscriptionState}`);
+    }
+
+    const lineItems = purchase.lineItems || [];
+    const expiry = lineItems[0]?.expiryTime;
+    if (!expiry) throw new Error("No expiry time in Play response");
+    expiryTime = new Date(expiry);
+    autoRenewing = !purchase.canceledStateContext;
 
     // Upsert subscription
     const { error: upsertErr } = await supabaseClient
