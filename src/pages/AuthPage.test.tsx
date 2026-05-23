@@ -68,6 +68,7 @@ vi.mock("@/integrations/supabase/client", () => {
     supabase: {
       from: () => chain,
       auth: {
+        getUser: vi.fn().mockResolvedValue({ data: { user: null }, error: null }),
         resetPasswordForEmail: vi.fn().mockResolvedValue({ error: null }),
       },
     },
