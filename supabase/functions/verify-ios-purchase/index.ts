@@ -170,10 +170,20 @@ serve(async (req) => {
         authoritative = await fetchTransactionInfo(transactionId, !isSandbox);
       }
     } catch (err) {
-      log("apple-api fetch failed, falling back to client payload", String(err));
+      log("apple-api fetch failed", String(err));
     }
 
-    const trusted = authoritative || clientPayload || {};
+    // SECURITY: refuse to trust client-supplied payload when Apple's API
+    // could not confirm the transaction. Previously fell back to clientPayload,
+    // letting clients forge subscription data.
+    if (!authoritative) {
+      return new Response(
+        JSON.stringify({ error: "Could not verify transaction with Apple" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const trusted = authoritative;
     const productId = trusted.productId || clientProductId;
     const origTxId =
       String(trusted.originalTransactionId || originalTransactionId || "");

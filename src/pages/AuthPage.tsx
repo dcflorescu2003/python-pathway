@@ -115,11 +115,9 @@ const AccountView = () => {
 
     setJoinLoading(true);
     try {
-      const { data: cls } = await supabase
-        .from("teacher_classes")
-        .select("id")
-        .eq("join_code", code.trim().toUpperCase())
-        .single();
+      const { data: clsRows } = await supabase
+        .rpc("find_class_by_join_code", { p_code: code.trim().toUpperCase() });
+      const cls = Array.isArray(clsRows) ? clsRows[0] : null;
       if (!cls) { toast.error("Cod invalid."); return; }
 
       const { data: existing } = await supabase

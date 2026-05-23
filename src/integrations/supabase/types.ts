@@ -1788,6 +1788,39 @@ export type Database = {
           },
         ]
       }
+      public_profiles: {
+        Row: {
+          avatar_url: string | null
+          display_name: string | null
+          is_teacher: boolean | null
+          nickname: string | null
+          school_id: string | null
+          streak: number | null
+          user_id: string | null
+          xp: number | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          display_name?: string | null
+          is_teacher?: boolean | null
+          nickname?: string | null
+          school_id?: string | null
+          streak?: number | null
+          user_id?: string | null
+          xp?: number | null
+        }
+        Update: {
+          avatar_url?: string | null
+          display_name?: string | null
+          is_teacher?: boolean | null
+          nickname?: string | null
+          school_id?: string | null
+          streak?: number | null
+          user_id?: string | null
+          xp?: number | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       admin_set_premium: {
@@ -1811,6 +1844,13 @@ export type Database = {
       enqueue_email: {
         Args: { payload: Json; queue_name: string }
         Returns: number
+      }
+      find_class_by_join_code: {
+        Args: { p_code: string }
+        Returns: {
+          id: string
+          name: string
+        }[]
       }
       get_problem_solution: { Args: { p_id: string }; Returns: string }
       get_student_competency_profile:
