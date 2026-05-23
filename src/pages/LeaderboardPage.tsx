@@ -132,7 +132,7 @@ const LeaderboardPage = () => {
         .eq("user_id", user!.id)
         .single();
       if (!profile) return null;
-      const myProfile = profile as unknown as LeaderboardEntry;
+      const myProfile = (profile as unknown) as LeaderboardEntry;
 
       let countQuery = supabase
         .from("public_profiles" as any)
