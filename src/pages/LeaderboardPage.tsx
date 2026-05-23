@@ -117,7 +117,7 @@ const LeaderboardPage = () => {
 
       const { data, error } = await query;
       if (error) throw error;
-      return (data || []) as LeaderboardEntry[];
+      return ((data || []) as unknown) as LeaderboardEntry[];
     },
   });
 
