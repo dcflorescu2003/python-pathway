@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Code, ChevronRight, ArrowLeft, Lock, Search } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
