@@ -48,7 +48,7 @@ const ProblemSolvePage = () => {
   useEffect(() => {
     if (problem && problem.isPremium && !subscribed) {
       toast.error("Această problemă este disponibilă doar cu un cont Premium.");
-      navigate("/problems");
+      navigate("/problems", { state: { fromChapter: fromChapter ?? problem?.chapter } });
     }
   }, [problem, subscribed, navigate]);
 
