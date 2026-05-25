@@ -126,6 +126,7 @@ const PIPE_SEPARATOR_COLUMNS = new Set([
   "groups",
   "test_cases",
   "blanks", // procesat separat în rowToExercise (split pe | → join pe ,)
+  "competencies", // coduri micro pot fi separate prin ; , sau |
 ]);
 
 function parseCSVRows(text: string): { headers: string[]; rows: Record<string, string>[] } {
