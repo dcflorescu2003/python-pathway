@@ -51,3 +51,21 @@ describe("parseExercisesCSV — pipe handling per column", () => {
     expect(exercises[0].test_cases?.length).toBe(2);
   });
 });
+
+describe("parseExercisesCSV — competencies separators", () => {
+  it("accepts ; , and | as competency separators without mangling codes", () => {
+    const cases = [
+      'quiz,"q","a","b",,,a,"e",,,,,,,,,"M91|M92|M93"',
+      'quiz,"q","a","b",,,a,"e",,,,,,,,,"M91;M92;M93"',
+      'quiz,"q","a","b",,,a,"e",,,,,,,,,"M91,M92,M93"',
+    ];
+    for (const row of cases) {
+      const csv = [
+        "type,question,option_a,option_b,option_c,option_d,correct,explanation,code_template,blanks,lines,statement,is_true,groups,solution,test_cases,competencies",
+        row,
+      ].join("\n");
+      const { exercises } = parseExercisesCSV(csv);
+      expect(exercises[0].competencies).toEqual(["M91", "M92", "M93"]);
+    }
+  });
+});
