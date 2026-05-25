@@ -64,7 +64,7 @@ const ProblemsPage = () => {
       setShowPremium(true);
       return;
     }
-    navigate(`/problem/${problem.id}`);
+    navigate(`/problem/${problem.id}`, { state: { fromChapter: problem.chapter } });
   };
 
   const renderProblemCard = (problem: typeof problems[0], index: number, showChapter = false) => {
