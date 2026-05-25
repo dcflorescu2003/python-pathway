@@ -21,6 +21,8 @@ import { recordCompetencyScores } from "@/lib/competencyTracking";
 const ProblemSolvePage = () => {
   const { problemId } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
+  const fromChapter = (location.state as { fromChapter?: string } | null)?.fromChapter;
   const { data, isLoading: problemsLoading } = useProblems();
   const problem = data?.problems.find((p) => p.id === problemId);
   const { loading, running, runCode, runStaticChecks } = usePyodide();
