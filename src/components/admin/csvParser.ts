@@ -126,6 +126,7 @@ const PIPE_SEPARATOR_COLUMNS = new Set([
   "groups",
   "test_cases",
   "blanks", // procesat separat în rowToExercise (split pe | → join pe ,)
+  "competencies", // coduri micro pot fi separate prin ; , sau |
 ]);
 
 function parseCSVRows(text: string): { headers: string[]; rows: Record<string, string>[] } {
@@ -189,10 +190,10 @@ function rowToExercise(row: Record<string, string>): ParsedExercise {
     ex.error = `Număr greșit de coloane (${row.__col_warn}). Verifică virgulele extra/lipsă.`;
   }
   ex.xp = row.xp ? parseInt(row.xp) : 5;
-  // Parse competencies (codes separated by ;)
+  // Parse competencies (acceptă ; , sau | ca separator)
   if (row.competencies) {
     ex.competencies = row.competencies
-      .split(";")
+      .split(/[;,|]/)
       .map(c => c.trim().toUpperCase())
       .filter(c => c.length > 0);
   }
