@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
 import { ArrowLeft, Play, Loader2, CheckCircle2, XCircle, Lightbulb, BookOpen, FileSearch } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -21,6 +21,8 @@ import { recordCompetencyScores } from "@/lib/competencyTracking";
 const ProblemSolvePage = () => {
   const { problemId } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
+  const fromChapter = (location.state as { fromChapter?: string } | null)?.fromChapter;
   const { data, isLoading: problemsLoading } = useProblems();
   const problem = data?.problems.find((p) => p.id === problemId);
   const { loading, running, runCode, runStaticChecks } = usePyodide();
@@ -46,7 +48,7 @@ const ProblemSolvePage = () => {
   useEffect(() => {
     if (problem && problem.isPremium && !subscribed) {
       toast.error("Această problemă este disponibilă doar cu un cont Premium.");
-      navigate("/problems");
+      navigate("/problems", { state: { fromChapter: fromChapter ?? problem?.chapter } });
     }
   }, [problem, subscribed, navigate]);
 
@@ -135,7 +137,7 @@ const ProblemSolvePage = () => {
     <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="min-h-screen bg-background pb-[calc(var(--sab)+16px)]">
       <div className="sticky top-0 z-40 bg-background/95 backdrop-blur-md border-b border-border pt-[var(--sat)]">
         <div className="flex items-center gap-3 px-4 py-3">
-          <button onClick={() => navigate("/problems")} className="active:scale-90 transition-transform">
+          <button onClick={() => navigate("/problems", { state: { fromChapter: fromChapter ?? problem.chapter } })} className="active:scale-90 transition-transform">
             <ArrowLeft className="h-6 w-6 text-foreground" />
           </button>
           <div className="flex-1 min-w-0">

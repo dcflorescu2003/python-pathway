@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Code, ChevronRight, ArrowLeft, Lock, Search } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
@@ -25,10 +25,13 @@ const difficultyConfig = {
 
 const ProblemsPage = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { progress } = useProgress();
   const { data, isLoading } = useProblems();
   const { subscribed } = useSubscription();
-  const [selectedChapter, setSelectedChapter] = useState<string | null>(null);
+  const [selectedChapter, setSelectedChapter] = useState<string | null>(
+    (location.state as { fromChapter?: string } | null)?.fromChapter ?? null
+  );
   const [showPremium, setShowPremium] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [difficultyFilter, setDifficultyFilter] = useState<Difficulty | "all">("all");
@@ -61,7 +64,7 @@ const ProblemsPage = () => {
       setShowPremium(true);
       return;
     }
-    navigate(`/problem/${problem.id}`);
+    navigate(`/problem/${problem.id}`, { state: { fromChapter: problem.chapter } });
   };
 
   const renderProblemCard = (problem: typeof problems[0], index: number, showChapter = false) => {
