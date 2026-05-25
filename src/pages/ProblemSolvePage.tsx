@@ -137,7 +137,7 @@ const ProblemSolvePage = () => {
     <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="min-h-screen bg-background pb-[calc(var(--sab)+16px)]">
       <div className="sticky top-0 z-40 bg-background/95 backdrop-blur-md border-b border-border pt-[var(--sat)]">
         <div className="flex items-center gap-3 px-4 py-3">
-          <button onClick={() => navigate("/problems")} className="active:scale-90 transition-transform">
+          <button onClick={() => navigate("/problems", { state: { fromChapter: fromChapter ?? problem.chapter } })} className="active:scale-90 transition-transform">
             <ArrowLeft className="h-6 w-6 text-foreground" />
           </button>
           <div className="flex-1 min-w-0">
