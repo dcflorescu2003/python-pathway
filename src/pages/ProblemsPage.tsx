@@ -25,10 +25,13 @@ const difficultyConfig = {
 
 const ProblemsPage = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { progress } = useProgress();
   const { data, isLoading } = useProblems();
   const { subscribed } = useSubscription();
-  const [selectedChapter, setSelectedChapter] = useState<string | null>(null);
+  const [selectedChapter, setSelectedChapter] = useState<string | null>(
+    (location.state as { fromChapter?: string } | null)?.fromChapter ?? null
+  );
   const [showPremium, setShowPremium] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [difficultyFilter, setDifficultyFilter] = useState<Difficulty | "all">("all");
