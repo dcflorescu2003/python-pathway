@@ -51,7 +51,7 @@ export default function CsvImporter({ targetTable, lessonId, existingCount, exis
       const prefix = targetTable === "eval_exercises" ? "eval-" : `${lessonId}-`;
       const rowsWithComp = importableExercises.map((ex, i) => ({
         dbRow: exerciseToDbRow(ex, lessonId, existingCount + i, prefix, i),
-        competencies: ex.competencies || [],
+        competencies: splitCompetencyCodes(ex.competencies),
       }));
 
       // Remove/add fields based on target table
