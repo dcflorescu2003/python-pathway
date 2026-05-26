@@ -5,7 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Upload, FileText, AlertCircle, Check, Download, BookOpen, Sparkles } from "lucide-react";
 import { toast } from "sonner";
-import { parseLessonCSV, exerciseToDbRow, getLessonTemplateCSV, getContentLessonTemplateCSV, downloadCSV, CONTENT_TYPES, EVAL_TYPES, type ParsedExercise } from "./csvParser";
+import { parseLessonCSV, exerciseToDbRow, getLessonTemplateCSV, getContentLessonTemplateCSV, downloadCSV, splitCompetencyCodes, CONTENT_TYPES, EVAL_TYPES, type ParsedExercise } from "./csvParser";
 import MicrocompetenciesReference from "./MicrocompetenciesReference";
 
 interface CsvLessonImporterProps {
