@@ -120,6 +120,25 @@ export function convertSinglePipes(s: string): string {
   return s.replace(/(?<!\|)\|(?!\|)/g, ",");
 }
 
+/**
+ * Normalize competency codes from a CSV cell or already-split array.
+ * Accepts any combination of `,`, `;`, `|`, or whitespace as separators.
+ * Returns deduplicated-by-position, trimmed, uppercase, non-empty codes.
+ */
+export function splitCompetencyCodes(raw: string | string[] | undefined | null): string[] {
+  if (raw == null) return [];
+  const items = Array.isArray(raw) ? raw : [raw];
+  const out: string[] = [];
+  for (const item of items) {
+    if (typeof item !== "string") continue;
+    for (const part of item.split(/[;,|\s]+/)) {
+      const code = part.trim().toUpperCase();
+      if (code) out.push(code);
+    }
+  }
+  return out;
+}
+
 // Coloane care folosesc `|` ca separator real — NU le procesăm.
 const PIPE_SEPARATOR_COLUMNS = new Set([
   "lines",
