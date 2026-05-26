@@ -190,12 +190,9 @@ function rowToExercise(row: Record<string, string>): ParsedExercise {
     ex.error = `Număr greșit de coloane (${row.__col_warn}). Verifică virgulele extra/lipsă.`;
   }
   ex.xp = row.xp ? parseInt(row.xp) : 5;
-  // Parse competencies (acceptă ; , sau | ca separator)
+  // Parse competencies (acceptă ; , | sau spațiu ca separator)
   if (row.competencies) {
-    ex.competencies = row.competencies
-      .split(/[;,|]/)
-      .map(c => c.trim().toUpperCase())
-      .filter(c => c.length > 0);
+    ex.competencies = splitCompetencyCodes(row.competencies);
   }
 
   switch (type) {
