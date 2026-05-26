@@ -126,7 +126,7 @@ export default function CsvLessonImporter({ mode, chapterId, existingLessonCount
       const prefix = mode === "eval" ? "eval-" : `${lessonId}-`;
       const rows = importableExercises.map((ex, i) => {
         const dbRow = exerciseToDbRow(ex, lessonId, i, prefix, i);
-        return { dbRow, competencies: ex.competencies || [] };
+        return { dbRow, competencies: splitCompetencyCodes(ex.competencies) };
       });
 
       const cleaned = rows.map(({ dbRow }) => {
