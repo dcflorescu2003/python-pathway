@@ -1,5 +1,23 @@
 import { describe, it, expect } from "vitest";
-import { convertSinglePipes, parseExercisesCSV } from "./csvParser";
+import { convertSinglePipes, parseExercisesCSV, splitCompetencyCodes } from "./csvParser";
+
+describe("splitCompetencyCodes", () => {
+  it("splits a single string on any of ; , | or whitespace", () => {
+    expect(splitCompetencyCodes("M61,M62")).toEqual(["M61", "M62"]);
+    expect(splitCompetencyCodes("M61|M62;M63")).toEqual(["M61", "M62", "M63"]);
+    expect(splitCompetencyCodes("M61 M62\tM63")).toEqual(["M61", "M62", "M63"]);
+  });
+  it("re-splits string[] elements that still contain separators", () => {
+    expect(splitCompetencyCodes(["M61,M62", "M63"])).toEqual(["M61", "M62", "M63"]);
+    expect(splitCompetencyCodes(["M61", "M62,M63"])).toEqual(["M61", "M62", "M63"]);
+  });
+  it("returns [] for null/undefined/empty", () => {
+    expect(splitCompetencyCodes(null)).toEqual([]);
+    expect(splitCompetencyCodes(undefined)).toEqual([]);
+    expect(splitCompetencyCodes("")).toEqual([]);
+    expect(splitCompetencyCodes([])).toEqual([]);
+  });
+});
 
 describe("convertSinglePipes", () => {
   it("converts single pipe to comma", () => {
