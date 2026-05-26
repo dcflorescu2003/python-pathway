@@ -246,7 +246,7 @@ export function parseProblemsCSV(text: string): ParseResult {
 
     const compsRaw = get("competencies");
     const competencies = compsRaw
-      ? compsRaw.split("|").map((c) => c.trim().toUpperCase()).filter(Boolean)
+      ? compsRaw.split(/[;,|\s]+/).map((c) => c.trim().toUpperCase()).filter(Boolean)
       : [];
 
     if (Number.isNaN(xp_reward)) {

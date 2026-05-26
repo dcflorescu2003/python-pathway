@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Upload, FileText, AlertCircle, Check, Download } from "lucide-react";
 import { toast } from "sonner";
-import { parseExercisesCSV, exerciseToDbRow, generateExportCSV, getExercisesTemplateCSV, downloadCSV, CONTENT_TYPES, EVAL_TYPES, MANUAL_TYPES, type ParsedExercise } from "./csvParser";
+import { parseExercisesCSV, exerciseToDbRow, generateExportCSV, getExercisesTemplateCSV, downloadCSV, splitCompetencyCodes, CONTENT_TYPES, EVAL_TYPES, MANUAL_TYPES, type ParsedExercise } from "./csvParser";
 
 interface CsvImporterProps {
   targetTable: "exercises" | "eval_exercises" | "manual_exercises";
@@ -51,7 +51,7 @@ export default function CsvImporter({ targetTable, lessonId, existingCount, exis
       const prefix = targetTable === "eval_exercises" ? "eval-" : `${lessonId}-`;
       const rowsWithComp = importableExercises.map((ex, i) => ({
         dbRow: exerciseToDbRow(ex, lessonId, existingCount + i, prefix, i),
-        competencies: ex.competencies || [],
+        competencies: splitCompetencyCodes(ex.competencies),
       }));
 
       // Remove/add fields based on target table
