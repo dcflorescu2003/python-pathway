@@ -46,7 +46,8 @@ const AccountProfileTab = ({
   joinLoading,
 }: AccountProfileTabProps) => {
   const { user } = useAuth();
-  const { progress } = useProgress();
+  const { progress, resyncFromCloud } = useProgress();
+  const [resyncing, setResyncing] = useState(false);
   const { data: chapters } = useChapters();
   const { subscribed, subscriptionEnd, source, openPortal, isIOSNative, isAndroidNative } = useSubscription();
   const { data: referralCodes = [] } = useTeacherReferralCodes();
