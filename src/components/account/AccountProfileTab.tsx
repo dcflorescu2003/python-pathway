@@ -180,27 +180,37 @@ const AccountProfileTab = ({
                 </div>
               );
             })}
-            <Button
-              variant="outline"
-              size="sm"
-              className="w-full mt-2"
-              disabled={resyncing}
-              onClick={async () => {
-                setResyncing(true);
-                const res = await resyncFromCloud();
-                setResyncing(false);
-                if (res.ok) {
-                  toast.success(`${res.count} lecții sincronizate din cloud.`);
-                } else {
-                  toast.error(res.error ? `Eroare: ${res.error}` : "Sincronizarea a eșuat. Încearcă să te reloghezi.");
-                }
-              }}
-            >
-              {resyncing ? "Se sincronizează..." : "Resincronizează progresul din cloud"}
-            </Button>
           </CardContent>
         </Card>
       )}
+
+      {/* Resync progress button - always available */}
+      <Card className="border-border">
+        <CardContent className="p-4">
+          <Button
+            variant="outline"
+            size="sm"
+            className="w-full"
+            disabled={resyncing}
+            onClick={async () => {
+              setResyncing(true);
+              const res = await resyncFromCloud();
+              setResyncing(false);
+              if (res.ok) {
+                toast.success(`${res.count} lecții sincronizate din cloud.`);
+              } else {
+                toast.error(res.error ? `Eroare: ${res.error}` : "Sincronizarea a eșuat. Încearcă să te reloghezi.");
+              }
+            }}
+          >
+            {resyncing ? "Se sincronizează..." : "Resincronizează progresul din cloud"}
+          </Button>
+          <p className="text-xs text-muted-foreground mt-2 text-center">
+            Recuperează lecțiile completate pe alte dispozitive.
+          </p>
+        </CardContent>
+      </Card>
+
 
       {/* Premium / Subscription */}
       {(progress.isPremium || subscribed) ? (
