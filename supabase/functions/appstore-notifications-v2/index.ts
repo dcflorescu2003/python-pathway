@@ -1,11 +1,10 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { verifyAppleJWS } from "../_shared/apple-jws.ts";
 
 // Apple App Store Server Notifications V2 webhook.
 // Public endpoint — Apple does not send our auth tokens. Authentication is via
-// JWS signature verification on `signedPayload`. We currently decode without
-// crypto verification (Apple's certificate chain is published) but reject any
-// payload whose bundleId does not match ours, which is the standard guard.
+// JWS signature verification on `signedPayload` against Apple's Root CA chain.
 //
 // supabase/config.toml entry sets verify_jwt = false for this function.
 
@@ -38,6 +37,11 @@ const INACTIVE_TYPES = new Set([
   "GRACE_PERIOD_EXPIRED",
 ]);
 
+// Insecure decode used ONLY for fields we've already cryptographically verified
+// via verifyAppleJWS. The cryptographic check happens at the entry point of
+// this webhook on `signedPayload`; nested signed envelopes inside the
+// verified payload (signedTransactionInfo, signedRenewalInfo) inherit trust
+// from that outer verification, so a plain decode is acceptable here.
 function decodeJWSPayload(jws: string): Record<string, any> | null {
   try {
     const parts = jws.split(".");
@@ -68,10 +72,13 @@ serve(async (req) => {
       });
     }
 
-    const notification = decodeJWSPayload(signedPayload);
+    // SECURITY: cryptographically verify the JWS signature against Apple's
+    // Root CA - G3. Reject any payload we cannot trust.
+    const notification = await verifyAppleJWS(signedPayload);
     if (!notification) {
-      return new Response(JSON.stringify({ error: "Invalid signedPayload" }), {
-        status: 400,
+      log("rejected: JWS signature verification failed");
+      return new Response(JSON.stringify({ error: "Invalid signature" }), {
+        status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
