@@ -180,6 +180,24 @@ const AccountProfileTab = ({
                 </div>
               );
             })}
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full mt-2"
+              disabled={resyncing}
+              onClick={async () => {
+                setResyncing(true);
+                const res = await resyncFromCloud();
+                setResyncing(false);
+                if (res.ok) {
+                  toast.success(`${res.count} lecții sincronizate din cloud.`);
+                } else {
+                  toast.error(res.error ? `Eroare: ${res.error}` : "Sincronizarea a eșuat. Încearcă să te reloghezi.");
+                }
+              }}
+            >
+              {resyncing ? "Se sincronizează..." : "Resincronizează progresul din cloud"}
+            </Button>
           </CardContent>
         </Card>
       )}
