@@ -529,7 +529,66 @@ export function useProgress() {
     [user]
   );
 
-  return { progress, completeLesson, loseLife, resetLives, setLivesFromReward, setPremium, recordActivity, unlockLessonViaSkip, markLessonStarted, streakJustIncreased, newStreakCount, dismissStreakCelebration };
+  const resyncFromCloud = useCallback(async (): Promise<{ ok: boolean; count: number; error?: string }> => {
+    if (!user) return { ok: false, count: 0, error: "Nu ești autentificat." };
+    try {
+      const [profileRes, lessonsRes, skipRes] = await Promise.all([
+        supabase
+          .from("profiles")
+          .select("xp, streak, lives, is_premium, last_activity_date, lives_updated_at, teacher_status")
+          .eq("user_id", user.id)
+          .maybeSingle(),
+        supabase
+          .from("completed_lessons")
+          .select("lesson_id, score")
+          .eq("user_id", user.id),
+        supabase
+          .from("skip_unlocked_lessons")
+          .select("lesson_id")
+          .eq("user_id", user.id),
+      ]);
+
+      if (profileRes.error || lessonsRes.error || skipRes.error) {
+        const err = profileRes.error?.message || lessonsRes.error?.message || skipRes.error?.message;
+        return { ok: false, count: 0, error: err };
+      }
+
+      const cloudCompleted: Record<string, { score: number; completed: boolean }> = {};
+      lessonsRes.data?.forEach((l) => {
+        cloudCompleted[l.lesson_id] = { score: l.score, completed: true };
+      });
+      const cloudSkipUnlocks: Record<string, true> = {};
+      skipRes.data?.forEach((r) => { cloudSkipUnlocks[r.lesson_id] = true; });
+
+      const profile = profileRes.data;
+      const isPremiumCloud = profile?.is_premium ?? false;
+      const isVerifiedTeacher = (profile as any)?.teacher_status === "verified";
+
+      setProgress((prev) => {
+        const cloudProgress: UserProgress = {
+          xp: profile?.xp ?? prev.xp,
+          streak: profile?.streak ?? prev.streak,
+          lives: profile?.lives ?? prev.lives,
+          isPremium: isPremiumCloud,
+          hasUnlimitedLives: isPremiumCloud || isVerifiedTeacher,
+          lastActivityDate: profile?.last_activity_date ?? prev.lastActivityDate,
+          completedLessons: cloudCompleted,
+          startedLessons: {},
+          skipUnlockedLessons: cloudSkipUnlocks,
+          livesUpdatedAt: profile?.lives_updated_at ?? prev.livesUpdatedAt,
+        };
+        const merged = checkStreakExpiry(mergeProgress(prev, cloudProgress));
+        saveLocalProgress(merged, user.id);
+        return merged;
+      });
+
+      return { ok: true, count: Object.keys(cloudCompleted).length };
+    } catch (err: any) {
+      return { ok: false, count: 0, error: err?.message ?? "Eroare necunoscută" };
+    }
+  }, [user]);
+
+  return { progress, completeLesson, loseLife, resetLives, setLivesFromReward, setPremium, recordActivity, unlockLessonViaSkip, markLessonStarted, streakJustIncreased, newStreakCount, dismissStreakCelebration, resyncFromCloud };
 }
 
 function mergeProgress(a: UserProgress, b: UserProgress): UserProgress {
