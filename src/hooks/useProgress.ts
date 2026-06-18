@@ -161,21 +161,55 @@ export function useProgress() {
 
     const loadCloud = async () => {
       try {
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("xp, streak, lives, is_premium, last_activity_date, lives_updated_at, teacher_status")
-          .eq("user_id", user.id)
-          .single();
+        const [profileRes, lessonsRes, skipRes] = await Promise.all([
+          supabase
+            .from("profiles")
+            .select("xp, streak, lives, is_premium, last_activity_date, lives_updated_at, teacher_status")
+            .eq("user_id", user.id)
+            .maybeSingle(),
+          supabase
+            .from("completed_lessons")
+            .select("lesson_id, score")
+            .eq("user_id", user.id),
+          supabase
+            .from("skip_unlocked_lessons")
+            .select("lesson_id")
+            .eq("user_id", user.id),
+        ]);
 
-        const { data: lessons } = await supabase
-          .from("completed_lessons")
-          .select("lesson_id, score")
-          .eq("user_id", user.id);
+        const anyError = profileRes.error || lessonsRes.error || skipRes.error;
 
-        const { data: skipUnlocks } = await supabase
-          .from("skip_unlocked_lessons")
-          .select("lesson_id")
-          .eq("user_id", user.id);
+        if (anyError) {
+          console.error("[useProgress] cloud fetch error:", {
+            profile: profileRes.error?.message,
+            lessons: lessonsRes.error?.message,
+            skips: skipRes.error?.message,
+          });
+
+          // Detect invalid/expired JWT (RLS would silently return 0 rows otherwise)
+          const msg = `${profileRes.error?.message ?? ""} ${lessonsRes.error?.message ?? ""} ${skipRes.error?.message ?? ""}`.toLowerCase();
+          const isAuthErr = msg.includes("jwt") || msg.includes("sub claim") || msg.includes("invalid claim") || msg.includes("not authenticated");
+
+          if (isAuthErr) {
+            try {
+              const { data: userCheck, error: userErr } = await supabase.auth.getUser();
+              if (userErr || !userCheck?.user) {
+                console.warn("[useProgress] session invalid, signing out for re-login");
+                await supabase.auth.signOut();
+                if (typeof window !== "undefined") window.location.assign("/auth");
+                return;
+              }
+            } catch {
+              /* ignore */
+            }
+          }
+          // IMPORTANT: do NOT overwrite local progress with empty when cloud errors.
+          return;
+        }
+
+        const profile = profileRes.data;
+        const lessons = lessonsRes.data;
+        const skipUnlocks = skipRes.data;
 
         const cloudCompleted: Record<string, { score: number; completed: boolean }> = {};
         lessons?.forEach((lesson) => {
@@ -204,19 +238,26 @@ export function useProgress() {
         };
 
         const localProgress = loadLocalProgress(user.id);
-        const hasCloudProgress = cloudProgress.xp > 0 || Object.keys(cloudCompleted).length > 0 || cloudProgress.isPremium || Object.keys(cloudSkipUnlocks).length > 0;
-        const finalProgress = hasCloudProgress
-          ? checkStreakExpiry(mergeProgress(localProgress, cloudProgress))
-          : checkStreakExpiry(cloudProgress);
+        const localCompletedCount = Object.keys(localProgress.completedLessons).length;
+        const cloudCompletedCount = Object.keys(cloudCompleted).length;
+        console.log("[useProgress] loaded from cloud:", { cloudCompletedCount, localCompletedCount, xp: cloudProgress.xp });
+
+        // Always merge — never overwrite local progress with cloud "zeros".
+        // mergeProgress keeps the union of completed lessons and the higher scores.
+        const finalProgress = checkStreakExpiry(mergeProgress(localProgress, cloudProgress));
 
         setProgress(finalProgress);
         saveLocalProgress(finalProgress, user.id);
 
-        if (hasCloudProgress) {
+        const localHasExtras =
+          localCompletedCount > cloudCompletedCount ||
+          Object.keys(localProgress.skipUnlockedLessons).length > Object.keys(cloudSkipUnlocks).length;
+
+        if (localHasExtras) {
           await syncToCloud(user.id, finalProgress);
         }
       } catch (err) {
-        console.error("Failed to load cloud progress:", err);
+        console.error("[useProgress] Failed to load cloud progress:", err);
       }
     };
 
@@ -488,7 +529,66 @@ export function useProgress() {
     [user]
   );
 
-  return { progress, completeLesson, loseLife, resetLives, setLivesFromReward, setPremium, recordActivity, unlockLessonViaSkip, markLessonStarted, streakJustIncreased, newStreakCount, dismissStreakCelebration };
+  const resyncFromCloud = useCallback(async (): Promise<{ ok: boolean; count: number; error?: string }> => {
+    if (!user) return { ok: false, count: 0, error: "Nu ești autentificat." };
+    try {
+      const [profileRes, lessonsRes, skipRes] = await Promise.all([
+        supabase
+          .from("profiles")
+          .select("xp, streak, lives, is_premium, last_activity_date, lives_updated_at, teacher_status")
+          .eq("user_id", user.id)
+          .maybeSingle(),
+        supabase
+          .from("completed_lessons")
+          .select("lesson_id, score")
+          .eq("user_id", user.id),
+        supabase
+          .from("skip_unlocked_lessons")
+          .select("lesson_id")
+          .eq("user_id", user.id),
+      ]);
+
+      if (profileRes.error || lessonsRes.error || skipRes.error) {
+        const err = profileRes.error?.message || lessonsRes.error?.message || skipRes.error?.message;
+        return { ok: false, count: 0, error: err };
+      }
+
+      const cloudCompleted: Record<string, { score: number; completed: boolean }> = {};
+      lessonsRes.data?.forEach((l) => {
+        cloudCompleted[l.lesson_id] = { score: l.score, completed: true };
+      });
+      const cloudSkipUnlocks: Record<string, true> = {};
+      skipRes.data?.forEach((r) => { cloudSkipUnlocks[r.lesson_id] = true; });
+
+      const profile = profileRes.data;
+      const isPremiumCloud = profile?.is_premium ?? false;
+      const isVerifiedTeacher = (profile as any)?.teacher_status === "verified";
+
+      setProgress((prev) => {
+        const cloudProgress: UserProgress = {
+          xp: profile?.xp ?? prev.xp,
+          streak: profile?.streak ?? prev.streak,
+          lives: profile?.lives ?? prev.lives,
+          isPremium: isPremiumCloud,
+          hasUnlimitedLives: isPremiumCloud || isVerifiedTeacher,
+          lastActivityDate: profile?.last_activity_date ?? prev.lastActivityDate,
+          completedLessons: cloudCompleted,
+          startedLessons: {},
+          skipUnlockedLessons: cloudSkipUnlocks,
+          livesUpdatedAt: profile?.lives_updated_at ?? prev.livesUpdatedAt,
+        };
+        const merged = checkStreakExpiry(mergeProgress(prev, cloudProgress));
+        saveLocalProgress(merged, user.id);
+        return merged;
+      });
+
+      return { ok: true, count: Object.keys(cloudCompleted).length };
+    } catch (err: any) {
+      return { ok: false, count: 0, error: err?.message ?? "Eroare necunoscută" };
+    }
+  }, [user]);
+
+  return { progress, completeLesson, loseLife, resetLives, setLivesFromReward, setPremium, recordActivity, unlockLessonViaSkip, markLessonStarted, streakJustIncreased, newStreakCount, dismissStreakCelebration, resyncFromCloud };
 }
 
 function mergeProgress(a: UserProgress, b: UserProgress): UserProgress {

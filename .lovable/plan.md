@@ -1,42 +1,45 @@
-## Problemă
+## Problema
 
-Mesajul „Coduri necunoscute" arată celule complete ca `M61,M62`, `M23,M24,M61,M62` etc. — fiecare „cod necunoscut" e de fapt întreaga celulă `competencies` a unui rând, nesplitată. Înseamnă că pe traseul `CSV → exercises[].competencies → import` rămâne un singur string în loc de array de coduri.
+- Pe telefon ai toate cele **124 de lecții completate** (confirmat în baza de date pentru contul `dcflorescu2003@gmail.com`).
+- Pe web (preview + pyroskill.info) apar **0 sau mai puține** lecții.
 
-Parser-ul `parseExercisesCSV` are deja split corect pe `/[;,|]/` (testele trec). Totuși, importerul nu validează nimic: dacă vine un singur element care conține separatori, îl trimite mai departe la lookup și DB-ul nu-l găsește.
+## Cauza
 
-## Soluție
+Două probleme se combină:
 
-Adaug un pas defensiv de normalizare în importer + verific încă o dată parser-ul pe fișierul real al utilizatorului.
+1. **Sesiune web invalidă, dar tăcută.** În log-urile de autentificare apar erori `403 bad_jwt: missing sub claim` și `refresh_token_not_found`. Când JWT-ul e invalid, Supabase respinge query-urile, iar regulile de securitate (RLS) pe tabela `completed_lessons` întorc 0 rânduri — exact ca pentru un utilizator neautentificat. Aplicația nu observă diferența dintre „cont nou, fără progres" și „sesiune expirată".
 
-### Modificări
+2. **Codul de încărcare suprascrie progresul local cu zero.** În `src/hooks/useProgress.ts`, dacă cloud-ul returnează lista goală (din cauza sesiunii invalide), heuristica `hasCloudProgress` devine `false` și aplicația înlocuiește local cu starea implicită (0 XP, 0 lecții). În plus, eventualele erori sunt prinse într-un `catch` care doar le scrie în consolă, fără a opri suprascrierea.
 
-**`src/components/admin/csvParser.ts`**
-- Extrag într-o funcție utilitară `splitCompetencyCodes(raw: string | string[] | undefined): string[]` care:
-  - acceptă `string` sau `string[]`,
-  - sparge fiecare element pe `/[;,|\s]+/`,
-  - face `trim().toUpperCase()`, filtrează gol.
-- O folosesc în `rowToExercise` (înlocuind split-ul actual) ca să rămână o singură sursă de adevăr.
-- Export `splitCompetencyCodes`.
+## Ce voi schimba
 
-**`src/components/admin/CsvImporter.tsx`**
-- La construirea `rowsWithComp`, în loc de `ex.competencies || []` folosesc `splitCompetencyCodes(ex.competencies)` — astfel orice celulă scăpată nesplitată (de ex. dintr-un parser viitor sau dintr-un build cached) e re-spartă înainte de lookup.
+### 1. `src/hooks/useProgress.ts` — niciodată să nu pierdem progresul local când cloud-ul eșuează
 
-**`src/components/admin/CsvLessonImporter.tsx`**
-- Aceeași normalizare ca în `CsvImporter` la linia 129 (`competencies: splitCompetencyCodes(ex.competencies)`).
+- La `loadCloud()`, captez explicit `error` pentru fiecare query (`profiles`, `completed_lessons`, `skip_unlocked_lessons`).
+- Dacă oricare query întoarce eroare **sau** dacă request-ul către `profiles` nu găsește nimic dar `auth.getUser()` confirmă că utilizatorul există → **nu suprascriu local** cu cloudProgress; păstrez ce era și mai încerc o dată după 2s.
+- Dacă `auth.getUser()` întoarce `bad_jwt` / 401 → declanșez un `supabase.auth.signOut()` urmat de redirect la `/auth` (sesiunea e coruptă, trebuie re-login).
+- Adaug un toast discret „Nu am putut sincroniza progresul. Reîncearcă logarea." pentru cazurile de eroare reală.
+- Adaug log-uri în consolă cu prefix `[useProgress]` (câte lecții s-au încărcat din cloud, câte din local, dacă s-a făcut merge).
 
-**`src/components/admin/problemsCsvParser.ts`** (linia 248)
-- Înlocuiesc `.split("|")` cu `.split(/[;,|\s]+/)` pentru consistență (problemele acceptau doar `|`).
+### 2. Auto-recuperare la sesiune coruptă
 
-**`src/components/admin/csvParser.test.ts`**
-- Adaug un test direct pe `splitCompetencyCodes` cu input `"M61,M62"` (cell nesplit), `["M61,M62"]`, `"M61|M62;M63"`, `["M61", "M62,M63"]` — toate produc `["M61", "M62", "M63"]` corespunzător.
+În `src/hooks/useAuth.ts` (sau echivalent) adaug un check periodic / la `INITIAL_SESSION`: dacă `getUser()` întoarce `bad_jwt` sau `session_not_found`, apelez `supabase.auth.signOut({ scope: 'local' })` și marchez nevoia de re-login. Asta previne starea „logat aparent, dar fără acces la date".
 
-### De ce este sigur
+### 3. Buton manual de re-sincronizare în pagina Cont
 
-- Schimbarea afectează doar pipeline-ul de import CSV (admin), nu și rularea/scoringul.
-- Codurile valide (`M1`, `M91`, etc.) nu conțin niciodată virgule/punct-virgule/pipe/spații, deci sparging-ul agresiv nu rupe nimic legitim.
-- Dacă bug-ul venea dintr-un bundle cached care nu primise fix-ul anterior, normalizarea în importer îl rezolvă oricum.
+În `src/components/account/AccountProfileTab.tsx` adaug un buton mic „Resincronizează progresul din cloud" care:
+- Apelează direct `supabase.from("completed_lessons").select(...)` și reconstruiește `progress.completedLessons` din rezultat.
+- Afișează toast cu „X lecții sincronizate".
+- Util ca scăpare manuală dacă re-loginul automat nu rezolvă.
 
-### Verificare după implementare
+## Ce NU schimb
 
-1. `bunx vitest run src/components/admin/csvParser.test.ts` — toate testele trec.
-2. Re-importez fișierul utilizatorului în „Import exerciții CSV (în lecție existentă)" — toast-ul ar trebui să arate `0 coduri ignorate` sau, dacă rămân coduri necunoscute, să fie coduri individuale (`M999`), nu celule întregi cu virgule.
+- Nu modific RLS-ul de pe `completed_lessons` — e corect așa, problema e doar JWT-ul invalid.
+- Nu șterg date din cloud — cele 124 de lecții rămân intacte.
+- Nu schimb logica de salvare (`syncToCloud`) — funcționează corect, doar citirea era problema.
+
+## Cum verific că merge
+
+1. Pe acest preview, după implementare → fac sign-out și re-login → în consolă apare `[useProgress] loaded 124 lessons from cloud`, iar pe pagina principală văd toate capitolele cu lecțiile bifate.
+2. Provoc artificial o eroare de sesiune (șterg `sb-...-auth-token` din localStorage) → aplicația mă redirectează la `/auth` în loc să arate 0 lecții.
+3. Apăs butonul „Resincronizează" → toast confirmă numărul corect.

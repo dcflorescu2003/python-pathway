@@ -46,7 +46,8 @@ const AccountProfileTab = ({
   joinLoading,
 }: AccountProfileTabProps) => {
   const { user } = useAuth();
-  const { progress } = useProgress();
+  const { progress, resyncFromCloud } = useProgress();
+  const [resyncing, setResyncing] = useState(false);
   const { data: chapters } = useChapters();
   const { subscribed, subscriptionEnd, source, openPortal, isIOSNative, isAndroidNative } = useSubscription();
   const { data: referralCodes = [] } = useTeacherReferralCodes();
@@ -179,6 +180,24 @@ const AccountProfileTab = ({
                 </div>
               );
             })}
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full mt-2"
+              disabled={resyncing}
+              onClick={async () => {
+                setResyncing(true);
+                const res = await resyncFromCloud();
+                setResyncing(false);
+                if (res.ok) {
+                  toast.success(`${res.count} lecții sincronizate din cloud.`);
+                } else {
+                  toast.error(res.error ? `Eroare: ${res.error}` : "Sincronizarea a eșuat. Încearcă să te reloghezi.");
+                }
+              }}
+            >
+              {resyncing ? "Se sincronizează..." : "Resincronizează progresul din cloud"}
+            </Button>
           </CardContent>
         </Card>
       )}
