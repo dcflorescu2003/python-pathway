@@ -87,7 +87,23 @@ function regenerateLives(p: UserProgress): UserProgress {
 function parseStoredProgress(stored: string): UserProgress | null {
   try {
     const parsed = JSON.parse(stored);
-    return regenerateLives(checkStreakExpiry({ ...createDefaultProgress(), ...parsed }));
+    const merged: UserProgress = { ...createDefaultProgress(), ...parsed };
+    // Defensive normalization: any entry present in completedLessons means the
+    // lesson WAS completed. Old builds could leave behind { completed: false }
+    // entries on device storage; force them to true so chapter counters match
+    // the cloud state immediately, without waiting for a successful cloud merge.
+    if (merged.completedLessons && typeof merged.completedLessons === "object") {
+      const normalized: Record<string, { score: number; completed: boolean }> = {};
+      for (const [id, data] of Object.entries(merged.completedLessons)) {
+        const entry = data as { score?: number; completed?: boolean } | undefined;
+        normalized[id] = {
+          score: typeof entry?.score === "number" ? entry.score : 0,
+          completed: true,
+        };
+      }
+      merged.completedLessons = normalized;
+    }
+    return regenerateLives(checkStreakExpiry(merged));
   } catch {
     return null;
   }
