@@ -224,6 +224,7 @@ function rowToExercise(row: Record<string, string>): ParsedExercise {
       const correct = row.correct?.toLowerCase().trim();
       if (!correct || !opts.find(o => o.id === correct)) { ex.error = "Răspuns corect lipsă sau invalid"; break; }
       ex.correct_option_id = correct;
+      ex.code_template = row.code_template || null;
       break;
     }
     case "truefalse": {
