@@ -71,10 +71,11 @@ const LeaderboardPage = () => {
 
       if (!membership) return null;
 
-      const [{ data: classInfo }, { data: members }] = await Promise.all([
-        supabase.from("teacher_classes").select("id, name").eq("id", membership.class_id).maybeSingle(),
+      const [{ data: classInfoRows }, { data: members }] = await Promise.all([
+        supabase.rpc("get_class_basic_info", { p_class_id: membership.class_id }),
         supabase.from("class_members").select("student_id").eq("class_id", membership.class_id),
       ]);
+      const classInfo = classInfoRows?.[0] ?? null;
 
       return {
         classId: membership.class_id,
