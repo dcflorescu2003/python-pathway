@@ -235,6 +235,7 @@ function rowToExercise(row: Record<string, string>): ParsedExercise {
       if (val === "true" || val === "adevărat" || val === "1" || val === "da") ex.is_true = true;
       else if (val === "false" || val === "fals" || val === "0" || val === "nu") ex.is_true = false;
       else { ex.error = "is_true trebuie să fie True/False"; break; }
+      ex.code_template = row.code_template || null;
       break;
     }
     case "fill": {
