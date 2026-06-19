@@ -17,9 +17,16 @@ const QuizExercise = ({ exercise, onAnswer, feedback }: Props) => {
     onAnswer(selected === exercise.correctOptionId);
   };
 
+  const codeTemplate = (exercise as any).code_template || exercise.codeTemplate || "";
+
   return (
     <div>
-      <div className="mb-6 text-foreground"><RichContent>{exercise.question}</RichContent></div>
+      <div className="mb-4 text-foreground"><RichContent>{exercise.question}</RichContent></div>
+      {codeTemplate && (
+        <pre className="mb-4 bg-muted/50 border border-border rounded-lg p-3 whitespace-pre-wrap font-mono text-sm text-foreground">
+          {codeTemplate}
+        </pre>
+      )}
       <div className="space-y-3 mb-6">
         {exercise.options?.map((opt) => {
           const isCorrectOption = opt.id === exercise.correctOptionId;

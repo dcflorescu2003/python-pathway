@@ -30,9 +30,16 @@ const TrueFalseExercise = ({ exercise, onAnswer, feedback }: Props) => {
     return "border-border bg-card text-foreground hover:border-muted-foreground";
   };
 
+  const codeTemplate = (exercise as any).code_template || exercise.codeTemplate || "";
+
   return (
     <div>
       <div className="text-foreground font-bold mb-2"><RichContent>{exercise.question}</RichContent></div>
+      {codeTemplate && (
+        <pre className="mb-3 bg-muted/50 border border-border rounded-lg p-3 whitespace-pre-wrap font-mono text-sm text-foreground">
+          {codeTemplate}
+        </pre>
+      )}
       <div className="code-block mb-6 text-foreground">
         <RichContent>{exercise.statement}</RichContent>
       </div>

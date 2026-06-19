@@ -1,38 +1,42 @@
 ## Problema
 
-Pe web, capitolul 2 arată 8 lecții completate (corect — atât e în cloud), dar pe Android arată 7. Cauza este combinația dintre date vechi din `localStorage` (de pe Android, dinaintea fix-urilor recente) și un bug în logica de merge cloud↔local.
+La itemii de tip Quiz din banca de evaluare (ex. „Ce se afișează?"), codul Python nu se vede nici în preview-ul din Test Builder, nici la elev în timpul testului. Din 76 de itemi „Ce se afișează?" salvați în bază, niciunul nu are cod în baza de date — codul a fost pierdut la importul CSV.
 
-## Cauza reală
+## Cauza
 
-În `src/hooks/useProgress.ts`, funcția `mergeProgress` combină lecțiile completate astfel:
-
-```ts
-for (const [id, data] of Object.entries(b.completedLessons)) {
-  if (!mergedLessons[id] || data.score > mergedLessons[id].score) {
-    mergedLessons[id] = data;
-  }
-}
-```
-
-Dacă pe Android există în `localStorage` o intrare veche `{ score: X, completed: false }` (rămasă dinaintea fix-urilor) și cloud returnează aceeași lecție cu `{ score: X, completed: true }`, condiția `data.score > mergedLessons[id].score` este `false` la egalitate de scor → se păstrează intrarea locală cu `completed: false`.
-
-Apoi:
-- `Index.tsx` (linia 466) numără cu `progress.completedLessons[l.id]?.completed` → lecția nu mai e numărată → afișează 7 în loc de 8.
-- Pe web, `localStorage` nu avea intrarea coruptă, deci numărătoarea iese 8.
+1. `src/components/admin/csvParser.ts` (case `"quiz"`, linia ~218) nu citește coloana `code_template` din CSV — deci la importul evaluării banca primește quiz-uri fără cod.
+2. `src/components/exercises/QuizExercise.tsx` nu afișează `code_template`, chiar dacă există. Convenția implicită din celelalte quiz-uri vechi e ca tot codul să fie scris în câmpul `question` ca fenced block ```python — dar la importul nou codul a venit pe coloana separată `code_template` și a fost ignorat.
+3. `src/components/admin/EvalBankEditor.tsx` (linia 478) salvează `code_template` doar pentru `fill`/`problem`, ștergându-l pentru quiz. Iar UI-ul editorului nu are câmp de cod pentru quiz.
 
 ## Plan
 
-1. **`src/hooks/useProgress.ts` — `mergeProgress`**: când cloud (param `b`) marchează o lecție drept `completed: true`, intrarea din cloud câștigă întotdeauna față de o intrare locală cu `completed: false`, chiar și la scoruri egale. Regulă nouă pentru fiecare id din `b`:
-   - dacă local nu are intrarea → ia din cloud;
-   - dacă local are `completed: false` și cloud `completed: true` → ia cloud;
-   - dacă ambele au `completed: true` → păstrează scorul mai mare;
-   - altfel păstrează local.
+### 1. Render-ul către elev — `QuizExercise.tsx` și `TrueFalseExercise.tsx`
 
-2. **`src/pages/Index.tsx` (linia 466, 472)**: fă numărătoarea defensivă, identică cu cea din `ChapterPage`: `!!progress.completedLessons[l.id]` (orice intrare = completed). Astfel, dacă au mai rămas date vechi pe device-uri instalate, UI-ul nu mai e afectat.
+- Dacă `exercise.code_template` (sau `codeTemplate`) este non-null, afișează-l deasupra opțiunilor într-un `<pre>` cu syntax highlighting (folosind același pattern ca `RichContent` cu SyntaxHighlighter `vscDarkPlus`).
 
-3. Fără schimbări de DB. Fără schimbări de UI vizibile dincolo de corectarea numărătorii.
+### 2. Preview-ul din Test Builder
 
-## Validare
+Deja afișează `codeTemplate` pentru tipurile non-fill (`TestBuilder.tsx` linia 249). Nu necesită modificări.
 
-- Verific în preview că `Index` listează 8/X la capitolul 2 (deja corect).
-- Pentru a confirma pe Android e suficient ca user-ul să redeschidă app-ul: la următorul `loadCloud`, `mergeProgress` repară starea, salvează în `localStorage` și `Index.tsx` arată numărătoarea corectă.
+### 3. Editor manual — `EvalBankEditor.tsx`
+
+- Adaugă un `CodeBlockEditor` opțional „Cod (apare deasupra opțiunilor)" pentru tipurile `quiz`, `truefalse`, `card`, `open_answer`.
+- Modifică `handleSave` (linia 478) ca să trimită `code_template` și pentru aceste tipuri (rămâne `null` dacă e gol).
+
+### 4. Importatorul CSV — `csvParser.ts`
+
+- În `case "quiz"`, `case "truefalse"`, `case "card"`, `case "open_answer"`: citește `row.code_template` și pune-l pe `ex.code_template`.
+- Lasă neschimbat comportamentul pentru `fill`/`problem`.
+
+### 5. Datele existente (76 quiz-uri „Ce se afișează?" fără cod)
+
+Aceste înregistrări nu pot fi reparate fără sursa originală. Două opțiuni — decizi tu:
+
+- **A)** Re-uploadezi CSV-ul original prin importer (cu fix-ul de la #4) și înregistrările vor primi `code_template`. Importerul face upsert după `id`?  → trebuie verificat; dacă nu, le ștergem întâi pe cele 76 (le pot identifica după `question = 'Ce se afișează?' AND code_template IS NULL`).
+- **B)** Îmi atașezi CSV-ul și scriu o migrare punctuală care actualizează direct cele 76 de rânduri prin map pe `id` sau pe textul opțiunilor.
+
+## Întrebare pentru tine (înainte să implementez pasul 5)
+
+Ai CSV-ul original cu coloana `code_template` completată? Dacă da, preferi varianta A (re-import) sau B (migrare punctuală din CSV)?  
+  
+Iti incarc acum csv-urile
