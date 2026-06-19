@@ -283,6 +283,7 @@ function rowToExercise(row: Record<string, string>): ParsedExercise {
           }
         }
       }
+      ex.code_template = row.code_template || null;
       break;
     }
     case "open_answer":
