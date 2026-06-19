@@ -732,9 +732,15 @@ const ExerciseRenderer = ({ exercise, answer, onAnswer }: { exercise: any; answe
   }
 
   if (type === "truefalse") {
+    const tfCode = exercise.code_template || exercise.codeTemplate || "";
     return (
       <div className="space-y-3" role="radiogroup" aria-label={exercise.statement || exercise.question}>
         <RichContent className="text-sm font-medium text-foreground">{exercise.statement || exercise.question}</RichContent>
+        {tfCode && (
+          <pre className="bg-muted/50 border border-border rounded-lg p-3 whitespace-pre-wrap font-mono text-sm text-foreground">
+            {tfCode}
+          </pre>
+        )}
         <div className="flex gap-3">
           {[true, false].map((val) => (
             <button
