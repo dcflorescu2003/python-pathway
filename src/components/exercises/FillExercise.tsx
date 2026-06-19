@@ -25,9 +25,9 @@ const FillExercise = ({ exercise, onAnswer, feedback }: Props) => {
 
   const isBlankCorrect = (userAnswer: string, acceptedAnswers: string) => {
     // Acceptăm `,`, `|`, `;` sau `/` ca separator între variante alternative.
+    // NOTE: don't use `/` as separator — answers like `//` (Python integer div) would break.
     const alternatives = acceptedAnswers
-      .split(/[,|;/]/)
-      .map((a) => normalize(a))
+      .split(/[,|;]/)
       .filter(Boolean);
     return alternatives.includes(normalize(userAnswer));
   };
