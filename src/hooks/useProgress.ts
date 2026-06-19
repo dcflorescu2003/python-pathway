@@ -516,7 +516,9 @@ export function useProgress() {
     (lessonId: string) => {
       setProgress((prev) => {
         // dacă lecția e deja completă sau deja marcată ca începută, nu facem nimic
-        if (prev.completedLessons[lessonId]?.completed) return prev;
+        // Dacă lecția e deja înregistrată ca finalizată (cu sau fără flag),
+        // nu o re-marcăm ca „început” — altfel tile-ul ar afișa simbolul de reluare.
+        if (prev.completedLessons[lessonId]) return prev;
         if (prev.startedLessons[lessonId]) return prev;
         const newProgress: UserProgress = {
           ...prev,
