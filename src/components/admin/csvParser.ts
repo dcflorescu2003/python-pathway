@@ -287,6 +287,7 @@ function rowToExercise(row: Record<string, string>): ParsedExercise {
     }
     case "open_answer":
       if (!ex.question) ex.error = "Întrebare lipsă";
+      ex.code_template = row.code_template || null;
       break;
     case "problem": {
       ex.code_template = row.code_template || null;
