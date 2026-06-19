@@ -24,9 +24,10 @@ const FillExercise = ({ exercise, onAnswer, feedback }: Props) => {
   const [answers, setAnswers] = useState<Record<string, string>>({});
 
   const isBlankCorrect = (userAnswer: string, acceptedAnswers: string) => {
-    // Acceptăm `,`, `|`, `;` sau `/` ca separator între variante alternative.
+    // Acceptăm `,`, `|` sau `;` ca separator între variante alternative.
+    // NOTE: nu folosim `/` — răspunsuri precum `//` (împărțire întreagă) s-ar sparge.
     const alternatives = acceptedAnswers
-      .split(/[,|;/]/)
+      .split(/[,|;]/)
       .map((a) => normalize(a))
       .filter(Boolean);
     return alternatives.includes(normalize(userAnswer));
@@ -62,7 +63,7 @@ const FillExercise = ({ exercise, onAnswer, feedback }: Props) => {
                 />
                 {feedback === "wrong" && (
                   <span className="text-xs text-primary ml-1">
-                    ({exercise.blanks![i].answer.split(/[,|;/]/)[0].trim()})
+                    ({exercise.blanks![i].answer.split(/[,|;]/)[0].trim()})
                   </span>
                 )}
               </>
