@@ -463,13 +463,13 @@ const Index = (): JSX.Element => {
 
         <div className="space-y-3">
           {chapters.map((chapter, idx) => {
-            const completedCount = chapter.lessons.filter((l) => progress.completedLessons[l.id]?.completed).length;
+            const completedCount = chapter.lessons.filter((l) => !!progress.completedLessons[l.id]).length;
             const totalLessons = chapter.lessons.length;
             
             const isLocked = idx > 0 && (() => {
               const prevChapter = chapters[idx - 1];
               const prevNonPractice = prevChapter.lessons.filter((l) => !l.title.startsWith("Practică:"));
-              const prevCompleted = prevNonPractice.filter((l) => progress.completedLessons[l.id]?.completed).length;
+              const prevCompleted = prevNonPractice.filter((l) => !!progress.completedLessons[l.id]).length;
               return prevCompleted < Math.ceil(prevNonPractice.length * 0.5);
             })();
 
