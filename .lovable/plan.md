@@ -1,41 +1,38 @@
+## Problema
 
-## Problemă
+Pe web, capitolul 2 arată 8 lecții completate (corect — atât e în cloud), dar pe Android arată 7. Cauza este combinația dintre date vechi din `localStorage` (de pe Android, dinaintea fix-urilor recente) și un bug în logica de merge cloud↔local.
 
-După o lecție terminată cu succes (de ex. 19/20, XP corect, lecția următoare deblocată), tile-ul lecției respective arată simbolul de reluare (RotateCcw) în loc de procentul obținut. Refresh-ul nu rezolvă afișarea.
+## Cauza reală
 
-## Cauza probabilă
-
-În `src/pages/ChapterPage.tsx`:
+În `src/hooks/useProgress.ts`, funcția `mergeProgress` combină lecțiile completate astfel:
 
 ```ts
-const isCompleted = progress.completedLessons[lesson.id]?.completed;
-const isStarted = !isCompleted && !!progress.startedLessons?.[lesson.id];
+for (const [id, data] of Object.entries(b.completedLessons)) {
+  if (!mergedLessons[id] || data.score > mergedLessons[id].score) {
+    mergedLessons[id] = data;
+  }
+}
 ```
 
-`isStarted` câștigă oricând `completed` e absent/`false` dar lecția e încă marcată ca „începută”. Există două căi prin care această desincronizare poate persista, chiar și după refresh:
+Dacă pe Android există în `localStorage` o intrare veche `{ score: X, completed: false }` (rămasă dinaintea fix-urilor) și cloud returnează aceeași lecție cu `{ score: X, completed: true }`, condiția `data.score > mergedLessons[id].score` este `false` la egalitate de scor → se păstrează intrarea locală cu `completed: false`.
 
-1. **Merge cu cloud** (`mergeProgress` în `useProgress.ts`): `startedLessons` se face union între local și cloud, fără a-l curăța pentru lecțiile deja completate. Dacă în vreun moment intermediar a rămas un `startedLessons[id]=true` salvat local (de ex. dintr-o sesiune anterioară abandonată pe aceeași lecție), iar entry-ul `completedLessons[id]` din local nu a fost (re)scris la valoarea corectă într-un anumit pas de merge, tile-ul rămâne „început”.
-2. **Cursă între `markLessonStarted` și `completeLesson`** la lecții cu flashcard-uri ca ultim exercițiu: `handleAnswer` apelează `markLessonStarted` chiar înainte ca `finishLesson` să fie invocat din altă cale, și updater-ele setProgress se pot serializa în ordine inversă în React 18 sub StrictMode, lăsând `startedLessons[id]=true` peste `completedLessons[id]={completed:true}`.
+Apoi:
+- `Index.tsx` (linia 466) numără cu `progress.completedLessons[l.id]?.completed` → lecția nu mai e numărată → afișează 7 în loc de 8.
+- Pe web, `localStorage` nu avea intrarea coruptă, deci numărătoarea iese 8.
 
-Indiferent de calea exactă, simptomul vizibil e același: există un `completedLessons[id]` valid în DB, dar UI-ul vede `startedLessons[id]=true` și nu invalidează acel flag.
+## Plan
 
-## Plan de remediere
+1. **`src/hooks/useProgress.ts` — `mergeProgress`**: când cloud (param `b`) marchează o lecție drept `completed: true`, intrarea din cloud câștigă întotdeauna față de o intrare locală cu `completed: false`, chiar și la scoruri egale. Regulă nouă pentru fiecare id din `b`:
+   - dacă local nu are intrarea → ia din cloud;
+   - dacă local are `completed: false` și cloud `completed: true` → ia cloud;
+   - dacă ambele au `completed: true` → păstrează scorul mai mare;
+   - altfel păstrează local.
 
-1. **`src/pages/ChapterPage.tsx`** — face render-ul defensiv:
-   - `isCompleted` devine `!!progress.completedLessons[lesson.id]` (orice entry în completedLessons înseamnă completed — codul nostru nu mai scrie niciodată `completed:false`).
-   - Procentul afișează `score` chiar dacă `completed` e absent dar entry-ul există.
+2. **`src/pages/Index.tsx` (linia 466, 472)**: fă numărătoarea defensivă, identică cu cea din `ChapterPage`: `!!progress.completedLessons[l.id]` (orice intrare = completed). Astfel, dacă au mai rămas date vechi pe device-uri instalate, UI-ul nu mai e afectat.
 
-2. **`src/hooks/useProgress.ts`**:
-   - În `mergeProgress`, după calculul `mergedLessons`, filtrează `startedLessons` eliminând toate id-urile prezente în `mergedLessons` (lecție completă nu poate fi „început”).
-   - În `markLessonStarted`, dublu-check: dacă există `prev.completedLessons[lessonId]` (cu sau fără flag), return prev — nu re-marcăm ca început.
-   - În `completeLesson`, după update, șterge explicit cheia și din eventuale stări intermediare locale (deja se face, dar adăugăm și o curățare pentru cazul în care `markLessonStarted` rulează imediat după din cauza unei re-randări — folosim un guard în funcția în sine).
-   - În load-ul inițial (`loadCloud`) și în `resyncFromCloud`, după ce setăm `completedLessons` din cloud, golim `startedLessons` pentru toate id-urile prezente în cloud.
+3. Fără schimbări de DB. Fără schimbări de UI vizibile dincolo de corectarea numărătorii.
 
-3. **Validare**:
-   - Adăugăm un log scurt în `ChapterPage` (eliminăm după confirmare) care raportează, pentru lecția afectată, `{ id, hasEntry, completedFlag, isStarted }` la primul render, ca să confirmăm dispariția cazului.
-   - Verificăm vizual în preview pe lecția raportată că tile-ul afișează `★95%` (sau procentul real) imediat și după refresh.
+## Validare
 
-## Out of scope
-
-- Nu schimbăm logica de XP, de unlock, sau de salvare cloud — datele din `completed_lessons` sunt corecte (verificat: lecțiile recente există cu scoruri 93/100).
-- Nu atingem `mergeProgress` în privința XP/lives/streak.
+- Verific în preview că `Index` listează 8/X la capitolul 2 (deja corect).
+- Pentru a confirma pe Android e suficient ca user-ul să redeschidă app-ul: la următorul `loadCloud`, `mergeProgress` repară starea, salvează în `localStorage` și `Index.tsx` arată numărătoarea corectă.

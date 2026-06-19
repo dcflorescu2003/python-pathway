@@ -599,8 +599,14 @@ function mergeProgress(a: UserProgress, b: UserProgress): UserProgress {
   };
 
   for (const [id, data] of Object.entries(b.completedLessons)) {
-    if (!mergedLessons[id] || data.score > mergedLessons[id].score) {
+    const existing = mergedLessons[id];
+    if (!existing) {
       mergedLessons[id] = data;
+    } else if (data.completed && !existing.completed) {
+      // Cloud says completed → always wins over a stale local completed:false
+      mergedLessons[id] = { ...data, score: Math.max(data.score, existing.score) };
+    } else if (data.score > existing.score) {
+      mergedLessons[id] = { ...data, completed: existing.completed || data.completed };
     }
   }
 
