@@ -703,9 +703,15 @@ const ExerciseRenderer = ({ exercise, answer, onAnswer }: { exercise: any; answe
 
   if (type === "quiz") {
     const options = (exercise.options || []) as { id: string; text: string }[];
+    const codeTemplate = exercise.code_template || exercise.codeTemplate || "";
     return (
       <div className="space-y-2" role="radiogroup" aria-label={exercise.question}>
         <RichContent className="text-sm font-medium text-foreground">{exercise.question}</RichContent>
+        {codeTemplate && (
+          <pre className="bg-muted/50 border border-border rounded-lg p-3 whitespace-pre-wrap font-mono text-sm text-foreground">
+            {codeTemplate}
+          </pre>
+        )}
         {options.map((opt) => (
           <button
             key={opt.id}
