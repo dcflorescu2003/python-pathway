@@ -1852,6 +1852,13 @@ export type Database = {
           name: string
         }[]
       }
+      get_class_basic_info: {
+        Args: { p_class_id: string }
+        Returns: {
+          id: string
+          name: string
+        }[]
+      }
       get_eval_exercise_for_student: {
         Args: { p_id: string }
         Returns: {
