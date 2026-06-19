@@ -475,7 +475,7 @@ function EvalExerciseEditor({ exercise, lessonId, nextIndex, onSave, onCancel }:
       statement: type === "truefalse" ? statement : null,
       is_true: type === "truefalse" ? isTrue : null,
       explanation: explanation || null,
-      code_template: (type === "fill" || type === "problem") ? (codeTemplate || null) : null,
+      code_template: (type === "fill" || type === "problem" || type === "quiz" || type === "truefalse" || type === "card" || type === "open_answer") ? (codeTemplate || null) : null,
       solution: type === "problem" ? solution : null,
       test_cases: type === "problem" ? testCases : null,
     });
