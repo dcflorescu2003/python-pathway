@@ -287,9 +287,12 @@ const ChapterPage = () => {
             };
 
             return chapter.lessons.map((lesson, idx) => {
-            const isCompleted = progress.completedLessons[lesson.id]?.completed;
+            // Defensive: orice entry în completedLessons înseamnă completed
+            // (codul nu mai scrie niciodată completed:false).
+            const completedEntry = progress.completedLessons[lesson.id];
+            const isCompleted = !!completedEntry;
             const isStarted = !isCompleted && !!progress.startedLessons?.[lesson.id];
-            const score = progress.completedLessons[lesson.id]?.score ?? 0;
+            const score = completedEntry?.score ?? 0;
             const previousDone = idx === 0 || progress.completedLessons[chapter.lessons[idx - 1].id]?.completed;
             const skipUnlocked = !!progress.skipUnlockedLessons?.[lesson.id];
             const isLocked = !previousDone && !skipUnlocked;
