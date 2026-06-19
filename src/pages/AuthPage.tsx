@@ -82,11 +82,8 @@ const AccountView = () => {
 
       if (isMember && memberships?.[0]?.class_id) {
         const { data: cls } = await supabase
-          .from("teacher_classes")
-          .select("name")
-          .eq("id", memberships[0].class_id)
-          .single();
-        setMemberClassName(cls?.name ?? null);
+          .rpc("get_class_basic_info", { p_class_id: memberships[0].class_id });
+        setMemberClassName(cls?.[0]?.name ?? null);
       } else {
         setMemberClassName(null);
       }
