@@ -506,6 +506,13 @@ function EvalExerciseEditor({ exercise, lessonId, nextIndex, onSave, onCancel }:
         <div><Label className="text-xs text-foreground">Întrebare</Label><RichTextEditor value={question} onChange={setQuestion} rows={3} /></div>
       )}
 
+      {(type === "quiz" || type === "truefalse" || type === "card" || type === "open_answer") && (
+        <div>
+          <Label className="text-xs text-foreground">Cod (opțional, apare deasupra opțiunilor)</Label>
+          <CodeBlockEditor value={codeTemplate} onChange={setCodeTemplate} rows={4} placeholder={'x = 2 + 3 * 4\nprint(x)'} />
+        </div>
+      )}
+
       {type === "quiz" && (
         <div className="space-y-2">
           <Label className="text-xs text-foreground">Opțiuni</Label>
