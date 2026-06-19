@@ -180,11 +180,11 @@ const TakeTestPage = () => {
               .single();
             enriched.problem_data = prob;
           } else if (isEvalBank && item.source_id) {
-            const { data: ev } = await supabase
-              .from("eval_exercises")
-              .select("*")
-              .eq("id", item.source_id)
-              .single();
+            // Students must NOT receive the `solution` column. Use the
+            // SECURITY DEFINER RPC which returns the exercise without it.
+            const { data: rows } = await supabase
+              .rpc("get_eval_exercise_for_student", { p_id: item.source_id });
+            const ev = Array.isArray(rows) ? rows[0] : null;
             if (ev) {
               if (ev.type === "problem") {
                 // Treat eval-bank problem as a Problem item
