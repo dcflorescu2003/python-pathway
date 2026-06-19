@@ -1852,6 +1852,26 @@ export type Database = {
           name: string
         }[]
       }
+      get_eval_exercise_for_student: {
+        Args: { p_id: string }
+        Returns: {
+          blanks: Json
+          code_template: string
+          correct_option_id: string
+          explanation: string
+          hint: string
+          id: string
+          is_true: boolean
+          lesson_id: string
+          lines: Json
+          options: Json
+          question: string
+          sort_order: number
+          statement: string
+          test_cases: Json
+          type: string
+        }[]
+      }
       get_problem_solution: { Args: { p_id: string }; Returns: string }
       get_student_competency_profile:
         | {
