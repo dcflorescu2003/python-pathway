@@ -516,7 +516,9 @@ export function useProgress() {
     (lessonId: string) => {
       setProgress((prev) => {
         // dacă lecția e deja completă sau deja marcată ca începută, nu facem nimic
-        if (prev.completedLessons[lessonId]?.completed) return prev;
+        // Dacă lecția e deja înregistrată ca finalizată (cu sau fără flag),
+        // nu o re-marcăm ca „început” — altfel tile-ul ar afișa simbolul de reluare.
+        if (prev.completedLessons[lessonId]) return prev;
         if (prev.startedLessons[lessonId]) return prev;
         const newProgress: UserProgress = {
           ...prev,
@@ -611,6 +613,13 @@ function mergeProgress(a: UserProgress, b: UserProgress): UserProgress {
     : !b.lastActivityDate ? a.lastActivityDate
     : a.lastActivityDate > b.lastActivityDate ? a.lastActivityDate : b.lastActivityDate;
 
+  // Curăță startedLessons de orice id deja prezent în completedLessons:
+  // o lecție terminată nu poate rămâne „în curs”.
+  const mergedStarted: Record<string, true> = {};
+  for (const [id, v] of Object.entries({ ...a.startedLessons, ...b.startedLessons })) {
+    if (!mergedLessons[id]) mergedStarted[id] = v as true;
+  }
+
   return {
     xp: Math.max(a.xp, b.xp),
     streak: Math.max(a.streak, b.streak),
@@ -623,7 +632,7 @@ function mergeProgress(a: UserProgress, b: UserProgress): UserProgress {
     hasUnlimitedLives: a.hasUnlimitedLives || b.hasUnlimitedLives,
     lastActivityDate: mergedDate,
     completedLessons: mergedLessons,
-    startedLessons: { ...a.startedLessons, ...b.startedLessons },
+    startedLessons: mergedStarted,
     skipUnlockedLessons: mergedSkipUnlocks,
   };
 }

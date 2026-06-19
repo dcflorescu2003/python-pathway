@@ -1,45 +1,41 @@
-## Problema
 
-- Pe telefon ai toate cele **124 de lecții completate** (confirmat în baza de date pentru contul `dcflorescu2003@gmail.com`).
-- Pe web (preview + pyroskill.info) apar **0 sau mai puține** lecții.
+## Problemă
 
-## Cauza
+După o lecție terminată cu succes (de ex. 19/20, XP corect, lecția următoare deblocată), tile-ul lecției respective arată simbolul de reluare (RotateCcw) în loc de procentul obținut. Refresh-ul nu rezolvă afișarea.
 
-Două probleme se combină:
+## Cauza probabilă
 
-1. **Sesiune web invalidă, dar tăcută.** În log-urile de autentificare apar erori `403 bad_jwt: missing sub claim` și `refresh_token_not_found`. Când JWT-ul e invalid, Supabase respinge query-urile, iar regulile de securitate (RLS) pe tabela `completed_lessons` întorc 0 rânduri — exact ca pentru un utilizator neautentificat. Aplicația nu observă diferența dintre „cont nou, fără progres" și „sesiune expirată".
+În `src/pages/ChapterPage.tsx`:
 
-2. **Codul de încărcare suprascrie progresul local cu zero.** În `src/hooks/useProgress.ts`, dacă cloud-ul returnează lista goală (din cauza sesiunii invalide), heuristica `hasCloudProgress` devine `false` și aplicația înlocuiește local cu starea implicită (0 XP, 0 lecții). În plus, eventualele erori sunt prinse într-un `catch` care doar le scrie în consolă, fără a opri suprascrierea.
+```ts
+const isCompleted = progress.completedLessons[lesson.id]?.completed;
+const isStarted = !isCompleted && !!progress.startedLessons?.[lesson.id];
+```
 
-## Ce voi schimba
+`isStarted` câștigă oricând `completed` e absent/`false` dar lecția e încă marcată ca „începută”. Există două căi prin care această desincronizare poate persista, chiar și după refresh:
 
-### 1. `src/hooks/useProgress.ts` — niciodată să nu pierdem progresul local când cloud-ul eșuează
+1. **Merge cu cloud** (`mergeProgress` în `useProgress.ts`): `startedLessons` se face union între local și cloud, fără a-l curăța pentru lecțiile deja completate. Dacă în vreun moment intermediar a rămas un `startedLessons[id]=true` salvat local (de ex. dintr-o sesiune anterioară abandonată pe aceeași lecție), iar entry-ul `completedLessons[id]` din local nu a fost (re)scris la valoarea corectă într-un anumit pas de merge, tile-ul rămâne „început”.
+2. **Cursă între `markLessonStarted` și `completeLesson`** la lecții cu flashcard-uri ca ultim exercițiu: `handleAnswer` apelează `markLessonStarted` chiar înainte ca `finishLesson` să fie invocat din altă cale, și updater-ele setProgress se pot serializa în ordine inversă în React 18 sub StrictMode, lăsând `startedLessons[id]=true` peste `completedLessons[id]={completed:true}`.
 
-- La `loadCloud()`, captez explicit `error` pentru fiecare query (`profiles`, `completed_lessons`, `skip_unlocked_lessons`).
-- Dacă oricare query întoarce eroare **sau** dacă request-ul către `profiles` nu găsește nimic dar `auth.getUser()` confirmă că utilizatorul există → **nu suprascriu local** cu cloudProgress; păstrez ce era și mai încerc o dată după 2s.
-- Dacă `auth.getUser()` întoarce `bad_jwt` / 401 → declanșez un `supabase.auth.signOut()` urmat de redirect la `/auth` (sesiunea e coruptă, trebuie re-login).
-- Adaug un toast discret „Nu am putut sincroniza progresul. Reîncearcă logarea." pentru cazurile de eroare reală.
-- Adaug log-uri în consolă cu prefix `[useProgress]` (câte lecții s-au încărcat din cloud, câte din local, dacă s-a făcut merge).
+Indiferent de calea exactă, simptomul vizibil e același: există un `completedLessons[id]` valid în DB, dar UI-ul vede `startedLessons[id]=true` și nu invalidează acel flag.
 
-### 2. Auto-recuperare la sesiune coruptă
+## Plan de remediere
 
-În `src/hooks/useAuth.ts` (sau echivalent) adaug un check periodic / la `INITIAL_SESSION`: dacă `getUser()` întoarce `bad_jwt` sau `session_not_found`, apelez `supabase.auth.signOut({ scope: 'local' })` și marchez nevoia de re-login. Asta previne starea „logat aparent, dar fără acces la date".
+1. **`src/pages/ChapterPage.tsx`** — face render-ul defensiv:
+   - `isCompleted` devine `!!progress.completedLessons[lesson.id]` (orice entry în completedLessons înseamnă completed — codul nostru nu mai scrie niciodată `completed:false`).
+   - Procentul afișează `score` chiar dacă `completed` e absent dar entry-ul există.
 
-### 3. Buton manual de re-sincronizare în pagina Cont
+2. **`src/hooks/useProgress.ts`**:
+   - În `mergeProgress`, după calculul `mergedLessons`, filtrează `startedLessons` eliminând toate id-urile prezente în `mergedLessons` (lecție completă nu poate fi „început”).
+   - În `markLessonStarted`, dublu-check: dacă există `prev.completedLessons[lessonId]` (cu sau fără flag), return prev — nu re-marcăm ca început.
+   - În `completeLesson`, după update, șterge explicit cheia și din eventuale stări intermediare locale (deja se face, dar adăugăm și o curățare pentru cazul în care `markLessonStarted` rulează imediat după din cauza unei re-randări — folosim un guard în funcția în sine).
+   - În load-ul inițial (`loadCloud`) și în `resyncFromCloud`, după ce setăm `completedLessons` din cloud, golim `startedLessons` pentru toate id-urile prezente în cloud.
 
-În `src/components/account/AccountProfileTab.tsx` adaug un buton mic „Resincronizează progresul din cloud" care:
-- Apelează direct `supabase.from("completed_lessons").select(...)` și reconstruiește `progress.completedLessons` din rezultat.
-- Afișează toast cu „X lecții sincronizate".
-- Util ca scăpare manuală dacă re-loginul automat nu rezolvă.
+3. **Validare**:
+   - Adăugăm un log scurt în `ChapterPage` (eliminăm după confirmare) care raportează, pentru lecția afectată, `{ id, hasEntry, completedFlag, isStarted }` la primul render, ca să confirmăm dispariția cazului.
+   - Verificăm vizual în preview pe lecția raportată că tile-ul afișează `★95%` (sau procentul real) imediat și după refresh.
 
-## Ce NU schimb
+## Out of scope
 
-- Nu modific RLS-ul de pe `completed_lessons` — e corect așa, problema e doar JWT-ul invalid.
-- Nu șterg date din cloud — cele 124 de lecții rămân intacte.
-- Nu schimb logica de salvare (`syncToCloud`) — funcționează corect, doar citirea era problema.
-
-## Cum verific că merge
-
-1. Pe acest preview, după implementare → fac sign-out și re-login → în consolă apare `[useProgress] loaded 124 lessons from cloud`, iar pe pagina principală văd toate capitolele cu lecțiile bifate.
-2. Provoc artificial o eroare de sesiune (șterg `sb-...-auth-token` din localStorage) → aplicația mă redirectează la `/auth` în loc să arate 0 lecții.
-3. Apăs butonul „Resincronizează" → toast confirmă numărul corect.
+- Nu schimbăm logica de XP, de unlock, sau de salvare cloud — datele din `completed_lessons` sunt corecte (verificat: lecțiile recente există cu scoruri 93/100).
+- Nu atingem `mergeProgress` în privința XP/lives/streak.
