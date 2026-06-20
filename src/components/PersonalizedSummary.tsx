@@ -25,8 +25,9 @@ const PersonalizedSummary = ({ chapters, progress }: Props) => {
   const [expanded, setExpanded] = useState(false);
   const navigate = useNavigate();
 
-  const { strengths, weaknesses, avgScore, totalCompleted } = useMemo(() => {
+  const { strengths, weaknesses, avgScore, totalCompleted, solvedProblems } = useMemo(() => {
     const allStats: LessonStat[] = [];
+    let solvedProblems = 0;
 
     for (const chapter of chapters) {
       for (const lesson of chapter.lessons) {
@@ -43,8 +44,14 @@ const PersonalizedSummary = ({ chapters, progress }: Props) => {
       }
     }
 
+    for (const key of Object.keys(progress.completedLessons)) {
+      if (key.startsWith("problem-") && progress.completedLessons[key]?.completed) {
+        solvedProblems++;
+      }
+    }
+
     if (allStats.length === 0) {
-      return { strengths: [], weaknesses: [], avgScore: 0, totalCompleted: 0 };
+      return { strengths: [], weaknesses: [], avgScore: 0, totalCompleted: 0, solvedProblems };
     }
 
     const sorted = [...allStats].sort((a, b) => a.score - b.score);
@@ -55,8 +62,9 @@ const PersonalizedSummary = ({ chapters, progress }: Props) => {
     // Strengths: score >= 90, sorted descending (best first)
     const strong = sorted.filter((l) => l.score >= 90).reverse().slice(0, 5);
 
-    return { strengths: strong, weaknesses: weak, avgScore: avg, totalCompleted: allStats.length };
+    return { strengths: strong, weaknesses: weak, avgScore: avg, totalCompleted: allStats.length, solvedProblems };
   }, [chapters, progress]);
+
 
   if (totalCompleted < 3) return null;
 
