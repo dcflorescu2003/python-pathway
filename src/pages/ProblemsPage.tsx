@@ -35,7 +35,7 @@ const ProblemsPage = () => {
   const [showPremium, setShowPremium] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [difficultyFilter, setDifficultyFilter] = useState<Difficulty | "all">("all");
-  const [hideSolved, setHideSolved] = useState(false);
+  const [hideSolved, setHideSolved] = useState(true);
 
   if (isLoading || !data) return <LoadingScreen />;
 
