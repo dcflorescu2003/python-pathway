@@ -59,6 +59,13 @@ export default function CsvLessonImporter({ mode, chapterId, existingLessonCount
     [validExercises, allowedTypes],
   );
   const totalCompetencyTags = importableExercises.reduce((acc, ex) => acc + (ex.competencies?.length || 0), 0);
+  const missingCodeWarnings = useMemo(
+    () => importableExercises.filter(ex =>
+      (ex.type === "quiz" || ex.type === "truefalse") &&
+      !ex.code_template && questionLooksLikeItNeedsCode(ex.question)
+    ),
+    [importableExercises],
+  );
 
   // Aggregate competency codes for preview
   const competencyAggregate = useMemo(() => {
