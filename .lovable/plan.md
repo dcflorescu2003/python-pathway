@@ -1,26 +1,43 @@
-## Problema
+## Problemă
 
-La exercițiul din imagine, răspunsul corect este `range(2, n)`. În `FillExercise.tsx`, lista de variante acceptate este împărțită cu regex `/[,|;]/`, deci `range(2, n)` devine două „variante": `range(2` și `n)`. Niciuna nu se potrivește cu ce tastează utilizatorul, așa că răspunsul corect apare ca greșit.
+~143 exerciții quiz/truefalse din capitolele 2, 3, 5, 6 au întrebări scurte („Ce se afișează?") fără `code_template`. Codul nu există în baza de date — singura sursă sunt CSV-urile originale ale lecțiilor.
 
-Aceeași problemă afectează orice fill-in care conține virgulă în interiorul răspunsului (apeluri de funcții cu mai multe argumente, tuple, liste etc.).
+## Soluție: script de „repair" pentru CSV-uri existente
 
-## Soluție
+Adaug un buton nou „🔧 Repară code_template din CSV" în `CsvLessonImporter` (alături de „Import lecție CSV"), care:
 
-În `src/components/exercises/FillExercise.tsx`:
+1. Cere un fișier CSV de lecție (`[META]` + `[EXERCISES]`).
+2. Caută lecția existentă în baza de date după `title` (din `[META]`) și `chapter_id` curent — nu creează lecție nouă.
+3. Parsează exercițiile cu parserul existent.
+4. Le pune în ordine după `sort_order` și le aliniază 1-la-1 cu exercițiile existente din DB.
+5. Pentru fiecare pereche, dacă tipul și întrebarea se potrivesc (match exact sau primele 60 caractere) și DB are `code_template = NULL` iar CSV-ul are valoare → face UPDATE doar pe `code_template`.
+6. Afișează un preview înainte: „X exerciții vor fi reparate, Y sărite (deja au cod / nu se potrivesc)".
+7. Nu atinge nimic altceva — nu opțiuni, nu explicații, nu competențe, nu sort_order.
 
-1. Înlocuiesc separatorul de variante alternative: nu mai folosesc virgula. Variantele acceptate se separă doar cu `|` sau `;` (rămân compatibile cu conținutul existent care folosea `|`/`;`; răspunsurile care conțin `,` ca parte din cod nu se mai sparg).
-2. Aceeași schimbare se aplică și la afișarea răspunsului corect în feedback (`split(/[,|;]/)` → `split(/[|;]/)`).
-3. Actualizez comentariul din cod ca să reflecte regula nouă.
+## Workflow pentru tine
+
+1. Mergi în Admin → Capitolul 2 → lecția X → click „Repară code_template".
+2. Încarci CSV-ul original al lecției.
+3. Vezi preview-ul (câte rânduri se repară).
+4. Click „Repară" → UPDATE doar pe coloana `code_template`.
+5. Repeți pentru fiecare lecție afectată (sau, dacă vrei bulk, putem extinde la „încarcă mai multe fișiere odată" într-un pas următor).
 
 ## Detalii tehnice
 
-- Funcția `isBlankCorrect`: regex schimbat din `/[,|;]/` în `/[|;]/`.
-- Randarea hint-ului `wrong`: regex schimbat din `/[,|;]/` în `/[|;]/`.
-- Nu modific normalizarea (care deja ignoră spațiile albe), deci `range(2,n)` și `range(2, n)` continuă să fie echivalente.
-- Memoria `mem://features/exercise-logic/fill-in-multi-variant` va trebui actualizată ulterior ca să spună că separatorii pentru variante sunt `|` și `;` (nu virgulă), pentru a nu se sparge răspunsurile cu virgule în interior.
+- Fișier nou: `src/components/admin/CsvCodeTemplateRepair.tsx`.
+- Buton integrat în `LessonEditor` (sau acolo unde apare deja `CsvLessonImporter`).
+- Folosește `parseLessonCSV` existent.
+- Match conservator: tip identic + question normalizat (trim + lowercase + primele 80 char). Dacă nu se potrivește exact, exercițiul e marcat „skipped" și ți se arată în preview ca să decizi manual.
+- Update SQL: `UPDATE exercises SET code_template = $1 WHERE id = $2 AND code_template IS NULL` (siguranță extra să nu suprascrie nimic).
+- Batch: toate update-urile într-un `Promise.all`.
 
-## Risc
+## Ce NU face
 
-Dacă există conținut existent în baza de date care folosește `,` ca separator între variante alternative la fill-in, acele variante secundare nu vor mai fi recunoscute (vor fi tratate ca un singur răspuns literal). Pot rula o căutare ulterioară prin `exercises.blanks` pentru a verifica/migra dacă este cazul — confirmă dacă vrei să fac și asta.
+- Nu creează exerciții noi.
+- Nu șterge nimic.
+- Nu rescrie întrebări, opțiuni, explicații sau competențe.
+- Nu atinge exercițiile care au deja `code_template`.
 
-Sunt foarte multe exercitii care in prezent au , care separa variantele. Vreau sa ne asiguram ca si acelea raman ok. Tot ce este pana la lectia aceasta este ok asa cum e. Momentan cele care contin virgula in raspuns sunt rang(ceva, altceva). Poate ne putem folosi de asta
+După ce confirmi planul și-l implementez, îmi încarci primul CSV ca să-l testăm pe o lecție.
+
+Confirm, dar vezi sa nu se mai intample pentru viitoarele csv-uri. As mai vrea sa fie marcate lectiile care au nevoie de reparatie
