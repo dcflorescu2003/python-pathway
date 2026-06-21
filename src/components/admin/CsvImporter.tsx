@@ -44,6 +44,10 @@ export default function CsvImporter({ targetTable, lessonId, existingCount, exis
   const validExercises = parsed.filter(ex => !ex.error);
   const importableExercises = validExercises.filter(ex => allowedTypes.includes(ex.type));
   const skippedExercises = validExercises.filter(ex => !allowedTypes.includes(ex.type));
+  const missingCodeWarnings = importableExercises.filter(ex =>
+    (ex.type === "quiz" || ex.type === "truefalse") &&
+    !ex.code_template && questionLooksLikeItNeedsCode(ex.question)
+  );
 
   const handleImport = async () => {
     if (importableExercises.length === 0) return;
