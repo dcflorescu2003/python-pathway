@@ -62,6 +62,7 @@ const ExerciseEditor = ({ exercise, onSave, onCancel, lessonId, nextIndex, compe
       case "quiz":
         setData({
           ...base,
+          codeTemplate: data.codeTemplate || "",
           options: [
             { id: "a", text: "" },
             { id: "b", text: "" },
@@ -87,6 +88,7 @@ const ExerciseEditor = ({ exercise, onSave, onCancel, lessonId, nextIndex, compe
       case "truefalse":
         setData({
           ...base,
+          codeTemplate: data.codeTemplate || "",
           statement: "",
           isTrue: true,
         });
@@ -222,6 +224,15 @@ const ExerciseEditor = ({ exercise, onSave, onCancel, lessonId, nextIndex, compe
 
   const renderQuizFields = () => (
     <div className="space-y-3">
+      <div>
+        <Label className="text-foreground">Cod afișat în întrebare (opțional)</Label>
+        <CodeBlockEditor
+          value={data.codeTemplate || ""}
+          onChange={(v) => updateField("codeTemplate", v)}
+          placeholder={"# ex: print(2 + 3)"}
+          rows={4}
+        />
+      </div>
       <Label className="text-foreground">Opțiuni</Label>
       {data.options?.map((opt, i) => (
         <div key={opt.id} className="flex items-center gap-2">
@@ -363,6 +374,15 @@ const ExerciseEditor = ({ exercise, onSave, onCancel, lessonId, nextIndex, compe
 
   const renderTrueFalseFields = () => (
     <div className="space-y-3">
+      <div>
+        <Label className="text-foreground">Cod afișat în întrebare (opțional)</Label>
+        <CodeBlockEditor
+          value={data.codeTemplate || ""}
+          onChange={(v) => updateField("codeTemplate", v)}
+          placeholder={"# ex: x = 5"}
+          rows={4}
+        />
+      </div>
       <div>
         <Label className="text-foreground">Afirmație</Label>
         <RichTextEditor
