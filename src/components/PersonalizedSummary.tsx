@@ -107,8 +107,8 @@ const PersonalizedSummary = ({ chapters, progress }: Props) => {
               <p className="text-[10px] text-muted-foreground">probleme rezolvate</p>
             </div>
             <div className="flex-1 text-center">
-              <p className="text-lg font-bold text-primary">{strengths.length}</p>
-              <p className="text-[10px] text-muted-foreground">lecții excelente</p>
+              <p className="text-lg font-bold text-primary">{perfectCount}</p>
+              <p className="text-[10px] text-muted-foreground">lecții 100%</p>
             </div>
           </div>
 
