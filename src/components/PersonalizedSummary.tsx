@@ -25,7 +25,7 @@ const PersonalizedSummary = ({ chapters, progress }: Props) => {
   const [expanded, setExpanded] = useState(false);
   const navigate = useNavigate();
 
-  const { strengths, weaknesses, avgScore, totalCompleted, solvedProblems } = useMemo(() => {
+  const { strengths, weaknesses, avgScore, totalCompleted, solvedProblems, perfectCount } = useMemo(() => {
     const allStats: LessonStat[] = [];
     let solvedProblems = 0;
 
@@ -51,18 +51,17 @@ const PersonalizedSummary = ({ chapters, progress }: Props) => {
     }
 
     if (allStats.length === 0) {
-      return { strengths: [], weaknesses: [], avgScore: 0, totalCompleted: 0, solvedProblems };
+      return { strengths: [], weaknesses: [], avgScore: 0, totalCompleted: 0, solvedProblems, perfectCount: 0 };
     }
 
     const sorted = [...allStats].sort((a, b) => a.score - b.score);
     const avg = Math.round(allStats.reduce((s, l) => s + l.score, 0) / allStats.length);
 
-    // Weaknesses: score < 80, sorted ascending (worst first)
     const weak = sorted.filter((l) => l.score < 80).slice(0, 5);
-    // Strengths: score >= 90, sorted descending (best first)
     const strong = sorted.filter((l) => l.score >= 90).reverse().slice(0, 5);
+    const perfectCount = allStats.filter((l) => l.score >= 100).length;
 
-    return { strengths: strong, weaknesses: weak, avgScore: avg, totalCompleted: allStats.length, solvedProblems };
+    return { strengths: strong, weaknesses: weak, avgScore: avg, totalCompleted: allStats.length, solvedProblems, perfectCount };
   }, [chapters, progress]);
 
 
