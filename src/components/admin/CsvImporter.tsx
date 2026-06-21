@@ -5,6 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Upload, FileText, AlertCircle, Check, Download } from "lucide-react";
 import { toast } from "sonner";
 import { parseExercisesCSV, exerciseToDbRow, generateExportCSV, getExercisesTemplateCSV, downloadCSV, splitCompetencyCodes, CONTENT_TYPES, EVAL_TYPES, MANUAL_TYPES, type ParsedExercise } from "./csvParser";
+import { questionLooksLikeItNeedsCode } from "./codeTemplateRepair";
 
 interface CsvImporterProps {
   targetTable: "exercises" | "eval_exercises" | "manual_exercises";
@@ -43,6 +44,10 @@ export default function CsvImporter({ targetTable, lessonId, existingCount, exis
   const validExercises = parsed.filter(ex => !ex.error);
   const importableExercises = validExercises.filter(ex => allowedTypes.includes(ex.type));
   const skippedExercises = validExercises.filter(ex => !allowedTypes.includes(ex.type));
+  const missingCodeWarnings = importableExercises.filter(ex =>
+    (ex.type === "quiz" || ex.type === "truefalse") &&
+    !ex.code_template && questionLooksLikeItNeedsCode(ex.question)
+  );
 
   const handleImport = async () => {
     if (importableExercises.length === 0) return;
@@ -201,6 +206,19 @@ export default function CsvImporter({ targetTable, lessonId, existingCount, exis
               {skippedExercises.length > 0 && (
                 <div className="text-xs text-amber-400 bg-amber-400/10 border border-amber-400/30 rounded p-2">
                   ⚠ {skippedExercises.length} exerciții excluse (tipuri nepermise: {skippedExercises.map(e => typeLabels[e.type] || e.type).join(", ")})
+                </div>
+              )}
+
+              {missingCodeWarnings.length > 0 && (
+                <div className="text-xs text-amber-500 bg-amber-500/10 border border-amber-500/40 rounded p-2 space-y-1">
+                  <p className="font-semibold">⚠ {missingCodeWarnings.length} exerciții par să aibă cod lipsă</p>
+                  <p className="text-amber-500/80">Întrebări scurte tip „Ce se afișează?" fără <code>code_template</code> populat. Verifică CSV-ul — probabil ai uitat coloana <code>code_template</code>:</p>
+                  <ul className="list-disc pl-4 space-y-0.5">
+                    {missingCodeWarnings.slice(0, 5).map((e, i) => (
+                      <li key={i} className="truncate">{e.question}</li>
+                    ))}
+                    {missingCodeWarnings.length > 5 && <li>… +{missingCodeWarnings.length - 5}</li>}
+                  </ul>
                 </div>
               )}
 
