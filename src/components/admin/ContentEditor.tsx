@@ -6,12 +6,12 @@ import ExerciseEditor from "./ExerciseEditor";
 import CsvImporter from "./CsvImporter";
 import CsvLessonImporter from "./CsvLessonImporter";
 import CsvCodeTemplateRepair from "./CsvCodeTemplateRepair";
-import { countLessonRepairNeeded } from "./codeTemplateRepair";
+import { countLessonRepairNeeded, exerciseNeedsCodeRepair } from "./codeTemplateRepair";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { ChevronDown, ChevronRight, Edit2, Trash2, Plus, Eye, Save, X, GripVertical } from "lucide-react";
+import { ChevronDown, ChevronRight, Edit2, Trash2, Plus, Eye, Save, X, GripVertical, AlertTriangle } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import {
