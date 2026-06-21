@@ -88,6 +88,7 @@ const ExerciseEditor = ({ exercise, onSave, onCancel, lessonId, nextIndex, compe
       case "truefalse":
         setData({
           ...base,
+          codeTemplate: data.codeTemplate || "",
           statement: "",
           isTrue: true,
         });
