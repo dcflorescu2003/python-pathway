@@ -5,6 +5,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import ExerciseEditor from "./ExerciseEditor";
 import CsvImporter from "./CsvImporter";
 import CsvLessonImporter from "./CsvLessonImporter";
+import CsvCodeTemplateRepair from "./CsvCodeTemplateRepair";
+import { countLessonRepairNeeded } from "./codeTemplateRepair";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
