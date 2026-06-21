@@ -410,6 +410,14 @@ const ContentEditor = () => {
                                                     <SortableExercise key={ex.id} exercise={ex}>
                                                       <div className="flex items-center gap-2 rounded-lg border border-border bg-card p-3 text-sm">
                                                         <span className="text-[10px] font-mono text-muted-foreground w-5">#{i + 1}</span>
+                                                        {exerciseNeedsCodeRepair(ex) && (
+                                                          <span
+                                                            className="shrink-0 inline-flex items-center justify-center rounded bg-amber-500/15 border border-amber-500/40 h-5 w-5"
+                                                            title="Acest exercițiu pare să aibă nevoie de code_template (cod lipsă). Folosește „Repară cod" la nivel de lecție."
+                                                          >
+                                                            <AlertTriangle className="h-3 w-3 text-amber-500" />
+                                                          </span>
+                                                        )}
                                                         <span className="rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-bold text-primary shrink-0">{typeLabels[ex.type]}</span>
                                                         <p className="flex-1 text-foreground text-xs truncate">{ex.question}</p>
                                                         <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setEditingExercise({ lessonId: lesson.id, exercise: ex })}><Edit2 className="h-3.5 w-3.5" /></Button>
