@@ -375,6 +375,15 @@ const ExerciseEditor = ({ exercise, onSave, onCancel, lessonId, nextIndex, compe
   const renderTrueFalseFields = () => (
     <div className="space-y-3">
       <div>
+        <Label className="text-foreground">Cod afișat în întrebare (opțional)</Label>
+        <CodeBlockEditor
+          value={data.codeTemplate || ""}
+          onChange={(v) => updateField("codeTemplate", v)}
+          placeholder={"# ex: x = 5"}
+          rows={4}
+        />
+      </div>
+      <div>
         <Label className="text-foreground">Afirmație</Label>
         <RichTextEditor
           value={data.statement || ""}
