@@ -80,7 +80,7 @@ const FillExercise = ({ exercise, onAnswer, feedback }: Props) => {
                 />
                 {feedback === "wrong" && (
                   <span className="text-xs text-primary ml-1">
-                    ({exercise.blanks![i].answer.split(/[,|;]/)[0].trim()})
+                    ({splitAlternatives(exercise.blanks![i].answer)[0]})
                   </span>
                 )}
               </>
