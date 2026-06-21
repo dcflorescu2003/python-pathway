@@ -62,6 +62,7 @@ const ExerciseEditor = ({ exercise, onSave, onCancel, lessonId, nextIndex, compe
       case "quiz":
         setData({
           ...base,
+          codeTemplate: data.codeTemplate || "",
           options: [
             { id: "a", text: "" },
             { id: "b", text: "" },
