@@ -1,35 +1,25 @@
+# Recalibrare praguri XP
+
 ## Problemă
+Cu formula curentă (`lessonsXP + 0.2 * problemsXP`, împărțit la 25 niveluri), poți atinge Master of Python făcând doar 2 capitole + 100 probleme. Vrei ca pragul maxim să corespundă efortului „toate lecțiile + 30% din toate problemele".
 
-În exercițiul de Reorder din imagine apar 2 perechi de linii identice (`rez = c * p + rez` și `p = p * 10`), așa că elevul nu poate ști care e ordinea „corectă" — orice combinație între duplicate dă același cod.
+## Modificare
+Un singur fișier: `src/hooks/useXPThresholds.ts`.
 
-## Soluție
+1. Schimb ponderea problemelor de la `0.2` la `0.3`:
+   - `PROBLEM_WEIGHT = 0.3`
+2. Schimb formula `xpPerLevel` astfel încât `totalMaxXP` să corespundă exact pragului pentru nivel 25 (nu pentru nivel 26).
+   - Curent: `xpPerLevel = totalMaxXP / 25` → ai nevoie de XP peste maximum ca să atingi 25.
+   - Nou: `xpPerLevel = totalMaxXP / 24`, pentru că `getLevelFromXP` returnează 25 când `xp >= 24 * xpPerLevel`.
+   - Rezultat: completând toate lecțiile + 30% din XP-ul problemelor, ajungi fix la Master of Python.
+3. Păstrez `Math.max(FALLBACK_XP_PER_LEVEL, ...)` ca să nu cadă pragul sub 100 XP/nivel.
 
-Folosim câmpul `group` deja existent în `ExerciseEditor` + `OrderExercise` (vezi memoria [Order Groups](mem://features/exercise-logic/order-groups)): liniile cu același număr de grup devin **interschimbabile** la validare.
+## Impact
+- Toți utilizatorii vor vedea o redistribuire a nivelului curent (XP-ul total rămâne neschimbat, dar pragurile se mută în sus).
+- Cei aproape de Master vor coborî câteva niveluri — efect intenționat al recalibrării.
+- Nicio schimbare de schemă DB, nicio migrare; doar logica de calcul client-side.
 
-## Pași în UI admin (fără cod nou)
+## Detalii tehnice
+Fișiere atinse: `src/hooks/useXPThresholds.ts` (2 linii: constanta `PROBLEM_WEIGHT` și divizorul din `xpPerLevel`).
 
-În editorul exercițiului, în dreptul fiecărei linii există un input mic numit **Grup** (lângă `order`). Setezi:
-
-```
-n = int(input())        order 1
-p = 1                   order 1
-rez = 0                 order 1
-while n > 0:            order 2
-  c = n % 10            order 3
-  rez = c * p + rez     order 4   group 1   ← prima apariție
-  p = p * 10            order 5   group 2   ← prima apariție
-  rez = c * p + rez     order 6   group 1   ← duplicat, același grup
-  p = p * 10            order 7   group 2   ← duplicat, același grup
-  n = n // 10           order 7
-print(rez)              order 8
-```
-
-Astfel `OrderExercise` va accepta orice permutare între cele două apariții ale lui `rez = c * p + rez` și între cele două apariții ale lui `p = p * 10`, dar va păstra restul ordinii strictă.
-
-## Ce fac eu
-
-1. Identific exercițiul în DB (caut în `exercises` un item de tip `order` cu liniile din imagine — îmi trebuie lecția sau ID-ul; alternativ aplici tu manual din UI după pașii de mai sus).
-2. Dacă-mi spui ID-ul lecției/exercițiului, rulez un `UPDATE exercises SET data = ...` care setează `group: 1` pe cele 2 apariții ale `rez = c * p + rez` și `group: 2` pe cele 2 apariții ale `p = p * 10`, fără să modific altceva.
-
-Spune-mi: vrei să-l aplici tu manual în UI (e doar completarea a 4 căsuțe `group`), sau îmi dai ID-ul lecției ca să rulez update-ul direct în DB?  
-Aplic eu manual
+Nu modific `getLevelFromXP` / `getXPForNextLevel` — comportamentul lor rămâne identic; doar valoarea `xpPerLevel` injectată se schimbă.

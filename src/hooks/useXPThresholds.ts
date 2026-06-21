@@ -2,7 +2,7 @@ import { useChapters, Chapter } from "@/hooks/useChapters";
 import { useProblems, Problem } from "@/hooks/useProblems";
 
 const MAX_LEVEL = 25;
-const PROBLEM_WEIGHT = 0.2;
+const PROBLEM_WEIGHT = 0.3;
 const FALLBACK_XP_PER_LEVEL = 100;
 
 export interface XPThresholds {
@@ -26,7 +26,7 @@ export function computeXPThresholds(
   const problemsXP = (problems ?? []).reduce((sum, p) => sum + p.xpReward, 0);
 
   const totalMaxXP = lessonsXP + PROBLEM_WEIGHT * problemsXP;
-  const xpPerLevel = Math.max(FALLBACK_XP_PER_LEVEL, totalMaxXP / MAX_LEVEL);
+  const xpPerLevel = Math.max(FALLBACK_XP_PER_LEVEL, totalMaxXP / (MAX_LEVEL - 1));
 
   return { totalMaxXP, xpPerLevel };
 }
