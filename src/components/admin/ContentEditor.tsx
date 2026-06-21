@@ -413,7 +413,7 @@ const ContentEditor = () => {
                                                         {exerciseNeedsCodeRepair(ex) && (
                                                           <span
                                                             className="shrink-0 inline-flex items-center justify-center rounded bg-amber-500/15 border border-amber-500/40 h-5 w-5"
-                                                            title="Acest exercițiu pare să aibă nevoie de code_template (cod lipsă). Folosește „Repară cod" la nivel de lecție."
+                                                            title="Acest exercițiu pare să aibă nevoie de code_template (cod lipsă). Folosește Repară cod la nivel de lecție."
                                                           >
                                                             <AlertTriangle className="h-3 w-3 text-amber-500" />
                                                           </span>
