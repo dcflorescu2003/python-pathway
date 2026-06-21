@@ -1,34 +1,26 @@
-# Reparare cazuri de test la problemele cu liste
-
 ## Problema
-La 34 de probleme (toate cu `=>` în `test_cases`), datele de intrare și ieșire au fost concatenate cu `=>` în câmpul `input`, iar `expectedOutput` a rămas gol.
 
-Exemplu actual:
-```
-input: "6\n2=>48 24"
-expectedOutput: ""
-```
+La exercițiul din imagine, răspunsul corect este `range(2, n)`. În `FillExercise.tsx`, lista de variante acceptate este împărțită cu regex `/[,|;]/`, deci `range(2, n)` devine două „variante": `range(2` și `n)`. Niciuna nu se potrivește cu ce tastează utilizatorul, așa că răspunsul corect apare ca greșit.
 
-Trebuie să devină:
-```
-input: "6\n2"
-expectedOutput: "48 24"
-```
+Aceeași problemă afectează orice fill-in care conține virgulă în interiorul răspunsului (apeluri de funcții cu mai multe argumente, tuple, liste etc.).
 
-## Plan
-Migrare SQL care, pentru fiecare problem cu `=>` în `test_cases`:
+## Soluție
 
-1. Iterează prin array-ul JSON `test_cases`.
-2. Pentru fiecare caz care conține `=>` în `input`:
-   - Split pe prima apariție a `=>`
-   - Partea stângă (fără `\n` final extra) → `input`
-   - Partea dreaptă (fără spațiu de început, păstrând `\n`-urile dacă există în output multilinie) → `expectedOutput`
-3. Cazurile fără `=>` rămân neschimbate.
-4. `hidden` se păstrează.
+În `src/components/exercises/FillExercise.tsx`:
 
-## Validare
-- După migrare: `SELECT count(*) FROM problems WHERE test_cases::text LIKE '%=>%'` trebuie să fie `0`.
-- Spot-check pe 2-3 probleme (ex. `gs11`, `gs20`, `gs24`) să confirm că `input` și `expectedOutput` arată corect.
+1. Înlocuiesc separatorul de variante alternative: nu mai folosesc virgula. Variantele acceptate se separă doar cu `|` sau `;` (rămân compatibile cu conținutul existent care folosea `|`/`;`; răspunsurile care conțin `,` ca parte din cod nu se mai sparg).
+2. Aceeași schimbare se aplică și la afișarea răspunsului corect în feedback (`split(/[,|;]/)` → `split(/[|;]/)`).
+3. Actualizez comentariul din cod ca să reflecte regula nouă.
 
-## Scope
-Doar tabela `problems`, doar câmpul `test_cases`. Nicio modificare în cod aplicație.
+## Detalii tehnice
+
+- Funcția `isBlankCorrect`: regex schimbat din `/[,|;]/` în `/[|;]/`.
+- Randarea hint-ului `wrong`: regex schimbat din `/[,|;]/` în `/[|;]/`.
+- Nu modific normalizarea (care deja ignoră spațiile albe), deci `range(2,n)` și `range(2, n)` continuă să fie echivalente.
+- Memoria `mem://features/exercise-logic/fill-in-multi-variant` va trebui actualizată ulterior ca să spună că separatorii pentru variante sunt `|` și `;` (nu virgulă), pentru a nu se sparge răspunsurile cu virgule în interior.
+
+## Risc
+
+Dacă există conținut existent în baza de date care folosește `,` ca separator între variante alternative la fill-in, acele variante secundare nu vor mai fi recunoscute (vor fi tratate ca un singur răspuns literal). Pot rula o căutare ulterioară prin `exercises.blanks` pentru a verifica/migra dacă este cazul — confirmă dacă vrei să fac și asta.
+
+Sunt foarte multe exercitii care in prezent au , care separa variantele. Vreau sa ne asiguram ca si acelea raman ok. Tot ce este pana la lectia aceasta este ok asa cum e. Momentan cele care contin virgula in raspuns sunt rang(ceva, altceva). Poate ne putem folosi de asta

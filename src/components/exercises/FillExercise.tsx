@@ -23,15 +23,32 @@ const normalize = (s: string) =>
 const FillExercise = ({ exercise, onAnswer, feedback }: Props) => {
   const [answers, setAnswers] = useState<Record<string, string>>({});
 
+  const splitAlternatives = (acceptedAnswers: string): string[] => {
+    // Separatori între variante alternative: `,`, `|`, `;`.
+    // IMPORTANT: nu împărțim pe virgulele aflate în interiorul parantezelor
+    // — altfel răspunsuri ca `range(2, n)` ar fi sparte în „range(2" și „n)".
+    const parts: string[] = [];
+    let buf = "";
+    let depth = 0;
+    for (const ch of acceptedAnswers) {
+      if (ch === "(" || ch === "[" || ch === "{") depth++;
+      else if (ch === ")" || ch === "]" || ch === "}") depth = Math.max(0, depth - 1);
+      if (depth === 0 && (ch === "," || ch === "|" || ch === ";")) {
+        parts.push(buf);
+        buf = "";
+      } else {
+        buf += ch;
+      }
+    }
+    parts.push(buf);
+    return parts.map((p) => p.trim()).filter(Boolean);
+  };
+
   const isBlankCorrect = (userAnswer: string, acceptedAnswers: string) => {
-    // Acceptăm `,`, `|` sau `;` ca separator între variante alternative.
-    // NOTE: nu folosim `/` — răspunsuri precum `//` (împărțire întreagă) s-ar sparge.
-    const alternatives = acceptedAnswers
-      .split(/[,|;]/)
-      .map((a) => normalize(a))
-      .filter(Boolean);
+    const alternatives = splitAlternatives(acceptedAnswers).map(normalize);
     return alternatives.includes(normalize(userAnswer));
   };
+
 
   const handleSubmit = () => {
     if (!exercise.blanks) return;
@@ -63,7 +80,7 @@ const FillExercise = ({ exercise, onAnswer, feedback }: Props) => {
                 />
                 {feedback === "wrong" && (
                   <span className="text-xs text-primary ml-1">
-                    ({exercise.blanks![i].answer.split(/[,|;]/)[0].trim()})
+                    ({splitAlternatives(exercise.blanks![i].answer)[0]})
                   </span>
                 )}
               </>
