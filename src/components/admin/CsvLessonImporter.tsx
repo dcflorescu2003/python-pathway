@@ -271,6 +271,19 @@ export default function CsvLessonImporter({ mode, chapterId, existingLessonCount
                 </div>
               )}
 
+              {missingCodeWarnings.length > 0 && (
+                <div className="text-xs text-amber-500 bg-amber-500/10 border border-amber-500/40 rounded p-2 space-y-1">
+                  <p className="font-semibold">⚠ {missingCodeWarnings.length} exerciții par să aibă cod lipsă</p>
+                  <p className="text-amber-500/80">Întrebări scurte tip „Ce se afișează?" fără <code>code_template</code> populat. Verifică CSV-ul — probabil ai uitat coloana <code>code_template</code>:</p>
+                  <ul className="list-disc pl-4 space-y-0.5">
+                    {missingCodeWarnings.slice(0, 5).map((e, i) => (
+                      <li key={i} className="truncate">{e.question}</li>
+                    ))}
+                    {missingCodeWarnings.length > 5 && <li>… +{missingCodeWarnings.length - 5}</li>}
+                  </ul>
+                </div>
+              )}
+
               {competencyAggregate.length > 0 && (
                 <div className="rounded border border-primary/20 bg-primary/5 p-2.5 space-y-1.5">
                   <p className="text-[11px] font-medium text-foreground flex items-center gap-1">
