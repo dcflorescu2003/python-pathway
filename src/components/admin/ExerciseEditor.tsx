@@ -223,6 +223,15 @@ const ExerciseEditor = ({ exercise, onSave, onCancel, lessonId, nextIndex, compe
 
   const renderQuizFields = () => (
     <div className="space-y-3">
+      <div>
+        <Label className="text-foreground">Cod afișat în întrebare (opțional)</Label>
+        <CodeBlockEditor
+          value={data.codeTemplate || ""}
+          onChange={(v) => updateField("codeTemplate", v)}
+          placeholder={"# ex: print(2 + 3)"}
+          rows={4}
+        />
+      </div>
       <Label className="text-foreground">Opțiuni</Label>
       {data.options?.map((opt, i) => (
         <div key={opt.id} className="flex items-center gap-2">
