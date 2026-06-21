@@ -347,6 +347,7 @@ const ContentEditor = () => {
                               {chapter.lessons.map(lesson => {
                                 const isLessonExpanded = expandedLesson === lesson.id;
                                 const isLessonEditing = editingLesson === lesson.id;
+                                const repairCount = countLessonRepairNeeded(lesson.exercises);
 
                                 return (
                                   <SortableLesson key={lesson.id} lesson={lesson}>
@@ -355,7 +356,17 @@ const ContentEditor = () => {
                                         <button onClick={() => setExpandedLesson(isLessonExpanded ? null : lesson.id)} className="flex items-center gap-2 flex-1 text-left">
                                           {isLessonExpanded ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
                                           <div className="flex-1 min-w-0">
-                                            <p className="font-semibold text-foreground text-sm truncate">{lesson.title}</p>
+                                            <div className="flex items-center gap-1.5">
+                                              <p className="font-semibold text-foreground text-sm truncate">{lesson.title}</p>
+                                              {repairCount > 0 && (
+                                                <span
+                                                  className="shrink-0 inline-flex items-center gap-0.5 rounded bg-amber-500/15 border border-amber-500/40 px-1.5 py-0.5 text-[10px] font-bold text-amber-500"
+                                                  title={`${repairCount} exerciții fără code_template (probabil lipsește codul). Folosește „Repară cod".`}
+                                                >
+                                                  ⚠ {repairCount}
+                                                </span>
+                                              )}
+                                            </div>
                                             <p className="text-[10px] text-muted-foreground">{lesson.exercises.length} exerciții · {lesson.xpReward} XP{lesson.isPremium ? " · 💎" : ""}</p>
                                           </div>
                                         </button>
