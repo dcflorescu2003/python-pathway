@@ -432,6 +432,7 @@ const ContentEditor = () => {
                                                 <div className="flex items-center gap-2">
                                                   <Button variant="outline" size="sm" className="flex-1" onClick={() => setEditingExercise({ lessonId: lesson.id })}><Plus className="h-4 w-4 mr-1" /> Adaugă exercițiu</Button>
                                                   <CsvImporter targetTable="exercises" lessonId={lesson.id} existingCount={lesson.exercises.length} existingExercises={lesson.exercises} onSuccess={invalidate} />
+                                                  <CsvCodeTemplateRepair lessonId={lesson.id} existingExercises={lesson.exercises} onSuccess={invalidate} />
                                                 </div>
                                               )}
                                             </div>
