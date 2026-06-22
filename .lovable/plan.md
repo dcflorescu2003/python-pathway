@@ -1,25 +1,36 @@
-# Recalibrare praguri XP
+# Verificare „fill" cu virgulă în paranteze
 
-## Problemă
-Cu formula curentă (`lessonsXP + 0.2 * problemsXP`, împărțit la 25 niveluri), poți atinge Master of Python făcând doar 2 capitole + 100 probleme. Vrei ca pragul maxim să corespundă efortului „toate lecțiile + 30% din toate problemele".
+## Context
 
-## Modificare
-Un singur fișier: `src/hooks/useXPThresholds.ts`.
+Răspunsul salvat în DB pentru exercițiul tău (lecția `l1778872386686`) este:
 
-1. Schimb ponderea problemelor de la `0.2` la `0.3`:
-   - `PROBLEM_WEIGHT = 0.3`
-2. Schimb formula `xpPerLevel` astfel încât `totalMaxXP` să corespundă exact pragului pentru nivel 25 (nu pentru nivel 26).
-   - Curent: `xpPerLevel = totalMaxXP / 25` → ai nevoie de XP peste maximum ca să atingi 25.
-   - Nou: `xpPerLevel = totalMaxXP / 24`, pentru că `getLevelFromXP` returnează 25 când `xp >= 24 * xpPerLevel`.
-   - Rezultat: completând toate lecțiile + 30% din XP-ul problemelor, ajungi fix la Master of Python.
-3. Păstrez `Math.max(FALLBACK_XP_PER_LEVEL, ...)` ca să nu cadă pragul sub 100 XP/nivel.
+```
+range(2, n), range(2,n)
+```
 
-## Impact
-- Toți utilizatorii vor vedea o redistribuire a nivelului curent (XP-ul total rămâne neschimbat, dar pragurile se mută în sus).
-- Cei aproape de Master vor coborî câteva niveluri — efect intenționat al recalibrării.
-- Nicio schimbare de schemă DB, nicio migrare; doar logica de calcul client-side.
+`FillExercise.tsx` are deja un `splitAlternatives` care urmărește adâncimea parantezelor, deci virgula dintre `2` și `n` din `range(2, n)` NU ar trebui să spargă răspunsul. Și `normalize()` scoate toate spațiile, deci `range(2,n)` ar trebui acceptat ca răspuns corect.
+
+Cu alte cuvinte: cu codul curent, comportamentul pe care îl descrii NU ar trebui să se mai întâmple. Înainte să umblu la logică (și să risc să stric alte exerciții care merg), vreau să confirm cu un test real pe exact șirul din DB.
+
+## Pași
+
+1. **Adaug un test în `FillExercise.test.tsx`** cu exact stringul din DB:
+   - `submit("range(2,n)", "range(2, n), range(2,n)")` → așteptat `true`
+   - `submit("range(2, n)", "range(2, n), range(2,n)")` → așteptat `true`
+2. **Rulez `bunx vitest run FillExercise`** pentru rezultat.
+3. **Două scenarii:**
+   - **Testul trece** → logica e corectă, problema e că ai un build vechi pe device. Îți spun să faci hard refresh (web) sau să reinstalezi (mobil). Nu schimb cod.
+   - **Testul pică** → identific exact unde se rupe (split, normalize, sau altundeva) și fac fix minimal doar acolo, fără să ating alte tipuri de exerciții.
 
 ## Detalii tehnice
-Fișiere atinse: `src/hooks/useXPThresholds.ts` (2 linii: constanta `PROBLEM_WEIGHT` și divizorul din `xpPerLevel`).
 
-Nu modific `getLevelFromXP` / `getXPForNextLevel` — comportamentul lor rămâne identic; doar valoarea `xpPerLevel` injectată se schimbă.
+Logica curentă din `splitAlternatives`:
+- Numără paranteze `()[]{}`; doar virgulele/`|`/`;` la `depth === 0` separă variantele.
+- `normalize()` apoi scoate diacritice, zero-width, NBSP, TOATE spațiile, lowercase.
+
+Deci `range(2, n), range(2,n)` → `["range(2, n)", "range(2,n)"]` → normalizate `["range(2,n)", "range(2,n)"]`. Input `range(2,n)` → `range(2,n)` → match.
+
+## Ce NU fac
+
+- Nu modific `splitAlternatives` sau `normalize` până nu confirm că pică testul.
+- Nu ating alte componente (Quiz, Match, Order, Problem).

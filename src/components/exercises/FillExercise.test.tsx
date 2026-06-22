@@ -55,4 +55,10 @@ describe("FillExercise blank validation", () => {
   it("accepts multi-operator expression without spaces", () => {
     expect(submit("n%d==0", "n % d == 0")).toBe(true);
   });
+  it("accepts range(2,n) when canonical has both variants with paren-comma", () => {
+    expect(submit("range(2,n)", "range(2, n), range(2,n)")).toBe(true);
+  });
+  it("accepts range(2, n) when canonical has both variants with paren-comma", () => {
+    expect(submit("range(2, n)", "range(2, n), range(2,n)")).toBe(true);
+  });
 });
