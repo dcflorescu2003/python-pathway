@@ -1,16 +1,19 @@
 import { useParams, useNavigate } from "react-router-dom";
-import { getStoredChapters } from "@/hooks/useExerciseStore";
+import { useChapters } from "@/hooks/useChapters";
 import { chapterTheories } from "@/data/chapterTheory";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, BookOpen } from "lucide-react";
 import { motion } from "framer-motion";
 import OfflineBanner from "@/components/states/OfflineBanner";
+import LoadingScreen from "@/components/states/LoadingScreen";
 
 const ChapterTheoryPage = () => {
   const { chapterId } = useParams();
   const navigate = useNavigate();
+  const { data: chapters, isLoading } = useChapters();
 
-  const chapters = getStoredChapters();
+  if (isLoading || !chapters) return <LoadingScreen />;
+
   const chapter = chapters.find((c) => c.id === chapterId);
   // Match theory by id first (hardcoded "ch1"..."ch6"), then by chapter number
   // (DB chapters have dynamic ids like "ch-1778012338147").
