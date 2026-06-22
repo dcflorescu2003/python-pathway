@@ -86,20 +86,25 @@ const OrderExercise = ({ exercise, onAnswer, feedback }: Props) => {
   }, []);
 
   const handleSubmit = () => {
-    // Check if ordering is correct, allowing lines with the same group to be interchangeable
     const isCorrect = (() => {
-      // Build expected order sequence, respecting groups
-      const expectedOrders = items.map(item => item.order);
-      
-      // If no groups defined, use strict check
-      const hasGroups = items.some(item => item.group !== undefined);
+      // Primary: compare text sequence — lines with identical text become interchangeable.
+      const expectedTexts = [...(exercise.lines || [])]
+        .sort((a, b) => a.order - b.order)
+        .map((l) => l.text);
+      const currentTexts = items.map((l) => l.text);
+      if (
+        expectedTexts.length === currentTexts.length &&
+        expectedTexts.every((t, i) => t === currentTexts[i])
+      ) {
+        return true;
+      }
+
+      // Fallback: group-based interchangeability.
+      const hasGroups = items.some((item) => item.group !== undefined);
       if (!hasGroups) {
         return items.every((item, idx) => item.order === idx + 1);
       }
-      
-      // With groups: items in the same group are interchangeable
-      // Check that the sequence of group-effective-orders is non-decreasing
-      // Assign each item its group's minimum order (or its own order if no group)
+
       const groupMinOrder = new Map<number, number>();
       for (const item of exercise.lines || []) {
         if (item.group !== undefined) {
@@ -109,10 +114,10 @@ const OrderExercise = ({ exercise, onAnswer, feedback }: Props) => {
           }
         }
       }
-      
-      const effectiveOrder = (item: { order: number; group?: number }) => 
+
+      const effectiveOrder = (item: { order: number; group?: number }) =>
         item.group !== undefined ? (groupMinOrder.get(item.group) ?? item.order) : item.order;
-      
+
       for (let i = 1; i < items.length; i++) {
         if (effectiveOrder(items[i]) < effectiveOrder(items[i - 1])) {
           return false;
