@@ -137,10 +137,12 @@ const OrderExercise = ({ exercise, onAnswer, feedback }: Props) => {
       <div className="mb-6 text-foreground font-bold text-base"><RichContent>{exercise.question}</RichContent></div>
       <div className="space-y-2 mb-6 mx-4" ref={containerRef}>
         {items.map((item, idx) => {
+          const expectedSorted = [...(exercise.lines || [])].sort((a, b) => a.order - b.order);
+          const expectedTextAtIdx = expectedSorted[idx]?.text;
+          const textMatches = expectedTextAtIdx === item.text;
           const hasGroups = items.some(it => it.group !== undefined);
-          const isCorrectPos = hasGroups
+          const isCorrectPos = textMatches || (hasGroups
             ? (() => {
-                // For grouped items, check relative ordering is valid
                 if (idx === 0) return true;
                 const prev = items[idx - 1];
                 const getEffective = (it: typeof item) => {
@@ -150,7 +152,7 @@ const OrderExercise = ({ exercise, onAnswer, feedback }: Props) => {
                 };
                 return getEffective(item) >= getEffective(prev);
               })()
-            : item.order === idx + 1;
+            : item.order === idx + 1);
           return (
             <div
               key={item.id}
