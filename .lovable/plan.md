@@ -1,36 +1,30 @@
-# Verificare „fill" cu virgulă în paranteze
+## Problemă
 
-## Context
+La exercițiul „Ordonare linii" cu funcția `este_prim`, există două linii cu textul identic `return False` (pozițiile 3 și 6). Sunt vizual și textual identice, deci utilizatorul nu are cum să le distingă — dar verificarea curentă compară `order`-ul intern al fiecărei linii, așa că dacă „nimerește" linia greșită pe o poziție, primește răspuns greșit chiar dacă secvența de text e corectă.
 
-Răspunsul salvat în DB pentru exercițiul tău (lecția `l1778872386686`) este:
+## Soluție
 
-```
-range(2, n), range(2,n)
-```
+Modific verificarea în `src/components/exercises/OrderExercise.tsx` să compare **textul** pe fiecare poziție, nu `order`-ul intern.
 
-`FillExercise.tsx` are deja un `splitAlternatives` care urmărește adâncimea parantezelor, deci virgula dintre `2` și `n` din `range(2, n)` NU ar trebui să spargă răspunsul. Și `normalize()` scoate toate spațiile, deci `range(2,n)` ar trebui acceptat ca răspuns corect.
+Logica nouă:
+1. Construiesc secvența de text așteptată: `expected = lines.sort(order).map(l => l.text)`
+2. Construiesc secvența curentă: `current = items.map(l => l.text)`
+3. Corect dacă `current[i] === expected[i]` pentru toate `i`.
 
-Cu alte cuvinte: cu codul curent, comportamentul pe care îl descrii NU ar trebui să se mai întâmple. Înainte să umblu la logică (și să risc să stric alte exerciții care merg), vreau să confirm cu un test real pe exact șirul din DB.
+Astfel, două linii cu același text devin automat interschimbabile fără configurare suplimentară în admin.
 
-## Pași
+Logica de `group` existentă (linii diferite ca text dar marcate explicit interschimbabile) rămâne și se aplică în plus: dacă textele diferă dar sunt în același group, e tot acceptat. Ordinea de evaluare:
+- Întâi check pe text (rezolvă cazul liniilor duplicate).
+- Dacă pică, fallback pe logica de group existentă.
 
-1. **Adaug un test în `FillExercise.test.tsx`** cu exact stringul din DB:
-   - `submit("range(2,n)", "range(2, n), range(2,n)")` → așteptat `true`
-   - `submit("range(2, n)", "range(2, n), range(2,n)")` → așteptat `true`
-2. **Rulez `bunx vitest run FillExercise`** pentru rezultat.
-3. **Două scenarii:**
-   - **Testul trece** → logica e corectă, problema e că ai un build vechi pe device. Îți spun să faci hard refresh (web) sau să reinstalezi (mobil). Nu schimb cod.
-   - **Testul pică** → identific exact unde se rupe (split, normalize, sau altundeva) și fac fix minimal doar acolo, fără să ating alte tipuri de exerciții.
+Indicatorul vizual per linie (chenar verde/roșu pe feedback) se actualizează în același mod: o linie e „corectă pe poziție" dacă textul ei se potrivește cu textul așteptat la acel index (sau dacă logica de group o validează).
 
-## Detalii tehnice
+## Ce NU modific
 
-Logica curentă din `splitAlternatives`:
-- Numără paranteze `()[]{}`; doar virgulele/`|`/`;` la `depth === 0` separă variantele.
-- `normalize()` apoi scoate diacritice, zero-width, NBSP, TOATE spațiile, lowercase.
+- Schema datelor (`Exercise.lines`), CSV importer, admin editor.
+- Alte tipuri de exerciții.
+- Logica de `group` rămâne intactă pentru cazurile unde a fost setată intenționat.
 
-Deci `range(2, n), range(2,n)` → `["range(2, n)", "range(2,n)"]` → normalizate `["range(2,n)", "range(2,n)"]`. Input `range(2,n)` → `range(2,n)` → match.
+## Test
 
-## Ce NU fac
-
-- Nu modific `splitAlternatives` sau `normalize` până nu confirm că pică testul.
-- Nu ating alte componente (Quiz, Match, Order, Problem).
+Adaug test în `OrderExercise` (sau extind unul existent) cu două linii având același text dar `order` diferit — verific că ambele aranjamente sunt acceptate.
