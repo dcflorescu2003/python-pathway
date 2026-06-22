@@ -245,7 +245,7 @@ const TestBuilder = ({ onBack, editTestId, teacherStatus }: TestBuilderProps) =>
     const codeTemplate: string = ex.code_template || ex.codeTemplate || "";
     return (
       <div className="mt-2 p-3 bg-muted/30 rounded-lg border border-border/50 space-y-2">
-        <RichContent className="text-sm font-medium text-foreground">{ex.question || ex.statement}</RichContent>
+        <RichContent className="text-sm font-medium text-foreground">{ex.question || (ex.type !== "truefalse" ? ex.statement : "")}</RichContent>
         {codeTemplate && ex.type !== "fill" && (
           <pre className="bg-muted/50 border border-border rounded-md p-2 whitespace-pre-wrap font-mono text-[11px] text-foreground">
             {codeTemplate}
@@ -262,7 +262,14 @@ const TestBuilder = ({ onBack, editTestId, teacherStatus }: TestBuilderProps) =>
           </div>
         )}
         {ex.type === "truefalse" && (
-          <p className="text-[11px] text-muted-foreground">Adevărat / Fals</p>
+          <>
+            {ex.statement && (
+              <div className="bg-muted/50 border border-border rounded-md p-2 text-[11px] text-foreground">
+                <RichContent inline className="text-[11px]">{ex.statement}</RichContent>
+              </div>
+            )}
+            <p className="text-[11px] text-muted-foreground">Adevărat / Fals</p>
+          </>
         )}
         {ex.type === "fill" && (
           codeTemplate ? (
