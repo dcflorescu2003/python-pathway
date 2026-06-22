@@ -1,30 +1,28 @@
-## Problemă
+## Context
+Utilizatorul a raportat că în exercițiul de tip "Ordonare linii", două linii identice (`return False`) nu sunt acceptate ca interschimbabile în UI-ul elevului, deși admin-ul le afișează corect.
 
-La exercițiul „Ordonare linii" cu funcția `este_prim`, există două linii cu textul identic `return False` (pozițiile 3 și 6). Sunt vizual și textual identice, deci utilizatorul nu are cum să le distingă — dar verificarea curentă compară `order`-ul intern al fiecărei linii, așa că dacă „nimerește" linia greșită pe o poziție, primește răspuns greșit chiar dacă secvența de text e corectă.
+## Problemă
+Logica curentă din `OrderExercise.tsx` verifică ordinea liniilor după câmpul `order` și folosește `group` pentru interschimbabilitate. Liniile identice cu `order` diferit sunt respinse dacă nu sunt explicit grupate cu același `group`.
 
 ## Soluție
+Schimbă verificarea din `OrderExercise.tsx` să compare textul per poziție, nu ordinea.
 
-Modific verificarea în `src/components/exercises/OrderExercise.tsx` să compare **textul** pe fiecare poziție, nu `order`-ul intern.
+### handleSubmit
+1. Construiește secvența așteptată: `lines.sort(order).map(l => l.text)`
+2. Construiește secvența curentă: `items.map(l => l.text)`
+3. Acceptă răspunsul dacă textele coincid poziție cu poziție
+4. Păstrează logica `group` ca fallback pentru cazurile intenționate (texte diferite, dar echivalente)
 
-Logica nouă:
-1. Construiesc secvența de text așteptată: `expected = lines.sort(order).map(l => l.text)`
-2. Construiesc secvența curentă: `current = items.map(l => l.text)`
-3. Corect dacă `current[i] === expected[i]` pentru toate `i`.
+### Indicator vizual per-linie
+- Compară `expectedSorted[idx]?.text === item.text` în loc de verificare pe `group`/`order`
+- Verde dacă textul coincide cu cel așteptat pe poziția respectivă
 
-Astfel, două linii cu același text devin automat interschimbabile fără configurare suplimentară în admin.
-
-Logica de `group` existentă (linii diferite ca text dar marcate explicit interschimbabile) rămâne și se aplică în plus: dacă textele diferă dar sunt în același group, e tot acceptat. Ordinea de evaluare:
-- Întâi check pe text (rezolvă cazul liniilor duplicate).
-- Dacă pică, fallback pe logica de group existentă.
-
-Indicatorul vizual per linie (chenar verde/roșu pe feedback) se actualizează în același mod: o linie e „corectă pe poziție" dacă textul ei se potrivește cu textul așteptat la acel index (sau dacă logica de group o validează).
-
-## Ce NU modific
-
-- Schema datelor (`Exercise.lines`), CSV importer, admin editor.
-- Alte tipuri de exerciții.
-- Logica de `group` rămâne intactă pentru cazurile unde a fost setată intenționat.
+## Ce nu se schimbă
+- Schema de date (tabel `order_lines({id: number, text: string, order: number, group?: number})`)
+- CSV importer
+- Admin editor (formularul de adăugare/editare linii)
+- Alte tipuri de exerciții
+- Logica `group` pentru cazurile intenționate
 
 ## Test
-
-Adaug test în `OrderExercise` (sau extind unul existent) cu două linii având același text dar `order` diferit — verific că ambele aranjamente sunt acceptate.
+Adaugă test în `OrderExercise.test.tsx`: două linii cu același text dar `order` diferit — verifică că ambele aranjamente sunt acceptate.
