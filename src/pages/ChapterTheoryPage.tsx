@@ -12,7 +12,11 @@ const ChapterTheoryPage = () => {
 
   const chapters = getStoredChapters();
   const chapter = chapters.find((c) => c.id === chapterId);
-  const theory = chapterTheories.find((t) => t.chapterId === chapterId);
+  // Match theory by id first (hardcoded "ch1"..."ch6"), then by chapter number
+  // (DB chapters have dynamic ids like "ch-1778012338147").
+  const theory =
+    chapterTheories.find((t) => t.chapterId === chapterId) ??
+    (chapter ? chapterTheories.find((t) => t.chapterId === `ch${chapter.number}`) : undefined);
 
   if (!chapter || !theory) {
     return <div className="p-8 text-center text-foreground">Teorie negăsită</div>;
