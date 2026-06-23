@@ -260,10 +260,21 @@ export function useProgress() {
 
         // Always merge — never overwrite local progress with cloud "zeros".
         // mergeProgress keeps the union of completed lessons and the higher scores.
-        const finalProgress = checkStreakExpiry(mergeProgress(localProgress, cloudProgress));
+        const mergedProgress = checkStreakExpiry(mergeProgress(localProgress, cloudProgress));
+        // Apply 30-min lives regeneration immediately on cloud load so a user who
+        // reopens the app after the timer elapsed sees 5/5 right away instead of
+        // waiting for the 60s interval tick.
+        const finalProgress = regenerateLives(mergedProgress);
 
         setProgress(finalProgress);
         saveLocalProgress(finalProgress, user.id);
+
+        if (finalProgress.lives !== mergedProgress.lives) {
+          void supabase
+            .from("profiles")
+            .update({ lives: finalProgress.lives, lives_updated_at: finalProgress.livesUpdatedAt })
+            .eq("user_id", user.id);
+        }
 
         const localHasExtras =
           localCompletedCount > cloudCompletedCount ||
