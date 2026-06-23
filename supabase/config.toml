@@ -21,6 +21,9 @@ verify_jwt = false
 [functions.reward-life]
 verify_jwt = false
 
+[functions.refill-lives]
+verify_jwt = false
+
 [functions.appstore-notifications-v2]
 verify_jwt = false
 
