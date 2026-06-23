@@ -311,22 +311,51 @@ export function useProgress() {
             (cloudDate && cloudDate > prev.lastActivityDate) ||
             (profile.streak ?? 0) > prev.streak ||
             (profile.xp ?? 0) > prev.xp;
-          if (!isCloudNewer) return prev;
 
           const isPremiumCloud = profile.is_premium ?? prev.isPremium;
           const isVerifiedTeacher = (profile as any).teacher_status === "verified";
-          const merged: UserProgress = {
-            ...prev,
-            xp: Math.max(prev.xp, profile.xp ?? 0),
-            streak: Math.max(prev.streak, profile.streak ?? 0),
-            lives: profile.lives ?? prev.lives,
-            isPremium: isPremiumCloud,
-            hasUnlimitedLives: isPremiumCloud || isVerifiedTeacher,
-            lastActivityDate: cloudDate > prev.lastActivityDate ? cloudDate : prev.lastActivityDate,
-            livesUpdatedAt: profile.lives_updated_at ?? prev.livesUpdatedAt,
-          };
-          saveLocalProgress(merged, user.id);
-          return merged;
+
+          const base: UserProgress = isCloudNewer
+            ? {
+                ...prev,
+                xp: Math.max(prev.xp, profile.xp ?? 0),
+                streak: Math.max(prev.streak, profile.streak ?? 0),
+                lives: profile.lives ?? prev.lives,
+                isPremium: isPremiumCloud,
+                hasUnlimitedLives: isPremiumCloud || isVerifiedTeacher,
+                lastActivityDate: cloudDate > prev.lastActivityDate ? cloudDate : prev.lastActivityDate,
+                livesUpdatedAt: profile.lives_updated_at ?? prev.livesUpdatedAt,
+              }
+            : {
+                ...prev,
+                // Still adopt cloud lives/livesUpdatedAt so regen can fire even
+                // if no other field changed (e.g. user closed app at 0 lives).
+                lives: profile.lives ?? prev.lives,
+                livesUpdatedAt: profile.lives_updated_at ?? prev.livesUpdatedAt,
+                isPremium: isPremiumCloud,
+                hasUnlimitedLives: isPremiumCloud || isVerifiedTeacher,
+              };
+
+          const regenerated = regenerateLives(base);
+
+          if (
+            !isCloudNewer &&
+            regenerated.lives === prev.lives &&
+            regenerated.livesUpdatedAt === prev.livesUpdatedAt
+          ) {
+            return prev;
+          }
+
+          saveLocalProgress(regenerated, user.id);
+
+          if (regenerated.lives !== base.lives) {
+            void supabase
+              .from("profiles")
+              .update({ lives: regenerated.lives, lives_updated_at: regenerated.livesUpdatedAt })
+              .eq("user_id", user.id);
+          }
+
+          return regenerated;
         });
       } catch (err) {
         console.error("Failed to refetch progress on focus:", err);
