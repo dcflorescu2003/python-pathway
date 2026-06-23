@@ -1,46 +1,51 @@
-## Problemă
+## Problem
 
-În `TestBuilder.tsx`, preview-ul pentru itemii de tip `truefalse` afișează doar `ex.question` (sau, ca fallback, `ex.statement` doar dacă `question` lipsește). În realitate, întrebările Adevărat/Fals au DOUĂ câmpuri separate:
-- `question` — enunțul/contextul
-- `statement` — afirmația care trebuie evaluată
+Răspunsul acceptat este `","` (virgulă între ghilimele). În `FillExercise.tsx`, funcția `splitAlternatives` tratează virgula ca separator între variante alternative, dar **ignoră ghilimele**. Astfel `","` este împărțit în două variante: `"` și `"` (gol). Niciuna nu coincide cu ce tastează elevul (`,` sau `","`), deci răspunsul corect apare ca greșit.
 
-Deci afirmația nu apare niciodată în preview (nici la cele din bancă, nici la cele publice/custom).
+Aceeași problemă apare și pentru `;` sau `|` puse între ghilimele.
 
-## Soluție
+## Fix
 
-În `src/components/teacher/TestBuilder.tsx`, în `renderExercisePreview` (≈linia 264), pentru `ex.type === "truefalse"`:
+În `src/components/exercises/FillExercise.tsx`, în `splitAlternatives`:
+- Pe lângă urmărirea adâncimii parantezelor (`()[]{}`), urmărim și dacă suntem în interiorul unui șir cu ghilimele (`"` sau `'`).
+- Nu împărțim pe `,` / `|` / `;` când suntem între ghilimele.
 
-1. Linia 248: păstrează `ex.question` (fără fallback la statement, pentru a evita duplicarea când e truefalse).
-2. În blocul `truefalse`, renderează `ex.statement` într-un bloc evidențiat (stil similar cu `code-block` din `TrueFalseExercise.tsx`) deasupra etichetei "Adevărat / Fals".
-3. Dacă există `code_template`, el deja se afișează prin condiția existentă (linia 249) — rămâne neschimbat.
+Suplimentar, în `isBlankCorrect` adăugăm o normalizare tolerantă: dacă o variantă acceptată este înconjurată de ghilimele (`"..."` sau `'...'`), acceptăm și forma fără ghilimele a răspunsului elevului. Astfel atât `,` cât și `","` sunt corecte pentru un blank cu răspuns `","`.
 
-```tsx
-{ex.type === "truefalse" && (
-  <>
-    {ex.statement && (
-      <div className="bg-muted/50 border border-border rounded-md p-2 text-[11px] text-foreground">
-        <RichContent inline className="text-[11px]">{ex.statement}</RichContent>
-      </div>
-    )}
-    <p className="text-[11px] text-muted-foreground">Adevărat / Fals</p>
-  </>
-)}
+## Technical details
+
+```ts
+// splitAlternatives: adaugă state pentru ghilimele
+let quote: '"' | "'" | null = null;
+for (const ch of acceptedAnswers) {
+  if (quote) {
+    if (ch === quote) quote = null;
+    buf += ch;
+    continue;
+  }
+  if (ch === '"' || ch === "'") { quote = ch; buf += ch; continue; }
+  if (ch === '(' || ...) depth++;
+  ...
+  if (depth === 0 && !quote && (ch === ',' || ch === '|' || ch === ';')) {
+    parts.push(buf); buf = "";
+  } else buf += ch;
+}
 ```
 
-Pentru linia 248, schimb fallback-ul ca să nu mai cadă pe `statement` (statement-ul e acum afișat separat la truefalse):
-
-```tsx
-<RichContent className="text-sm font-medium text-foreground">
-  {ex.question || (ex.type !== "truefalse" ? ex.statement : "")}
-</RichContent>
+```ts
+// isBlankCorrect: acceptă variantele și fără ghilimelele înconjurătoare
+const stripQuotes = (s: string) => {
+  const t = s.trim();
+  if ((t.startsWith('"') && t.endsWith('"')) || (t.startsWith("'") && t.endsWith("'"))) {
+    return t.slice(1, -1);
+  }
+  return t;
+};
+const alternatives = splitAlternatives(acceptedAnswers).flatMap(a => {
+  const stripped = stripQuotes(a);
+  return stripped === a ? [normalize(a)] : [normalize(a), normalize(stripped)];
+});
+return alternatives.includes(normalize(userAnswer));
 ```
 
-## Fișiere modificate
-
-- `src/components/teacher/TestBuilder.tsx` — `renderExercisePreview` (≈liniile 248 și 264-266).
-
-## Verificare
-
-- Preview pe un item truefalse din bancă: trebuie să apară `question` + `statement` + "Adevărat / Fals".
-- Preview pe un item custom truefalse creat în Test Builder: la fel.
-- Celelalte tipuri (quiz, fill, order, match) rămân neschimbate.
+Schimbarea afectează doar `FillExercise.tsx` (logică de prezentare/verificare răspuns). Nicio modificare de schemă sau backend.
