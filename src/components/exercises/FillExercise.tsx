@@ -25,12 +25,23 @@ const FillExercise = ({ exercise, onAnswer, feedback }: Props) => {
 
   const splitAlternatives = (acceptedAnswers: string): string[] => {
     // Separatori între variante alternative: `,`, `|`, `;`.
-    // IMPORTANT: nu împărțim pe virgulele aflate în interiorul parantezelor
-    // — altfel răspunsuri ca `range(2, n)` ar fi sparte în „range(2" și „n)".
+    // Nu împărțim în interiorul parantezelor sau al ghilimelelor —
+    // altfel răspunsuri ca `range(2, n)` sau `","` ar fi sparte greșit.
     const parts: string[] = [];
     let buf = "";
     let depth = 0;
+    let quote: '"' | "'" | null = null;
     for (const ch of acceptedAnswers) {
+      if (quote) {
+        buf += ch;
+        if (ch === quote) quote = null;
+        continue;
+      }
+      if (ch === '"' || ch === "'") {
+        quote = ch;
+        buf += ch;
+        continue;
+      }
       if (ch === "(" || ch === "[" || ch === "{") depth++;
       else if (ch === ")" || ch === "]" || ch === "}") depth = Math.max(0, depth - 1);
       if (depth === 0 && (ch === "," || ch === "|" || ch === ";")) {
@@ -44,10 +55,22 @@ const FillExercise = ({ exercise, onAnswer, feedback }: Props) => {
     return parts.map((p) => p.trim()).filter(Boolean);
   };
 
+  const stripQuotes = (s: string) => {
+    const t = s.trim();
+    if (t.length >= 2 && ((t.startsWith('"') && t.endsWith('"')) || (t.startsWith("'") && t.endsWith("'")))) {
+      return t.slice(1, -1);
+    }
+    return t;
+  };
+
   const isBlankCorrect = (userAnswer: string, acceptedAnswers: string) => {
-    const alternatives = splitAlternatives(acceptedAnswers).map(normalize);
+    const alternatives = splitAlternatives(acceptedAnswers).flatMap((a) => {
+      const stripped = stripQuotes(a);
+      return stripped === a.trim() ? [normalize(a)] : [normalize(a), normalize(stripped)];
+    });
     return alternatives.includes(normalize(userAnswer));
   };
+
 
 
   const handleSubmit = () => {
