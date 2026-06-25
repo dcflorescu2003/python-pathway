@@ -318,7 +318,7 @@ const ClassAnalytics = ({ classId, className: clsName }: Props) => {
         const ids = Array.from(exerciseIds);
         const [{ data: exData }, { data: evalData }] = await Promise.all([
           supabase.from("exercises").select("id, question, statement").in("id", ids),
-          supabase.from("eval_exercises").select("id, question, statement").in("id", ids),
+          supabase.rpc("get_eval_exercises_for_teacher", { p_ids: ids }),
         ]);
         [...(exData || []), ...(evalData || [])].forEach((e: any) => {
           const txt = (e.question || e.statement || "").trim();
