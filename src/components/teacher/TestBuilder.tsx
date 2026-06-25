@@ -470,7 +470,7 @@ const TestBuilder = ({ onBack, editTestId, teacherStatus }: TestBuilderProps) =>
       .filter((id: string | null) => typeof id === "string" && id.startsWith("eval-"));
     let evalMap: Record<string, any> = {};
     if (evalIds.length > 0) {
-      const { data: evals } = await supa.from("eval_exercises").select("*").in("id", evalIds);
+      const { data: evals } = await supa.rpc("get_eval_exercises_for_teacher", { p_ids: evalIds });
       for (const ev of (evals ?? [])) evalMap[ev.id] = ev;
       setEvalItemsCache((prev) => ({ ...prev, ...evalMap }));
     }
