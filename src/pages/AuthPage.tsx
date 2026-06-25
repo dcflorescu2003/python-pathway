@@ -41,6 +41,7 @@ const AccountView = () => {
   const [joinLastName, setJoinLastName] = useState("");
   const [joinFirstName, setJoinFirstName] = useState("");
   const [pendingClassId, setPendingClassId] = useState<string | null>(null);
+  const [pendingJoinCode, setPendingJoinCode] = useState<string | null>(null);
   const [editingName, setEditingName] = useState(false);
   const [editName, setEditName] = useState("");
   const [savingName, setSavingName] = useState(false);
@@ -112,8 +113,9 @@ const AccountView = () => {
 
     setJoinLoading(true);
     try {
+      const normalizedCode = code.trim().toUpperCase();
       const { data: clsRows } = await supabase
-        .rpc("find_class_by_join_code", { p_code: code.trim().toUpperCase() });
+        .rpc("find_class_by_join_code", { p_code: normalizedCode });
       const cls = Array.isArray(clsRows) ? clsRows[0] : null;
       if (!cls) { toast.error("Cod invalid."); return; }
 
@@ -133,6 +135,7 @@ const AccountView = () => {
         .single();
 
       setPendingClassId(cls.id);
+      setPendingJoinCode(normalizedCode);
       const ln = (profile?.last_name || "").trim();
       const fn = (profile?.first_name || "").trim();
       if (ln || fn) {
@@ -155,20 +158,18 @@ const AccountView = () => {
     }
   };
 
-  const joinClassDirect = async (classId: string) => {
+  const joinClassDirect = async (classId: string, code: string) => {
     if (!user) return;
-    const { error } = await supabase
-      .from("class_members")
-      .insert({ class_id: classId, student_id: user.id });
+    const { data, error } = await supabase.rpc("join_class_with_code", { p_code: code });
     if (error) {
-      if (error.code === "23505") toast.error("Ești deja înscris în această clasă.");
+      const msg = (error as any).message || "";
+      if (msg.includes("Invalid join code")) toast.error("Cod invalid.");
       else toast.error("Eroare la înscriere.");
     } else {
+      const joined = Array.isArray(data) ? data[0] : null;
       toast.success("Te-ai alăturat clasei! 🎉");
       setIsClassMember(true);
-      // Reload class name
-      const { data: cls } = await supabase.from("teacher_classes").select("name").eq("id", classId).single();
-      setMemberClassName(cls?.name ?? null);
+      setMemberClassName(joined?.name ?? null);
     }
   };
 
@@ -176,16 +177,17 @@ const AccountView = () => {
     const ln = joinLastName.trim();
     const fn = joinFirstName.trim();
     const combined = `${ln} ${fn}`.trim();
-    if (!user || !pendingClassId || ln.length < 2 || fn.length < 2) return;
+    if (!user || !pendingClassId || !pendingJoinCode || ln.length < 2 || fn.length < 2) return;
     setJoinLoading(true);
     try {
       await supabase
         .from("profiles")
         .update({ display_name: combined, last_name: ln, first_name: fn })
         .eq("user_id", user.id);
-      await joinClassDirect(pendingClassId);
+      await joinClassDirect(pendingClassId, pendingJoinCode);
       setShowNameDialog(false);
       setPendingClassId(null);
+      setPendingJoinCode(null);
       setJoinLastName("");
       setJoinFirstName("");
       setDisplayName(combined);
