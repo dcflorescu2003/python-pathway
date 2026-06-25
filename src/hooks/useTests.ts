@@ -374,7 +374,7 @@ export function useSubmitTest() {
       if (params.auto_submitted_reason) {
         updatePayload.auto_submitted_reason = params.auto_submitted_reason;
       }
-      const { error: subError } = await supabase
+      const { error: subError } = await (supabase as any)
         .from("test_submissions")
         .update(updatePayload)
         .eq("id", params.submission_id);
@@ -406,7 +406,7 @@ export function useUpdateAnswerScore() {
       if (params.feedback !== undefined) {
         updateData.feedback = params.feedback;
       }
-      const { error } = await supabase
+      const { error } = await (supabase as any)
         .from("test_answers")
         .update(updateData)
         .eq("id", params.answerId);
