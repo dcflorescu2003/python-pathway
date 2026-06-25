@@ -60,7 +60,7 @@ const TeacherWizard = ({ onComplete, onCancel }: TeacherWizardProps) => {
       };
       if (selectedSchoolId) updates.school_id = selectedSchoolId;
 
-      await supabase.from("profiles").update(updates).eq("user_id", user.id);
+      await (supabase as any).from("profiles").update(updates).eq("user_id", user.id);
 
       // Activate teacher mode
       const { error: rpcErr } = await supabase.rpc("request_teacher_status");
