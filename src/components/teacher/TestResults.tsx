@@ -100,7 +100,7 @@ const TestResults = ({ testId, testTitle, onBack, initialClassId }: TestResultsP
         const foundIds = new Set(data?.map((ex) => ex.id) || []);
         const missingIds = exerciseIds.filter((id: string) => !foundIds.has(id));
         if (missingIds.length > 0) {
-          const { data: evalData } = await supabase.from("eval_exercises").select("*").in("id", missingIds);
+          const { data: evalData } = await supabase.rpc("get_eval_exercises_for_teacher", { p_ids: missingIds });
           evalData?.forEach((ex) => { result[ex.id] = { ...ex, _sourceType: "exercise" }; });
         }
       }
