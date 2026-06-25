@@ -76,11 +76,11 @@ const PersonalizedSummary = ({ chapters, progress }: Props) => {
       className="mb-4"
     >
       <Card className="border-yellow-500/30 bg-gradient-to-br from-yellow-500/5 to-primary/5 overflow-hidden">
-        <CardContent className="p-4">
-          <button
-            onClick={() => setExpanded(!expanded)}
-            className="w-full flex items-center gap-2"
-          >
+        <CardContent
+          className="p-4 cursor-pointer"
+          onClick={() => setExpanded(!expanded)}
+        >
+          <div className="w-full flex items-center gap-2">
             <Sparkles className="h-5 w-5 text-yellow-500" />
             <h3 className="text-sm font-bold text-foreground">Sumar personalizat</h3>
             <Badge variant="outline" className="ml-auto text-[10px] bg-yellow-500/10 text-yellow-600 border-yellow-500/30">
@@ -89,7 +89,7 @@ const PersonalizedSummary = ({ chapters, progress }: Props) => {
             <ChevronDown
               className={`h-4 w-4 text-muted-foreground transition-transform ${expanded ? "rotate-180" : ""}`}
             />
-          </button>
+          </div>
 
           {/* Quick stats always visible */}
           <div className="flex items-center gap-4 mt-3">
