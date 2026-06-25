@@ -1946,6 +1946,13 @@ export type Database = {
         Returns: boolean
       }
       is_verified_teacher: { Args: { _user_id: string }; Returns: boolean }
+      join_class_with_code: {
+        Args: { p_code: string }
+        Returns: {
+          id: string
+          name: string
+        }[]
+      }
       move_to_dlq: {
         Args: {
           dlq_name: string
