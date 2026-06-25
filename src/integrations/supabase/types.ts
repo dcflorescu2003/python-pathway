@@ -1879,6 +1879,32 @@ export type Database = {
           type: string
         }[]
       }
+      get_eval_exercises_for_teacher: {
+        Args: { p_ids?: string[]; p_lesson_id?: string }
+        Returns: {
+          blanks: Json | null
+          code_template: string | null
+          correct_option_id: string | null
+          explanation: string | null
+          id: string
+          is_true: boolean | null
+          lesson_id: string
+          lines: Json | null
+          options: Json | null
+          question: string
+          solution: string | null
+          sort_order: number
+          statement: string | null
+          test_cases: Json | null
+          type: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "eval_exercises"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       get_problem_solution: { Args: { p_id: string }; Returns: string }
       get_student_competency_profile:
         | {
