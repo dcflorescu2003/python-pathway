@@ -68,13 +68,13 @@ export function useEvalExercises(lessonId: string | null) {
   return useQuery({
     queryKey: ["eval-exercises", lessonId],
     queryFn: async () => {
+      // Uses SECURITY DEFINER RPC so verified teachers can read alongside admins,
+      // while direct table SELECT stays restricted to admins.
       const { data, error } = await supabase
-        .from("eval_exercises")
-        .select("*")
-        .eq("lesson_id", lessonId!)
-        .order("sort_order");
+        .rpc("get_eval_exercises_for_teacher", { p_lesson_id: lessonId! });
       if (error) throw error;
-      return data as EvalExercise[];
+      const sorted = (data as EvalExercise[] | null) ?? [];
+      return sorted;
     },
     enabled: !!lessonId,
   });
@@ -84,15 +84,10 @@ export function useAllEvalExercises() {
   return useQuery({
     queryKey: ["eval-exercises-all"],
     queryFn: async () => {
-      // Paginated to avoid Supabase's implicit 1000-row cap.
-      const data = await fetchAllPaginated<EvalExercise>(() =>
-        supabase
-          .from("eval_exercises")
-          .select("*")
-          .order("sort_order")
-          .order("id")
-      );
-      return data;
+      const { data, error } = await supabase
+        .rpc("get_eval_exercises_for_teacher", {});
+      if (error) throw error;
+      return (data as EvalExercise[] | null) ?? [];
     },
   });
 }
