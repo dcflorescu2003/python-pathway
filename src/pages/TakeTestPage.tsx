@@ -793,7 +793,7 @@ const ExerciseRenderer = ({ exercise, answer, onAnswer }: { exercise: any; answe
                   className="inline-block w-28 h-7 mx-1 font-mono text-sm bg-secondary border-primary/50 text-primary"
                   value={currentAnswers[blanks[i].id] || ""}
                   onChange={(e) => onAnswer({ blanks: { ...currentAnswers, [blanks[i].id]: e.target.value } })}
-                  placeholder={"_".repeat(blanks[i].answer.length)}
+                  placeholder="_____"
                 />
               )}
             </span>
