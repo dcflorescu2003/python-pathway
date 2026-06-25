@@ -388,7 +388,7 @@ const TestBuilder = ({ onBack, editTestId, teacherStatus }: TestBuilderProps) =>
     if (missing.length === 0) return;
     (async () => {
       const supa = (await import("@/integrations/supabase/client")).supabase;
-      const { data } = await supa.from("eval_exercises").select("*").in("id", missing);
+      const { data } = await supa.rpc("get_eval_exercises_for_teacher", { p_ids: missing });
       if (data && data.length) {
         setEvalItemsCache((prev) => {
           const next = { ...prev };
