@@ -155,6 +155,37 @@ const PersonalizedSummary = ({ chapters, progress }: Props) => {
                   </div>
                 )}
 
+                {improvable.length > 0 && (
+                  <div className="mt-4">
+                    <div className="flex items-center gap-1.5 mb-2">
+                      <Target className="h-4 w-4 text-improve" />
+                      <p className="text-xs font-bold text-foreground">Poți mai mult — încearcă scor 100%</p>
+                    </div>
+                    <div className="space-y-1.5">
+                      {improvable.map((l) => (
+                        <button
+                          key={l.id}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigate(`/lesson/${l.id}`);
+                          }}
+                          className="w-full flex items-center gap-2 rounded-lg bg-card border border-border p-2.5 text-left hover:border-improve/50 transition-colors active:scale-[0.98]"
+                        >
+                          <Target className="h-4 w-4 text-improve shrink-0" />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm text-foreground truncate">{l.title}</p>
+                            <p className="text-[10px] text-muted-foreground">{l.chapterTitle}</p>
+                          </div>
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            <Progress value={l.score} className="h-1.5 w-12" />
+                            <span className="text-[10px] font-mono text-improve">{l.score}%</span>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 {/* Strengths */}
                 {strengths.length > 0 && (
                   <div className="mt-4">
@@ -178,37 +209,6 @@ const PersonalizedSummary = ({ chapters, progress }: Props) => {
                             <span className="text-[10px] font-mono text-primary">{l.score}%</span>
                           </div>
                         </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {weaknesses.length === 0 && improvable.length > 0 && (
-                  <div className="mt-4">
-                    <div className="flex items-center gap-1.5 mb-2">
-                      <Target className="h-4 w-4 text-primary" />
-                      <p className="text-xs font-bold text-foreground">Poți mai mult — încearcă scor 100%</p>
-                    </div>
-                    <div className="space-y-1.5">
-                      {improvable.map((l) => (
-                        <button
-                          key={l.id}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            navigate(`/lesson/${l.id}`);
-                          }}
-                          className="w-full flex items-center gap-2 rounded-lg bg-card border border-border p-2.5 text-left hover:border-primary/50 transition-colors active:scale-[0.98]"
-                        >
-                          <Target className="h-4 w-4 text-primary shrink-0" />
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm text-foreground truncate">{l.title}</p>
-                            <p className="text-[10px] text-muted-foreground">{l.chapterTitle}</p>
-                          </div>
-                          <div className="flex items-center gap-1.5 shrink-0">
-                            <Progress value={l.score} className="h-1.5 w-12" />
-                            <span className="text-[10px] font-mono text-primary">{l.score}%</span>
-                          </div>
-                        </button>
                       ))}
                     </div>
                   </div>

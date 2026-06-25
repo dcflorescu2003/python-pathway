@@ -51,6 +51,10 @@ export default {
           DEFAULT: "hsl(var(--warning))",
           foreground: "hsl(var(--warning-foreground))",
         },
+        improve: {
+          DEFAULT: "hsl(var(--improve))",
+          foreground: "hsl(var(--improve-foreground))",
+        },
         xp: {
           DEFAULT: "hsl(var(--xp))",
           foreground: "hsl(var(--xp-foreground))",
