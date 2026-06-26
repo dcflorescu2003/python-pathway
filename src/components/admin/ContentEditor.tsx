@@ -407,42 +407,48 @@ const ContentEditor = () => {
                                               <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={(e) => handleExerciseReorder(lesson.id, e)}>
                                                 <SortableContext items={lesson.exercises.map(e => e.id)} strategy={verticalListSortingStrategy}>
                                                   {lesson.exercises.map((ex, i) => (
-                                                    <SortableExercise key={ex.id} exercise={ex}>
-                                                      <div className="flex items-center gap-2 rounded-lg border border-border bg-card p-3 text-sm">
-                                                        <span className="text-[10px] font-mono text-muted-foreground w-5">#{i + 1}</span>
-                                                        {exerciseNeedsCodeRepair(ex) && (
-                                                          <span
-                                                            className="shrink-0 inline-flex items-center justify-center rounded bg-amber-500/15 border border-amber-500/40 h-5 w-5"
-                                                            title="Acest exercițiu pare să aibă nevoie de code_template (cod lipsă). Folosește Repară cod la nivel de lecție."
-                                                          >
-                                                            <AlertTriangle className="h-3 w-3 text-amber-500" />
-                                                          </span>
-                                                        )}
-                                                        <span className="rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-bold text-primary shrink-0">{typeLabels[ex.type]}</span>
-                                                        <p className="flex-1 text-foreground text-xs truncate">{ex.question}</p>
-                                                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setEditingExercise({ lessonId: lesson.id, exercise: ex })}><Edit2 className="h-3.5 w-3.5" /></Button>
-                                                        <AlertDialog>
-                                                          <AlertDialogTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 text-destructive"><Trash2 className="h-3.5 w-3.5" /></Button></AlertDialogTrigger>
-                                                          <AlertDialogContent>
-                                                            <AlertDialogHeader><AlertDialogTitle>Șterge exercițiul</AlertDialogTitle><AlertDialogDescription>Sigur vrei să ștergi acest exercițiu?</AlertDialogDescription></AlertDialogHeader>
-                                                            <AlertDialogFooter><AlertDialogCancel>Anulează</AlertDialogCancel><AlertDialogAction onClick={() => deleteExercise(ex.id)}>Șterge</AlertDialogAction></AlertDialogFooter>
-                                                          </AlertDialogContent>
-                                                        </AlertDialog>
-                                                      </div>
-                                                    </SortableExercise>
+                                                    <React.Fragment key={ex.id}>
+                                                      <SortableExercise exercise={ex}>
+                                                        <div className="flex items-center gap-2 rounded-lg border border-border bg-card p-3 text-sm">
+                                                          <span className="text-[10px] font-mono text-muted-foreground w-5">#{i + 1}</span>
+                                                          {exerciseNeedsCodeRepair(ex) && (
+                                                            <span
+                                                              className="shrink-0 inline-flex items-center justify-center rounded bg-amber-500/15 border border-amber-500/40 h-5 w-5"
+                                                              title="Acest exercițiu pare să aibă nevoie de code_template (cod lipsă). Folosește Repară cod la nivel de lecție."
+                                                            >
+                                                              <AlertTriangle className="h-3 w-3 text-amber-500" />
+                                                            </span>
+                                                          )}
+                                                          <span className="rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-bold text-primary shrink-0">{typeLabels[ex.type]}</span>
+                                                          <p className="flex-1 text-foreground text-xs truncate">{ex.question}</p>
+                                                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setEditingExercise({ lessonId: lesson.id, exercise: ex })}><Edit2 className="h-3.5 w-3.5" /></Button>
+                                                          <AlertDialog>
+                                                            <AlertDialogTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 text-destructive"><Trash2 className="h-3.5 w-3.5" /></Button></AlertDialogTrigger>
+                                                            <AlertDialogContent>
+                                                              <AlertDialogHeader><AlertDialogTitle>Șterge exercițiul</AlertDialogTitle><AlertDialogDescription>Sigur vrei să ștergi acest exercițiu?</AlertDialogDescription></AlertDialogHeader>
+                                                              <AlertDialogFooter><AlertDialogCancel>Anulează</AlertDialogCancel><AlertDialogAction onClick={() => deleteExercise(ex.id)}>Șterge</AlertDialogAction></AlertDialogFooter>
+                                                            </AlertDialogContent>
+                                                          </AlertDialog>
+                                                        </div>
+                                                      </SortableExercise>
+                                                      {editingExercise?.lessonId === lesson.id && editingExercise.exercise?.id === ex.id && (
+                                                        <ExerciseEditor exercise={editingExercise.exercise} onSave={handleSaveExercise} onCancel={() => setEditingExercise(null)} lessonId={lesson.id} nextIndex={lesson.exercises.length + 1} competencyItemType="exercise" />
+                                                      )}
+                                                    </React.Fragment>
                                                   ))}
                                                 </SortableContext>
                                               </DndContext>
 
-                                              {editingExercise?.lessonId === lesson.id ? (
-                                                <ExerciseEditor exercise={editingExercise.exercise} onSave={handleSaveExercise} onCancel={() => setEditingExercise(null)} lessonId={lesson.id} nextIndex={lesson.exercises.length + 1} competencyItemType="exercise" />
-                                              ) : (
+                                              {editingExercise?.lessonId === lesson.id && !editingExercise.exercise ? (
+                                                <ExerciseEditor exercise={undefined} onSave={handleSaveExercise} onCancel={() => setEditingExercise(null)} lessonId={lesson.id} nextIndex={lesson.exercises.length + 1} competencyItemType="exercise" />
+                                              ) : !editingExercise || editingExercise.lessonId !== lesson.id ? (
                                                 <div className="flex items-center gap-2">
                                                   <Button variant="outline" size="sm" className="flex-1" onClick={() => setEditingExercise({ lessonId: lesson.id })}><Plus className="h-4 w-4 mr-1" /> Adaugă exercițiu</Button>
                                                   <CsvImporter targetTable="exercises" lessonId={lesson.id} existingCount={lesson.exercises.length} existingExercises={lesson.exercises} onSuccess={invalidate} />
                                                   <CsvCodeTemplateRepair lessonId={lesson.id} existingExercises={lesson.exercises} onSuccess={invalidate} />
                                                 </div>
-                                              )}
+                                              ) : null}
+
                                             </div>
                                           </motion.div>
                                         )}
