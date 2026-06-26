@@ -1,15 +1,13 @@
-## Schimbare
+## Modificare
 
-În prezent, când utilizatorul rezolvă din nou cu succes o problemă deja marcată ca rezolvată, primește 3 XP bonus. Vrem să eliminăm complet acest bonus — nu mai oferim XP pentru probleme deja rezolvate corect.
+În `src/components/admin/ContentEditor.tsx`, la lista de exerciții dintr-o lecție (în jurul liniei 410), când utilizatorul apasă pe iconița Edit a unui exercițiu, formularul `ExerciseEditor` se va deschide **imediat sub acel exercițiu**, în loc să apară jos după toate întrebările.
 
-## Fișiere modificate
+## Pași
 
-### `src/pages/ProblemSolvePage.tsx`
-În ambele ramuri (static și test cases), când `passed === total`:
-- Dacă `solved` este `true` (problemă deja rezolvată corect): NU mai apelăm `completeLesson` cu XP. Afișăm doar un toast de confirmare ("Toate testele au trecut! ✅" / "Toate cerințele sunt îndeplinite! ✅"), fără mențiunea „+3 XP".
-- Dacă `solved` este `false` (prima rezolvare corectă): comportament identic cu cel actual — `completeLesson(problem.xpReward, 100)` și toast cu XP-ul câștigat.
+1. În map-ul exercițiilor (`lesson.exercises.map(...)` în `DndContext`), după fiecare `<SortableExercise>` se verifică dacă `editingExercise?.lessonId === lesson.id && editingExercise.exercise?.id === ex.id`. Dacă da, se randează `<ExerciseEditor ... />` chiar sub acel rând.
 
-Restul logicii (competențe, static checks, dialog streak) rămâne neschimbat.
+2. Blocul existent de sub listă (linia ~437) rămâne pentru cazul **adăugare exercițiu nou** (`editingExercise.exercise` este `undefined`). Pentru editare, nu se mai afișează acolo — se mută inline.
 
-## Notă
-`completeLesson` din `useProgress` este folosit și pentru a marca progresul. Pentru re-rezolvări, problema este deja în `completedLessons` cu scor 100, deci pur și simplu nu mai apelăm hook-ul — nu se pierde nimic din progres.
+3. Butoanele de „Adaugă exercițiu", CSV import etc. rămân neschimbate.
+
+Nu se modifică logica de salvare, ștergere sau reordonare — doar locul de randare al editorului pentru editări existente.
