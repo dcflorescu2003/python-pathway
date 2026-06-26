@@ -39,9 +39,14 @@ const TeacherWizard = ({ onComplete, onCancel }: TeacherWizardProps) => {
       });
   }, [user]);
 
-  const filtered = schoolSearch.trim()
-    ? schools.filter((s) => matchesSearch(`${s.name} ${s.city}`, schoolSearch)).slice(0, 40)
-    : schools.slice(0, 40);
+  const isBucharest = (s: { city: string }) => /bucure/i.test(s.city);
+  const filtered = (schoolSearch.trim()
+    ? schools.filter((s) => matchesSearch(`${s.name} ${s.city}`, schoolSearch))
+    : schools.slice()
+  )
+    .slice()
+    .sort((a, b) => (isBucharest(a) === isBucharest(b) ? 0 : isBucharest(a) ? -1 : 1))
+    .slice(0, 40);
 
   const selectedSchool = schools.find((s) => s.id === selectedSchoolId);
 
