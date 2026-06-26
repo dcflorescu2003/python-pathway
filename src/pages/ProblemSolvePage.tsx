@@ -112,13 +112,12 @@ const ProblemSolvePage = () => {
     }
 
     if (passed === total) {
-      const isRedo = solved;
-      const xpGained = isRedo ? 3 : problem.xpReward;
-      completeLesson(`problem-${problem.id}`, problem.xpReward, 100);
-      toast.success(isRedo
-        ? `Toate testele au trecut! +${xpGained} XP ✅`
-        : `Felicitări! Ai câștigat ${xpGained} XP! 🎉`
-      );
+      if (solved) {
+        toast.success("Toate testele au trecut! ✅");
+      } else {
+        completeLesson(`problem-${problem.id}`, problem.xpReward, 100);
+        toast.success(`Felicitări! Ai câștigat ${problem.xpReward} XP! 🎉`);
+      }
     } else {
       toast.error(`${passed}/${total} teste trecute`);
     }
