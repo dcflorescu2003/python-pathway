@@ -1,11 +1,15 @@
-Schimbă ordinea și culoarea secțiunii "Poți mai mult" în sumarul personalizat.
+## Schimbare
 
-Modificări:
-1. Adaugă un nou token semantic `improve` (culoare între galben și verde — chartreuse/lime) în `src/index.css` și în `tailwind.config.ts`.
-2. În `src/components/PersonalizedSummary.tsx`:
-   - Reordonează secțiunile expandate: după "Ai nevoie de exercițiu", să apară "Poți mai mult", iar apoi "Te descurci excelent".
-   - Afișează "Poți mai mult" oricând există lecții cu scor < 100%, nu doar când nu există slăbiciuni.
-   - Schimbă iconița și accente de la `primary` la noul token `improve` pentru secțiunea "Poți mai mult".
-   - Păstrează mesajul de felicitare doar când nu există nici slăbiciuni, nici lecții de îmbunătățit, dar există puncte forte.
+În prezent, când utilizatorul rezolvă din nou cu succes o problemă deja marcată ca rezolvată, primește 3 XP bonus. Vrem să eliminăm complet acest bonus — nu mai oferim XP pentru probleme deja rezolvate corect.
 
-Fără modificări de business logic sau de backend.
+## Fișiere modificate
+
+### `src/pages/ProblemSolvePage.tsx`
+În ambele ramuri (static și test cases), când `passed === total`:
+- Dacă `solved` este `true` (problemă deja rezolvată corect): NU mai apelăm `completeLesson` cu XP. Afișăm doar un toast de confirmare ("Toate testele au trecut! ✅" / "Toate cerințele sunt îndeplinite! ✅"), fără mențiunea „+3 XP".
+- Dacă `solved` este `false` (prima rezolvare corectă): comportament identic cu cel actual — `completeLesson(problem.xpReward, 100)` și toast cu XP-ul câștigat.
+
+Restul logicii (competențe, static checks, dialog streak) rămâne neschimbat.
+
+## Notă
+`completeLesson` din `useProgress` este folosit și pentru a marca progresul. Pentru re-rezolvări, problema este deja în `completedLessons` cu scor 100, deci pur și simplu nu mai apelăm hook-ul — nu se pierde nimic din progres.
