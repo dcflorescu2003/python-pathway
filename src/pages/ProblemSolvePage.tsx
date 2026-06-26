@@ -86,13 +86,12 @@ const ProblemSolvePage = () => {
       }
 
       if (passed === total && total > 0) {
-        const isRedo = solved;
-        const xpGained = isRedo ? 3 : problem.xpReward;
-        completeLesson(`problem-${problem.id}`, problem.xpReward, 100);
-        toast.success(isRedo
-          ? `Toate cerințele sunt îndeplinite! +${xpGained} XP ✅`
-          : `Felicitări! Ai câștigat ${xpGained} XP! 🎉`
-        );
+        if (solved) {
+          toast.success("Toate cerințele sunt îndeplinite! ✅");
+        } else {
+          completeLesson(`problem-${problem.id}`, problem.xpReward, 100);
+          toast.success(`Felicitări! Ai câștigat ${problem.xpReward} XP! 🎉`);
+        }
       } else {
         toast.error(`${passed}/${total} cerințe îndeplinite`);
       }
