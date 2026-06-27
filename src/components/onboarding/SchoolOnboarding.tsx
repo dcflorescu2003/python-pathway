@@ -272,9 +272,8 @@ function SchoolPickerStep({ onComplete, user }: { onComplete: () => void; user: 
   const [saving, setSaving] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
 
-  const filtered = search.trim()
-    ? schools.filter((s) => matchesSearch(`${s.name} ${s.city}`, search)).slice(0, 40)
-    : schools.slice(0, 40);
+  const filtered = filterAndSortSchools(schools, search, 40);
+
 
   const selectedSchool = schools.find((s) => s.id === selectedId);
 
