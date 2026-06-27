@@ -41,7 +41,7 @@ const LeaderboardPage = () => {
 
   const filteredSchools = useMemo(() => {
     if (!schoolSearch.trim()) return [];
-    return schools.filter(s => matchesSearch(s.name, schoolSearch) || matchesSearch(s.city, schoolSearch)).slice(0, 8);
+    return filterAndSortSchools(schools, schoolSearch, 8);
   }, [schoolSearch]);
 
   const handleSelectSchool = useCallback(async (schoolId: string) => {
