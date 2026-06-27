@@ -82,10 +82,12 @@ export function filterAndSortSchools(
     .map((school) => ({ school, score: rankSchool(school, q) }))
     .sort((a, b) => {
       if (b.score !== a.score) return b.score - a.score;
-      // Prefer shorter, more precise names when scores tie.
-      return a.school.name.length - b.school.name.length || a.school.name.localeCompare(b.school.name);
+      // Stable tie-breaker: alphabetical by normalized name so the canonical
+      // "Colegiul Național Spiru Haret" ranks before "UCECOM"/"Universitar" variants.
+      return normalizeForSearch(a.school.name).localeCompare(normalizeForSearch(b.school.name));
     })
     .map((entry) => entry.school);
+
 
   return limit ? ranked.slice(0, limit) : ranked;
 }
