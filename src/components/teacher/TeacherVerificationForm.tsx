@@ -20,7 +20,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { schools } from "@/data/schools";
-import { filterAndSortSchools, matchesSearch } from "@/lib/searchUtils";
+import { filterAndSortSchools } from "@/lib/searchUtils";
 
 type Method = "invite_code" | "public_link" | "document" | "referral" | null;
 
