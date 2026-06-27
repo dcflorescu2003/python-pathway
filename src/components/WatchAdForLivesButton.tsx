@@ -38,7 +38,7 @@ const WatchAdForLivesButton = ({ isPremium, onLivesGranted }: WatchAdForLivesBut
           toast({
             title: "Limita zilnică atinsă",
             description:
-              "Ai folosit toate cele 3 reclame de astăzi. Fă o pauză de 30 de minute — inimile se reîncarcă automat după ce rămâi fără ele.",
+              "Ai folosit toate cele 10 reclame de astăzi. Fă o pauză de 30 de minute — inimile se reîncarcă automat după ce rămâi fără ele.",
           });
           return;
         }
