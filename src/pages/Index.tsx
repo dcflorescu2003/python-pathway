@@ -8,7 +8,7 @@ import { getLevelInfo } from "@/data/levels";
 import { useProgress } from "@/hooks/useProgress";
 import { useChallenges } from "@/hooks/useChallenges";
 import { schools, getSelectedSchool, setSelectedSchool, clearSelectedSchool } from "@/data/schools";
-import { matchesSearch } from "@/lib/searchUtils";
+import { filterAndSortSchools } from "@/lib/searchUtils";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
