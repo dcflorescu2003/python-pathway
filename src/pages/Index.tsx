@@ -217,9 +217,7 @@ const Index = (): JSX.Element => {
 
   const isReady = !chaptersLoading && !!chapters;
 
-  const filteredSchools = schoolSearch.trim()
-    ? schools.filter((s) => matchesSearch(`${s.name} ${s.city}`, schoolSearch)).slice(0, 50)
-    : schools.slice(0, 50);
+  const filteredSchools = filterAndSortSchools(schools, schoolSearch, 50);
 
   const handleSelectSchool = (schoolId: string) => {
     setSelectedSchool(schoolId);
