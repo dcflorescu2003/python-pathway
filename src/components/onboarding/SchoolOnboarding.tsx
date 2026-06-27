@@ -9,7 +9,7 @@ import { useAuth } from "@/hooks/useAuth";
 import onboardingImg from "@/assets/onboarding-school.png";
 import PyroLogo from "@/components/brand/PyroLogo";
 import { toast } from "sonner";
-import { matchesSearch } from "@/lib/searchUtils";
+import { filterAndSortSchools } from "@/lib/searchUtils";
 
 interface SchoolOnboardingProps {
   onComplete: () => void;
@@ -272,9 +272,8 @@ function SchoolPickerStep({ onComplete, user }: { onComplete: () => void; user: 
   const [saving, setSaving] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
 
-  const filtered = search.trim()
-    ? schools.filter((s) => matchesSearch(`${s.name} ${s.city}`, search)).slice(0, 40)
-    : schools.slice(0, 40);
+  const filtered = filterAndSortSchools(schools, search, 40);
+
 
   const selectedSchool = schools.find((s) => s.id === selectedId);
 
