@@ -8,7 +8,7 @@ import { schools } from "@/data/schools";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
-import { matchesSearch } from "@/lib/searchUtils";
+import { filterAndSortSchools } from "@/lib/searchUtils";
 
 interface TeacherWizardProps {
   onComplete: () => void;
@@ -39,14 +39,8 @@ const TeacherWizard = ({ onComplete, onCancel }: TeacherWizardProps) => {
       });
   }, [user]);
 
-  const isBucharest = (s: { city: string }) => /bucure/i.test(s.city);
-  const filtered = (schoolSearch.trim()
-    ? schools.filter((s) => matchesSearch(`${s.name} ${s.city}`, schoolSearch))
-    : schools.slice()
-  )
-    .slice()
-    .sort((a, b) => (isBucharest(a) === isBucharest(b) ? 0 : isBucharest(a) ? -1 : 1))
-    .slice(0, 40);
+  const filtered = filterAndSortSchools(schools, schoolSearch, 40);
+
 
   const selectedSchool = schools.find((s) => s.id === selectedSchoolId);
 
