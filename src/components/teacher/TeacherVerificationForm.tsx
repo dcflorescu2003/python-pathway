@@ -94,11 +94,7 @@ const TeacherVerificationForm = ({ onSuccess, onCancel }: Props) => {
 
   const filteredSchools = useMemo(() => {
     if (!schoolSearch.trim()) return [];
-    const isBucharest = (s: { city: string }) => /bucure/i.test(s.city);
-    return schools
-      .filter(s => matchesSearch(s.name, schoolSearch) || matchesSearch(s.city, schoolSearch))
-      .sort((a, b) => (isBucharest(a) === isBucharest(b) ? 0 : isBucharest(a) ? -1 : 1))
-      .slice(0, 50);
+    return filterAndSortSchools(schools, schoolSearch, 50);
   }, [schoolSearch]);
 
   const submit = async () => {
