@@ -3,7 +3,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getSelectedSchool, setSelectedSchool, schools } from "@/data/schools";
-import { matchesSearch } from "@/lib/searchUtils";
+import { filterAndSortSchools } from "@/lib/searchUtils";
 import { Flame, Zap, Medal, Loader2, Search } from "lucide-react";
 import { motion } from "framer-motion";
 import { Input } from "@/components/ui/input";
