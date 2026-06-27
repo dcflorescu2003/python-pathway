@@ -9,7 +9,7 @@ import { useAuth } from "@/hooks/useAuth";
 import onboardingImg from "@/assets/onboarding-school.png";
 import PyroLogo from "@/components/brand/PyroLogo";
 import { toast } from "sonner";
-import { matchesSearch } from "@/lib/searchUtils";
+import { filterAndSortSchools } from "@/lib/searchUtils";
 
 interface SchoolOnboardingProps {
   onComplete: () => void;
