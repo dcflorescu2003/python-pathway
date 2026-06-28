@@ -121,7 +121,44 @@ const TutorialArticleView = ({ articles, basePath, audience }: Props) => {
           ))}
         </div>
 
-        <div className="mt-16 rounded-lg border border-border bg-card p-6 text-center">
+        {(prev || next) && (
+          <nav className="mt-12 grid gap-3 md:grid-cols-2" aria-label="Navigare tutoriale">
+            {prev ? (
+              <Link
+                to={`${basePath}/${prev.slug}`}
+                onClick={handleNavClick}
+                className="group flex flex-col gap-1 rounded-lg border border-border bg-card p-4 transition-colors hover:border-primary hover:bg-primary/5"
+              >
+                <span className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  <ArrowLeft className="h-4 w-4" /> Articolul anterior
+                </span>
+                <span className="text-base font-semibold text-foreground group-hover:text-primary">
+                  {prev.title}
+                </span>
+              </Link>
+            ) : (
+              <div className="hidden md:block" />
+            )}
+            {next ? (
+              <Link
+                to={`${basePath}/${next.slug}`}
+                onClick={handleNavClick}
+                className="group flex flex-col gap-1 rounded-lg border border-border bg-card p-4 text-right transition-colors hover:border-primary hover:bg-primary/5 md:items-end"
+              >
+                <span className="flex items-center justify-end gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  Articolul următor <ArrowRight className="h-4 w-4" />
+                </span>
+                <span className="text-base font-semibold text-foreground group-hover:text-primary">
+                  {next.title}
+                </span>
+              </Link>
+            ) : (
+              <div className="hidden md:block" />
+            )}
+          </nav>
+        )}
+
+        <div className="mt-12 rounded-lg border border-border bg-card p-6 text-center">
           <h3 className="text-xl font-semibold">Gata să încerci?</h3>
           <p className="mt-2 text-sm text-muted-foreground">
             Descarcă aplicația sau intră direct din browser.
