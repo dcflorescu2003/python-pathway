@@ -12,7 +12,12 @@ interface Props {
 
 const TutorialArticleView = ({ articles, basePath, audience }: Props) => {
   const { slug } = useParams<{ slug: string }>();
-  const article = articles.find((a) => a.slug === slug);
+  const currentIndex = articles.findIndex((a) => a.slug === slug);
+  const article = currentIndex >= 0 ? articles[currentIndex] : undefined;
+  const prev = currentIndex > 0 ? articles[currentIndex - 1] : null;
+  const next = currentIndex >= 0 && currentIndex < articles.length - 1 ? articles[currentIndex + 1] : null;
+
+  const handleNavClick = () => window.scrollTo({ top: 0, behavior: "auto" });
 
   if (!article) {
     return (
