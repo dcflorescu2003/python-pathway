@@ -1,6 +1,21 @@
-## Modificări
+Adaug în `src/components/web/TutorialArticleView.tsx`, deasupra (sau imediat sub) CTA-ul "Gata să încerci?", o secțiune de navigare între articolele din aceeași categorie (Elevi sau Profesori).
 
-1. `supabase/functions/reward-life/index.ts` — schimb `MAX_ADS_PER_DAY` din `3` în `10`.
-2. `src/components/WatchAdForLivesButton.tsx` — actualizez mesajul toast „toate cele 3 reclame de astăzi" → „toate cele 10 reclame de astăzi".
+## Comportament
 
-Restul logicii (reset zilnic, +5 inimi/reclamă, cap 5/5) rămâne neschimbat. Nu sunt necesare modificări de schemă DB.
+- Determin indexul articolului curent în `articles`.
+- Calculez `prev` și `next` (fără wrap; dacă nu există, slotul rămâne gol).
+- Afișez două carduri-link pe rândul de jos:
+  - Stânga: "← Articolul anterior" + titlul prev
+  - Dreapta: "Articolul următor →" + titlul next
+- Pe mobil: stivuite vertical; pe desktop: grid 2 coloane.
+- Folosesc `<Link to={`${basePath}/${slug}`}>` cu stiluri consistente (border, bg-card, hover ușor, text-primary pentru titlu).
+- Dacă lipsește unul dintre ele, slotul gol păstrează grid-ul (sau e omis pe mobil).
+- La click se face scroll-to-top (`window.scrollTo(0,0)` în onClick) ca să nu rămână în jos pe noul articol.
+
+Se aplică automat și pentru elevi și pentru profesori, fiindcă ambele rute folosesc același component.
+
+## Detalii tehnice
+
+- Un singur fișier modificat: `TutorialArticleView.tsx`.
+- Iconițe `ArrowLeft` / `ArrowRight` din lucide-react (ArrowLeft e deja importat).
+- Fără modificări de date sau rute.
