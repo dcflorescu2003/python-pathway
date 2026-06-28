@@ -1,6 +1,6 @@
 import { Helmet } from "react-helmet-async";
 import { Link, useParams } from "react-router-dom";
-import { ArrowLeft, Clock, Lightbulb } from "lucide-react";
+import { ArrowLeft, ArrowRight, Clock, Lightbulb } from "lucide-react";
 import type { TutorialArticle } from "@/data/tutorials/types";
 import AppDownloadCTA from "./AppDownloadCTA";
 
