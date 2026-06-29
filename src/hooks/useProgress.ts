@@ -480,7 +480,7 @@ export function useProgress() {
 
         saveLocalProgress(newProgress, user?.id);
         if (user) {
-          syncToCloud(user.id, newProgress).catch(console.error);
+          syncToCloudWithRetry(user.id, newProgress).catch(console.error);
         }
 
         return newProgress;
