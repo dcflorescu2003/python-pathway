@@ -26,6 +26,42 @@ const MAX_LIVES = 5;
 const FULL_REGEN_MS = 30 * 60 * 1000;
 const STORAGE_KEY_PREFIX = "pyro-progress";
 const LEGACY_KEY = "pylearn-progress";
+const PENDING_SYNC_PREFIX = "pyro-progress-pending-sync";
+
+function getPendingSyncKey(userId: string) {
+  return `${PENDING_SYNC_PREFIX}:${userId}`;
+}
+
+function markPendingSync(userId: string) {
+  try { localStorage.setItem(getPendingSyncKey(userId), "1"); } catch {}
+}
+
+function clearPendingSync(userId: string) {
+  try { localStorage.removeItem(getPendingSyncKey(userId)); } catch {}
+}
+
+function hasPendingSync(userId: string) {
+  try { return localStorage.getItem(getPendingSyncKey(userId)) === "1"; } catch { return false; }
+}
+
+async function syncToCloudWithRetry(userId: string, p: UserProgress, attempts = 3) {
+  let lastErr: unknown = null;
+  for (let i = 0; i < attempts; i++) {
+    try {
+      await syncToCloud(userId, p);
+      clearPendingSync(userId);
+      return true;
+    } catch (err) {
+      lastErr = err;
+      if (i < attempts - 1) {
+        await new Promise((r) => setTimeout(r, 1000 * Math.pow(2, i)));
+      }
+    }
+  }
+  console.error("[useProgress] syncToCloud failed after retries:", lastErr);
+  markPendingSync(userId);
+  return false;
+}
 
 function getTodayDate() {
   return new Date().toISOString().split("T")[0];
