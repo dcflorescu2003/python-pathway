@@ -1,21 +1,9 @@
-Adaug în `src/components/web/TutorialArticleView.tsx`, deasupra (sau imediat sub) CTA-ul "Gata să încerci?", o secțiune de navigare între articolele din aceeași categorie (Elevi sau Profesori).
+Răspuns la întrebare: **Nu, în aplicație nu se poate trece mai departe după o lecție cu sub 75%**.
 
-## Comportament
+Comportamentul actual:
+- Pragul de promovare este `PASSING_THRESHOLD = 75` în `src/pages/LessonPage.tsx`.
+- Dacă scorul final este sub 75%, lecția nu este marcată ca `completed` (nu se apelează `completeLesson`), iar utilizatorul vede ecranul „Nu ai promovat lecția” cu opțiunea de a reîncerca.
+- Pe `ChapterPage`, următoarea lecție este blocată (`isLocked`) dacă lecția anterioară nu apare în `progress.completedLessons`.
+- Singura alternativă rămâne **Skip Challenge** (provocarea cu fulger), care deblochează lecția fără a o parcurge pe cea anterioară.
 
-- Determin indexul articolului curent în `articles`.
-- Calculez `prev` și `next` (fără wrap; dacă nu există, slotul rămâne gol).
-- Afișez două carduri-link pe rândul de jos:
-  - Stânga: "← Articolul anterior" + titlul prev
-  - Dreapta: "Articolul următor →" + titlul next
-- Pe mobil: stivuite vertical; pe desktop: grid 2 coloane.
-- Folosesc `<Link to={`${basePath}/${slug}`}>` cu stiluri consistente (border, bg-card, hover ușor, text-primary pentru titlu).
-- Dacă lipsește unul dintre ele, slotul gol păstrează grid-ul (sau e omis pe mobil).
-- La click se face scroll-to-top (`window.scrollTo(0,0)` în onClick) ca să nu rămână în jos pe noul articol.
-
-Se aplică automat și pentru elevi și pentru profesori, fiindcă ambele rute folosesc același component.
-
-## Detalii tehnice
-
-- Un singur fișier modificat: `TutorialArticleView.tsx`.
-- Iconițe `ArrowLeft` / `ArrowRight` din lucide-react (ArrowLeft e deja importat).
-- Fără modificări de date sau rute.
+Decizie: **Nu facem nicio modificare** — regulă de 75% rămâne în vigoare.
