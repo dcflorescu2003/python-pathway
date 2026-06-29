@@ -1,12 +1,12 @@
-Update the "profesor-verificat" teacher tutorial to match the actual verification methods shown in the current form.
+Add collision handling and clearer feedback when creating a class to guarantee that join codes stay globally unique and students cannot cross between classes.
 
 Changes:
-- Replace the outdated method list (institutional email auto-approval, chat verification) with the real four options:
-  1. Cod de invitație — received from the school or admin.
-  2. Link public — a public page where the user appears as a teacher.
-  3. Document — upload a teacher ID or employment certificate.
-  4. Cod de la un profesor verificat — referral code from a verified teacher.
-- Keep the 24-48h response note for the manual review paths (document and link).
-- Preserve the existing article structure, duration, and remaining sections.
+1. Update `src/hooks/useTeacher.ts`:
+   - Keep `generateJoinCode()` unchanged.
+   - In `useCreateClass`, wrap the insert in a retry loop (max 5 attempts). If the insert fails with a duplicate `join_code`, generate a new code and retry.
+   - Throw a clear error message if all retries fail.
+2. Update `src/components/teacher/ClassManager.tsx`:
+   - Display a specific toast when the code collides and a new one is being generated.
+   - Display a final clear error if creation fails after retries.
 
-Only file edited: `src/data/tutorials/teachers.ts`.
+The database already enforces `UNIQUE (join_code)` on `teacher_classes`, so the goal is to make the frontend resilient to the rare collision and to surface meaningful messages to the user.
