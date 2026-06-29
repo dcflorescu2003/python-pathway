@@ -316,8 +316,10 @@ export function useProgress() {
           localCompletedCount > cloudCompletedCount ||
           Object.keys(localProgress.skipUnlockedLessons).length > Object.keys(cloudSkipUnlocks).length;
 
-        if (localHasExtras) {
-          await syncToCloud(user.id, finalProgress);
+        if (localHasExtras || hasPendingSync(user.id)) {
+          const extra = Math.max(0, localCompletedCount - cloudCompletedCount);
+          console.log("[useProgress] pushing local-only lessons to cloud:", { extra, pendingFlag: hasPendingSync(user.id) });
+          await syncToCloudWithRetry(user.id, finalProgress);
         }
       } catch (err) {
         console.error("[useProgress] Failed to load cloud progress:", err);
