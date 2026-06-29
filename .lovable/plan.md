@@ -1,12 +1,20 @@
-Add collision handling and clearer feedback when creating a class to guarantee that join codes stay globally unique and students cannot cross between classes.
+## Verificare actuală
 
-Changes:
-1. Update `src/hooks/useTeacher.ts`:
-   - Keep `generateJoinCode()` unchanged.
-   - In `useCreateClass`, wrap the insert in a retry loop (max 5 attempts). If the insert fails with a duplicate `join_code`, generate a new code and retry.
-   - Throw a clear error message if all retries fail.
-2. Update `src/components/teacher/ClassManager.tsx`:
-   - Display a specific toast when the code collides and a new one is being generated.
-   - Display a final clear error if creation fails after retries.
+- `class_members` are doar `UNIQUE (class_id, student_id)` — un elev **poate** intra în mai multe clase.
+- RPC `join_class_with_code` face `INSERT ... ON CONFLICT DO NOTHING`, deci nu blochează intrarea într-o a doua clasă.
+- În DB nu există momentan elevi cu apartenență multiplă (verificat: 0 duplicate).
 
-The database already enforces `UNIQUE (join_code)` on `teacher_classes`, so the goal is to make the frontend resilient to the rare collision and to surface meaningful messages to the user.
+## Modificări
+
+### 1. Migrație DB
+- Adaug `UNIQUE (student_id)` pe `class_members` (sigur, nu există încălcări).
+- Actualizez `join_class_with_code` să verifice explicit: dacă elevul e deja în altă clasă → `RAISE EXCEPTION 'Already enrolled in a class'` cu mesaj clar (ca să-l afișăm în UI). Dacă e deja în aceeași clasă, return normal (idempotent).
+
+### 2. Frontend
+- `src/pages/AuthPage.tsx` (`joinClassDirect`) și `src/components/teacher/ClassManager.tsx`: traduc eroarea în mesaj RO de tip „Ești deja înscris într-o altă clasă. Părăsește clasa curentă din Cont → Elev înainte să te alături alteia."
+- Nicio schimbare la flow-ul de „Părăsire clasă" — funcționează deja.
+
+### 3. Verificare
+- Rulez quick query după migrație ca să confirm constraint-ul.
+
+Niciun impact pentru profesori sau pentru funcționalitatea de teste — apartenența rămâne legată de `class_members.student_id`.
