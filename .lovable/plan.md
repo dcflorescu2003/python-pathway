@@ -1,9 +1,12 @@
-Răspuns la întrebare: **Nu, în aplicație nu se poate trece mai departe după o lecție cu sub 75%**.
+Update the "profesor-verificat" teacher tutorial to match the actual verification methods shown in the current form.
 
-Comportamentul actual:
-- Pragul de promovare este `PASSING_THRESHOLD = 75` în `src/pages/LessonPage.tsx`.
-- Dacă scorul final este sub 75%, lecția nu este marcată ca `completed` (nu se apelează `completeLesson`), iar utilizatorul vede ecranul „Nu ai promovat lecția” cu opțiunea de a reîncerca.
-- Pe `ChapterPage`, următoarea lecție este blocată (`isLocked`) dacă lecția anterioară nu apare în `progress.completedLessons`.
-- Singura alternativă rămâne **Skip Challenge** (provocarea cu fulger), care deblochează lecția fără a o parcurge pe cea anterioară.
+Changes:
+- Replace the outdated method list (institutional email auto-approval, chat verification) with the real four options:
+  1. Cod de invitație — received from the school or admin.
+  2. Link public — a public page where the user appears as a teacher.
+  3. Document — upload a teacher ID or employment certificate.
+  4. Cod de la un profesor verificat — referral code from a verified teacher.
+- Keep the 24-48h response note for the manual review paths (document and link).
+- Preserve the existing article structure, duration, and remaining sections.
 
-Decizie: **Nu facem nicio modificare** — regulă de 75% rămâne în vigoare.
+Only file edited: `src/data/tutorials/teachers.ts`.

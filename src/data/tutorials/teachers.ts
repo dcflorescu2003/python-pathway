@@ -17,13 +17,13 @@ export const teacherTutorials: TutorialArticle[] = [
       {
         heading: "Metode de validare",
         body: [
-          "1. Email instituțional (ex: @numeliceu.ro) — automat.",
-          "2. Upload adeverință / contract — verificare manuală.",
-          "3. Recomandare de la un profesor deja verificat din aceeași școală.",
-          "4. Verificare prin chat cu echipa PyRo, dacă nicio variantă de mai sus nu se potrivește.",
+          "1. Cod de invitație — un cod primit de la școală sau de la administrator. Introdu codul și contul devine profesor verificat instant.",
+          "2. Link public — trimite un link unde apari ca profesor (site-ul școlii, pagina catedrei etc.). Echipa PyRo verifică manual legătura.",
+          "3. Document — încarcă o legitimație sau adeverință care dovedește calitatea de profesor. Poți ascunde date sensibile precum CNP sau serie.",
+          "4. Cod de la un profesor verificat — un profesor deja verificat din aceeași școală îți poate genera un cod de recomandare.",
         ],
         image: { alt: "Formular verificare profesor", placeholder: "Screenshot: TeacherVerificationForm" },
-        tip: "Răspundem la cererile de verificare în 24-48h în zilele lucrătoare.",
+        tip: "Răspundem la cererile care necesită verificare manuală (link public sau document) în 24-48h în zilele lucrătoare.",
       },
     ],
   },
