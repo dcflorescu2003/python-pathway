@@ -164,6 +164,8 @@ const AccountView = () => {
     if (error) {
       const msg = (error as any).message || "";
       if (msg.includes("Invalid join code")) toast.error("Cod invalid.");
+      else if (msg.includes("Already enrolled") || msg.includes("class_members_student_id_unique"))
+        toast.error("Ești deja înscris într-o altă clasă. Părăsește clasa curentă din Cont → Elev înainte de a te alătura alteia.");
       else toast.error("Eroare la înscriere.");
     } else {
       const joined = Array.isArray(data) ? data[0] : null;
