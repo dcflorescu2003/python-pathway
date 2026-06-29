@@ -81,14 +81,35 @@ export function useCreateClass() {
   return useMutation({
     mutationFn: async (name: string) => {
       if (!user) throw new Error("Not authenticated");
-      const join_code = generateJoinCode();
-      const { data, error } = await supabase
-        .from("teacher_classes")
-        .insert({ teacher_id: user.id, name, join_code })
-        .select()
-        .single();
-      if (error) throw error;
-      return data;
+
+      const maxAttempts = 5;
+      let lastError: any = null;
+
+      for (let attempt = 0; attempt < maxAttempts; attempt++) {
+        const join_code = generateJoinCode();
+        const { data, error } = await supabase
+          .from("teacher_classes")
+          .insert({ teacher_id: user.id, name, join_code })
+          .select()
+          .single();
+
+        if (!error) return data;
+
+        // Unique violation (23505) likely means join_code collision; retry once with a fresh code.
+        if (error.code === "23505") {
+          lastError = error;
+          continue;
+        }
+
+        // Any other error is not recoverable by retrying.
+        throw error;
+      }
+
+      throw new Error(
+        lastError
+          ? "Codul clasei a fost generat de mai multe ori, dar există deja. Te rugăm să încerci din nou."
+          : "Nu s-a putut crea clasa. Te rugăm să încerci din nou."
+      );
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["teacher-classes"] }),
   });
