@@ -311,7 +311,7 @@ const ManualLessonPage = () => {
         {feedback && (
           <motion.div
             initial={{ y: 100 }} animate={{ y: 0 }} exit={{ y: 100 }}
-            className={`border-t px-4 py-4 pb-[var(--sab)] ${
+            className={`border-t px-4 py-4 pb-[var(--sab)] mb-4 ${
               feedback === "correct" ? "bg-primary/10 border-primary/30" : "bg-destructive/10 border-destructive/30"
             }`}
           >
