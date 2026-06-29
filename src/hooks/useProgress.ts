@@ -26,6 +26,42 @@ const MAX_LIVES = 5;
 const FULL_REGEN_MS = 30 * 60 * 1000;
 const STORAGE_KEY_PREFIX = "pyro-progress";
 const LEGACY_KEY = "pylearn-progress";
+const PENDING_SYNC_PREFIX = "pyro-progress-pending-sync";
+
+function getPendingSyncKey(userId: string) {
+  return `${PENDING_SYNC_PREFIX}:${userId}`;
+}
+
+function markPendingSync(userId: string) {
+  try { localStorage.setItem(getPendingSyncKey(userId), "1"); } catch {}
+}
+
+function clearPendingSync(userId: string) {
+  try { localStorage.removeItem(getPendingSyncKey(userId)); } catch {}
+}
+
+function hasPendingSync(userId: string) {
+  try { return localStorage.getItem(getPendingSyncKey(userId)) === "1"; } catch { return false; }
+}
+
+async function syncToCloudWithRetry(userId: string, p: UserProgress, attempts = 3) {
+  let lastErr: unknown = null;
+  for (let i = 0; i < attempts; i++) {
+    try {
+      await syncToCloud(userId, p);
+      clearPendingSync(userId);
+      return true;
+    } catch (err) {
+      lastErr = err;
+      if (i < attempts - 1) {
+        await new Promise((r) => setTimeout(r, 1000 * Math.pow(2, i)));
+      }
+    }
+  }
+  console.error("[useProgress] syncToCloud failed after retries:", lastErr);
+  markPendingSync(userId);
+  return false;
+}
 
 function getTodayDate() {
   return new Date().toISOString().split("T")[0];
@@ -280,8 +316,10 @@ export function useProgress() {
           localCompletedCount > cloudCompletedCount ||
           Object.keys(localProgress.skipUnlockedLessons).length > Object.keys(cloudSkipUnlocks).length;
 
-        if (localHasExtras) {
-          await syncToCloud(user.id, finalProgress);
+        if (localHasExtras || hasPendingSync(user.id)) {
+          const extra = Math.max(0, localCompletedCount - cloudCompletedCount);
+          console.log("[useProgress] pushing local-only lessons to cloud:", { extra, pendingFlag: hasPendingSync(user.id) });
+          await syncToCloudWithRetry(user.id, finalProgress);
         }
       } catch (err) {
         console.error("[useProgress] Failed to load cloud progress:", err);
@@ -444,7 +482,7 @@ export function useProgress() {
 
         saveLocalProgress(newProgress, user?.id);
         if (user) {
-          syncToCloud(user.id, newProgress).catch(console.error);
+          syncToCloudWithRetry(user.id, newProgress).catch(console.error);
         }
 
         return newProgress;
@@ -587,9 +625,27 @@ export function useProgress() {
     [user]
   );
 
-  const resyncFromCloud = useCallback(async (): Promise<{ ok: boolean; count: number; error?: string }> => {
+  const resyncFromCloud = useCallback(async (): Promise<{ ok: boolean; count: number; error?: string; pushed?: number }> => {
     if (!user) return { ok: false, count: 0, error: "Nu ești autentificat." };
     try {
+      // PUSH first: trimite în cloud orice lecție completată local care lipsește acolo.
+      const localProgress = loadLocalProgress(user.id);
+      const { data: existingCloud, error: existingErr } = await supabase
+        .from("completed_lessons")
+        .select("lesson_id, score")
+        .eq("user_id", user.id);
+      let pushed = 0;
+      if (!existingErr) {
+        const cloudMap = new Map((existingCloud ?? []).map((r) => [r.lesson_id, r.score ?? 0]));
+        const toPush = Object.entries(localProgress.completedLessons)
+          .filter(([id, v]) => v.completed && (!cloudMap.has(id) || (v.score ?? 0) > (cloudMap.get(id) ?? 0)));
+        if (toPush.length > 0) {
+          console.log("[useProgress] resync push:", toPush.length, "local-only/better lessons");
+          await syncToCloudWithRetry(user.id, localProgress);
+          pushed = toPush.length;
+        }
+      }
+
       const [profileRes, lessonsRes, skipRes] = await Promise.all([
         supabase
           .from("profiles")
@@ -640,7 +696,7 @@ export function useProgress() {
         return merged;
       });
 
-      return { ok: true, count: Object.keys(cloudCompleted).length };
+      return { ok: true, count: Object.keys(cloudCompleted).length, pushed };
     } catch (err: any) {
       return { ok: false, count: 0, error: err?.message ?? "Eroare necunoscută" };
     }
