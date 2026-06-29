@@ -24,8 +24,8 @@ const ClassManager = ({ onSelectClass }: ClassManagerProps) => {
       toast.success("Clasă creată!");
       setNewName("");
       setShowCreate(false);
-    } catch {
-      toast.error("Eroare la crearea clasei.");
+    } catch (err: any) {
+      toast.error(err?.message || "Eroare la crearea clasei.");
     }
   };
 
