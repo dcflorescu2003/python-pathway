@@ -43,10 +43,9 @@ export function useClassMembers(classId: string | null) {
       const studentIds = data.map((m) => m.student_id);
       if (studentIds.length === 0) return [];
 
-      const { data: profiles } = await supabase
-        .from("profiles")
-        .select("user_id, display_name, last_name, first_name, xp, streak, avatar_url")
-        .in("user_id", studentIds);
+      const { data: profiles } = await (supabase as any).rpc("get_students_for_teacher", {
+        p_student_ids: studentIds,
+      });
 
       return data.map((m) => ({
         ...m,
