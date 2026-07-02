@@ -4,6 +4,7 @@ export interface School {
   city: string;
 }
 
+export const schools: School[] = [
   { id: "lic1", name: "Colegiul „Alexandru cel Bun” Gura Humorului", city: "Gura Humorului" },
   { id: "lic2", name: "Colegiul „Andronic Motrescu” Rădăuți", city: "Rădăuți" },
   { id: "lic3", name: "Colegiul „Emil Negruțiu” Turda", city: "Turda" },
@@ -1512,6 +1513,7 @@ export interface School {
   { id: "lic1506", name: "Liceul „Nicolae Steinhardt”", city: "București, Sector 5" },
   { id: "lic1507", name: "Liceul „Profesia”", city: "București, Sector 3" },
   { id: "lic1508", name: "Liceul „Româno-Finlandez”", city: "București, Sector 6" },
+];
 
 const SCHOOL_STORAGE_KEY = "pyro-school";
 
