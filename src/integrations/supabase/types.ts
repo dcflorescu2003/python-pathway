@@ -1930,6 +1930,7 @@ export type Database = {
               general_code: string
               general_id: string
               general_title: string
+              has_micro: boolean
               mastery: number
               max_sum: number
               score_sum: number
