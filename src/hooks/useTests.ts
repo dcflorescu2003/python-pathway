@@ -256,10 +256,9 @@ export function useTestSubmissions(assignmentId: string | null) {
       // Fetch profiles
       const studentIds = data.map((s) => s.student_id);
       if (studentIds.length === 0) return [];
-      const { data: profiles } = await supabase
-        .from("profiles")
-        .select("user_id, display_name, last_name, first_name")
-        .in("user_id", studentIds);
+      const { data: profiles } = await (supabase as any).rpc("get_students_for_teacher", {
+        p_student_ids: studentIds,
+      });
 
       return data.map((s) => ({
         ...s,
