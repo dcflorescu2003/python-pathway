@@ -1512,8 +1512,6 @@ export interface School {
   { id: "lic1506", name: "Liceul „Nicolae Steinhardt”", city: "București" },
   { id: "lic1507", name: "Liceul „Profesia”", city: "București" },
   { id: "lic1508", name: "Liceul „Româno-Finlandez”", city: "București" },
-
-export function getSelectedSchool(): string | null {
   return localStorage.getItem(SCHOOL_STORAGE_KEY);
 }
 
