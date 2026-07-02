@@ -24,6 +24,7 @@ type Row = {
   score_sum: number;
   max_sum: number;
   mastery: number | null;
+  has_micro: boolean;
 };
 
 const masteryLabel = (m: number | null) => {
@@ -133,14 +134,16 @@ const CompetencyProfileCard = ({
       map.get(r.general_id)!.rows.push(r);
     }
     return Array.from(map.values()).map((g) => {
-      const score = g.rows.reduce((s, r) => s + Number(r.score_sum || 0), 0);
-      const max = g.rows.reduce((s, r) => s + Number(r.max_sum || 0), 0);
-      const attempts = g.rows.reduce((s, r) => s + Number(r.attempts || 0), 0);
-      // Mastery = average of CS percentages, with untouched CS counted as 0%.
-      // This prevents a single 100% CS from making the whole CG appear mastered.
-      const totalCs = g.rows.length;
-      const anyData = g.rows.some((r) => Number(r.max_sum) > 0);
-      const sumPct = g.rows.reduce(
+      // Only CS that have microcompetencies defined in the platform are
+      // considered assessable. CS without micros cannot receive any score
+      // and would unfairly drag the CG average down to 0%.
+      const assessable = g.rows.filter((r) => r.has_micro);
+      const score = assessable.reduce((s, r) => s + Number(r.score_sum || 0), 0);
+      const max = assessable.reduce((s, r) => s + Number(r.max_sum || 0), 0);
+      const attempts = assessable.reduce((s, r) => s + Number(r.attempts || 0), 0);
+      const totalCs = assessable.length;
+      const anyData = assessable.some((r) => Number(r.max_sum) > 0);
+      const sumPct = assessable.reduce(
         (s, r) => s + (Number(r.max_sum) > 0 ? Number(r.score_sum) / Number(r.max_sum) : 0),
         0
       );
@@ -301,10 +304,13 @@ const CompetencyProfileCard = ({
                                 <div className="px-3 pb-3 space-y-1.5">
                                   {g.rows.map((r) => {
                                     const cm = r.max_sum > 0 ? Number(r.score_sum) / Number(r.max_sum) : null;
+                                    const unassessable = !r.has_micro;
                                     return (
                                       <div
                                         key={r.specific_id}
-                                        className="flex items-center gap-2 rounded-md bg-background/60 px-2 py-1.5"
+                                        className={`flex items-center gap-2 rounded-md px-2 py-1.5 ${
+                                          unassessable ? "bg-background/30 opacity-60" : "bg-background/60"
+                                        }`}
                                       >
                                         <Badge variant="outline" className="font-mono text-[9px] shrink-0">
                                           {r.specific_code}
@@ -312,15 +318,24 @@ const CompetencyProfileCard = ({
                                         <span className="flex-1 text-[11px] text-foreground/90 truncate">
                                           {r.specific_title}
                                         </span>
-                                        <div className="flex items-center gap-1.5 w-28 shrink-0">
-                                          <Progress
-                                            value={cm !== null ? cm * 100 : 0}
-                                            className="h-1 flex-1"
-                                          />
-                                          <span className="text-[9px] font-mono text-muted-foreground w-7 text-right">
-                                            {cm !== null ? `${Math.round(cm * 100)}%` : "—"}
+                                        {unassessable ? (
+                                          <span
+                                            className="text-[9px] text-muted-foreground italic shrink-0"
+                                            title="Această competență nu are încă exerciții evaluabile în platformă."
+                                          >
+                                            Neevaluat
                                           </span>
-                                        </div>
+                                        ) : (
+                                          <div className="flex items-center gap-1.5 w-28 shrink-0">
+                                            <Progress
+                                              value={cm !== null ? cm * 100 : 0}
+                                              className="h-1 flex-1"
+                                            />
+                                            <span className="text-[9px] font-mono text-muted-foreground w-7 text-right">
+                                              {cm !== null ? `${Math.round(cm * 100)}%` : "—"}
+                                            </span>
+                                          </div>
+                                        )}
                                       </div>
                                     );
                                   })}
