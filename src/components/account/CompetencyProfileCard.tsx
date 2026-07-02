@@ -304,10 +304,13 @@ const CompetencyProfileCard = ({
                                 <div className="px-3 pb-3 space-y-1.5">
                                   {g.rows.map((r) => {
                                     const cm = r.max_sum > 0 ? Number(r.score_sum) / Number(r.max_sum) : null;
+                                    const unassessable = !r.has_micro;
                                     return (
                                       <div
                                         key={r.specific_id}
-                                        className="flex items-center gap-2 rounded-md bg-background/60 px-2 py-1.5"
+                                        className={`flex items-center gap-2 rounded-md px-2 py-1.5 ${
+                                          unassessable ? "bg-background/30 opacity-60" : "bg-background/60"
+                                        }`}
                                       >
                                         <Badge variant="outline" className="font-mono text-[9px] shrink-0">
                                           {r.specific_code}
@@ -315,15 +318,24 @@ const CompetencyProfileCard = ({
                                         <span className="flex-1 text-[11px] text-foreground/90 truncate">
                                           {r.specific_title}
                                         </span>
-                                        <div className="flex items-center gap-1.5 w-28 shrink-0">
-                                          <Progress
-                                            value={cm !== null ? cm * 100 : 0}
-                                            className="h-1 flex-1"
-                                          />
-                                          <span className="text-[9px] font-mono text-muted-foreground w-7 text-right">
-                                            {cm !== null ? `${Math.round(cm * 100)}%` : "—"}
+                                        {unassessable ? (
+                                          <span
+                                            className="text-[9px] text-muted-foreground italic shrink-0"
+                                            title="Această competență nu are încă exerciții evaluabile în platformă."
+                                          >
+                                            Neevaluat
                                           </span>
-                                        </div>
+                                        ) : (
+                                          <div className="flex items-center gap-1.5 w-28 shrink-0">
+                                            <Progress
+                                              value={cm !== null ? cm * 100 : 0}
+                                              className="h-1 flex-1"
+                                            />
+                                            <span className="text-[9px] font-mono text-muted-foreground w-7 text-right">
+                                              {cm !== null ? `${Math.round(cm * 100)}%` : "—"}
+                                            </span>
+                                          </div>
+                                        )}
                                       </div>
                                     );
                                   })}
