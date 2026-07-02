@@ -1939,6 +1939,18 @@ export type Database = {
               specific_title: string
             }[]
           }
+      get_students_for_teacher: {
+        Args: { p_student_ids: string[] }
+        Returns: {
+          avatar_url: string
+          display_name: string
+          first_name: string
+          last_name: string
+          streak: number
+          user_id: string
+          xp: number
+        }[]
+      }
       get_test_items_for_student: {
         Args: { p_assignment_id: string; p_variant: string }
         Returns: {
