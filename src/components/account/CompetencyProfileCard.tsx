@@ -134,14 +134,16 @@ const CompetencyProfileCard = ({
       map.get(r.general_id)!.rows.push(r);
     }
     return Array.from(map.values()).map((g) => {
-      const score = g.rows.reduce((s, r) => s + Number(r.score_sum || 0), 0);
-      const max = g.rows.reduce((s, r) => s + Number(r.max_sum || 0), 0);
-      const attempts = g.rows.reduce((s, r) => s + Number(r.attempts || 0), 0);
-      // Mastery = average of CS percentages, with untouched CS counted as 0%.
-      // This prevents a single 100% CS from making the whole CG appear mastered.
-      const totalCs = g.rows.length;
-      const anyData = g.rows.some((r) => Number(r.max_sum) > 0);
-      const sumPct = g.rows.reduce(
+      // Only CS that have microcompetencies defined in the platform are
+      // considered assessable. CS without micros cannot receive any score
+      // and would unfairly drag the CG average down to 0%.
+      const assessable = g.rows.filter((r) => r.has_micro);
+      const score = assessable.reduce((s, r) => s + Number(r.score_sum || 0), 0);
+      const max = assessable.reduce((s, r) => s + Number(r.max_sum || 0), 0);
+      const attempts = assessable.reduce((s, r) => s + Number(r.attempts || 0), 0);
+      const totalCs = assessable.length;
+      const anyData = assessable.some((r) => Number(r.max_sum) > 0);
+      const sumPct = assessable.reduce(
         (s, r) => s + (Number(r.max_sum) > 0 ? Number(r.score_sum) / Number(r.max_sum) : 0),
         0
       );
