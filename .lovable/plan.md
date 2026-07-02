@@ -1,75 +1,49 @@
 ## Obiectiv
 
-Ajungem la 100% real în profilul de competențe prin tag-uirea explicită a fiecărei microcompetențe pe exerciții din capitolele corecte. Merg CS cu CS; pentru fiecare îți listez micro-urile, tu îmi dai capitolele, eu fac inserările în `item_competencies`.
+Uniformizez cele ~1500 de licee din `src/data/schools.ts` astfel încât toate să aibă același stil vizual când apar în selectoare (elev la onboarding, profesor la wizard, căutare etc.).
 
-## Capitole disponibile
+## Probleme actuale
 
-```text
-ch-1778012338147  Prelucrări numerice   (45 lecții)
-ch1               Recapitulare & Fundamente (35)
-ch3               Liste – Organizare    (32)
-ch4               Generare și Sortare   (25)
-ch5               Funcții și POO        (31)
-ch6               Fișiere și Interfețe  (24)
-```
+Rulând pe date reale găsesc inconsistențe majore:
+- **Majuscule**: aproape tot fișierul e ALL CAPS ("COLEGIUL NAȚIONAL...").
+- **Ghilimele mixte**: `\"...\"`, `„..."`, `'...'`, `’...’` — 4 stiluri diferite.
+- **Diacritice vechi**: `ş/ţ` (cu sedilă) amestecate cu `ș/ț` (cu virgulă) — mai ales în câmpul `city` (ex: "Iaşi", "Bucureşti", "Ploieşti").
+- **Prefixe redundante în nume**: `MUNICIPIUL X`, `ORAȘUL X`, `COMUNA X` la sfârșit.
+- **Virgule inconsistente** înainte de localitate: uneori cu virgulă, uneori fără.
+- **Orașe ciudate**: câteva intrări au `city` greșit (ex. "Gheaba" pentru un colegiu din Măneciu) — le las neatinse, doar normalizez format.
 
-Când îmi zici „la capitolele X, Y", tag-uiesc micro respectiv pe **toate exercițiile** din lecțiile acelor capitole care se potrivesc tematic (sau, dacă preferi, pe *toate* exercițiile din capitol — spune-mi care variantă). Confirmă și `weight`-ul implicit (propun `1.0`).
+## Ce fac
 
-## Ordinea propusă (prioritate CS fără micro / cu acoperire slabă)
+Rescriu `src/data/schools.ts` printr-un script one-shot care aplică următoarele reguli, păstrând **id-urile neschimbate** (ca să nu invalidez `profiles.school_id` existent în DB):
 
-**Runda 1 — CS goale (adăugăm micro-uri noi + le tag-uim):**
+### Reguli pentru `name`
+1. **Title Case românesc**: fiecare cuvânt cu inițială majusculă, cu excepția cuvintelor de legătură scurte (`de`, `din`, `și`, `cu`, `pe`, `la`, `a`, `al`, `ale`, `ai`) când nu sunt primul cuvânt.
+2. **Ghilimele unificate** la stilul românesc `„...”` pentru numele proprii (Colegiul Național „Spiru Haret").
+3. **Diacritice moderne** peste tot: `ș`, `ț` (nu `ş`, `ţ`); `Ș`, `Ț`.
+4. **Curăț prefixele administrative** redundante de la coadă: `, MUNICIPIUL X` / `, ORAȘUL X` / `, COMUNA X` / `, SATUL X` — le elimin dacă `X` apare deja evident, altfel păstrez doar numele localității fără prefix.
+5. **Elimin virgula finală** înainte de localitate când e trivial (păstrez spațiu simplu).
+6. **Abrevieri păstrate uppercase**: `UTCB`, `USV`, `UCECOM`, `CFR`, `IT`, `TIC`, `PROF. UNIV. DR.` normalizat cu puncte și spații.
 
-1. **CS 1.2 — Identifică algoritmi specializați** (0 micro)
-2. **CS 2.1 — Explică organizarea datelor** (0 micro)
-3. **CS 2.2 — Explică etapele algoritmilor** (0 micro)
-4. **CS 4.4 — Analizează elementele de limbaj** (0 micro)
-5. **CS 4.5 — Analizează subprogramele** (0 micro)
-6. **CS 5.1 — Argumentează alegerea modelelor de date** (0 micro)
-7. **CS 5.3 — Evaluează algoritmi modulari** (0 micro)
-8. **CS 5.5 — Evaluează programe cu subprograme** (0 micro)
+### Reguli pentru `city`
+1. Diacritice moderne (`Iași`, `București`, `Ploiești`, `Bușteni`, `Mediaș`, `Constanța`, `Galați`, `Târgu Mureș`, `Petroșani`, `Făgăraș` etc.).
+2. Sectoarele Bucureștiului: format uniform `București, Sector N`.
+3. Title Case standard, fără prefixe (`Municipiul`, `Orașul`, `Comuna` scoase).
 
-Pentru fiecare din acestea, îți propun 1–3 micro-uri noi cu titlu; tu confirmi textul și îmi dai capitolele. Placeholder-ele M101–M108 pot fi înlocuite/redenumite.
+### Actualizări colaterale
+- `filterAndSortSchools` deja normalizează pentru căutare (diacritic-insensitive), deci nu necesită modificări.
+- Regex-ul `isBucharestSchool` (`/bucure/i`) continuă să funcționeze după normalizare.
+- Nu ating baza de date — `profiles.school_id` folosește id-uri (`lic1`...`lic1500`) care rămân identice.
 
-**Runda 2 — CS cu un singur micro (fragile):**
+## Ce NU fac (dacă nu confirmi)
 
-9. CS 1.5 (M82), CS 2.5 (M87), CS 3.3 (M9), CS 4.2 (M80), CS 6.3 (M90), CS 6.5 (M83)
-
-**Runda 3 — CS cu acoperire slabă pe micro-uri cheie** (ex. M6, M10, M14, M4, M11 — sub 12 taguri fiecare).
-
-**Runda 4** — restul, pentru densitate uniformă.
-
-## Cum lucrăm concret (o rundă = un mesaj)
-
-Eu:
-
-> **CS 1.2 — Identifică algoritmi specializați.** Propun 2 micro-uri:
->
-> - M101: „Recunoaște un algoritm de prelucrare de cifre (sumă, oglindit, prim etc.)."
-> - M102: „Recunoaște un algoritm clasic pe listă (sumă/min/max, căutare, sortare)."
-> La ce capitole le tag-uim?
-
-Tu:
-
-> M101 → ch-1778012338147; M102 → ch3, ch4
-
-Eu:
-
-> Aplicat. Continuăm cu CS 2.1?
+- Nu corectez erori factuale (city greșit tip "Gheaba" pentru Măneciu) — doar format.
+- Nu adaug/șterg licee.
+- Nu schimb `id`-urile.
 
 ## Detalii tehnice
 
-- Modific `microcompetencies` doar prin `supabase--migration` (INSERT + trigger recalc dacă e cazul).
-- Tag-urile intră în `item_competencies (item_type, item_id, microcompetency_id, weight, created_by)` cu `item_type='exercise'` (lecții) și, dacă vrei și pentru probleme/test-items, îmi zici.
-- După fiecare rundă, recalculez scorurile userului tău (`backfill_competency_scores`) ca să vezi impactul imediat.
+Fișierul are 1530 linii. Voi rula un script Node local care parsează array-ul, aplică transformările și rescrie fișierul cu formatare Prettier-compatibilă (câte un obiect pe linie, la fel ca acum). Verific apoi cu `tsgo` că build-ul trece și că `filterAndSortSchools` încă returnează Bucureștiul primul într-un test rapid.
 
-## Întrebări de confirmat înainte de start
+## Fișiere modificate
 
-1. Tag-uim pe **toate exercițiile** din capitolele indicate, sau vrei să selectez doar exercițiile cu cuvinte-cheie potrivite (ex. „listă", „prim")?
-2. `weight = 1.0` pentru toate, sau vrei ponderare (ex. 0.5 când e tangențial)?
-3. Includem și `problems` / `predefined_test_items` sau doar `exercises` (lecțiile)?
-
-Dacă răspunzi la cele 3 întrebări (sau spui „mergi cu default: toate exercițiile, weight 1, doar exercises"), pornesc cu **CS 1.2**.  
-  
-1. Nu alegem sa zicem maxim 20-30% din exercitii din 30% din lectiile din capitolele pe care le indic pentru fiecare CS. Nu trebuie sa studiez cerintele pentru a plasa microcompetentele  
-2. 1  
-3. includem si problemele  
+- `src/data/schools.ts` — rescris integral cu date normalizate (id-uri păstrate).
