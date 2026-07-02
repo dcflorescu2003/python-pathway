@@ -1,41 +1,75 @@
-# Fix profil competențe — CS fără microcompetențe
+## Obiectiv
 
-## Diagnostic
+Ajungem la 100% real în profilul de competențe prin tag-uirea explicită a fiecărei microcompetențe pe exerciții din capitolele corecte. Merg CS cu CS; pentru fiecare îți listez micro-urile, tu îmi dai capitolele, eu fac inserările în `item_competencies`.
 
-Pentru `dcflorescu2003@gmail.com` datele reale (SUM(score)/SUM(max) pe CS) sunt:
-CS 1.1=99%, 1.3=93%, 1.4=96%, 1.5=98%; CS 2.3=100%, 2.4=97%, 2.5=100%; toate CG3 96–99%; CG4: 4.1=99%, 4.2=100%, 4.3=100%; CG5: 5.2=97%, 5.4=98%; toate CG6 94–99%.
+## Capitole disponibile
 
-Cauza scorurilor mici pe CG este formula din `CompetencyProfileCard.tsx` (mastery CG = media procentelor CS, cu CS neatinse = 0%). Sunt **8 CS de grad 9 fără nicio microcompetență definită** în DB — ele nu pot primi scor niciodată dar contează 0% în numitor: CS 1.2, 2.1, 2.2, 4.4, 4.5, 5.1, 5.3, 5.5. Recalculând cu ele numărate 0% se obține exact 77 / 59 / 97 / 60 / 39 / 98% — identic cu poza.
+```text
+ch-1778012338147  Prelucrări numerice   (45 lecții)
+ch1               Recapitulare & Fundamente (35)
+ch3               Liste – Organizare    (32)
+ch4               Generare și Sortare   (25)
+ch5               Funcții și POO        (31)
+ch6               Fișiere și Interfețe  (24)
+```
 
-## Ce facem
+Când îmi zici „la capitolele X, Y", tag-uiesc micro respectiv pe **toate exercițiile** din lecțiile acelor capitole care se potrivesc tematic (sau, dacă preferi, pe *toate* exercițiile din capitol — spune-mi care variantă). Confirmă și `weight`-ul implicit (propun `1.0`).
 
-### A. Fix afișare (cod + RPC)
+## Ordinea propusă (prioritate CS fără micro / cu acoperire slabă)
 
-1. **Extindem `get_student_competency_profile`** să întoarcă `has_micro boolean` (există sau nu microcompetențe pentru CS-ul respectiv).
-2. **`CompetencyProfileCard.tsx`** — la agregarea CG:
-   - CS cu `has_micro=false` → **exclus** din numitor + badge „Neevaluat în platformă" (culoare muted).
-   - CS cu `has_micro=true` dar `max_sum=0` → rămâne 0% (chiar nu a fost atins de elev).
-   - Overall (procentul din antetul cardului) calculat pe aceeași bază.
+**Runda 1 — CS goale (adăugăm micro-uri noi + le tag-uim):**
 
-### B. Seed microcompetențe lipsă (nu tagging)
+1. **CS 1.2 — Identifică algoritmi specializați** (0 micro)
+2. **CS 2.1 — Explică organizarea datelor** (0 micro)
+3. **CS 2.2 — Explică etapele algoritmilor** (0 micro)
+4. **CS 4.4 — Analizează elementele de limbaj** (0 micro)
+5. **CS 4.5 — Analizează subprogramele** (0 micro)
+6. **CS 5.1 — Argumentează alegerea modelelor de date** (0 micro)
+7. **CS 5.3 — Evaluează algoritmi modulari** (0 micro)
+8. **CS 5.5 — Evaluează programe cu subprograme** (0 micro)
 
-Migration ce inserează câte 1 microcompetență-placeholder pentru fiecare din cele 8 CS goale, folosind titlul CS-ului. Categorie preluată din litera CG (A=Identificare, B=Explicare, C=Utilizare, D=Analiză, E=Evaluare, F=Elaborare — best-guess din datele existente; verific rapid distribuția la commit). Codurile M continuă seria existentă (`M` + max+1..max+8). `sort_order` = max+1 în cadrul CS-ului.
+Pentru fiecare din acestea, îți propun 1–3 micro-uri noi cu titlu; tu confirmi textul și îmi dai capitolele. Placeholder-ele M101–M108 pot fi înlocuite/redenumite.
 
-Efect imediat după seed: CS-urile respective apar în profil cu 0% (nu mai sunt „—"), iar CG-urile scad ușor pentru elevi care au avansat, dar formula devine consistentă. Tagging pe exerciții existente rămâne o etapă separată (nu în acest turn).
+**Runda 2 — CS cu un singur micro (fragile):**
+
+9. CS 1.5 (M82), CS 2.5 (M87), CS 3.3 (M9), CS 4.2 (M80), CS 6.3 (M90), CS 6.5 (M83)
+
+**Runda 3 — CS cu acoperire slabă pe micro-uri cheie** (ex. M6, M10, M14, M4, M11 — sub 12 taguri fiecare).
+
+**Runda 4** — restul, pentru densitate uniformă.
+
+## Cum lucrăm concret (o rundă = un mesaj)
+
+Eu:
+
+> **CS 1.2 — Identifică algoritmi specializați.** Propun 2 micro-uri:
+>
+> - M101: „Recunoaște un algoritm de prelucrare de cifre (sumă, oglindit, prim etc.)."
+> - M102: „Recunoaște un algoritm clasic pe listă (sumă/min/max, căutare, sortare)."
+> La ce capitole le tag-uim?
+
+Tu:
+
+> M101 → ch-1778012338147; M102 → ch3, ch4
+
+Eu:
+
+> Aplicat. Continuăm cu CS 2.1?
 
 ## Detalii tehnice
 
-- Migration:
-  - `CREATE OR REPLACE FUNCTION public.get_student_competency_profile(p_user_id, p_mode)` — adaug coloana `has_micro boolean` = `BOOL_OR(m.id IS NOT NULL)` per CS (folosind același LEFT JOIN existent).
-  - `INSERT INTO public.microcompetencies (code, title, description, specific_id, category, grade, sort_order)` pentru cele 8 CS. Nu ating tabela `item_competencies`.
-- Client (`src/components/account/CompetencyProfileCard.tsx`):
-  - Adaug `has_micro` în `Row`.
-  - În `generals` memo: filtrez `rowsAssessable = g.rows.filter(r => r.has_micro)`; `totalCs = rowsAssessable.length`; suma peste `rowsAssessable`.
-  - În render CS-uri: pentru `!r.has_micro` afișez badge „Neevaluat" și bară dezactivată în loc de 0%.
-- Fără modificări în `useCompetencies.ts` sau în `recalculate_competency_scores`.
+- Modific `microcompetencies` doar prin `supabase--migration` (INSERT + trigger recalc dacă e cazul).
+- Tag-urile intră în `item_competencies (item_type, item_id, microcompetency_id, weight, created_by)` cu `item_type='exercise'` (lecții) și, dacă vrei și pentru probleme/test-items, îmi zici.
+- După fiecare rundă, recalculez scorurile userului tău (`backfill_competency_scores`) ca să vezi impactul imediat.
 
-## Ce NU se schimbă acum
+## Întrebări de confirmat înainte de start
 
-- Nu se modifică datele agregate ale elevilor (`student_competency_scores`).
-- Nu se face tagging pe exerciții/probleme existente pentru CS-urile nou-populate — micro-urile rămân la 0% până când etichetăm itemi (turn separat).
-- Nu se atinge modul `tests_only` / `self_only` decât prin coloana `has_micro` (aceeași corecție se aplică tuturor modurilor).
+1. Tag-uim pe **toate exercițiile** din capitolele indicate, sau vrei să selectez doar exercițiile cu cuvinte-cheie potrivite (ex. „listă", „prim")?
+2. `weight = 1.0` pentru toate, sau vrei ponderare (ex. 0.5 când e tangențial)?
+3. Includem și `problems` / `predefined_test_items` sau doar `exercises` (lecțiile)?
+
+Dacă răspunzi la cele 3 întrebări (sau spui „mergi cu default: toate exercițiile, weight 1, doar exercises"), pornesc cu **CS 1.2**.  
+  
+1. Nu alegem sa zicem maxim 20-30% din exercitii din 30% din lectiile din capitolele pe care le indic pentru fiecare CS. Nu trebuie sa studiez cerintele pentru a plasa microcompetentele  
+2. 1  
+3. includem si problemele  
