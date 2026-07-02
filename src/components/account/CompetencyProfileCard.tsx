@@ -24,6 +24,7 @@ type Row = {
   score_sum: number;
   max_sum: number;
   mastery: number | null;
+  has_micro: boolean;
 };
 
 const masteryLabel = (m: number | null) => {
