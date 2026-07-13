@@ -123,7 +123,10 @@ const TakeTestPage = () => {
         // If teacher hasn't cleared an "interrupted" submission and time already ran out,
         // finalize automatically instead of letting the student open it again forever.
         if (existingSub && (existingSub as any).status === "interrupted") {
-          toast.info("Continuăm testul întrerupt — răspunsurile tale sunt salvate.");
+          toast.info(
+            "Reluăm testul întrerupt. Răspunsurile tale sunt salvate și cronometrul continuă de unde a rămas. Dacă timpul a expirat, roagă profesorul să apese „Permite continuarea” în pagina de rezultate.",
+            { duration: 8000 }
+          );
         }
 
         // Assign random variant (or reuse existing)
