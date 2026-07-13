@@ -396,7 +396,10 @@ const TakeTestPage = () => {
       // Network / server failure — preserve everything so the student can resume later
       try { if (submissionId) await saveSubmissionDraft(submissionId, answersRef.current); } catch {}
       if (submissionId) markSubmissionInterrupted(submissionId);
-      toast.error("Eroare la trimiterea testului. Răspunsurile au fost salvate — poți relua când conexiunea revine.");
+      toast.error(
+        "Nu am putut trimite testul (probabil conexiune slabă). Răspunsurile sunt salvate pe server. Verifică internetul și încearcă din nou. Dacă timpul a expirat între timp, roagă profesorul să apese „Permite continuarea” în pagina de rezultate ca să poți finaliza.",
+        { duration: 10000 }
+      );
       setSubmitted(false);
       submitInFlightRef.current = false;
     }
