@@ -65,6 +65,7 @@ const TestBuilder = ({ onBack, editTestId, teacherStatus }: TestBuilderProps) =>
   const [items, setItems] = useState<TestItem[]>([]);
   const [allowRunTests, setAllowRunTests] = useState(false);
   const [requireFullscreen, setRequireFullscreen] = useState(false);
+  const [antiCheatMode, setAntiCheatMode] = useState<string>("normal");
   const [editLoaded, setEditLoaded] = useState(false);
   const [aiGradingItemIds, setAiGradingItemIds] = useState<string[]>([]);
   const [officePoints, setOfficePoints] = useState(10);
