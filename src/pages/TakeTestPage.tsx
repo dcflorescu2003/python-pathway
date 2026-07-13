@@ -390,11 +390,20 @@ const TakeTestPage = () => {
       });
       toast.success("Test trimis! Notarea se face automat.");
     } catch {
-      toast.error("Eroare la trimiterea testului.");
+      // Network / server failure — preserve everything so the student can resume later
+      try { if (submissionId) await saveSubmissionDraft(submissionId, answersRef.current); } catch {}
+      if (submissionId) markSubmissionInterrupted(submissionId);
+      toast.error("Eroare la trimiterea testului. Răspunsurile au fost salvate — poți relua când conexiunea revine.");
       setSubmitted(false);
       submitInFlightRef.current = false;
     }
   }, [submissionId, submitted, items, answers, submitTest]);
+
+  // Anti-cheat mode: strict = 1s + final submit; normal = 3s + final submit;
+  // relaxed = 5s + save-as-interrupted (student can resume).
+  const antiCheatMode: "strict" | "normal" | "relaxed" =
+    (testInfo?.tests?.anti_cheat_mode as any) || "normal";
+  const leaveGraceMs = antiCheatMode === "strict" ? 1000 : antiCheatMode === "normal" ? 3000 : 5000;
 
   const handleSubmitRef = useRef(handleSubmit);
   useEffect(() => { handleSubmitRef.current = handleSubmit; }, [handleSubmit]);
