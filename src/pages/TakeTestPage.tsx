@@ -85,10 +85,10 @@ const TakeTestPage = () => {
     if (!assignmentId || !user) return;
     const load = async () => {
       try {
-        // Get assignment + test info
+        // Get assignment + test info (include anti_cheat_mode)
         const { data: assignment } = await supabase
           .from("test_assignments")
-          .select("*, tests(id, title, time_limit_minutes, variant_mode, allow_run_tests, require_fullscreen)")
+          .select("*, tests(id, title, time_limit_minutes, variant_mode, allow_run_tests, require_fullscreen, anti_cheat_mode)")
           .eq("id", assignmentId)
           .single();
 
@@ -106,7 +106,7 @@ const TakeTestPage = () => {
 
         setTestInfo(assignment);
 
-        // Check existing submission
+        // Check existing submission (may be in_progress / interrupted / submitted)
         const { data: existingSub } = await supabase
           .from("test_submissions")
           .select("*")
@@ -120,7 +120,13 @@ const TakeTestPage = () => {
           return;
         }
 
-        // Assign random variant
+        // If teacher hasn't cleared an "interrupted" submission and time already ran out,
+        // finalize automatically instead of letting the student open it again forever.
+        if (existingSub && (existingSub as any).status === "interrupted") {
+          toast.info("Continuăm testul întrerupt — răspunsurile tale sunt salvate.");
+        }
+
+        // Assign random variant (or reuse existing)
         const variant = Math.random() < 0.5 ? "A" : "B";
         let subId: string;
 
@@ -133,6 +139,12 @@ const TakeTestPage = () => {
         setSubmissionId(subId);
 
         const usedVariant = existingSub?.variant || variant;
+
+        // Hydrate answers from server-side draft (survives device swaps / cleared localStorage)
+        const serverDraft = (existingSub as any)?.draft_answers;
+        if (serverDraft && typeof serverDraft === "object") {
+          setAnswers((prev) => ({ ...serverDraft, ...prev }));
+        }
 
         // Get test items via RPC (bypasses RLS)
         const { data: testItems, error: rpcError } = await supabase
@@ -150,9 +162,43 @@ const TakeTestPage = () => {
           orderedItems = [...testItems].sort(() => Math.random() - 0.5);
         }
 
-        // Fetch exercise/problem data for each item
-        const enrichedItems: TestItemData[] = [];
+        // Bucket source_ids by type for batched fetching
+        const exerciseIds: string[] = [];
+        const problemIds: string[] = [];
+        const evalIds: string[] = [];
         for (const item of orderedItems) {
+          const isEvalBank = typeof item.source_id === "string" && item.source_id.startsWith("eval-");
+          if (!item.source_id) continue;
+          if (isEvalBank) evalIds.push(item.source_id);
+          else if (item.source_type === "exercise") exerciseIds.push(item.source_id);
+          else if (item.source_type === "problem") problemIds.push(item.source_id);
+        }
+
+        // Fetch all in parallel
+        const [exRes, probRes, evalResArr] = await Promise.all([
+          exerciseIds.length
+            ? supabase.from("exercises").select("*").in("id", exerciseIds)
+            : Promise.resolve({ data: [] as any[] } as any),
+          problemIds.length
+            ? supabase
+                .from("problems")
+                .select("id, title, description, test_cases, hint, difficulty")
+                .in("id", problemIds)
+            : Promise.resolve({ data: [] as any[] } as any),
+          // Eval bank RPC is per-id; still parallelize
+          Promise.all(
+            evalIds.map((id) =>
+              supabase.rpc("get_eval_exercise_for_student", { p_id: id }).then((r) => ({ id, rows: r.data as any[] }))
+            )
+          ),
+        ]);
+        const exMap = new Map<string, any>((exRes.data || []).map((e: any) => [e.id, e]));
+        const probMap = new Map<string, any>((probRes.data || []).map((p: any) => [p.id, p]));
+        const evalMap = new Map<string, any>(
+          (evalResArr as any[]).map((r) => [r.id, Array.isArray(r.rows) ? r.rows[0] : null])
+        );
+
+        const enrichedItems: TestItemData[] = orderedItems.map((item) => {
           const enriched: TestItemData = {
             id: item.id,
             sort_order: item.sort_order,
@@ -160,34 +206,16 @@ const TakeTestPage = () => {
             source_id: item.source_id,
             points: item.points,
           };
-
-          // Eval bank items have ids prefixed with "eval-" and live in eval_exercises
-          // (problems imported into the bank are stored there with type='problem').
           const isEvalBank = typeof item.source_id === "string" && item.source_id.startsWith("eval-");
 
           if (item.source_type === "exercise" && item.source_id && !isEvalBank) {
-            const { data: ex } = await supabase
-              .from("exercises")
-              .select("*")
-              .eq("id", item.source_id)
-              .single();
-            enriched.exercise_data = ex;
+            enriched.exercise_data = exMap.get(item.source_id);
           } else if (item.source_type === "problem" && item.source_id && !isEvalBank) {
-            const { data: prob } = await supabase
-              .from("problems")
-              .select("id, title, description, test_cases, hint, difficulty")
-              .eq("id", item.source_id)
-              .single();
-            enriched.problem_data = prob;
+            enriched.problem_data = probMap.get(item.source_id);
           } else if (isEvalBank && item.source_id) {
-            // Students must NOT receive the `solution` column. Use the
-            // SECURITY DEFINER RPC which returns the exercise without it.
-            const { data: rows } = await supabase
-              .rpc("get_eval_exercise_for_student", { p_id: item.source_id });
-            const ev = Array.isArray(rows) ? rows[0] : null;
+            const ev = evalMap.get(item.source_id);
             if (ev) {
               if (ev.type === "problem") {
-                // Treat eval-bank problem as a Problem item
                 enriched.source_type = "problem";
                 enriched.problem_data = {
                   id: ev.id,
@@ -203,31 +231,31 @@ const TakeTestPage = () => {
               }
             }
           } else if (item.source_type === "custom") {
-            // RPC already returns custom data fields inline
             enriched.exercise_data = {
-              type: item.item_type,
-              question: item.question,
-              options: item.options,
-              blanks: item.blanks,
-              lines: item.lines,
-              pairs: item.pairs,
-              statement: item.statement,
-              code_template: item.code_template,
+              type: (item as any).item_type,
+              question: (item as any).question,
+              options: (item as any).options,
+              blanks: (item as any).blanks,
+              lines: (item as any).lines,
+              pairs: (item as any).pairs,
+              statement: (item as any).statement,
+              code_template: (item as any).code_template,
             };
           }
 
-          enrichedItems.push(enriched);
-        }
+          return enriched;
+        });
 
         setItems(enrichedItems);
 
-        // Set timer
+        // Set timer using started_at (survives resume: remaining time is preserved automatically)
         if (assignment.tests.time_limit_minutes) {
           const startedAt = existingSub?.started_at || new Date().toISOString();
           const elapsed = Math.floor((Date.now() - new Date(startedAt).getTime()) / 1000);
           const total = assignment.tests.time_limit_minutes * 60;
           setTimeLeft(Math.max(0, total - elapsed));
         }
+
 
         setLoading(false);
       } catch (err) {
