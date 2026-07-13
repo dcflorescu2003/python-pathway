@@ -354,6 +354,7 @@ const TestBuilder = ({ onBack, editTestId, teacherStatus }: TestBuilderProps) =>
         setVariantMode(test.variant_mode);
         setAllowRunTests(test.allow_run_tests ?? false);
         setRequireFullscreen((test as any).require_fullscreen ?? false);
+        setAntiCheatMode((test as any).anti_cheat_mode ?? "normal");
         setAiGradingItemIds((test as any).ai_grading_item_ids ?? []);
         setOfficePoints((test as any).office_points ?? 10);
         if (test.time_limit_minutes) {
