@@ -111,6 +111,7 @@ export function useUpdateTest() {
       items: TestItem[];
       allow_run_tests?: boolean;
       require_fullscreen?: boolean;
+      anti_cheat_mode?: string;
       ai_grading_item_ids?: string[];
       office_points?: number;
     }) => {
@@ -123,6 +124,7 @@ export function useUpdateTest() {
           variant_mode: params.variant_mode,
           allow_run_tests: params.allow_run_tests ?? false,
           require_fullscreen: params.require_fullscreen ?? false,
+          anti_cheat_mode: params.anti_cheat_mode ?? "normal",
           ai_grading_item_ids: params.ai_grading_item_ids ?? [],
           office_points: params.office_points ?? 10,
         } as any)
