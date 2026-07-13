@@ -65,6 +65,7 @@ const TestBuilder = ({ onBack, editTestId, teacherStatus }: TestBuilderProps) =>
   const [items, setItems] = useState<TestItem[]>([]);
   const [allowRunTests, setAllowRunTests] = useState(false);
   const [requireFullscreen, setRequireFullscreen] = useState(false);
+  const [antiCheatMode, setAntiCheatMode] = useState<string>("normal");
   const [editLoaded, setEditLoaded] = useState(false);
   const [aiGradingItemIds, setAiGradingItemIds] = useState<string[]>([]);
   const [officePoints, setOfficePoints] = useState(10);
@@ -353,6 +354,7 @@ const TestBuilder = ({ onBack, editTestId, teacherStatus }: TestBuilderProps) =>
         setVariantMode(test.variant_mode);
         setAllowRunTests(test.allow_run_tests ?? false);
         setRequireFullscreen((test as any).require_fullscreen ?? false);
+        setAntiCheatMode((test as any).anti_cheat_mode ?? "normal");
         setAiGradingItemIds((test as any).ai_grading_item_ids ?? []);
         setOfficePoints((test as any).office_points ?? 10);
         if (test.time_limit_minutes) {
@@ -426,6 +428,7 @@ const TestBuilder = ({ onBack, editTestId, teacherStatus }: TestBuilderProps) =>
           items,
           allow_run_tests: allowRunTests,
           require_fullscreen: requireFullscreen,
+          anti_cheat_mode: antiCheatMode,
           ai_grading_item_ids: aiGradingItemIds,
           office_points: officePoints,
         });
@@ -438,6 +441,7 @@ const TestBuilder = ({ onBack, editTestId, teacherStatus }: TestBuilderProps) =>
           items,
           allow_run_tests: allowRunTests,
           require_fullscreen: requireFullscreen,
+          anti_cheat_mode: antiCheatMode,
           ai_grading_item_ids: aiGradingItemIds,
           office_points: officePoints,
         });
@@ -730,6 +734,20 @@ const TestBuilder = ({ onBack, editTestId, teacherStatus }: TestBuilderProps) =>
           <div className="flex items-center gap-2">
             <Switch id="require-fullscreen" checked={requireFullscreen} onCheckedChange={setRequireFullscreen} />
             <Label htmlFor="require-fullscreen" className="text-sm">Mod fullscreen obligatoriu (ieșirea din fullscreen trimite testul)</Label>
+          </div>
+          <div>
+            <Label className="text-xs">Strictețe anti-fraudă</Label>
+            <Select value={antiCheatMode} onValueChange={setAntiCheatMode}>
+              <SelectTrigger className="w-full mt-1"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="strict">Strict — trimite testul la 1s de la ieșire</SelectItem>
+                <SelectItem value="normal">Normal — trimite testul după 3s (recomandat)</SelectItem>
+                <SelectItem value="relaxed">Relaxat — salvează și marchează ca „întrerupt”, elevul poate continua</SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-[10px] text-muted-foreground mt-1">
+              Modul „Relaxat” evită trimiterea accidentală când internetul cade sau apare o notificare pe telefon.
+            </p>
           </div>
         </CardContent>
       </Card>

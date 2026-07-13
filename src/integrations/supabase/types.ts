@@ -1607,9 +1607,14 @@ export type Database = {
           assignment_id: string
           auto_graded: boolean
           auto_submitted_reason: string | null
+          draft_answers: Json | null
+          draft_updated_at: string | null
           id: string
+          late_submission: boolean
+          leave_count: number
           max_score: number | null
           started_at: string
+          status: string
           student_id: string
           submitted_at: string | null
           total_score: number | null
@@ -1619,9 +1624,14 @@ export type Database = {
           assignment_id: string
           auto_graded?: boolean
           auto_submitted_reason?: string | null
+          draft_answers?: Json | null
+          draft_updated_at?: string | null
           id?: string
+          late_submission?: boolean
+          leave_count?: number
           max_score?: number | null
           started_at?: string
+          status?: string
           student_id: string
           submitted_at?: string | null
           total_score?: number | null
@@ -1631,9 +1641,14 @@ export type Database = {
           assignment_id?: string
           auto_graded?: boolean
           auto_submitted_reason?: string | null
+          draft_answers?: Json | null
+          draft_updated_at?: string | null
           id?: string
+          late_submission?: boolean
+          leave_count?: number
           max_score?: number | null
           started_at?: string
+          status?: string
           student_id?: string
           submitted_at?: string | null
           total_score?: number | null
@@ -1653,6 +1668,7 @@ export type Database = {
         Row: {
           ai_grading_item_ids: string[]
           allow_run_tests: boolean
+          anti_cheat_mode: string
           created_at: string
           id: string
           office_points: number
@@ -1666,6 +1682,7 @@ export type Database = {
         Insert: {
           ai_grading_item_ids?: string[]
           allow_run_tests?: boolean
+          anti_cheat_mode?: string
           created_at?: string
           id?: string
           office_points?: number
@@ -1679,6 +1696,7 @@ export type Database = {
         Update: {
           ai_grading_item_ids?: string[]
           allow_run_tests?: boolean
+          anti_cheat_mode?: string
           created_at?: string
           id?: string
           office_points?: number
@@ -1977,6 +1995,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      increment_leave_count: {
+        Args: { p_submission_id: string }
+        Returns: number
+      }
       is_class_member: {
         Args: { _class_id: string; _user_id: string }
         Returns: boolean
@@ -1992,6 +2014,10 @@ export type Database = {
           id: string
           name: string
         }[]
+      }
+      mark_submission_interrupted: {
+        Args: { p_submission_id: string }
+        Returns: undefined
       }
       move_to_dlq: {
         Args: {
@@ -2019,7 +2045,15 @@ export type Database = {
         Returns: undefined
       }
       request_teacher_status: { Args: never; Returns: undefined }
+      resume_interrupted_submission: {
+        Args: { p_submission_id: string }
+        Returns: undefined
+      }
       revoke_teacher_status: { Args: { p_user_id: string }; Returns: undefined }
+      save_submission_draft: {
+        Args: { p_answers: Json; p_submission_id: string }
+        Returns: undefined
+      }
       student_can_view_test: { Args: { p_test_id: string }; Returns: boolean }
       submit_teacher_verification: {
         Args: { p_data?: Json; p_method: string }

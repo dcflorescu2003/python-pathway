@@ -59,6 +59,7 @@ export function useCreateTest() {
       items: TestItem[];
       allow_run_tests?: boolean;
       require_fullscreen?: boolean;
+      anti_cheat_mode?: string;
       ai_grading_item_ids?: string[];
       office_points?: number;
     }) => {
@@ -72,6 +73,7 @@ export function useCreateTest() {
           variant_mode: params.variant_mode,
           allow_run_tests: params.allow_run_tests ?? false,
           require_fullscreen: params.require_fullscreen ?? false,
+          anti_cheat_mode: params.anti_cheat_mode ?? "normal",
           ai_grading_item_ids: params.ai_grading_item_ids ?? [],
           office_points: params.office_points ?? 10,
         } as any)
@@ -109,6 +111,7 @@ export function useUpdateTest() {
       items: TestItem[];
       allow_run_tests?: boolean;
       require_fullscreen?: boolean;
+      anti_cheat_mode?: string;
       ai_grading_item_ids?: string[];
       office_points?: number;
     }) => {
@@ -121,6 +124,7 @@ export function useUpdateTest() {
           variant_mode: params.variant_mode,
           allow_run_tests: params.allow_run_tests ?? false,
           require_fullscreen: params.require_fullscreen ?? false,
+          anti_cheat_mode: params.anti_cheat_mode ?? "normal",
           ai_grading_item_ids: params.ai_grading_item_ids ?? [],
           office_points: params.office_points ?? 10,
         } as any)
@@ -469,6 +473,52 @@ export function useAllowRetake() {
       qc.invalidateQueries({ queryKey: ["student-test-assignments"] });
     },
   });
+}
+
+// Resume an INTERRUPTED submission (keeps started_at, draft_answers, leave_count)
+export function useResumeSubmission() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (submissionId: string) => {
+      const { error } = await (supabase as any).rpc("resume_interrupted_submission", {
+        p_submission_id: submissionId,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["test-submissions"] });
+      qc.invalidateQueries({ queryKey: ["student-test-assignments"] });
+    },
+  });
+}
+
+// Persist partial draft answers server-side while the student takes the test
+export async function saveSubmissionDraft(submissionId: string, answers: any) {
+  const { error } = await (supabase as any).rpc("save_submission_draft", {
+    p_submission_id: submissionId,
+    p_answers: answers,
+  });
+  if (error) throw error;
+}
+
+// Mark submission as interrupted (network dropped, app killed, etc.)
+export async function markSubmissionInterrupted(submissionId: string) {
+  try {
+    await (supabase as any).rpc("mark_submission_interrupted", {
+      p_submission_id: submissionId,
+    });
+  } catch (e) {
+    console.error("Failed to mark submission interrupted", e);
+  }
+}
+
+// Increment leave counter; returns new count
+export async function incrementLeaveCount(submissionId: string): Promise<number> {
+  const { data, error } = await (supabase as any).rpc("increment_leave_count", {
+    p_submission_id: submissionId,
+  });
+  if (error) throw error;
+  return (data as number) ?? 0;
 }
 
 export function useToggleScoresReleased() {

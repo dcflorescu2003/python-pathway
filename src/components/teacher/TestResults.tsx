@@ -4,7 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
-import { useTestAssignments, useTestSubmissions, useTestAnswers, useTestItems, useUpdateAnswerScore, useToggleScoresReleased, useAllowRetake } from "@/hooks/useTests";
+import { useTestAssignments, useTestSubmissions, useTestAnswers, useTestItems, useUpdateAnswerScore, useToggleScoresReleased, useAllowRetake, useResumeSubmission } from "@/hooks/useTests";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -78,6 +78,7 @@ const TestResults = ({ testId, testTitle, onBack, initialClassId }: TestResultsP
   const updateScore = useUpdateAnswerScore();
   const toggleScores = useToggleScoresReleased();
   const allowRetake = useAllowRetake();
+  const resumeSubmission = useResumeSubmission();
 
   // Enriched data: exercise/problem details keyed by source_id
   const [enrichedData, setEnrichedData] = useState<Record<string, any>>({});
@@ -516,11 +517,40 @@ const TestResults = ({ testId, testTitle, onBack, initialClassId }: TestResultsP
                               ⚠️ {autoReasonLabel(sub.auto_submitted_reason)}
                             </span>
                           )}
+                          {sub.status === "interrupted" && !sub.submitted_at && (
+                            <span className="inline-flex items-center gap-1 text-[9px] px-1.5 py-0.5 rounded-full bg-warning/10 border border-warning/30 text-warning font-medium">
+                              ⏸ Întrerupt
+                            </span>
+                          )}
+                          {sub.leave_count > 0 && (
+                            <span
+                              title={`Elevul a părăsit testul de ${sub.leave_count} ori`}
+                              className="inline-flex items-center gap-1 text-[9px] px-1.5 py-0.5 rounded-full bg-muted border border-border text-muted-foreground font-medium"
+                            >
+                              ↗ {sub.leave_count}
+                            </span>
+                          )}
                         </p>
                         <div className="flex items-center gap-2 mt-0.5">
                           <p className="text-[10px] text-muted-foreground">
                             Nr. {sub.variant === "A" ? "1" : "2"} · {sub.submitted_at ? new Date(sub.submitted_at).toLocaleDateString("ro-RO") : "În curs"} · Din oficiu: {officePoints}p
                           </p>
+                          {sub.status === "interrupted" && !sub.submitted_at && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                resumeSubmission.mutate(sub.id, {
+                                  onSuccess: () => toast.success("Elevul poate continua testul întrerupt."),
+                                  onError: () => toast.error("Eroare la deblocarea testului."),
+                                });
+                              }}
+                              className="h-6 text-[10px] px-2 gap-1 border-warning/40 text-warning hover:bg-warning/10"
+                            >
+                              ▶ Permite continuarea
+                            </Button>
+                          )}
                           {sub.auto_submitted_reason && (
                             <AlertDialog>
                               <AlertDialogTrigger asChild>
