@@ -527,7 +527,7 @@ const TakeTestPage = () => {
       capPauseListener?.remove();
       capResumeListener?.remove();
     };
-  }, [submissionId, submitted, requireFullscreen]);
+  }, [submissionId, submitted, requireFullscreen, antiCheatMode, leaveGraceMs, navigate]);
 
   // Block suspicious shortcuts when fullscreen mode is enforced
   useEffect(() => {
