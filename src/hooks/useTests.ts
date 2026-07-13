@@ -471,6 +471,52 @@ export function useAllowRetake() {
   });
 }
 
+// Resume an INTERRUPTED submission (keeps started_at, draft_answers, leave_count)
+export function useResumeSubmission() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (submissionId: string) => {
+      const { error } = await (supabase as any).rpc("resume_interrupted_submission", {
+        p_submission_id: submissionId,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["test-submissions"] });
+      qc.invalidateQueries({ queryKey: ["student-test-assignments"] });
+    },
+  });
+}
+
+// Persist partial draft answers server-side while the student takes the test
+export async function saveSubmissionDraft(submissionId: string, answers: any) {
+  const { error } = await (supabase as any).rpc("save_submission_draft", {
+    p_submission_id: submissionId,
+    p_answers: answers,
+  });
+  if (error) throw error;
+}
+
+// Mark submission as interrupted (network dropped, app killed, etc.)
+export async function markSubmissionInterrupted(submissionId: string) {
+  try {
+    await (supabase as any).rpc("mark_submission_interrupted", {
+      p_submission_id: submissionId,
+    });
+  } catch (e) {
+    console.error("Failed to mark submission interrupted", e);
+  }
+}
+
+// Increment leave counter; returns new count
+export async function incrementLeaveCount(submissionId: string): Promise<number> {
+  const { data, error } = await (supabase as any).rpc("increment_leave_count", {
+    p_submission_id: submissionId,
+  });
+  if (error) throw error;
+  return (data as number) ?? 0;
+}
+
 export function useToggleScoresReleased() {
   const qc = useQueryClient();
   return useMutation({
