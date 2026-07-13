@@ -8,7 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { useStartSubmission, useSubmitTest } from "@/hooks/useTests";
+import { useStartSubmission, useSubmitTest, saveSubmissionDraft, markSubmissionInterrupted, incrementLeaveCount } from "@/hooks/useTests";
 import { usePyodide, TestResult } from "@/hooks/usePyodide";
 import { ArrowLeft, Clock, ChevronLeft, ChevronRight, Send, Play, CheckCircle, XCircle, Loader2, Link2, RotateCcw, GripVertical } from "lucide-react";
 import { toast } from "sonner";
