@@ -433,7 +433,10 @@ const TakeTestPage = () => {
           // Save & mark interrupted; student can resume from another device / when they return
           try { await saveSubmissionDraft(submissionId, answersRef.current); } catch {}
           await markSubmissionInterrupted(submissionId);
-          toast.warning("Ai părăsit testul. L-am salvat — poți continua când te întorci.");
+          toast.warning(
+            "Ai părăsit testul. L-am salvat pe server — poți reveni de pe orice dispozitiv. Atenție: cronometrul continuă să ruleze. Dacă expiră între timp, cere profesorului să apese „Permite continuarea”.",
+            { duration: 9000 }
+          );
           navigate("/");
         } else {
           toast.error(
