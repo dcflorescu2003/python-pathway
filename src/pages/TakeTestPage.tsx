@@ -408,7 +408,7 @@ const TakeTestPage = () => {
   const handleSubmitRef = useRef(handleSubmit);
   useEffect(() => { handleSubmitRef.current = handleSubmit; }, [handleSubmit]);
 
-  // Auto-submit when student leaves the app for >1s
+  // Leave detection — behavior depends on anti_cheat_mode
   useEffect(() => {
     if (!submissionId || submitted) return;
 
@@ -418,13 +418,28 @@ const TakeTestPage = () => {
     const triggerLeave = (reason: string) => {
       if (hasFiredRef.current) return;
       if (leaveTimeout) return;
-      leaveTimeout = setTimeout(() => {
+      leaveTimeout = setTimeout(async () => {
         if (hasFiredRef.current) return;
         hasFiredRef.current = true;
-        toast.error("Test trimis automat — ai părăsit aplicația mai mult de 1 secundă.");
-        handleSubmitRef.current(reason);
-      }, 1000);
+        // Always record the leave for teacher visibility
+        incrementLeaveCount(submissionId).catch(() => {});
+        if (antiCheatMode === "relaxed") {
+          // Save & mark interrupted; student can resume from another device / when they return
+          try { await saveSubmissionDraft(submissionId, answersRef.current); } catch {}
+          await markSubmissionInterrupted(submissionId);
+          toast.warning("Ai părăsit testul. L-am salvat — poți continua când te întorci.");
+          navigate("/");
+        } else {
+          toast.error(
+            antiCheatMode === "strict"
+              ? "Test trimis automat — ai părăsit aplicația mai mult de 1 secundă."
+              : "Test trimis automat — ai părăsit aplicația mai mult decât permite timpul de grație."
+          );
+          handleSubmitRef.current(reason);
+        }
+      }, leaveGraceMs);
     };
+
 
     const cancelLeave = () => {
       if (leaveTimeout) {
