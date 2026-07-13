@@ -123,7 +123,10 @@ const TakeTestPage = () => {
         // If teacher hasn't cleared an "interrupted" submission and time already ran out,
         // finalize automatically instead of letting the student open it again forever.
         if (existingSub && (existingSub as any).status === "interrupted") {
-          toast.info("Continuăm testul întrerupt — răspunsurile tale sunt salvate.");
+          toast.info(
+            "Reluăm testul întrerupt. Răspunsurile tale sunt salvate și cronometrul continuă de unde a rămas. Dacă timpul a expirat, roagă profesorul să apese „Permite continuarea” în pagina de rezultate.",
+            { duration: 8000 }
+          );
         }
 
         // Assign random variant (or reuse existing)
@@ -393,7 +396,10 @@ const TakeTestPage = () => {
       // Network / server failure — preserve everything so the student can resume later
       try { if (submissionId) await saveSubmissionDraft(submissionId, answersRef.current); } catch {}
       if (submissionId) markSubmissionInterrupted(submissionId);
-      toast.error("Eroare la trimiterea testului. Răspunsurile au fost salvate — poți relua când conexiunea revine.");
+      toast.error(
+        "Nu am putut trimite testul (probabil conexiune slabă). Răspunsurile sunt salvate pe server. Verifică internetul și încearcă din nou. Dacă timpul a expirat între timp, roagă profesorul să apese „Permite continuarea” în pagina de rezultate ca să poți finaliza.",
+        { duration: 10000 }
+      );
       setSubmitted(false);
       submitInFlightRef.current = false;
     }
@@ -427,7 +433,10 @@ const TakeTestPage = () => {
           // Save & mark interrupted; student can resume from another device / when they return
           try { await saveSubmissionDraft(submissionId, answersRef.current); } catch {}
           await markSubmissionInterrupted(submissionId);
-          toast.warning("Ai părăsit testul. L-am salvat — poți continua când te întorci.");
+          toast.warning(
+            "Ai părăsit testul. L-am salvat pe server — poți reveni de pe orice dispozitiv. Atenție: cronometrul continuă să ruleze. Dacă expiră între timp, cere profesorului să apese „Permite continuarea”.",
+            { duration: 9000 }
+          );
           navigate("/");
         } else {
           toast.error(
