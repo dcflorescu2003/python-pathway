@@ -4,7 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
-import { useTestAssignments, useTestSubmissions, useTestAnswers, useTestItems, useUpdateAnswerScore, useToggleScoresReleased, useAllowRetake } from "@/hooks/useTests";
+import { useTestAssignments, useTestSubmissions, useTestAnswers, useTestItems, useUpdateAnswerScore, useToggleScoresReleased, useAllowRetake, useResumeSubmission } from "@/hooks/useTests";
 import {
   AlertDialog,
   AlertDialogAction,
