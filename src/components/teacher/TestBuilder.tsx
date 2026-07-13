@@ -428,6 +428,7 @@ const TestBuilder = ({ onBack, editTestId, teacherStatus }: TestBuilderProps) =>
           items,
           allow_run_tests: allowRunTests,
           require_fullscreen: requireFullscreen,
+          anti_cheat_mode: antiCheatMode,
           ai_grading_item_ids: aiGradingItemIds,
           office_points: officePoints,
         });
