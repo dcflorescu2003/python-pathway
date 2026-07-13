@@ -314,17 +314,20 @@ const TakeTestPage = () => {
   // Single in-flight guard – set synchronously before any submit path fires
   const submitInFlightRef = useRef(false);
 
-  // Periodic save every 30s + save on visibilitychange
+  // Periodic save every 30s + save on visibilitychange (localStorage + server draft)
   useEffect(() => {
-    if (!draftKey || submitted) return;
+    if (!draftKey || submitted || !submissionId) return;
     const saveDraft = () => {
       try { localStorage.setItem(draftKey, JSON.stringify(answersRef.current)); } catch {}
+      // Fire-and-forget server draft persistence
+      saveSubmissionDraft(submissionId, answersRef.current).catch(() => {});
     };
     const interval = setInterval(saveDraft, 30_000);
     const onVis = () => { if (document.hidden) saveDraft(); };
     document.addEventListener("visibilitychange", onVis);
     return () => { clearInterval(interval); document.removeEventListener("visibilitychange", onVis); };
-  }, [draftKey, submitted]);
+  }, [draftKey, submitted, submissionId]);
+
 
   // Clean up draft after successful submit
   useEffect(() => {
