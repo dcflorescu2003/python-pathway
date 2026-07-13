@@ -78,6 +78,7 @@ const TestResults = ({ testId, testTitle, onBack, initialClassId }: TestResultsP
   const updateScore = useUpdateAnswerScore();
   const toggleScores = useToggleScoresReleased();
   const allowRetake = useAllowRetake();
+  const resumeSubmission = useResumeSubmission();
 
   // Enriched data: exercise/problem details keyed by source_id
   const [enrichedData, setEnrichedData] = useState<Record<string, any>>({});
