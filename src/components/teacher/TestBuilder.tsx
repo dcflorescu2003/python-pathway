@@ -735,6 +735,20 @@ const TestBuilder = ({ onBack, editTestId, teacherStatus }: TestBuilderProps) =>
             <Switch id="require-fullscreen" checked={requireFullscreen} onCheckedChange={setRequireFullscreen} />
             <Label htmlFor="require-fullscreen" className="text-sm">Mod fullscreen obligatoriu (ieșirea din fullscreen trimite testul)</Label>
           </div>
+          <div>
+            <Label className="text-xs">Strictețe anti-fraudă</Label>
+            <Select value={antiCheatMode} onValueChange={setAntiCheatMode}>
+              <SelectTrigger className="w-full mt-1"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="strict">Strict — trimite testul la 1s de la ieșire</SelectItem>
+                <SelectItem value="normal">Normal — trimite testul după 3s (recomandat)</SelectItem>
+                <SelectItem value="relaxed">Relaxat — salvează și marchează ca „întrerupt”, elevul poate continua</SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-[10px] text-muted-foreground mt-1">
+              Modul „Relaxat” evită trimiterea accidentală când internetul cade sau apare o notificare pe telefon.
+            </p>
+          </div>
         </CardContent>
       </Card>
 
