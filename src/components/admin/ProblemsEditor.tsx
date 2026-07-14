@@ -130,10 +130,19 @@ const ProblemsEditor = () => {
     invalidate();
   };
 
-  const startEdit = (p: Problem) => {
+  const startEdit = async (p: Problem) => {
     setEditingProblem(p.id);
     setCreatingFor(null);
     setForm({ ...p });
+    // Fetch the full solution (not included in useProblems select for student safety)
+    const { data: solData, error: solErr } = await supabase
+      .from("problems")
+      .select("solution")
+      .eq("id", p.id)
+      .single();
+    if (!solErr && solData) {
+      setForm((f) => (f.id === p.id ? { ...f, solution: (solData as any).solution || "" } : f));
+    }
   };
 
   const startCreate = (chapterId: string) => {
