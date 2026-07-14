@@ -161,7 +161,7 @@ const ProblemsEditor = () => {
       staticChecks: JSON.parse(JSON.stringify(form.staticChecks || [])),
     };
 
-    const row = {
+    const row: any = {
       title: form.title,
       description: form.description,
       difficulty: form.difficulty,
@@ -172,6 +172,11 @@ const ProblemsEditor = () => {
       solution: form.solution,
       is_premium: form.isPremium,
     };
+
+    // Safety: never overwrite an existing solution with an empty string
+    if (editingProblem && !form.solution?.trim()) {
+      delete row.solution;
+    }
 
     if (editingProblem) {
       const { error } = await supabase.from("problems").update(row).eq("id", editingProblem);
