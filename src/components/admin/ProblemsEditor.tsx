@@ -134,15 +134,14 @@ const ProblemsEditor = () => {
     setEditingProblem(p.id);
     setCreatingFor(null);
     setForm({ ...p });
-    // Fetch the full solution (not included in useProblems select for student safety)
-    const { data: solData, error: solErr } = await supabase
-      .from("problems")
-      .select("solution")
-      .eq("id", p.id)
-      .single();
-    if (!solErr && solData) {
-      setForm((f) => (f.id === p.id ? { ...f, solution: (solData as any).solution || "" } : f));
+    // Fetch the full solution via SECURITY DEFINER RPC (same one used in ProblemSolvePage)
+    const { data: solData, error: solErr } = await supabase.rpc("get_problem_solution", { p_id: p.id });
+    if (solErr) {
+      console.error("[ProblemsEditor] Failed to load solution", solErr);
+      toast.error("Nu am putut încărca rezolvarea existentă");
+      return;
     }
+    setForm((f) => (f.id === p.id ? { ...f, solution: (solData as string) || "" } : f));
   };
 
   const startCreate = (chapterId: string) => {

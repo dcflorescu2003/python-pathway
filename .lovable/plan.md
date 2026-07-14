@@ -1,12 +1,15 @@
-## Problemă
+## Diagnostic
 
-În `ProblemsEditor`, când admin-ul editează o problemă, câmpul „Rezolvare (cod Python)" apare gol pentru că `useProblems` nu selectează coloana `solution` din baza de date (aceasta e ascunsă elevilor și e accesată doar prin RPC `get_problem_solution` în pagina de rezolvare). La salvare, `solution: ""` din formular suprascrie rezolvarea reală din DB — deci orice editare a unei probleme șterge rezolvarea.
+Am confirmat în DB: problema `gs38` („Cele mai bune valori generate") **are** rezolvarea salvată (467 caractere). Deci salvarea funcționează — problema e la **încărcarea** soluției în editor.
+
+În `startEdit` (`ProblemsEditor.tsx`), fetch-ul soluției face un `select("solution")` direct pe tabelul `problems`. Dacă apelul returnează eroare (sau soluția e filtrată de vreo politică/masking pe coloană în cache-ul PostgREST), eroarea e înghițită silențios de `if (!solErr && solData)`, iar `form.solution` rămâne "" — deci câmpul apare gol la editare.
 
 ## Fix
 
 În `src/components/admin/ProblemsEditor.tsx`:
 
-1. **Fetch la deschiderea editorului**: modific `startEdit(p)` să facă un `select("solution").eq("id", p.id).single()` direct din tabelul `problems` (admin-ul are acces prin RLS) și să populeze `form.solution` cu valoarea reală înainte de afișarea formularului.
-2. **Safety net la salvare**: dacă din orice motiv `form.solution` e gol la `saveProblem` pe un edit existent, nu includ câmpul `solution` în payload-ul de `update` — evită overwrite accidental.
+1. **Înlocuiesc select-ul direct cu RPC-ul existent** `get_problem_solution` (același folosit deja în `ProblemSolvePage` și care returnează soluția prin SECURITY DEFINER — garantat accesibil).
+2. **Loghez erorile** (`console.error`) în loc să le înghit tăcut, ca să pot depana viitoare regresii.
+3. Păstrez safety-net-ul de la salvare (`if (editingProblem && !form.solution.trim()) delete row.solution`) — deci chiar dacă fetch-ul ar eșua din nou, salvarea nu suprascrie soluția existentă cu string gol.
 
-Nicio schimbare de schemă, RLS, RPC sau UI vizibil elevilor. Modificarea e strict în editorul admin.
+Nicio schimbare de schemă, RLS sau UI vizibil elevilor. Modificarea e strict în editorul admin.
