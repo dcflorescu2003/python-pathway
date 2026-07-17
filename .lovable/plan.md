@@ -1,15 +1,28 @@
-## Diagnostic
+## Nivele noi la Profilul de competențe
 
-Am confirmat în DB: problema `gs38` („Cele mai bune valori generate") **are** rezolvarea salvată (467 caractere). Deci salvarea funcționează — problema e la **încărcarea** soluției în editor.
+Înlocuim etichetele actuale („Stăpânit / În progres / Început / Necesită exersare") cu 4 nivele bazate pe procentul de masterat, aplicate atât la Competențele Generale (CG), cât și la cele Specifice (CS). „Neevaluat" rămâne pentru CS/CG fără date.
 
-În `startEdit` (`ProblemsEditor.tsx`), fetch-ul soluției face un `select("solution")` direct pe tabelul `problems`. Dacă apelul returnează eroare (sau soluția e filtrată de vreo politică/masking pe coloană în cache-ul PostgREST), eroarea e înghițită silențios de `if (!solErr && solData)`, iar `form.solution` rămâne "" — deci câmpul apare gol la editare.
+### Praguri
+- **Insuficient** — mastery < 40%
+- **Nivel de bază** — 40% ≤ mastery < 60%
+- **Nivel consolidat** — 60% ≤ mastery < 85%
+- **Nivel avansat** — mastery ≥ 85%
+- **Neevaluat** — fără date (unchanged)
 
-## Fix
+### Modificări
+1. **`src/components/account/CompetencyProfileCard.tsx`**
+   - Rescriu `masteryLabel(m)` cu noile praguri și denumiri.
+   - Ajustez `tone` → variant/culoare Badge:
+     - Insuficient → `destructive`
+     - Bază → `warning` (secondary)
+     - Consolidat → `secondary`
+     - Avansat → `default` (primary)
+     - Neevaluat → `secondary` muted
+   - Aplic același badge și la CG (deja folosește `masteryLabel`) și îl afișez și la rândurile de CS care în prezent arată doar procentul — adaug un mic badge de nivel lângă procent pentru CS evaluabile.
 
-În `src/components/admin/ProblemsEditor.tsx`:
+2. **Descrierile detaliate** rămân în afara UI-ului acum — le rezervăm pentru raportul viitor pentru profesori (nu construim raportul în acest task).
 
-1. **Înlocuiesc select-ul direct cu RPC-ul existent** `get_problem_solution` (același folosit deja în `ProblemSolvePage` și care returnează soluția prin SECURITY DEFINER — garantat accesibil).
-2. **Loghez erorile** (`console.error`) în loc să le înghit tăcut, ca să pot depana viitoare regresii.
-3. Păstrez safety-net-ul de la salvare (`if (editingProblem && !form.solution.trim()) delete row.solution`) — deci chiar dacă fetch-ul ar eșua din nou, salvarea nu suprascrie soluția existentă cu string gol.
-
-Nicio schimbare de schemă, RLS sau UI vizibil elevilor. Modificarea e strict în editorul admin.
+### Nu se modifică
+- Logica de calcul mastery (`get_student_competency_profile` RPC, ponderi 60/40).
+- Excluderea CS fără microcompetențe.
+- Structura DB.

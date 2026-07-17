@@ -29,10 +29,10 @@ type Row = {
 
 const masteryLabel = (m: number | null) => {
   if (m === null) return { label: "Neevaluat", tone: "muted" as const };
-  if (m >= 0.85) return { label: "Stăpânit", tone: "primary" as const };
-  if (m >= 0.6) return { label: "În progres", tone: "secondary" as const };
-  if (m >= 0.3) return { label: "Început", tone: "warning" as const };
-  return { label: "Necesită exersare", tone: "destructive" as const };
+  if (m >= 0.85) return { label: "Nivel avansat", tone: "primary" as const };
+  if (m >= 0.6) return { label: "Nivel consolidat", tone: "secondary" as const };
+  if (m >= 0.4) return { label: "Nivel de bază", tone: "warning" as const };
+  return { label: "Insuficient", tone: "destructive" as const };
 };
 
 interface CompetencyProfileCardProps {
@@ -280,7 +280,13 @@ const CompetencyProfileCard = ({
                               </div>
                             </div>
                             <Badge
-                              variant={meta.tone === "primary" ? "default" : "secondary"}
+                              variant={
+                                meta.tone === "primary"
+                                  ? "default"
+                                  : meta.tone === "destructive"
+                                    ? "destructive"
+                                    : "secondary"
+                              }
                               className="text-[9px] shrink-0"
                             >
                               {meta.label}
@@ -325,17 +331,34 @@ const CompetencyProfileCard = ({
                                           >
                                             Neevaluat
                                           </span>
-                                        ) : (
-                                          <div className="flex items-center gap-1.5 w-28 shrink-0">
-                                            <Progress
-                                              value={cm !== null ? cm * 100 : 0}
-                                              className="h-1 flex-1"
-                                            />
-                                            <span className="text-[9px] font-mono text-muted-foreground w-7 text-right">
-                                              {cm !== null ? `${Math.round(cm * 100)}%` : "—"}
-                                            </span>
-                                          </div>
-                                        )}
+                                        ) : (() => {
+                                          const csMeta = masteryLabel(cm);
+                                          return (
+                                            <div className="flex items-center gap-1.5 shrink-0">
+                                              <div className="flex items-center gap-1.5 w-24">
+                                                <Progress
+                                                  value={cm !== null ? cm * 100 : 0}
+                                                  className="h-1 flex-1"
+                                                />
+                                                <span className="text-[9px] font-mono text-muted-foreground w-7 text-right">
+                                                  {cm !== null ? `${Math.round(cm * 100)}%` : "—"}
+                                                </span>
+                                              </div>
+                                              <Badge
+                                                variant={
+                                                  csMeta.tone === "primary"
+                                                    ? "default"
+                                                    : csMeta.tone === "destructive"
+                                                      ? "destructive"
+                                                      : "secondary"
+                                                }
+                                                className="text-[8px] px-1.5 py-0 shrink-0"
+                                              >
+                                                {csMeta.label}
+                                              </Badge>
+                                            </div>
+                                          );
+                                        })()}
                                       </div>
                                     );
                                   })}
