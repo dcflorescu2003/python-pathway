@@ -29,10 +29,10 @@ type Row = {
 
 const masteryLabel = (m: number | null) => {
   if (m === null) return { label: "Neevaluat", tone: "muted" as const };
-  if (m >= 0.85) return { label: "Stăpânit", tone: "primary" as const };
-  if (m >= 0.6) return { label: "În progres", tone: "secondary" as const };
-  if (m >= 0.3) return { label: "Început", tone: "warning" as const };
-  return { label: "Necesită exersare", tone: "destructive" as const };
+  if (m >= 0.85) return { label: "Nivel avansat", tone: "primary" as const };
+  if (m >= 0.6) return { label: "Nivel consolidat", tone: "secondary" as const };
+  if (m >= 0.4) return { label: "Nivel de bază", tone: "warning" as const };
+  return { label: "Insuficient", tone: "destructive" as const };
 };
 
 interface CompetencyProfileCardProps {
