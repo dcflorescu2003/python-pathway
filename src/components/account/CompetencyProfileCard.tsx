@@ -280,7 +280,13 @@ const CompetencyProfileCard = ({
                               </div>
                             </div>
                             <Badge
-                              variant={meta.tone === "primary" ? "default" : "secondary"}
+                              variant={
+                                meta.tone === "primary"
+                                  ? "default"
+                                  : meta.tone === "destructive"
+                                    ? "destructive"
+                                    : "secondary"
+                              }
                               className="text-[9px] shrink-0"
                             >
                               {meta.label}
