@@ -279,18 +279,25 @@ const CompetencyProfileCard = ({
                                 </span>
                               </div>
                             </div>
-                            <Badge
-                              variant={
-                                meta.tone === "primary"
-                                  ? "default"
-                                  : meta.tone === "destructive"
-                                    ? "destructive"
-                                    : "secondary"
-                              }
-                              className="text-[9px] shrink-0"
-                            >
-                              {meta.label}
-                            </Badge>
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              {m !== null && (
+                                <Badge variant="outline" className="text-[9px] font-mono">
+                                  {Math.round(m * 100)}%
+                                </Badge>
+                              )}
+                              <Badge
+                                variant={
+                                  meta.tone === "primary"
+                                    ? "default"
+                                    : meta.tone === "destructive"
+                                      ? "destructive"
+                                      : "secondary"
+                                }
+                                className="text-[9px] shrink-0"
+                              >
+                                {meta.label}
+                              </Badge>
+                            </div>
                             {isOpen ? (
                               <ChevronUp className="h-3 w-3 text-muted-foreground shrink-0" />
                             ) : (
