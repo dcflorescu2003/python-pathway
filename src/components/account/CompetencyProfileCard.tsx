@@ -351,18 +351,25 @@ const CompetencyProfileCard = ({
                                                   {cm !== null ? `${Math.round(cm * 100)}%` : "—"}
                                                 </span>
                                               </div>
-                                              <Badge
-                                                variant={
-                                                  csMeta.tone === "primary"
-                                                    ? "default"
-                                                    : csMeta.tone === "destructive"
-                                                      ? "destructive"
-                                                      : "secondary"
-                                                }
-                                                className="text-[8px] px-1.5 py-0 shrink-0"
-                                              >
-                                                {csMeta.label}
-                                              </Badge>
+                                              <div className="flex items-center gap-1 shrink-0">
+                                                {cm !== null && (
+                                                  <Badge variant="outline" className="text-[8px] font-mono px-1.5 py-0">
+                                                    {Math.round(cm * 100)}%
+                                                  </Badge>
+                                                )}
+                                                <Badge
+                                                  variant={
+                                                    csMeta.tone === "primary"
+                                                      ? "default"
+                                                      : csMeta.tone === "destructive"
+                                                        ? "destructive"
+                                                        : "secondary"
+                                                  }
+                                                  className="text-[8px] px-1.5 py-0 shrink-0"
+                                                >
+                                                  {csMeta.label}
+                                                </Badge>
+                                              </div>
                                             </div>
                                           );
                                         })()}
