@@ -266,7 +266,7 @@ const CompetencyProfileCard = ({
                               {g.code}
                             </Badge>
                             <div className="flex-1 min-w-0">
-                              <div className="text-xs font-medium text-foreground truncate">
+                              <div className="text-xs font-medium text-foreground break-words leading-snug">
                                 {g.title}
                               </div>
                               <div className="mt-1 flex items-center gap-2">
@@ -328,7 +328,7 @@ const CompetencyProfileCard = ({
                                         <Badge variant="outline" className="font-mono text-[9px] shrink-0">
                                           {r.specific_code}
                                         </Badge>
-                                        <span className="flex-1 text-[11px] text-foreground/90 truncate">
+                                        <span className="flex-1 text-[11px] text-foreground/90 break-words leading-snug">
                                           {r.specific_title}
                                         </span>
                                         {unassessable ? (
