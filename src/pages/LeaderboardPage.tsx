@@ -4,6 +4,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getSelectedSchool, setSelectedSchool, schools } from "@/data/schools";
 import { filterAndSortSchools } from "@/lib/searchUtils";
+import { getLevelInfo } from "@/data/levels";
+import { getLevelFromXP, useXPThresholds } from "@/hooks/useXPThresholds";
 import { Flame, Zap, Medal, Loader2, Search } from "lucide-react";
 import { motion } from "framer-motion";
 import { Input } from "@/components/ui/input";
@@ -30,6 +32,7 @@ interface LeaderboardEntry {
 const LeaderboardPage = () => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const { xpPerLevel } = useXPThresholds();
   const [tab, setTab] = useState<Tab>("school");
   const [tabInitialized, setTabInitialized] = useState(false);
   const [userSchool, setUserSchool] = useState<string | null>(getSelectedSchool());
@@ -159,6 +162,8 @@ const LeaderboardPage = () => {
   const renderRow = (entry: LeaderboardEntry, idx: number, animDelay: number) => {
     const isUser = entry.user_id === user?.id;
     const displayName = entry.nickname || entry.display_name || "Anonim";
+    const level = getLevelFromXP(entry.xp, xpPerLevel);
+    const tier = getLevelInfo(level);
     return (
       <motion.div
         key={entry.user_id}
@@ -181,7 +186,12 @@ const LeaderboardPage = () => {
           )}
         </div>
 
-        <span className="text-xl">{entry.avatar_url || "🐍"}</span>
+        <img
+          src={tier.image}
+          alt={tier.name}
+          title={tier.name}
+          className="h-8 w-8 shrink-0 rounded-full object-cover bg-card border border-border"
+        />
 
         <div className="flex-1 min-w-0">
           <p className={`text-sm font-bold truncate ${isUser ? "text-primary" : "text-foreground"}`}>
