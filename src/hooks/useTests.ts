@@ -335,20 +335,23 @@ export function useStartSubmission() {
   const { user } = useAuth();
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (params: { assignment_id: string; variant: string }) => {
+    mutationFn: async (params: { assignment_id: string; variant: string; roster_number?: number | null }) => {
       if (!user) throw new Error("Not authenticated");
+      const payload: Record<string, any> = {
+        assignment_id: params.assignment_id,
+        student_id: user.id,
+        variant: params.variant,
+      };
+      if (params.roster_number != null) payload.roster_number = params.roster_number;
       const { data, error } = await supabase
         .from("test_submissions")
-        .insert({
-          assignment_id: params.assignment_id,
-          student_id: user.id,
-          variant: params.variant,
-        })
+        .insert(payload)
         .select()
         .single();
       if (error) throw error;
       return data;
     },
+
     onSuccess: () => qc.invalidateQueries({ queryKey: ["student-test-assignments"] }),
   });
 }
