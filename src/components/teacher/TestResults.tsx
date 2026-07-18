@@ -19,6 +19,8 @@ import {
 import { ArrowLeft, ChevronDown, ChevronUp, CheckCircle, XCircle, Save, FileSpreadsheet, FileText, Eye, EyeOff, AlertCircle, RotateCcw, Code, Users } from "lucide-react";
 import { toast } from "sonner";
 import { sortByDisplayName } from "@/lib/sortStudents";
+import TestRosterAllocations from "./TestRosterAllocations";
+
 
 interface TestResultsProps {
   testId: string;
