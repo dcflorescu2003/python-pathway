@@ -46,6 +46,10 @@ import PersonalizedSummary from "@/components/PersonalizedSummary";
 import RefillLivesDialog from "@/components/RefillLivesDialog";
 import LivesRefilledDialog from "@/components/LivesRefilledDialog";
 import ComebackDialog from "@/components/ComebackDialog";
+import MotivationalTipCard from "@/components/tips/MotivationalTipCard";
+import { useMotivationalTip } from "@/hooks/useMotivationalTip";
+
+
 
 
 const Index = (): JSX.Element => {
@@ -83,6 +87,11 @@ const Index = (): JSX.Element => {
   const [showLivesRefilled, setShowLivesRefilled] = useState(false);
   const [showComeback, setShowComeback] = useState(false);
   const [comebackDays, setComebackDays] = useState(0);
+
+  const { type: tipType, markShown: markTipShown, dismiss: dismissTip } = useMotivationalTip();
+  useEffect(() => {
+    if (tipType) markTipShown(tipType);
+  }, [tipType, markTipShown]);
 
   useEffect(() => {
     if (authLoading) return;
@@ -262,6 +271,29 @@ const Index = (): JSX.Element => {
           transition={{ duration: 0.4, ease: "easeOut" }}
           className="min-h-screen bg-background"
         >
+      <AnimatePresence>
+        {tipType === "lessons" && (
+          <MotivationalTipCard
+            key="tip-lessons"
+            icon="🎯"
+            title="Poți mai mult!"
+            message="Ai lecții unde ai obținut sub 70%. Reia-le și urcă până la 100% 💪"
+            gradientClass="from-primary via-primary to-accent"
+            onDismiss={dismissTip}
+          />
+        )}
+        {tipType === "problems" && (
+          <MotivationalTipCard
+            key="tip-problems"
+            icon="💻"
+            title="Antrenează-te la probleme"
+            message="Deschide pyroskill.info pe PC — experiența la probleme e mult mai confortabilă pe ecran mare 🧩"
+            gradientClass="from-accent via-cyan-500 to-primary"
+            onDismiss={dismissTip}
+          />
+        )}
+      </AnimatePresence>
+
       <header className={`sticky top-0 z-40 border-b backdrop-blur-md pt-[var(--sat)] ${
         progress.isPremium 
           ? "border-yellow-500/30 bg-gradient-to-r from-yellow-500/10 via-background/90 to-yellow-500/10" 

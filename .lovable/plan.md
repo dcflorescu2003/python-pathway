@@ -1,37 +1,50 @@
-Plan: Afișarea iconului de rank în clasament
+## Ce construim
 
-Scop: În pagina Clasament (`/leaderboard`), în dreptul fiecărui utilizator, să apară iconul corespunzător rankului său din „Drumul spre Master of Python" (Oul Misterios, Baby Python, Little Snake etc.), în loc de emoji-ul generic 🐍.
+Două cartonașe animate care apar peste pagina Home (`/`), la un colț de sus, timp de ~2 secunde, cu fade-in + slide + slide-out. Fiecare are propria regulă de frecvență și propriul target de utilizatori.
 
-Unde se aplică: doar în `src/pages/LeaderboardPage.tsx` (toate taburile: Clasă, Liceu, Oraș, Național). Nu se modifică alte clasamente sau liste de elevi.
+### Cartonaș #1 — „Poți mai mult!" (lecții slabe)
+- **Condiție**: userul are cel puțin o lecție completată cu scor < 70% (verificăm din `completed_lessons` — orice lecție completed cu score/best_score < 70).
+- **Frecvență**: o dată la 3 zile per user.
+- **Mesaj**: îndemn scurt să reia lecțiile slabe până ajunge la 100%. Ex: „Ai lecții unde poți face mai mult! Reia-le și urcă la 100% 💪".
+- **Vizual**: gradient primary→accent, icon 🎯 sau ⚡, sparkle animat.
 
-Implementare:
-1. Importuri noi în `LeaderboardPage.tsx`:
-   - `getLevelInfo` din `@/data/levels` (pentru imaginea și numele rankului).
-   - `getLevelFromXP` și `useXPThresholds` din `@/hooks/useXPThresholds` (pentru a calcula nivelul din XP, ținând cont de curriculumul real).
+### Cartonaș #2 — „Rezolvă probleme pe web" (puține probleme)
+- **Condiție**: userul are < 20 de probleme rezolvate (din `useProblems` sau count pe `completed_problems`/echivalent).
+- **Frecvență**: o dată la 2 zile per user, diferit de #1 (nu apar în același load).
+- **Mesaj**: „Antrenează-te la probleme pe PC la pyroskill.info — experiența e mai confortabilă pe ecran mare 💻".
+- **Vizual**: gradient diferit (accent→primary sau cyan/verde), icon 💻 sau 🧩.
+- **Platformă**: apare peste tot (mobil + web), conform răspunsului.
 
-2. Obținem pragurile XP comune în pagină:
-   - `const { xpPerLevel } = useXPThresholds();`
-   - Același `xpPerLevel` va fi folosit pentru toți utilizatorii, pentru consistență.
+## Cum apar
 
-3. Creăm un mic helper în interiorul componentei sau inline în `renderRow`:
-   - `const level = getLevelFromXP(entry.xp, xpPerLevel);`
-   - `const tier = getLevelInfo(level);`
+- Poziționare: `fixed` top-center pe Home, sub header, `z-50`, `pointer-events-none` (nu blochează UI-ul).
+- Animație framer-motion: `initial={{ y: -40, opacity: 0, scale: 0.9 }}` → `animate={{ y: 0, opacity: 1, scale: 1 }}` cu spring, hold ~1.6s, apoi `exit={{ y: -40, opacity: 0 }}`.
+- Total pe ecran: ~2 secunde.
+- Sparkle/pulse subtil pe icon (Tailwind `animate-pulse` sau motion loop).
+- Doar unul apare per vizită Home (dacă ambele sunt eligibile, prioritate #1; #2 la următoarea vizită eligibilă).
 
-4. Înlocuim blocul de avatar existent:
-   - De la: `<span className="text-xl">{entry.avatar_url || "🐍"}</span>`
-   - La: `<img src={tier.image} alt={tier.name} title={tier.name} className="h-8 w-8 rounded-full object-cover bg-card border border-border" />`
-   - Dimensiunea 32px păstrează înălțimea rândului, iar `rounded-full` păstrează look circular ca în pagina de teorie/roadmap.
+## Persistență frecvență
 
-5. Fallback (opțional, dar sigur):
-   - Dacă imaginea nu se încarcă, rămâne spațiul gol. Se poate adăuga un `onError` care pune un emoji 🐍 în loc, dar nu este necesar deoarece asseturile există local.
+Local storage namespaced per user (respectă regula din memory):
+- `pyro-tip-lessons-lastshown:<user.id>` — timestamp last shown pt #1
+- `pyro-tip-problems-lastshown:<user.id>` — timestamp last shown pt #2
 
-6. Verificare: build TypeScript + vite pentru a ne asigura că importurile și tipurile sunt corecte.
+Verificăm `Date.now() - stored >= 3*24*3600*1000` (resp. 2 zile). Doar userii autentificați văd cartonașele (fără user.id → skip).
 
-Impact vizual:
-- Rândul rămâne la aceeași înălțime.
-- Emoji-ul generic este înlocuit cu iconul de rank, care adaugă context vizual (rank + nivel) pentru fiecare participant.
-- Nu se schimbă tipografiile, culorile, badge-urile de medalie/XP sau layout-ul general.
+## Fișiere
 
-Riscuri minime:
-- Calculează nivelul din XP în frontend; pentru utilizatorii cu 0 XP va apărea Oul Misterios.
-- Imaginile sunt deja importate în bundle; nu se adaugă asseturi noi.
+**Nou**: `src/components/tips/MotivationalTipCard.tsx`
+- Componentă prezentare pură: primește `visible`, `icon`, `title`, `message`, `gradient`, cu animația framer-motion + auto-hide după 2s (callback `onDismiss`).
+
+**Nou**: `src/hooks/useMotivationalTip.ts`
+- Determină ce tip trebuie afișat (dacă vreunul): citește `completed_lessons` din React Query cache / hook existent (`useProgress`) pentru scoruri < 70%, și `useProblems`/count pentru probleme rezolvate.
+- Aplică regulile de cooldown din localStorage.
+- Returnează `{ type: 'lessons' | 'problems' | null }` și o funcție `markShown`.
+
+**Modificat**: `src/pages/Index.tsx`
+- Importă hook-ul și componenta. Randează `<MotivationalTipCard ... />` deasupra conținutului când `type !== null`. La montare, apelează `markShown` și pornește timer-ul de 2s pentru dismiss.
+
+## Notă pe rate
+
+- Cooldown separat per tip (3 zile / 2 zile). Dacă ambele eligibile în aceeași vizită, se afișează doar unul și se marchează doar acela ca „shown".
+- Fără dependințe backend noi (fără migrări, fără edge functions) — totul e client-side pe baza datelor deja aduse de hook-urile existente.
