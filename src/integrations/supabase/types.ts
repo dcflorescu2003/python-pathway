@@ -2044,6 +2044,10 @@ export type Database = {
         Args: { p_items: Json; p_user_id: string }
         Returns: undefined
       }
+      redeem_coupon_atomic: {
+        Args: { p_code: string; p_user_id: string }
+        Returns: Json
+      }
       reject_teacher_request: {
         Args: { p_notes?: string; p_request_id: string }
         Returns: undefined
