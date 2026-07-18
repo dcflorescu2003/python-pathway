@@ -1,28 +1,37 @@
-## Nivele noi la Profilul de competențe
+Plan: Afișarea iconului de rank în clasament
 
-Înlocuim etichetele actuale („Stăpânit / În progres / Început / Necesită exersare") cu 4 nivele bazate pe procentul de masterat, aplicate atât la Competențele Generale (CG), cât și la cele Specifice (CS). „Neevaluat" rămâne pentru CS/CG fără date.
+Scop: În pagina Clasament (`/leaderboard`), în dreptul fiecărui utilizator, să apară iconul corespunzător rankului său din „Drumul spre Master of Python" (Oul Misterios, Baby Python, Little Snake etc.), în loc de emoji-ul generic 🐍.
 
-### Praguri
-- **Insuficient** — mastery < 40%
-- **Nivel de bază** — 40% ≤ mastery < 60%
-- **Nivel consolidat** — 60% ≤ mastery < 85%
-- **Nivel avansat** — mastery ≥ 85%
-- **Neevaluat** — fără date (unchanged)
+Unde se aplică: doar în `src/pages/LeaderboardPage.tsx` (toate taburile: Clasă, Liceu, Oraș, Național). Nu se modifică alte clasamente sau liste de elevi.
 
-### Modificări
-1. **`src/components/account/CompetencyProfileCard.tsx`**
-   - Rescriu `masteryLabel(m)` cu noile praguri și denumiri.
-   - Ajustez `tone` → variant/culoare Badge:
-     - Insuficient → `destructive`
-     - Bază → `warning` (secondary)
-     - Consolidat → `secondary`
-     - Avansat → `default` (primary)
-     - Neevaluat → `secondary` muted
-   - Aplic același badge și la CG (deja folosește `masteryLabel`) și îl afișez și la rândurile de CS care în prezent arată doar procentul — adaug un mic badge de nivel lângă procent pentru CS evaluabile.
+Implementare:
+1. Importuri noi în `LeaderboardPage.tsx`:
+   - `getLevelInfo` din `@/data/levels` (pentru imaginea și numele rankului).
+   - `getLevelFromXP` și `useXPThresholds` din `@/hooks/useXPThresholds` (pentru a calcula nivelul din XP, ținând cont de curriculumul real).
 
-2. **Descrierile detaliate** rămân în afara UI-ului acum — le rezervăm pentru raportul viitor pentru profesori (nu construim raportul în acest task).
+2. Obținem pragurile XP comune în pagină:
+   - `const { xpPerLevel } = useXPThresholds();`
+   - Același `xpPerLevel` va fi folosit pentru toți utilizatorii, pentru consistență.
 
-### Nu se modifică
-- Logica de calcul mastery (`get_student_competency_profile` RPC, ponderi 60/40).
-- Excluderea CS fără microcompetențe.
-- Structura DB.
+3. Creăm un mic helper în interiorul componentei sau inline în `renderRow`:
+   - `const level = getLevelFromXP(entry.xp, xpPerLevel);`
+   - `const tier = getLevelInfo(level);`
+
+4. Înlocuim blocul de avatar existent:
+   - De la: `<span className="text-xl">{entry.avatar_url || "🐍"}</span>`
+   - La: `<img src={tier.image} alt={tier.name} title={tier.name} className="h-8 w-8 rounded-full object-cover bg-card border border-border" />`
+   - Dimensiunea 32px păstrează înălțimea rândului, iar `rounded-full` păstrează look circular ca în pagina de teorie/roadmap.
+
+5. Fallback (opțional, dar sigur):
+   - Dacă imaginea nu se încarcă, rămâne spațiul gol. Se poate adăuga un `onError` care pune un emoji 🐍 în loc, dar nu este necesar deoarece asseturile există local.
+
+6. Verificare: build TypeScript + vite pentru a ne asigura că importurile și tipurile sunt corecte.
+
+Impact vizual:
+- Rândul rămâne la aceeași înălțime.
+- Emoji-ul generic este înlocuit cu iconul de rank, care adaugă context vizual (rank + nivel) pentru fiecare participant.
+- Nu se schimbă tipografiile, culorile, badge-urile de medalie/XP sau layout-ul general.
+
+Riscuri minime:
+- Calculează nivelul din XP în frontend; pentru utilizatorii cu 0 XP va apărea Oul Misterios.
+- Imaginile sunt deja importate în bundle; nu se adaugă asseturi noi.
