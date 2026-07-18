@@ -694,7 +694,20 @@ const TakeTestPage = () => {
             </div>
           )}
         </div>
+        {assignedSlot && (
+          <div className="px-4 pb-2 flex items-center gap-2 flex-wrap">
+            {assignedSlot.roster_number != null && (
+              <span className="text-[10px] font-semibold bg-primary/10 text-primary border border-primary/30 px-2 py-0.5 rounded-full">
+                Nr. {assignedSlot.roster_number}
+              </span>
+            )}
+            <span className="text-[10px] font-semibold bg-accent/50 text-foreground border border-border px-2 py-0.5 rounded-full">
+              Varianta {assignedSlot.variant}
+            </span>
+          </div>
+        )}
         <Progress value={((currentIdx + 1) / items.length) * 100} className="h-1" />
+
       </header>
 
       <main className="px-4 py-6 max-w-lg mx-auto">
