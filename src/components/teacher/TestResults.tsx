@@ -440,6 +440,14 @@ const TestResults = ({ testId, testTitle, onBack, initialClassId }: TestResultsP
         </div>
       )}
 
+      {selectedAssignmentId && (
+        <TestRosterAllocations
+          assignmentId={selectedAssignmentId}
+          className={assignments.find((a: any) => a.id === selectedAssignmentId)?.teacher_classes?.name}
+        />
+      )}
+
+
       {selectedAssignmentId && testItemsLoading && (
         <div className="flex items-center gap-2 py-4">
           <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
