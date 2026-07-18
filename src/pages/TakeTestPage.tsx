@@ -63,6 +63,8 @@ const TakeTestPage = () => {
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
   const [submitted, setSubmitted] = useState(false);
   const [fullscreenReady, setFullscreenReady] = useState(false);
+  const [assignedSlot, setAssignedSlot] = useState<{ variant: string; roster_number: number | null } | null>(null);
+
 
   const requireFullscreen: boolean = !!testInfo?.tests?.require_fullscreen;
   // Mobile/Capacitor fallback: Fullscreen API doesn't exist reliably; treat as ready.
