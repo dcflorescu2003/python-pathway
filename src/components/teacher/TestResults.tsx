@@ -19,6 +19,8 @@ import {
 import { ArrowLeft, ChevronDown, ChevronUp, CheckCircle, XCircle, Save, FileSpreadsheet, FileText, Eye, EyeOff, AlertCircle, RotateCcw, Code, Users } from "lucide-react";
 import { toast } from "sonner";
 import { sortByDisplayName } from "@/lib/sortStudents";
+import TestRosterAllocations from "./TestRosterAllocations";
+
 
 interface TestResultsProps {
   testId: string;
@@ -437,6 +439,14 @@ const TestResults = ({ testId, testTitle, onBack, initialClassId }: TestResultsP
             })}
         </div>
       )}
+
+      {selectedAssignmentId && (
+        <TestRosterAllocations
+          assignmentId={selectedAssignmentId}
+          className={assignments.find((a: any) => a.id === selectedAssignmentId)?.teacher_classes?.name}
+        />
+      )}
+
 
       {selectedAssignmentId && testItemsLoading && (
         <div className="flex items-center gap-2 py-4">
