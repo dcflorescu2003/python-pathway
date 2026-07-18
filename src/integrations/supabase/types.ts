@@ -1613,6 +1613,7 @@ export type Database = {
           late_submission: boolean
           leave_count: number
           max_score: number | null
+          roster_number: number | null
           started_at: string
           status: string
           student_id: string
@@ -1630,6 +1631,7 @@ export type Database = {
           late_submission?: boolean
           leave_count?: number
           max_score?: number | null
+          roster_number?: number | null
           started_at?: string
           status?: string
           student_id: string
@@ -1647,6 +1649,7 @@ export type Database = {
           late_submission?: boolean
           leave_count?: number
           max_score?: number | null
+          roster_number?: number | null
           started_at?: string
           status?: string
           student_id?: string
@@ -1871,6 +1874,13 @@ export type Database = {
           name: string
         }[]
       }
+      get_assigned_slot_for_student: {
+        Args: { p_assignment_id: string }
+        Returns: {
+          roster_number: number
+          variant: string
+        }[]
+      }
       get_assigned_variant_for_student: {
         Args: { p_assignment_id: string }
         Returns: string
@@ -1990,6 +2000,20 @@ export type Database = {
           source_type: string
           statement: string
           test_id: string
+        }[]
+      }
+      get_test_roster_allocations: {
+        Args: { p_assignment_id: string }
+        Returns: {
+          display_name: string
+          first_name: string
+          last_name: string
+          roster_number: number
+          status: string
+          student_id: string
+          submission_id: string
+          submitted_at: string
+          variant: string
         }[]
       }
       has_role: {
