@@ -1871,6 +1871,10 @@ export type Database = {
           name: string
         }[]
       }
+      get_assigned_variant_for_student: {
+        Args: { p_assignment_id: string }
+        Returns: string
+      }
       get_class_basic_info: {
         Args: { p_class_id: string }
         Returns: {

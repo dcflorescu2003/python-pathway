@@ -1,50 +1,40 @@
-## Ce construim
+## Obiectiv
 
-Două cartonașe animate care apar peste pagina Home (`/`), la un colț de sus, timp de ~2 secunde, cu fade-in + slide + slide-out. Fiecare are propria regulă de frecvență și propriul target de utilizatori.
+Când elevii dintr-o clasă deschid un test cu variante (A/B), varianta să fie atribuită **determinist**, în funcție de poziția lor alfabetică în lista clasei — primul elev primește A, al doilea B, al treilea A, etc. — în loc de aleatoriu, cum e acum.
 
-### Cartonaș #1 — „Poți mai mult!" (lecții slabe)
-- **Condiție**: userul are cel puțin o lecție completată cu scor < 70% (verificăm din `completed_lessons` — orice lecție completed cu score/best_score < 70).
-- **Frecvență**: o dată la 3 zile per user.
-- **Mesaj**: îndemn scurt să reia lecțiile slabe până ajunge la 100%. Ex: „Ai lecții unde poți face mai mult! Reia-le și urcă la 100% 💪".
-- **Vizual**: gradient primary→accent, icon 🎯 sau ⚡, sparkle animat.
+## Situația actuală
 
-### Cartonaș #2 — „Rezolvă probleme pe web" (puține probleme)
-- **Condiție**: userul are < 20 de probleme rezolvate (din `useProblems` sau count pe `completed_problems`/echivalent).
-- **Frecvență**: o dată la 2 zile per user, diferit de #1 (nu apar în același load).
-- **Mesaj**: „Antrenează-te la probleme pe PC la pyroskill.info — experiența e mai confortabilă pe ecran mare 💻".
-- **Vizual**: gradient diferit (accent→primary sau cyan/verde), icon 💻 sau 🧩.
-- **Platformă**: apare peste tot (mobil + web), conform răspunsului.
+În `src/pages/TakeTestPage.tsx` (linia ~133) varianta se atribuie random:
 
-## Cum apar
+```ts
+const variant = Math.random() < 0.5 ? "A" : "B";
+```
 
-- Poziționare: `fixed` top-center pe Home, sub header, `z-50`, `pointer-events-none` (nu blochează UI-ul).
-- Animație framer-motion: `initial={{ y: -40, opacity: 0, scale: 0.9 }}` → `animate={{ y: 0, opacity: 1, scale: 1 }}` cu spring, hold ~1.6s, apoi `exit={{ y: -40, opacity: 0 }}`.
-- Total pe ecran: ~2 secunde.
-- Sparkle/pulse subtil pe icon (Tailwind `animate-pulse` sau motion loop).
-- Doar unul apare per vizită Home (dacă ambele sunt eligibile, prioritate #1; #2 la următoarea vizită eligibilă).
+Rezultatul: doi elevi vecini pot primi aceeași variantă, ceea ce anulează parțial rostul variantelor. Ordinea alfabetică folosită deja în platformă este cea din `src/lib/sortStudents.ts` (după `last_name`, fallback `display_name`, locale `ro`, `sensitivity: base`).
 
-## Persistență frecvență
+## Soluție
 
-Local storage namespaced per user (respectă regula din memory):
-- `pyro-tip-lessons-lastshown:<user.id>` — timestamp last shown pt #1
-- `pyro-tip-problems-lastshown:<user.id>` — timestamp last shown pt #2
+1. Adaug o funcție RPC `get_assigned_variant_for_student(p_assignment_id uuid)` — SECURITY DEFINER — care:
+   - Găsește `class_id` din `test_assignments`.
+   - Extrage toți `student_id` din `class_members` pentru acea clasă, împreună cu `last_name` și `display_name` din `profiles`.
+   - Sortează după aceeași regulă ca `sortStudents.ts` (Romanian collation, case/diacritic-insensitive, fallback pe `display_name`, apoi tie-break pe `student_id` pentru stabilitate).
+   - Returnează `'A'` dacă indexul elevului curent (`auth.uid()`) e par, `'B'` dacă e impar.
+   - Fallback la `'A'` dacă elevul nu e găsit în clasă (edge case).
 
-Verificăm `Date.now() - stored >= 3*24*3600*1000` (resp. 2 zile). Doar userii autentificați văd cartonașele (fără user.id → skip).
+2. În `TakeTestPage.tsx` înlocuiesc linia random cu un apel la noul RPC (doar când **nu** există deja o submisie — dacă există `existingSub.variant`, se păstrează, ca acum, ca să nu se schimbe varianta la reluarea unui test întrerupt).
 
-## Fișiere
+## De ce pe server și nu pe client
 
-**Nou**: `src/components/tips/MotivationalTipCard.tsx`
-- Componentă prezentare pură: primește `visible`, `icon`, `title`, `message`, `gradient`, cu animația framer-motion + auto-hide după 2s (callback `onDismiss`).
+- Elevul nu are (și nu trebuie să aibă) permisiune să vadă lista completă a colegilor cu numele lor. RPC-ul SECURITY DEFINER face calculul fără să expună roster-ul.
+- Ordinea alfabetică e calculată identic pentru toți elevii, indiferent de dispozitiv.
 
-**Nou**: `src/hooks/useMotivationalTip.ts`
-- Determină ce tip trebuie afișat (dacă vreunul): citește `completed_lessons` din React Query cache / hook existent (`useProgress`) pentru scoruri < 70%, și `useProblems`/count pentru probleme rezolvate.
-- Aplică regulile de cooldown din localStorage.
-- Returnează `{ type: 'lessons' | 'problems' | null }` și o funcție `markShown`.
+## Impact
 
-**Modificat**: `src/pages/Index.tsx`
-- Importă hook-ul și componenta. Randează `<MotivationalTipCard ... />` deasupra conținutului când `type !== null`. La montare, apelează `markShown` și pornește timer-ul de 2s pentru dismiss.
+- Nu se schimbă nimic pentru testele fără variante sau pentru submisiile deja începute.
+- Nu se schimbă UI-ul profesorului.
+- Dacă un elev nou se alătură clasei după ce alții au început testul, variantele deja atribuite rămân — doar noul elev primește varianta corespunzătoare poziției lui alfabetice curente.
 
-## Notă pe rate
+## Fișiere modificate
 
-- Cooldown separat per tip (3 zile / 2 zile). Dacă ambele eligibile în aceeași vizită, se afișează doar unul și se marchează doar acela ca „shown".
-- Fără dependințe backend noi (fără migrări, fără edge functions) — totul e client-side pe baza datelor deja aduse de hook-urile existente.
+- **Migrație SQL nouă**: creează `public.get_assigned_variant_for_student(uuid)` + `GRANT EXECUTE ... TO authenticated`.
+- **`src/pages/TakeTestPage.tsx`**: înlocuiește `Math.random() < 0.5 ? "A" : "B"` cu `await supabase.rpc("get_assigned_variant_for_student", { p_assignment_id: assignmentId })`, cu fallback la `'A'` dacă RPC-ul eșuează.
