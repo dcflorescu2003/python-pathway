@@ -70,7 +70,7 @@ Deno.serve(async (req) => {
       JSON.stringify({
         success: true,
         premium_until: premiumUntil.toISOString(),
-        duration_days: coupon.duration_days,
+        duration_days: result.duration_days,
         coupon_type: couponType,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
