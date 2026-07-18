@@ -32,6 +32,7 @@ interface LeaderboardEntry {
 const LeaderboardPage = () => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const { xpPerLevel } = useXPThresholds();
   const [tab, setTab] = useState<Tab>("school");
   const [tabInitialized, setTabInitialized] = useState(false);
   const [userSchool, setUserSchool] = useState<string | null>(getSelectedSchool());
