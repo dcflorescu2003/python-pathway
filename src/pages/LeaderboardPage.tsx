@@ -162,6 +162,8 @@ const LeaderboardPage = () => {
   const renderRow = (entry: LeaderboardEntry, idx: number, animDelay: number) => {
     const isUser = entry.user_id === user?.id;
     const displayName = entry.nickname || entry.display_name || "Anonim";
+    const level = getLevelFromXP(entry.xp, xpPerLevel);
+    const tier = getLevelInfo(level);
     return (
       <motion.div
         key={entry.user_id}
@@ -184,7 +186,12 @@ const LeaderboardPage = () => {
           )}
         </div>
 
-        <span className="text-xl">{entry.avatar_url || "🐍"}</span>
+        <img
+          src={tier.image}
+          alt={tier.name}
+          title={tier.name}
+          className="h-8 w-8 shrink-0 rounded-full object-cover bg-card border border-border"
+        />
 
         <div className="flex-1 min-w-0">
           <p className={`text-sm font-bold truncate ${isUser ? "text-primary" : "text-foreground"}`}>
