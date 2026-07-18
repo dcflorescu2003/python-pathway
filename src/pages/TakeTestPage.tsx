@@ -131,31 +131,43 @@ const TakeTestPage = () => {
           );
         }
 
-        // Assign variant deterministically by alphabetical position within the class
-        // (first student -> A, second -> B, third -> A, ...). Falls back to 'A' if RPC fails.
+        // Assign variant + roster number deterministically by alphabetical position within the class
+        // (first student -> nr.1/A, second -> nr.2/B, third -> nr.3/A, ...).
         let variant: string = "A";
-        if (!existingSub) {
-          try {
-            const { data: assignedVariant, error: variantErr } = await supabase
-              .rpc("get_assigned_variant_for_student", { p_assignment_id: assignmentId });
-            if (!variantErr && (assignedVariant === "A" || assignedVariant === "B")) {
-              variant = assignedVariant;
-            }
-          } catch (e) {
-            console.error("Variant assignment RPC failed, defaulting to A:", e);
+        let rosterNumber: number | null = null;
+        try {
+          const { data: slotRows, error: slotErr } = await supabase
+            .rpc("get_assigned_slot_for_student", { p_assignment_id: assignmentId });
+          const slot = Array.isArray(slotRows) ? slotRows[0] : slotRows;
+          if (!slotErr && slot) {
+            if (slot.variant === "A" || slot.variant === "B") variant = slot.variant;
+            if (typeof slot.roster_number === "number") rosterNumber = slot.roster_number;
           }
+        } catch (e) {
+          console.error("Slot assignment RPC failed, defaulting to A:", e);
         }
+
         let subId: string;
 
         if (existingSub) {
           subId = existingSub.id;
+          setAssignedSlot({
+            variant: existingSub.variant || variant,
+            roster_number: (existingSub as any).roster_number ?? rosterNumber,
+          });
         } else {
-          const result = await startSubmission.mutateAsync({ assignment_id: assignmentId, variant });
+          const result = await startSubmission.mutateAsync({
+            assignment_id: assignmentId,
+            variant,
+            roster_number: rosterNumber,
+          });
           subId = result.id;
+          setAssignedSlot({ variant, roster_number: rosterNumber });
         }
         setSubmissionId(subId);
 
         const usedVariant = existingSub?.variant || variant;
+
 
         // Hydrate answers from server-side draft (survives device swaps / cleared localStorage)
         const serverDraft = (existingSub as any)?.draft_answers;
