@@ -129,8 +129,20 @@ const TakeTestPage = () => {
           );
         }
 
-        // Assign random variant (or reuse existing)
-        const variant = Math.random() < 0.5 ? "A" : "B";
+        // Assign variant deterministically by alphabetical position within the class
+        // (first student -> A, second -> B, third -> A, ...). Falls back to 'A' if RPC fails.
+        let variant: string = "A";
+        if (!existingSub) {
+          try {
+            const { data: assignedVariant, error: variantErr } = await supabase
+              .rpc("get_assigned_variant_for_student", { p_assignment_id: assignmentId });
+            if (!variantErr && (assignedVariant === "A" || assignedVariant === "B")) {
+              variant = assignedVariant;
+            }
+          } catch (e) {
+            console.error("Variant assignment RPC failed, defaulting to A:", e);
+          }
+        }
         let subId: string;
 
         if (existingSub) {
