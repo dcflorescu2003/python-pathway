@@ -30,72 +30,31 @@ Deno.serve(async (req) => {
 
     const trimmedCode = code.trim().toUpperCase();
 
-    // Find coupon
-    const { data: coupon, error: couponError } = await supabase
-      .from("coupons")
-      .select("*")
-      .eq("code", trimmedCode)
-      .eq("is_active", true)
-      .single();
-
-    if (couponError || !coupon) {
-      return new Response(JSON.stringify({ error: "Cupon invalid sau inactiv." }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    // Check expiry
-    if (coupon.expires_at && new Date(coupon.expires_at) < new Date()) {
-      return new Response(JSON.stringify({ error: "Cuponul a expirat." }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    // Check max uses
-    if (coupon.used_count >= coupon.max_uses) {
-      return new Response(JSON.stringify({ error: "Cuponul a fost deja folosit de numărul maxim de ori." }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    // Check if user already redeemed this coupon
-    const { data: existing } = await supabase
-      .from("coupon_redemptions")
-      .select("id")
-      .eq("coupon_id", coupon.id)
-      .eq("user_id", user.id)
-      .single();
-
-    if (existing) {
-      return new Response(JSON.stringify({ error: "Ai folosit deja acest cupon." }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    // Validate coupon type vs user status
-    const couponType = coupon.coupon_type || "student";
-
-    // Redeem: calculate premium_until
-    const premiumUntil = new Date();
-    premiumUntil.setDate(premiumUntil.getDate() + coupon.duration_days);
-
-    // Insert redemption with coupon_type
-    await supabase.from("coupon_redemptions").insert({
-      coupon_id: coupon.id,
-      user_id: user.id,
-      premium_until: premiumUntil.toISOString(),
-      coupon_type: couponType,
+    // Atomic server-side redemption: validates code, checks max_uses under a row lock,
+    // inserts the redemption, and increments used_count in a single transaction.
+    const { data: result, error: rpcError } = await supabase.rpc("redeem_coupon_atomic", {
+      p_code: trimmedCode,
+      p_user_id: user.id,
     });
 
-    // Increment used_count
-    await supabase
-      .from("coupons")
-      .update({ used_count: coupon.used_count + 1 })
-      .eq("id", coupon.id);
+    if (rpcError) throw rpcError;
+
+    const errorMap: Record<string, string> = {
+      invalid: "Cupon invalid sau inactiv.",
+      expired: "Cuponul a expirat.",
+      max_uses: "Cuponul a fost deja folosit de numărul maxim de ori.",
+      already_redeemed: "Ai folosit deja acest cupon.",
+    };
+
+    if (result?.error) {
+      return new Response(JSON.stringify({ error: errorMap[result.error] ?? "Cupon invalid." }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const couponType = result.coupon_type as string;
+    const premiumUntil = new Date(result.premium_until as string);
 
     // Set user as premium + if teacher coupon, also set teacher status
     const profileUpdate: Record<string, any> = { is_premium: true };
@@ -105,6 +64,7 @@ Deno.serve(async (req) => {
       profileUpdate.verification_method = "coupon";
     }
     await supabase.from("profiles").update(profileUpdate).eq("user_id", user.id);
+
 
     return new Response(
       JSON.stringify({
