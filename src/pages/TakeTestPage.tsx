@@ -888,6 +888,21 @@ const TakeTestPage = () => {
           ))}
         </div>
       </main>
+
+      <AlertDialog open={showLeaveConfirm} onOpenChange={setShowLeaveConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Ieși din test?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Răspunsurile tale sunt salvate, dar testul va fi marcat ca întrerupt. Cronometrul continuă să ruleze — dacă expiră, cere profesorului să apese „Permite continuarea" pentru a-l relua.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Rămân în test</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmLeaveTest}>Ies din test</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </motion.div>
   );
 };
