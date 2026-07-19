@@ -541,11 +541,28 @@ const TakeTestPage = () => {
         answer_data: answers[item.id] || null,
         max_points: item.points,
       }));
-      await submitTest.mutateAsync({
-        submission_id: submissionId,
-        answers: answersList,
-        auto_submitted_reason: autoReason ?? null,
-      });
+      // Retry submit up to 3 times on flaky networks (backoff 2s / 5s / 10s)
+      const backoffs = [0, 2000, 5000, 10000];
+      let lastErr: unknown = null;
+      let ok = false;
+      for (let attempt = 0; attempt < backoffs.length; attempt++) {
+        if (backoffs[attempt] > 0) await new Promise((r) => setTimeout(r, backoffs[attempt]));
+        try {
+          await submitTest.mutateAsync({
+            submission_id: submissionId,
+            answers: answersList,
+            auto_submitted_reason: autoReason ?? null,
+          });
+          ok = true;
+          break;
+        } catch (err) {
+          lastErr = err;
+          if (attempt < backoffs.length - 1) {
+            toast.info(`Reîncerc trimiterea testului… (${attempt + 1}/${backoffs.length - 1})`);
+          }
+        }
+      }
+      if (!ok) throw lastErr ?? new Error("submit_failed");
       toast.success("Test trimis! Notarea se face automat.");
     } catch {
       // Network / server failure — preserve everything so the student can resume later
@@ -559,6 +576,7 @@ const TakeTestPage = () => {
       submitInFlightRef.current = false;
     }
   }, [submissionId, submitted, items, answers, submitTest]);
+
 
   // Anti-cheat mode: strict = 1s + final submit; normal = 3s + final submit;
   // relaxed = 5s + save-as-interrupted (student can resume).
