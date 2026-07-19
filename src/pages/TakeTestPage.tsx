@@ -769,15 +769,19 @@ const TakeTestPage = () => {
       {/* Header */}
       <header className="sticky top-0 z-40 border-b border-border bg-background/80 backdrop-blur-md pt-[var(--sat)]">
         <div className="flex items-center gap-3 px-4 py-3">
-          <button onClick={() => navigate("/")} className="active:scale-90 transition-transform">
+          <button
+            onClick={() => setShowLeaveConfirm(true)}
+            className="shrink-0 active:scale-90 transition-transform"
+            aria-label="Închide testul"
+          >
             <ArrowLeft className="h-6 w-6 text-foreground" />
           </button>
-          <div className="flex-1">
+          <div className="flex-1 min-w-0">
             <h1 className="text-sm font-bold text-foreground truncate">{testInfo?.tests?.title || "Test"}</h1>
             <p className="text-[10px] text-muted-foreground">{currentIdx + 1}/{items.length}</p>
           </div>
           {timeLeft !== null && (
-            <div className={`flex items-center gap-1 text-sm font-mono font-bold ${timeLeft < 60 ? "text-destructive" : "text-foreground"}`}>
+            <div className={`shrink-0 flex items-center gap-1 text-sm font-mono font-bold ${timeLeft < 60 ? "text-destructive" : "text-foreground"}`}>
               <Clock className="h-4 w-4" /> {formatTime(timeLeft)}
             </div>
           )}
