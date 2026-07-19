@@ -162,11 +162,12 @@ const AccountView = () => {
     if (!user) return;
     const { data, error } = await supabase.rpc("join_class_with_code", { p_code: code });
     if (error) {
+      console.error("[joinClassDirect]", error);
       const msg = (error as any).message || "";
       if (msg.includes("Invalid join code")) toast.error("Cod invalid.");
       else if (msg.includes("Already enrolled") || msg.includes("class_members_student_id_unique"))
         toast.error("Ești deja înscris într-o altă clasă. Părăsește clasa curentă din Cont → Elev înainte de a te alătura alteia.");
-      else toast.error("Eroare la înscriere.");
+      else toast.error("Eroare la înscriere: " + (msg || "necunoscută"));
     } else {
       const joined = Array.isArray(data) ? data[0] : null;
       toast.success("Te-ai alăturat clasei! 🎉");
@@ -182,10 +183,15 @@ const AccountView = () => {
     if (!user || !pendingClassId || !pendingJoinCode || ln.length < 2 || fn.length < 2) return;
     setJoinLoading(true);
     try {
-      await supabase
+      const { error: profileErr } = await supabase
         .from("profiles")
         .update({ display_name: combined, last_name: ln, first_name: fn })
         .eq("user_id", user.id);
+      if (profileErr) {
+        console.error("[profile update]", profileErr);
+        toast.error("Eroare la salvarea numelui: " + (profileErr.message || "necunoscută"));
+        return;
+      }
       await joinClassDirect(pendingClassId, pendingJoinCode);
       setShowNameDialog(false);
       setPendingClassId(null);
@@ -197,6 +203,7 @@ const AccountView = () => {
       setJoinLoading(false);
     }
   };
+
 
   const handleSignOut = async () => {
     await signOut();
