@@ -929,7 +929,23 @@ const TakeTestPage = () => {
 
       </header>
 
+      {(!isOnline || pendingDraftSync) && (
+        <div className={`sticky top-[calc(var(--sat)+52px)] z-30 px-4 py-2 text-xs font-medium flex items-center gap-2 border-b ${
+          !isOnline
+            ? "bg-destructive/15 text-destructive border-destructive/30"
+            : "bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/30"
+        }`}>
+          <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+          <span className="truncate">
+            {!isOnline
+              ? "Fără conexiune — răspunsurile se salvează local și vor fi trimise la reconectare."
+              : "Se așteaptă sincronizarea răspunsurilor cu serverul…"}
+          </span>
+        </div>
+      )}
+
       <main className="px-4 py-6 max-w-lg mx-auto">
+
         <div className="mb-4 flex items-start gap-2 p-3 rounded-lg border border-destructive/30 bg-destructive/10">
           <AlertTriangle className="h-4 w-4 text-destructive shrink-0 mt-0.5" />
           <div className="text-xs text-foreground space-y-1">
