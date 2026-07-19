@@ -1159,12 +1159,15 @@ const ExerciseRenderer = ({ exercise, answer, onAnswer }: { exercise: any; answe
   return (
     <div className="space-y-2">
       <RichContent className="text-sm font-medium text-foreground">{exercise.question}</RichContent>
-      <CodeEditor
-        placeholder="Scrie răspunsul tău..."
-        value={answer?.text || ""}
-        onChange={(val) => onAnswer({ text: val })}
-      />
+      <div data-code-editor>
+        <CodeEditor
+          placeholder="Scrie răspunsul tău..."
+          value={answer?.text || ""}
+          onChange={(val) => onAnswer({ text: val })}
+        />
+      </div>
     </div>
+
   );
 };
 
