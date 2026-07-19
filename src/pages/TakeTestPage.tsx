@@ -388,9 +388,15 @@ const TakeTestPage = () => {
   // --- sendBeacon on beforeunload (browser close / crash) ---
   useEffect(() => {
     if (!submissionId || submitted) return;
-    const onBeforeUnload = () => {
+    const onBeforeUnload = (e: BeforeUnloadEvent) => {
       // Skip if already submitted or another submit path is in-flight
-      if (submittedRef.current || submitInFlightRef.current) return;
+      if (submittedRef.current || submitInFlightRef.current) {
+        // Native browser confirmation on tab close / reload / back-gesture
+        // (browsers only display the prompt when returnValue is set)
+        e.preventDefault();
+        e.returnValue = "";
+        return "";
+      }
       // Save draft as last resort
       if (draftKey) {
         try { localStorage.setItem(draftKey, JSON.stringify(answersRef.current)); } catch {}
@@ -414,6 +420,11 @@ const TakeTestPage = () => {
           new Blob([payload], { type: "application/json" })
         );
       } catch {}
+      // Show the browser's native "Leave site?" prompt so a stray tab close /
+      // gesture doesn't drop the student out of the test silently.
+      e.preventDefault();
+      e.returnValue = "";
+      return "";
     };
     window.addEventListener("beforeunload", onBeforeUnload);
     return () => window.removeEventListener("beforeunload", onBeforeUnload);
