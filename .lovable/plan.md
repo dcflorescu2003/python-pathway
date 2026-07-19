@@ -1,43 +1,30 @@
-## Problema
+## Problemă
 
-- În DB, `florescudiana67@gmail.com` are `profiles.school_id = 'skipped'` (valoare pusă la onboarding când se sare peste alegere), dar `xp = 143`.
-- În `LeaderboardPage`, tab-ul „Liceu" filtrează Top 15 și rangul după `userSchool` din `localStorage`. Când userul apasă „Schimbă", state-ul local + `localStorage` se actualizează imediat, dar `supabase.from("profiles").update({ school_id })` e apelat fără verificare de eroare. Dacă update-ul eșuează (sau nu s-a produs încă), profilul rămâne cu vechiul `school_id` (`'skipped'`), în timp ce filtrul folosește liceul nou.
-- Rezultat: Top 15 conține 15 elevi din liceul „nou" (userul nu e printre ei, pentru că `public_profiles.school_id` e `'skipped'`), iar `userRankData` calculează totuși un rang (locul 8) numărând userii din liceul „nou" cu XP > 143 — de aici discrepanța din poză: „locul 8 cu ..." și un alt user afișat pe locul 8 în listă.
+Cartonasul motivational (`MotivationalTipCard`) apare imediat la deschiderea aplicației pe Home și e poziționat în partea de sus (uneori pare „în colț" pe anumite viewport-uri, în loc de mijlocul ecranului).
 
-## Soluție
+## Modificări
 
-Corectăm două lucruri, ambele frontend:
+### 1. Trigger: după terminarea unei lecții, nu la deschiderea aplicației
 
-### 1. `handleSelectSchool` — update robust în DB
-- Așteptăm rezultatul `update()` pe `profiles` și verificăm `error`.
-- Dacă eroare: `toast.error(...)`, NU setăm `localStorage`, NU schimbăm `userSchool`, ieșim.
-- Dacă succes: setăm `localStorage` + state + invalidăm query-urile.
+- În `src/pages/LessonPage.tsx` (și, dacă are același flow de finalizare, `ManualLessonPage.tsx`): la momentul în care lecția e marcată completă și user-ul urmează să fie trimis înapoi la lista de lecții, setăm un flag scurt în `sessionStorage`:
+  - `sessionStorage.setItem("pyro-tip-trigger", "1")`
+- În `src/hooks/useMotivationalTip.ts`:
+  - Blocăm calcularea tip-ului dacă flag-ul nu este prezent.
+  - Când tip-ul este afișat (`markShown`), consumăm flag-ul (`sessionStorage.removeItem("pyro-tip-trigger")`) ca să nu reapară la următoarea intrare pe Home.
+  - Apelăm `markShown` din `src/pages/Index.tsx` atunci când `tipType` devine non-null (momentan nu se apelează, deci cooldown-ul de 2/3 zile nu se persistă — bug secundar reparat aici).
 
-### 2. Sursa de adevăr pentru `userSchool` = profilul din DB
-- Adăugăm un query mic (sau reutilizăm `userRankData`) care citește `school_id` curent al userului din `public_profiles` la mount și după orice schimbare de liceu.
-- Preferăm `profile.school_id` peste `localStorage` pentru:
-  - filtrul din Top 15 (`.eq("school_id", ...)`),
-  - filtrul de oraș (derivat din același `school_id`),
-  - condiția „liceu necunoscut" (ecranul cu căutare).
-- Tratăm `'skipped'` la fel ca `null` — nu e un liceu valid, deci afișăm ecranul de alegere liceu.
+Rezultat: cartonasul apare o singură dată, la revenirea pe Home după prima lecție terminată din sesiune, exact înainte ca lista de lecții să reapară. La deschiderea aplicației (fără să fi terminat o lecție) nu mai apare.
 
-### 3. Guard defensiv pe rang
-- Nu calculăm/afișăm `userRankData` pentru tab-urile `school`/`city` dacă `myProfile.school_id` (din DB) nu se potrivește cu filtrul aplicat. Elimină definitiv „locul 8 cu …" fals când datele sunt tranzitorii.
+### 2. Poziționare: centrat pe ecran
 
-## Fișiere modificate
+În `src/components/tips/MotivationalTipCard.tsx`:
+- Înlocuim `top-[calc(var(--sat)+72px)]` cu poziționare centrată vertical și orizontal:
+  - `fixed inset-0 flex items-center justify-center z-50 pointer-events-none`
+  - Cardul intern păstrează `w-[92%] max-w-md` și primește animația spring existentă (fade + scale în loc de slide de sus).
+- Ajustăm `initial/animate/exit` la `scale: 0.85 → 1 → 0.85` cu `opacity` pentru un efect elegant pe centru.
 
-- `src/pages/LeaderboardPage.tsx`:
-  - `handleSelectSchool`: error handling pe update + toast, invalidare doar la succes.
-  - Deriva `effectiveSchoolId` din profilul DB (nu `localStorage`), tratând `'skipped'` ca lipsă.
-  - `userRankData`: skip calcul dacă `myProfile.school_id !== effectiveSchoolId` pe tab-urile filtrate pe liceu/oraș.
+## Notă tehnică
 
-## Fișiere neatinse
-
-- Fără migrări. `'skipped'` rămâne o valoare validă istorică; e tratată ca „fără liceu" în UI.
-- Datele curente ale userului nu sunt modificate — după ce alege un liceu în UI-ul reparat, `profiles.school_id` se va salva corect.
-
-## Verificare
-
-1. Cu `florescudiana67@gmail.com`: după plan, deschis Clasament → tab „Liceu" va arăta ecranul „Alege liceul tău" (pentru că DB e `'skipped'`).
-2. După alegere, dacă update-ul reușește, apare Top 15 corect și rangul propriu.
-3. Dacă update-ul eșuează (RLS/rețea), primește toast și rămâne pe ecranul de alegere — fără rang fantomă.
+- Cooldown-urile existente (3 zile lecții / 2 zile probleme) rămân valabile — flag-ul de trigger este condiție suplimentară, nu înlocuitor.
+- Nu se modifică logica de eligibilitate (scor < 70% sau < 20 probleme rezolvate).
+- Auto-dismiss după 2s rămâne neschimbat.
