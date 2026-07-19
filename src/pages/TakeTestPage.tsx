@@ -678,6 +678,25 @@ const TakeTestPage = () => {
     );
   }
 
+  if (noItemsReason === "window_expired") {
+    return (
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="min-h-screen bg-background flex items-center justify-center p-4">
+        <Card className="max-w-sm w-full">
+          <CardContent className="p-6 text-center space-y-4">
+            <div className="flex justify-center">
+              <AlertTriangle className="h-10 w-10 text-destructive" />
+            </div>
+            <h2 className="text-lg font-bold text-foreground">Testul nu mai este disponibil</h2>
+            <p className="text-sm text-muted-foreground">
+              Fereastra de începere a expirat. Contactează profesorul pentru redeschidere sau prelungire.
+            </p>
+            <Button onClick={() => navigate("/")} className="w-full">Înapoi acasă</Button>
+          </CardContent>
+        </Card>
+      </motion.div>
+    );
+  }
+
   const currentItem = items[currentIdx];
   const formatTime = (s: number) => `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, "0")}`;
 
