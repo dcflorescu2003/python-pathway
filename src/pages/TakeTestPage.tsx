@@ -76,6 +76,9 @@ const TakeTestPage = () => {
   const [assignedSlot, setAssignedSlot] = useState<{ variant: string; roster_number: number | null } | null>(null);
   const [noItemsReason, setNoItemsReason] = useState<"window_expired" | null>(null);
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
+  const [isOnline, setIsOnline] = useState<boolean>(typeof navigator === "undefined" ? true : navigator.onLine);
+  const [pendingDraftSync, setPendingDraftSync] = useState<boolean>(false);
+
 
 
   const requireFullscreen: boolean = !!testInfo?.tests?.require_fullscreen;
@@ -364,18 +367,113 @@ const TakeTestPage = () => {
   const submitInFlightRef = useRef(false);
 
   // Periodic save every 30s + save on visibilitychange (localStorage + server draft)
+  // Marks pendingDraftSync when the server draft fails, so we can retry on reconnect.
   useEffect(() => {
     if (!draftKey || submitted || !submissionId) return;
-    const saveDraft = () => {
+    const saveDraft = async () => {
       try { localStorage.setItem(draftKey, JSON.stringify(answersRef.current)); } catch {}
-      // Fire-and-forget server draft persistence
-      saveSubmissionDraft(submissionId, answersRef.current).catch(() => {});
+      try {
+        await saveSubmissionDraft(submissionId, answersRef.current);
+        setPendingDraftSync(false);
+      } catch {
+        setPendingDraftSync(true);
+      }
     };
     const interval = setInterval(saveDraft, 30_000);
-    const onVis = () => { if (document.hidden) saveDraft(); };
+    const onVis = () => { if (document.hidden) void saveDraft(); };
     document.addEventListener("visibilitychange", onVis);
     return () => { clearInterval(interval); document.removeEventListener("visibilitychange", onVis); };
   }, [draftKey, submitted, submissionId]);
+
+  // Track network connectivity + flush pending draft on reconnect. Autosave
+  // continues to update localStorage even offline; the server flush happens
+  // as soon as we're back online.
+  useEffect(() => {
+    if (!submissionId || submitted) return;
+    const onOnline = async () => {
+      setIsOnline(true);
+      try {
+        await saveSubmissionDraft(submissionId, answersRef.current);
+        setPendingDraftSync(false);
+        toast.success("Conexiune restabilită. Răspunsurile au fost sincronizate.");
+      } catch {
+        setPendingDraftSync(true);
+      }
+    };
+    const onOffline = () => {
+      setIsOnline(false);
+      toast.warning("Fără conexiune. Răspunsurile se salvează local și se vor trimite la reconectare.");
+    };
+    window.addEventListener("online", onOnline);
+    window.addEventListener("offline", onOffline);
+    return () => {
+      window.removeEventListener("online", onOnline);
+      window.removeEventListener("offline", onOffline);
+    };
+  }, [submissionId, submitted]);
+
+  // Screen Wake Lock: keep the screen on during the test so a screen-off event
+  // isn't misinterpreted as a leave, and so students don't lose focus mid-answer.
+  useEffect(() => {
+    if (!submissionId || submitted) return;
+    const anyNav = navigator as any;
+    if (!anyNav?.wakeLock?.request) return;
+    let wakeLock: any = null;
+    let cancelled = false;
+    const acquire = async () => {
+      try {
+        wakeLock = await anyNav.wakeLock.request("screen");
+        wakeLock?.addEventListener?.("release", () => {
+          // Re-acquire silently if released while the test is still active
+          if (!cancelled && !document.hidden) void acquire();
+        });
+      } catch { /* wake lock not permitted — ignore */ }
+    };
+    const onVis = () => { if (!document.hidden) void acquire(); };
+    void acquire();
+    document.addEventListener("visibilitychange", onVis);
+    return () => {
+      cancelled = true;
+      document.removeEventListener("visibilitychange", onVis);
+      try { wakeLock?.release?.(); } catch {}
+    };
+  }, [submissionId, submitted]);
+
+  // Block copy/paste on the test surface (except within the code editor, which
+  // students legitimately need to edit). Toast the first time in each session
+  // so students understand why nothing happened.
+  useEffect(() => {
+    if (!submissionId || submitted) return;
+    let toastedPaste = false;
+    let toastedCopy = false;
+    const isInsideCodeEditor = (t: EventTarget | null) => {
+      const el = t as HTMLElement | null;
+      return !!el?.closest?.("[data-code-editor]");
+    };
+    const onPaste = (e: ClipboardEvent) => {
+      if (isInsideCodeEditor(e.target)) return;
+      e.preventDefault();
+      if (!toastedPaste) {
+        toastedPaste = true;
+        toast.warning("Lipirea din clipboard nu este permisă în timpul testului.");
+      }
+    };
+    const onCopy = (e: ClipboardEvent) => {
+      if (isInsideCodeEditor(e.target)) return;
+      e.preventDefault();
+      if (!toastedCopy) {
+        toastedCopy = true;
+        toast.warning("Copierea din enunț nu este permisă în timpul testului.");
+      }
+    };
+    document.addEventListener("paste", onPaste, { capture: true });
+    document.addEventListener("copy", onCopy, { capture: true });
+    return () => {
+      document.removeEventListener("paste", onPaste, { capture: true } as any);
+      document.removeEventListener("copy", onCopy, { capture: true } as any);
+    };
+  }, [submissionId, submitted]);
+
 
 
   // Clean up draft after successful submit
@@ -443,11 +541,28 @@ const TakeTestPage = () => {
         answer_data: answers[item.id] || null,
         max_points: item.points,
       }));
-      await submitTest.mutateAsync({
-        submission_id: submissionId,
-        answers: answersList,
-        auto_submitted_reason: autoReason ?? null,
-      });
+      // Retry submit up to 3 times on flaky networks (backoff 2s / 5s / 10s)
+      const backoffs = [0, 2000, 5000, 10000];
+      let lastErr: unknown = null;
+      let ok = false;
+      for (let attempt = 0; attempt < backoffs.length; attempt++) {
+        if (backoffs[attempt] > 0) await new Promise((r) => setTimeout(r, backoffs[attempt]));
+        try {
+          await submitTest.mutateAsync({
+            submission_id: submissionId,
+            answers: answersList,
+            auto_submitted_reason: autoReason ?? null,
+          });
+          ok = true;
+          break;
+        } catch (err) {
+          lastErr = err;
+          if (attempt < backoffs.length - 1) {
+            toast.info(`Reîncerc trimiterea testului… (${attempt + 1}/${backoffs.length - 1})`);
+          }
+        }
+      }
+      if (!ok) throw lastErr ?? new Error("submit_failed");
       toast.success("Test trimis! Notarea se face automat.");
     } catch {
       // Network / server failure — preserve everything so the student can resume later
@@ -461,6 +576,7 @@ const TakeTestPage = () => {
       submitInFlightRef.current = false;
     }
   }, [submissionId, submitted, items, answers, submitTest]);
+
 
   // Anti-cheat mode: strict = 1s + final submit; normal = 3s + final submit;
   // relaxed = 5s + save-as-interrupted (student can resume).
@@ -813,7 +929,23 @@ const TakeTestPage = () => {
 
       </header>
 
+      {(!isOnline || pendingDraftSync) && (
+        <div className={`sticky top-[calc(var(--sat)+52px)] z-30 px-4 py-2 text-xs font-medium flex items-center gap-2 border-b ${
+          !isOnline
+            ? "bg-destructive/15 text-destructive border-destructive/30"
+            : "bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/30"
+        }`}>
+          <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+          <span className="truncate">
+            {!isOnline
+              ? "Fără conexiune — răspunsurile se salvează local și vor fi trimise la reconectare."
+              : "Se așteaptă sincronizarea răspunsurilor cu serverul…"}
+          </span>
+        </div>
+      )}
+
       <main className="px-4 py-6 max-w-lg mx-auto">
+
         <div className="mb-4 flex items-start gap-2 p-3 rounded-lg border border-destructive/30 bg-destructive/10">
           <AlertTriangle className="h-4 w-4 text-destructive shrink-0 mt-0.5" />
           <div className="text-xs text-foreground space-y-1">
@@ -874,9 +1006,10 @@ const TakeTestPage = () => {
               Următorul <ChevronRight className="h-4 w-4" />
             </Button>
           ) : (
-            <Button size="sm" onClick={() => handleSubmit()} disabled={submitTest.isPending} className="gap-1">
-              <Send className="h-4 w-4" /> Trimite testul
+            <Button size="sm" onClick={() => handleSubmit()} disabled={submitTest.isPending || !isOnline} className="gap-1">
+              <Send className="h-4 w-4" /> {isOnline ? "Trimite testul" : "Fără conexiune"}
             </Button>
+
           )}
         </div>
 
@@ -1043,12 +1176,15 @@ const ExerciseRenderer = ({ exercise, answer, onAnswer }: { exercise: any; answe
   return (
     <div className="space-y-2">
       <RichContent className="text-sm font-medium text-foreground">{exercise.question}</RichContent>
-      <CodeEditor
-        placeholder="Scrie răspunsul tău..."
-        value={answer?.text || ""}
-        onChange={(val) => onAnswer({ text: val })}
-      />
+      <div data-code-editor>
+        <CodeEditor
+          placeholder="Scrie răspunsul tău..."
+          value={answer?.text || ""}
+          onChange={(val) => onAnswer({ text: val })}
+        />
+      </div>
     </div>
+
   );
 };
 
@@ -1412,11 +1548,14 @@ const ProblemRenderer = ({ problem, answer, onAnswer, allowRunTests }: { problem
       {problem.hint && (
         <p className="text-[10px] text-muted-foreground italic">💡 {problem.hint}</p>
       )}
-      <CodeEditor
-        placeholder="Scrie codul Python aici..."
-        value={answer?.code || ""}
-        onChange={(val) => onAnswer({ code: val })}
-      />
+      <div data-code-editor>
+        <CodeEditor
+          placeholder="Scrie codul Python aici..."
+          value={answer?.code || ""}
+          onChange={(val) => onAnswer({ code: val })}
+        />
+      </div>
+
       {canRun && (
         <div className="space-y-2">
           <Button
