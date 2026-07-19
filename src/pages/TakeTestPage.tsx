@@ -76,6 +76,9 @@ const TakeTestPage = () => {
   const [assignedSlot, setAssignedSlot] = useState<{ variant: string; roster_number: number | null } | null>(null);
   const [noItemsReason, setNoItemsReason] = useState<"window_expired" | null>(null);
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
+  const [isOnline, setIsOnline] = useState<boolean>(typeof navigator === "undefined" ? true : navigator.onLine);
+  const [pendingDraftSync, setPendingDraftSync] = useState<boolean>(false);
+
 
 
   const requireFullscreen: boolean = !!testInfo?.tests?.require_fullscreen;
