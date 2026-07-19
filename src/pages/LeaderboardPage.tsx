@@ -35,9 +35,28 @@ const LeaderboardPage = () => {
   const { xpPerLevel } = useXPThresholds();
   const [tab, setTab] = useState<Tab>("school");
   const [tabInitialized, setTabInitialized] = useState(false);
-  const [userSchool, setUserSchool] = useState<string | null>(getSelectedSchool());
   const [schoolSearch, setSchoolSearch] = useState("");
   const [changingSchool, setChangingSchool] = useState(false);
+
+  // Source of truth for the user's school: the DB profile, not localStorage.
+  // 'skipped' (onboarding placeholder) is treated as "no school".
+  const { data: myProfileSchool } = useQuery({
+    queryKey: ["leaderboard-my-school", user?.id],
+    enabled: !!user,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("profiles")
+        .select("school_id")
+        .eq("user_id", user!.id)
+        .maybeSingle();
+      const sid = (data?.school_id as string | null) ?? null;
+      return sid && sid !== "skipped" ? sid : null;
+    },
+  });
+
+  const localSchool = getSelectedSchool();
+  const localSchoolValid = localSchool && localSchool !== "skipped" ? localSchool : null;
+  const userSchool = myProfileSchool ?? localSchoolValid ?? null;
 
   const userCity = userSchool ? schools.find(s => s.id === userSchool)?.city : null;
   const citySchoolIds = userCity ? schools.filter(s => s.city === userCity).map(s => s.id) : [];
@@ -48,12 +67,20 @@ const LeaderboardPage = () => {
   }, [schoolSearch]);
 
   const handleSelectSchool = useCallback(async (schoolId: string) => {
-    setSelectedSchool(schoolId);
-    setUserSchool(schoolId);
-    setSchoolSearch("");
     if (user) {
-      await supabase.from("profiles").update({ school_id: schoolId }).eq("user_id", user.id);
+      const { error } = await supabase
+        .from("profiles")
+        .update({ school_id: schoolId })
+        .eq("user_id", user.id);
+      if (error) {
+        console.error("[handleSelectSchool] profile update failed", error);
+        toast.error("Nu am putut salva liceul: " + (error.message || "eroare necunoscută"));
+        return;
+      }
     }
+    setSelectedSchool(schoolId);
+    setSchoolSearch("");
+    queryClient.invalidateQueries({ queryKey: ["leaderboard-my-school"] });
     queryClient.invalidateQueries({ queryKey: ["leaderboard-top"] });
     queryClient.invalidateQueries({ queryKey: ["leaderboard-user-rank"] });
     toast.success("Liceu selectat!");
