@@ -1,30 +1,32 @@
-## Problemă
+## Diagnostic
 
-Cartonasul motivational (`MotivationalTipCard`) apare imediat la deschiderea aplicației pe Home și e poziționat în partea de sus (uneori pare „în colț" pe anumite viewport-uri, în loc de mijlocul ecranului).
+Am verificat testul din imagine (`38c4cff6…`, „2 Test functii – 2 numere, grile 1 poblema"):
+- Are 22 de itemi în DB (11 pentru varianta A, 11 pentru B) — deci itemii **există**.
+- Ambele assignments ale acestui test au `window_minutes = 10`, iar `assigned_at` a fost 18:17 / 18:20.
+- RPC-ul `get_test_items_for_student` returnează 0 rânduri când `assigned_at + window_minutes < now()`.
 
-## Modificări
+Rezultat: fereastra de 10 minute a expirat înainte ca elevul să deschidă testul, iar RPC-ul nu mai trimite niciun item → în UI apare „1/0" și niciun conținut, dar cu buton „Trimite testul" activ.
 
-### 1. Trigger: după terminarea unei lecții, nu la deschiderea aplicației
+Sunt două probleme reale:
 
-- În `src/pages/LessonPage.tsx` (și, dacă are același flow de finalizare, `ManualLessonPage.tsx`): la momentul în care lecția e marcată completă și user-ul urmează să fie trimis înapoi la lista de lecții, setăm un flag scurt în `sessionStorage`:
-  - `sessionStorage.setItem("pyro-tip-trigger", "1")`
-- În `src/hooks/useMotivationalTip.ts`:
-  - Blocăm calcularea tip-ului dacă flag-ul nu este prezent.
-  - Când tip-ul este afișat (`markShown`), consumăm flag-ul (`sessionStorage.removeItem("pyro-tip-trigger")`) ca să nu reapară la următoarea intrare pe Home.
-  - Apelăm `markShown` din `src/pages/Index.tsx` atunci când `tipType` devine non-null (momentan nu se apelează, deci cooldown-ul de 2/3 zile nu se persistă — bug secundar reparat aici).
+1. **Backend**: `window_minutes` blochează și submissions deja începute. Un elev care a intrat în test la minutul 9 și încă mai are timp pe cronometru (ex. `time_limit_minutes`) pierde brusc toate întrebările la minutul 10. La fel, dacă elevul deschide testul chiar după expirare, ecranul e complet gol fără nicio explicație.
+2. **Frontend**: când RPC-ul întoarce 0 itemi, `TakeTestPage` continuă să randeze UI-ul de test (header, „0/0", buton „Trimite"), în loc să afișeze un mesaj clar.
 
-Rezultat: cartonasul apare o singură dată, la revenirea pe Home după prima lecție terminată din sesiune, exact înainte ca lista de lecții să reapară. La deschiderea aplicației (fără să fi terminat o lecție) nu mai apare.
+## Modificări propuse
 
-### 2. Poziționare: centrat pe ecran
+### 1. Migrație SQL — `get_test_items_for_student`
+- Dacă elevul are deja un `test_submissions` **nesubmis** pentru acest assignment (`submitted_at IS NULL`), returnează itemii indiferent de `window_minutes` (cronometrul propriu al testului rămâne singura limită).
+- Dacă nu are submission, păstrează gate-ul pe fereastră (fereastra e „interval de start", nu „interval de rezolvare").
+- Comportamentul pentru assignments fără `window_minutes` rămâne neschimbat.
 
-În `src/components/tips/MotivationalTipCard.tsx`:
-- Înlocuim `top-[calc(var(--sat)+72px)]` cu poziționare centrată vertical și orizontal:
-  - `fixed inset-0 flex items-center justify-center z-50 pointer-events-none`
-  - Cardul intern păstrează `w-[92%] max-w-md` și primește animația spring existentă (fade + scale în loc de slide de sus).
-- Ajustăm `initial/animate/exit` la `scale: 0.85 → 1 → 0.85` cu `opacity` pentru un efect elegant pe centru.
+### 2. `src/pages/TakeTestPage.tsx`
+- După apelul RPC, când `testItems.length === 0` **și nu există** o submission în derulare, afișează un ecran dedicat (card centrat) cu mesajul:
+  - „Testul nu mai este disponibil. Fereastra de începere a expirat. Contactează profesorul pentru redeschidere."
+  - Buton „Înapoi acasă".
+- Nu mai randa header-ul cu „0/0" și nu afișa butonul „Trimite testul" pe test gol.
 
-## Notă tehnică
+### 3. Verificare finală
+- Confirmare cu un query rapid că RPC-ul returnează itemii pentru un submission în curs după expirare.
+- Fără schimbări de schemă în afara funcției; fără impact pe teacher UI.
 
-- Cooldown-urile existente (3 zile lecții / 2 zile probleme) rămân valabile — flag-ul de trigger este condiție suplimentară, nu înlocuitor.
-- Nu se modifică logica de eligibilitate (scor < 70% sau < 20 probleme rezolvate).
-- Auto-dismiss după 2s rămâne neschimbat.
+Nu ating logica de anti-cheat, draft-uri, roster sau grading.
