@@ -64,6 +64,7 @@ const TakeTestPage = () => {
   const [submitted, setSubmitted] = useState(false);
   const [fullscreenReady, setFullscreenReady] = useState(false);
   const [assignedSlot, setAssignedSlot] = useState<{ variant: string; roster_number: number | null } | null>(null);
+  const [noItemsReason, setNoItemsReason] = useState<"window_expired" | null>(null);
 
 
   const requireFullscreen: boolean = !!testInfo?.tests?.require_fullscreen;
@@ -183,7 +184,11 @@ const TakeTestPage = () => {
           });
 
         if (rpcError) throw rpcError;
-        if (!testItems || testItems.length === 0) { setLoading(false); return; }
+        if (!testItems || testItems.length === 0) {
+          setNoItemsReason("window_expired");
+          setLoading(false);
+          return;
+        }
 
         // Shuffle items if shuffle mode
         let orderedItems = testItems;
@@ -666,6 +671,25 @@ const TakeTestPage = () => {
             <div className="text-4xl">✅</div>
             <h2 className="text-lg font-bold text-foreground">Test trimis!</h2>
             <p className="text-sm text-muted-foreground">Vei vedea nota după ce profesorul o publică.</p>
+            <Button onClick={() => navigate("/")} className="w-full">Înapoi acasă</Button>
+          </CardContent>
+        </Card>
+      </motion.div>
+    );
+  }
+
+  if (noItemsReason === "window_expired") {
+    return (
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="min-h-screen bg-background flex items-center justify-center p-4">
+        <Card className="max-w-sm w-full">
+          <CardContent className="p-6 text-center space-y-4">
+            <div className="flex justify-center">
+              <AlertTriangle className="h-10 w-10 text-destructive" />
+            </div>
+            <h2 className="text-lg font-bold text-foreground">Testul nu mai este disponibil</h2>
+            <p className="text-sm text-muted-foreground">
+              Fereastra de începere a expirat. Contactează profesorul pentru redeschidere sau prelungire.
+            </p>
             <Button onClick={() => navigate("/")} className="w-full">Înapoi acasă</Button>
           </CardContent>
         </Card>
