@@ -542,40 +542,58 @@ const TakeTestPage = () => {
       document.addEventListener("fullscreenchange", onFullscreenChange);
     }
 
-    // Capacitor app state (mobile background) + pause/resume
+    // Stability-gated cancel: only cancel the leave timeout if focus stays for >500ms.
+    // This prevents a quick "pull-and-release" of the notification shade from silently
+    // cancelling the autosubmit timer before leaveGraceMs expires.
+    let stableCancelTimeout: ReturnType<typeof setTimeout> | null = null;
+    const stableCancel = () => {
+      if (stableCancelTimeout) clearTimeout(stableCancelTimeout);
+      stableCancelTimeout = setTimeout(() => { cancelLeave(); }, 500);
+    };
+    const armLeave = () => {
+      if (stableCancelTimeout) { clearTimeout(stableCancelTimeout); stableCancelTimeout = null; }
+    };
+
+    // Capacitor app state (mobile background) + pause/resume + backButton
     let capListener: { remove: () => void } | null = null;
     let capPauseListener: { remove: () => void } | null = null;
     let capResumeListener: { remove: () => void } | null = null;
+    let capBackListener: { remove: () => void } | null = null;
     (async () => {
       try {
         const { App } = await import("@capacitor/app");
         const handle = await App.addListener("appStateChange", (state: { isActive: boolean }) => {
-          if (!state.isActive) triggerLeave("app_background");
-          else cancelLeave();
+          if (!state.isActive) { armLeave(); triggerLeave("app_background"); }
+          else stableCancel();
         });
         capListener = handle;
-        // pause/resume fire more reliably on Android notification shade
         const pauseHandle = await App.addListener("pause" as any, () => {
-          triggerLeave("app_pause");
+          armLeave(); triggerLeave("app_pause");
         });
         capPauseListener = pauseHandle;
         const resumeHandle = await App.addListener("resume" as any, () => {
-          cancelLeave();
+          stableCancel();
         });
         capResumeListener = resumeHandle;
+        // Intercept hardware/gesture back so students can't accidentally exit the test.
+        const backHandle = await App.addListener("backButton" as any, () => {
+          setShowLeaveConfirm(true);
+        });
+        capBackListener = backHandle;
       } catch {
         // @capacitor/app not available (web) — ignore
       }
     })();
 
     // Native Android bridge: listen for window focus lost/gained from MainActivity
-    const onNativeFocusLost = () => triggerLeave("native_window_focus_lost");
-    const onNativeFocusGained = () => cancelLeave();
+    const onNativeFocusLost = () => { armLeave(); triggerLeave("native_window_focus_lost"); };
+    const onNativeFocusGained = () => stableCancel();
     window.addEventListener("pyro:native_focus_lost", onNativeFocusLost);
     window.addEventListener("pyro:native_focus_gained", onNativeFocusGained);
 
     return () => {
       cancelLeave();
+      if (stableCancelTimeout) clearTimeout(stableCancelTimeout);
       clearInterval(focusPollInterval);
       document.removeEventListener("visibilitychange", onVisibility);
       window.removeEventListener("blur", onBlur);
