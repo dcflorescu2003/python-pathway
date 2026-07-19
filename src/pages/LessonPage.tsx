@@ -102,6 +102,7 @@ const LessonPage = () => {
     if (didPass) {
       const xpEarned = Math.max(1, lesson.xpReward - wrongCount);
       completeLesson(lesson.id, xpEarned, percent);
+      try { sessionStorage.setItem("pyro-tip-trigger", "1"); } catch {}
     }
     if (user && competencyResultsRef.current.length > 0) {
       recordCompetencyScores(user.id, competencyResultsRef.current);
