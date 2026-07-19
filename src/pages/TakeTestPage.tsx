@@ -1531,11 +1531,14 @@ const ProblemRenderer = ({ problem, answer, onAnswer, allowRunTests }: { problem
       {problem.hint && (
         <p className="text-[10px] text-muted-foreground italic">💡 {problem.hint}</p>
       )}
-      <CodeEditor
-        placeholder="Scrie codul Python aici..."
-        value={answer?.code || ""}
-        onChange={(val) => onAnswer({ code: val })}
-      />
+      <div data-code-editor>
+        <CodeEditor
+          placeholder="Scrie codul Python aici..."
+          value={answer?.code || ""}
+          onChange={(val) => onAnswer({ code: val })}
+        />
+      </div>
+
       {canRun && (
         <div className="space-y-2">
           <Button
