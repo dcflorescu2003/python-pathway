@@ -514,14 +514,21 @@ const TakeTestPage = () => {
     window.addEventListener("blur", onBlur);
     window.addEventListener("focus", onFocus);
 
-    // Polling fallback: check document.hasFocus() every 2s
-    // This catches notification shade on mobile where blur/visibilitychange may not fire
-    const focusPollInterval = setInterval(() => {
+    // Polling fallback: on web use document.hasFocus(); on native use Capacitor App.getState()
+    // (Android WebView returns true from document.hasFocus() even when the notification shade is open).
+    const isNative = Capacitor.isNativePlatform();
+    let capAppRef: any = null;
+    const focusPollInterval = setInterval(async () => {
       if (hasFiredRef.current) return;
-      if (!document.hasFocus()) {
-        triggerLeave("focus_poll_lost");
+      if (isNative) {
+        try {
+          if (!capAppRef) capAppRef = (await import("@capacitor/app")).App;
+          const state = await capAppRef.getState();
+          if (!state?.isActive) triggerLeave("app_inactive_poll");
+        } catch { /* ignore */ }
       } else {
-        cancelLeave();
+        if (!document.hasFocus()) triggerLeave("focus_poll_lost");
+        else cancelLeave();
       }
     }, 2000);
 
