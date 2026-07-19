@@ -165,6 +165,13 @@ const LeaderboardPage = () => {
       if (!profile) return null;
       const myProfile = (profile as unknown) as LeaderboardEntry;
 
+      // Guard: don't compute a rank on school/city tabs when the user's DB
+      // school doesn't match the active filter — otherwise we'd show a phantom
+      // rank in a school the user doesn't actually belong to.
+      const mySchool = myProfile.school_id && myProfile.school_id !== "skipped" ? myProfile.school_id : null;
+      if (tab === "school" && mySchool !== userSchool) return null;
+      if (tab === "city" && (!mySchool || !citySchoolIds.includes(mySchool))) return null;
+
       let countQuery = supabase
         .from("public_profiles" as any)
         .select("user_id", { count: "exact", head: true })
