@@ -64,6 +64,7 @@ const TakeTestPage = () => {
   const [submitted, setSubmitted] = useState(false);
   const [fullscreenReady, setFullscreenReady] = useState(false);
   const [assignedSlot, setAssignedSlot] = useState<{ variant: string; roster_number: number | null } | null>(null);
+  const [noItemsReason, setNoItemsReason] = useState<"window_expired" | null>(null);
 
 
   const requireFullscreen: boolean = !!testInfo?.tests?.require_fullscreen;
