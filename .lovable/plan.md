@@ -1,32 +1,22 @@
 ## Diagnostic
 
-Am verificat testul din imagine (`38c4cff6…`, „2 Test functii – 2 numere, grile 1 poblema"):
-- Are 22 de itemi în DB (11 pentru varianta A, 11 pentru B) — deci itemii **există**.
-- Ambele assignments ale acestui test au `window_minutes = 10`, iar `assigned_at` a fost 18:17 / 18:20.
-- RPC-ul `get_test_items_for_student` returnează 0 rânduri când `assigned_at + window_minutes < now()`.
+Sunt două fluxuri distincte care duc la ecrane greșite când fereastra de start a testului a expirat:
 
-Rezultat: fereastra de 10 minute a expirat înainte ca elevul să deschidă testul, iar RPC-ul nu mai trimite niciun item → în UI apare „1/0" și niciun conținut, dar cu buton „Trimite testul" activ.
+1. **Client-side kick-out** (`TakeTestPage.tsx`, liniile 101–108): dacă `assigned_at + window_minutes < now()`, se afișează `Testul a expirat.` și `navigate("/")` — **fără să verifice dacă elevul are deja o încercare `test_submissions` nesubmisă**. Un elev care a intrat în test înainte de expirare și încă mai are timp pe cronometrul propriu este scos afară fix cum era cu bug-ul RPC.
 
-Sunt două probleme reale:
+2. **`Eroare la încărcarea testului.`** — toast generic din `catch` (linia 297). Astăzi nu logăm mesajul real, deci nu putem şti dacă a picat `startSubmission` (INSERT în `test_submissions`), fetch-ul de `exercises` / `problems`, sau RPC-ul de eval bank. Fără mesajul concret nu putem repara categoria.
 
-1. **Backend**: `window_minutes` blochează și submissions deja începute. Un elev care a intrat în test la minutul 9 și încă mai are timp pe cronometru (ex. `time_limit_minutes`) pierde brusc toate întrebările la minutul 10. La fel, dacă elevul deschide testul chiar după expirare, ecranul e complet gol fără nicio explicație.
-2. **Frontend**: când RPC-ul întoarce 0 itemi, `TakeTestPage` continuă să randeze UI-ul de test (header, „0/0", buton „Trimite"), în loc să afișeze un mesaj clar.
+RPC-ul `get_test_items_for_student` din DB este deja corect (permite itemi pentru orice submission nesubmisă, indiferent de fereastră). Frontend-ul e cel care nu s-a aliniat.
 
 ## Modificări propuse
 
-### 1. Migrație SQL — `get_test_items_for_student`
-- Dacă elevul are deja un `test_submissions` **nesubmis** pentru acest assignment (`submitted_at IS NULL`), returnează itemii indiferent de `window_minutes` (cronometrul propriu al testului rămâne singura limită).
-- Dacă nu are submission, păstrează gate-ul pe fereastră (fereastra e „interval de start", nu „interval de rezolvare").
-- Comportamentul pentru assignments fără `window_minutes` rămâne neschimbat.
+### 1. `src/pages/TakeTestPage.tsx`
+- Mută verificarea existenței submission-ului **înainte** de client-side window check.
+- Dacă `existingSub` există și `submitted_at IS NULL` (deci elevul a început testul), nu mai apela `navigate("/")` la expirare — lasă cronometrul propriu al testului să limiteze restul.
+- Dacă `existingSub` nu există și fereastra a expirat, comportamentul rămâne același (toast „Testul a expirat." + redirect).
+- În `catch (err)`, extrage mesajul (`err?.message` / `err?.error_description`) și îl atașează la toast: `Eroare la încărcarea testului: {mesaj}`. Loghează `err` cu `console.error` (deja e). Asta ne dă categoria pe raportul următor.
 
-### 2. `src/pages/TakeTestPage.tsx`
-- După apelul RPC, când `testItems.length === 0` **și nu există** o submission în derulare, afișează un ecran dedicat (card centrat) cu mesajul:
-  - „Testul nu mai este disponibil. Fereastra de începere a expirat. Contactează profesorul pentru redeschidere."
-  - Buton „Înapoi acasă".
-- Nu mai randa header-ul cu „0/0" și nu afișa butonul „Trimite testul" pe test gol.
+### 2. Verificare rapidă (fără cod)
+- Query pe `test_submissions` pentru un elev care a raportat problema, să confirmăm că există rând nesubmis pentru assignment-ul respectiv — dacă nu există, atunci erorile lui vin din `startSubmission` și mesajul îmbogățit din toast ne va spune ce blochează INSERT-ul.
 
-### 3. Verificare finală
-- Confirmare cu un query rapid că RPC-ul returnează itemii pentru un submission în curs după expirare.
-- Fără schimbări de schemă în afara funcției; fără impact pe teacher UI.
-
-Nu ating logica de anti-cheat, draft-uri, roster sau grading.
+Nu ating logica de anti-cheat, draft-uri, roster sau grading. Nu modific RPC-ul (deja corect).

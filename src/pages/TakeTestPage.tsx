@@ -97,16 +97,6 @@ const TakeTestPage = () => {
 
         if (!assignment) { navigate("/"); return; }
 
-        // Check window expiration on the client side
-        if (assignment.window_minutes) {
-          const deadline = new Date(new Date(assignment.assigned_at).getTime() + assignment.window_minutes * 60000);
-          if (deadline < new Date()) {
-            toast.error("Testul a expirat.");
-            navigate("/");
-            return;
-          }
-        }
-
         setTestInfo(assignment);
 
         // Check existing submission (may be in_progress / interrupted / submitted)
@@ -122,6 +112,18 @@ const TakeTestPage = () => {
           setLoading(false);
           return;
         }
+
+        // Client-side window check: only kick out students who haven't started yet.
+        // Students with an in-progress submission continue on their own test timer.
+        if (assignment.window_minutes && !existingSub) {
+          const deadline = new Date(new Date(assignment.assigned_at).getTime() + assignment.window_minutes * 60000);
+          if (deadline < new Date()) {
+            toast.error("Testul a expirat.");
+            navigate("/");
+            return;
+          }
+        }
+
 
         // If teacher hasn't cleared an "interrupted" submission and time already ran out,
         // finalize automatically instead of letting the student open it again forever.
