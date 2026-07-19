@@ -136,15 +136,6 @@ const PremiumDialog = ({ open, onOpenChange }: PremiumDialogProps) => {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-3 rounded-lg border border-border bg-card p-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-yellow-500/10">
-                    <Trophy className="h-5 w-5 text-yellow-600" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-bold text-foreground">Challenge-uri premium</p>
-                    <p className="text-xs text-foreground/60">Acces la toate provocările și funcțiile premium</p>
-                  </div>
-                </div>
 
                 <div className="flex items-center gap-3 rounded-lg border border-border bg-card p-3">
                   <div className="flex h-10 w-10 items-center justify-center rounded-full bg-accent/50">
