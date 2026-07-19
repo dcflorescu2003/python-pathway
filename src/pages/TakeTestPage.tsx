@@ -677,6 +677,29 @@ const TakeTestPage = () => {
     };
   }, [requireFullscreen, submissionId, submitted, needsFullscreenGate]);
 
+  // Intercept browser/OS back gesture so students don't accidentally exit the test.
+  useEffect(() => {
+    if (!submissionId || submitted) return;
+    // Push a sentinel state so the first back-gesture pops into it (staying on this page).
+    try { window.history.pushState({ pyroTestGuard: true }, ""); } catch {}
+    const onPopState = () => {
+      // Re-push the sentinel and show the confirmation dialog.
+      try { window.history.pushState({ pyroTestGuard: true }, ""); } catch {}
+      setShowLeaveConfirm(true);
+    };
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
+  }, [submissionId, submitted]);
+
+  const confirmLeaveTest = useCallback(async () => {
+    setShowLeaveConfirm(false);
+    if (submissionId) {
+      try { await saveSubmissionDraft(submissionId, answersRef.current); } catch {}
+      try { await markSubmissionInterrupted(submissionId); } catch {}
+    }
+    navigate("/");
+  }, [submissionId, navigate]);
+
   if (loading) return <LoadingScreen />;
 
   // Fullscreen gate (only shown when teacher requires fullscreen and browser supports it)
