@@ -294,11 +294,13 @@ const TakeTestPage = () => {
 
 
         setLoading(false);
-      } catch (err) {
+      } catch (err: any) {
         console.error(err);
-        toast.error("Eroare la încărcarea testului.");
+        const msg = err?.message || err?.error_description || err?.details || "eroare necunoscută";
+        toast.error(`Eroare la încărcarea testului: ${msg}`);
         setLoading(false);
       }
+
     };
     load();
   }, [assignmentId, user]);
