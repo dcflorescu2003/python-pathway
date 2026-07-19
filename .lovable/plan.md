@@ -1,22 +1,36 @@
-## Diagnostic
+## Problemele confirmate
 
-Sunt două fluxuri distincte care duc la ecrane greșite când fereastra de start a testului a expirat:
+**1) Timerul nu se vede pe mobil (dispare în dreapta)**
+În `src/pages/TakeTestPage.tsx` (linia 715), header-ul folosește `<div className="flex-1">` pentru titlu cu `truncate`, dar fără `min-w-0`. În flexbox, un copil `flex-1` cu text lung nu se trunchiază corect fără `min-w-0` și împinge cronometrul în afara viewport-ului pe 360px. Titluri lungi de test = timer invizibil în dreapta.
 
-1. **Client-side kick-out** (`TakeTestPage.tsx`, liniile 101–108): dacă `assigned_at + window_minutes < now()`, se afișează `Testul a expirat.` și `navigate("/")` — **fără să verifice dacă elevul are deja o încercare `test_submissions` nesubmisă**. Un elev care a intrat în test înainte de expirare și încă mai are timp pe cronometrul propriu este scos afară fix cum era cu bug-ul RPC.
+**2) Back accidental pe telefoane fără bară de butoane (gest swipe-from-edge)**
+În timpul testului nu există nicio interceptare a navigării `popstate`. Butonul „Înapoi" din header navighează direct la `/` fără confirmare, iar gestul de swipe-back al sistemului iese instant din test. Pe Android, back-ul hardware/gest nu e prins deloc — Capacitor `App.backButton` nu e ascultat aici.
 
-2. **`Eroare la încărcarea testului.`** — toast generic din `catch` (linia 297). Astăzi nu logăm mesajul real, deci nu putem şti dacă a picat `startSubmission` (INSERT în `test_submissions`), fetch-ul de `exercises` / `problems`, sau RPC-ul de eval bank. Fără mesajul concret nu putem repara categoria.
+**3) Notificarea nu declanșează autosubmit**
+Când tragi notification shade pe Android, WebView-ul NU emite `visibilitychange`, `blur`, sau `pagehide` — de asta există deja bridge-ul `pyro:native_focus_lost` din `MainActivity.onWindowFocusChanged`. Însă în `TakeTestPage`:
+- `focusPollInterval` cheamă `document.hasFocus()`, care în WebView Android returnează adesea `true` chiar cu shade tras → apelează `cancelLeave()` și anulează detecția;
+- listener-ul `pyro:native_focus_gained` de la Capacitor `resume` poate ajunge înainte ca `leaveGraceMs` (3s pe „normal") să expire dacă user-ul face swipe pe shade fără să-l țină deschis.
 
-RPC-ul `get_test_items_for_student` din DB este deja corect (permite itemi pentru orice submission nesubmisă, indiferent de fereastră). Frontend-ul e cel care nu s-a aliniat.
+## Modificări (doar `src/pages/TakeTestPage.tsx`)
 
-## Modificări propuse
+### Fix 1 — Timer vizibil
+Header-ul (~linia 710-724): 
+- adaug `min-w-0` pe wrapper-ul `<div className="flex-1">` ca `truncate` să funcționeze;
+- adaug `shrink-0` pe blocul cu Clock/timp;
+- pun titlul + counter pe același rând cu `truncate` și forțez ca badge-urile „Nr.X / Varianta A" să nu împingă timer-ul (deja sunt pe rând separat, ok).
 
-### 1. `src/pages/TakeTestPage.tsx`
-- Mută verificarea existenței submission-ului **înainte** de client-side window check.
-- Dacă `existingSub` există și `submitted_at IS NULL` (deci elevul a început testul), nu mai apela `navigate("/")` la expirare — lasă cronometrul propriu al testului să limiteze restul.
-- Dacă `existingSub` nu există și fereastra a expirat, comportamentul rămâne același (toast „Testul a expirat." + redirect).
-- În `catch (err)`, extrage mesajul (`err?.message` / `err?.error_description`) și îl atașează la toast: `Eroare la încărcarea testului: {mesaj}`. Loghează `err` cu `console.error` (deja e). Asta ne dă categoria pe raportul următor.
+### Fix 2 — Protecție împotriva ieșirii accidentale
+- Butonul „ArrowLeft" din header și orice `navigate("/")` inițiat de user (nu de autosubmit) trec printr-un `AlertDialog` de confirmare („Ești sigur? Testul va fi marcat ca întrerupt.").
+- Adaug `history.pushState` la montare + listener `popstate` care blochează back-gestul: reface state-ul și afișează același dialog de confirmare.
+- Pe native: import `@capacitor/app` și ascult `App.addListener("backButton", …)` pentru a preveni back-ul hardware/gest cât timp testul e activ.
+- Toate acestea sunt dezactivate după `submitted === true`.
 
-### 2. Verificare rapidă (fără cod)
-- Query pe `test_submissions` pentru un elev care a raportat problema, să confirmăm că există rând nesubmis pentru assignment-ul respectiv — dacă nu există, atunci erorile lui vin din `startSubmission` și mesajul îmbogățit din toast ne va spune ce blochează INSERT-ul.
+### Fix 3 — Autosubmit fiabil la notification shade
+- Elimin `document.hasFocus()` din `focusPollInterval` (nu e sursă de adevăr în WebView) și îl înlocuiesc cu un poll pe starea Capacitor `App.getState()` la fiecare 2s: dacă `!isActive` → `triggerLeave("app_inactive_poll")`.
+- Nu mai cancelLeave imediat pe `pyro:native_focus_gained` / `App resume`: adaug o mică întârziere (200ms) și verific că focus-ul e stabil (a rămas activ >500ms) înainte să anulez timeout-ul; astfel un pull-and-release rapid pe shade tot declanșează autosubmit după `leaveGraceMs`.
+- Păstrez ascultătorii existenți pentru `pyro:native_focus_lost`, `appStateChange`, `pause`.
 
-Nu ating logica de anti-cheat, draft-uri, roster sau grading. Nu modific RPC-ul (deja corect).
+## Ce nu se schimbă
+- Regulile RLS, RPC-urile, `useTests.ts`, schema DB, celelalte pagini — nemodificate.
+- `anti_cheat_mode` (strict/normal/relaxed) și pragurile de grație rămân aceleași; doar detecția devine mai fiabilă pe mobil.
+- MainActivity.java rămâne cum e (deja emite corect focus lost/gained).

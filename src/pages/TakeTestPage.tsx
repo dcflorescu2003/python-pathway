@@ -35,6 +35,16 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { restrictToVerticalAxis } from "@dnd-kit/modifiers";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface TestItemData {
   id: string;
@@ -65,6 +75,7 @@ const TakeTestPage = () => {
   const [fullscreenReady, setFullscreenReady] = useState(false);
   const [assignedSlot, setAssignedSlot] = useState<{ variant: string; roster_number: number | null } | null>(null);
   const [noItemsReason, setNoItemsReason] = useState<"window_expired" | null>(null);
+  const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
 
 
   const requireFullscreen: boolean = !!testInfo?.tests?.require_fullscreen;
@@ -503,14 +514,21 @@ const TakeTestPage = () => {
     window.addEventListener("blur", onBlur);
     window.addEventListener("focus", onFocus);
 
-    // Polling fallback: check document.hasFocus() every 2s
-    // This catches notification shade on mobile where blur/visibilitychange may not fire
-    const focusPollInterval = setInterval(() => {
+    // Polling fallback: on web use document.hasFocus(); on native use Capacitor App.getState()
+    // (Android WebView returns true from document.hasFocus() even when the notification shade is open).
+    const isNative = Capacitor.isNativePlatform();
+    let capAppRef: any = null;
+    const focusPollInterval = setInterval(async () => {
       if (hasFiredRef.current) return;
-      if (!document.hasFocus()) {
-        triggerLeave("focus_poll_lost");
+      if (isNative) {
+        try {
+          if (!capAppRef) capAppRef = (await import("@capacitor/app")).App;
+          const state = await capAppRef.getState();
+          if (!state?.isActive) triggerLeave("app_inactive_poll");
+        } catch { /* ignore */ }
       } else {
-        cancelLeave();
+        if (!document.hasFocus()) triggerLeave("focus_poll_lost");
+        else cancelLeave();
       }
     }, 2000);
 
@@ -524,40 +542,58 @@ const TakeTestPage = () => {
       document.addEventListener("fullscreenchange", onFullscreenChange);
     }
 
-    // Capacitor app state (mobile background) + pause/resume
+    // Stability-gated cancel: only cancel the leave timeout if focus stays for >500ms.
+    // This prevents a quick "pull-and-release" of the notification shade from silently
+    // cancelling the autosubmit timer before leaveGraceMs expires.
+    let stableCancelTimeout: ReturnType<typeof setTimeout> | null = null;
+    const stableCancel = () => {
+      if (stableCancelTimeout) clearTimeout(stableCancelTimeout);
+      stableCancelTimeout = setTimeout(() => { cancelLeave(); }, 500);
+    };
+    const armLeave = () => {
+      if (stableCancelTimeout) { clearTimeout(stableCancelTimeout); stableCancelTimeout = null; }
+    };
+
+    // Capacitor app state (mobile background) + pause/resume + backButton
     let capListener: { remove: () => void } | null = null;
     let capPauseListener: { remove: () => void } | null = null;
     let capResumeListener: { remove: () => void } | null = null;
+    let capBackListener: { remove: () => void } | null = null;
     (async () => {
       try {
         const { App } = await import("@capacitor/app");
         const handle = await App.addListener("appStateChange", (state: { isActive: boolean }) => {
-          if (!state.isActive) triggerLeave("app_background");
-          else cancelLeave();
+          if (!state.isActive) { armLeave(); triggerLeave("app_background"); }
+          else stableCancel();
         });
         capListener = handle;
-        // pause/resume fire more reliably on Android notification shade
         const pauseHandle = await App.addListener("pause" as any, () => {
-          triggerLeave("app_pause");
+          armLeave(); triggerLeave("app_pause");
         });
         capPauseListener = pauseHandle;
         const resumeHandle = await App.addListener("resume" as any, () => {
-          cancelLeave();
+          stableCancel();
         });
         capResumeListener = resumeHandle;
+        // Intercept hardware/gesture back so students can't accidentally exit the test.
+        const backHandle = await App.addListener("backButton" as any, () => {
+          setShowLeaveConfirm(true);
+        });
+        capBackListener = backHandle;
       } catch {
         // @capacitor/app not available (web) — ignore
       }
     })();
 
     // Native Android bridge: listen for window focus lost/gained from MainActivity
-    const onNativeFocusLost = () => triggerLeave("native_window_focus_lost");
-    const onNativeFocusGained = () => cancelLeave();
+    const onNativeFocusLost = () => { armLeave(); triggerLeave("native_window_focus_lost"); };
+    const onNativeFocusGained = () => stableCancel();
     window.addEventListener("pyro:native_focus_lost", onNativeFocusLost);
     window.addEventListener("pyro:native_focus_gained", onNativeFocusGained);
 
     return () => {
       cancelLeave();
+      if (stableCancelTimeout) clearTimeout(stableCancelTimeout);
       clearInterval(focusPollInterval);
       document.removeEventListener("visibilitychange", onVisibility);
       window.removeEventListener("blur", onBlur);
@@ -570,6 +606,7 @@ const TakeTestPage = () => {
       capListener?.remove();
       capPauseListener?.remove();
       capResumeListener?.remove();
+      capBackListener?.remove();
     };
   }, [submissionId, submitted, requireFullscreen, antiCheatMode, leaveGraceMs, navigate]);
 
@@ -640,6 +677,29 @@ const TakeTestPage = () => {
     };
   }, [requireFullscreen, submissionId, submitted, needsFullscreenGate]);
 
+  // Intercept browser/OS back gesture so students don't accidentally exit the test.
+  useEffect(() => {
+    if (!submissionId || submitted) return;
+    // Push a sentinel state so the first back-gesture pops into it (staying on this page).
+    try { window.history.pushState({ pyroTestGuard: true }, ""); } catch {}
+    const onPopState = () => {
+      // Re-push the sentinel and show the confirmation dialog.
+      try { window.history.pushState({ pyroTestGuard: true }, ""); } catch {}
+      setShowLeaveConfirm(true);
+    };
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
+  }, [submissionId, submitted]);
+
+  const confirmLeaveTest = useCallback(async () => {
+    setShowLeaveConfirm(false);
+    if (submissionId) {
+      try { await saveSubmissionDraft(submissionId, answersRef.current); } catch {}
+      try { await markSubmissionInterrupted(submissionId); } catch {}
+    }
+    navigate("/");
+  }, [submissionId, navigate]);
+
   if (loading) return <LoadingScreen />;
 
   // Fullscreen gate (only shown when teacher requires fullscreen and browser supports it)
@@ -709,15 +769,19 @@ const TakeTestPage = () => {
       {/* Header */}
       <header className="sticky top-0 z-40 border-b border-border bg-background/80 backdrop-blur-md pt-[var(--sat)]">
         <div className="flex items-center gap-3 px-4 py-3">
-          <button onClick={() => navigate("/")} className="active:scale-90 transition-transform">
+          <button
+            onClick={() => setShowLeaveConfirm(true)}
+            className="shrink-0 active:scale-90 transition-transform"
+            aria-label="Închide testul"
+          >
             <ArrowLeft className="h-6 w-6 text-foreground" />
           </button>
-          <div className="flex-1">
+          <div className="flex-1 min-w-0">
             <h1 className="text-sm font-bold text-foreground truncate">{testInfo?.tests?.title || "Test"}</h1>
             <p className="text-[10px] text-muted-foreground">{currentIdx + 1}/{items.length}</p>
           </div>
           {timeLeft !== null && (
-            <div className={`flex items-center gap-1 text-sm font-mono font-bold ${timeLeft < 60 ? "text-destructive" : "text-foreground"}`}>
+            <div className={`shrink-0 flex items-center gap-1 text-sm font-mono font-bold ${timeLeft < 60 ? "text-destructive" : "text-foreground"}`}>
               <Clock className="h-4 w-4" /> {formatTime(timeLeft)}
             </div>
           )}
@@ -824,6 +888,21 @@ const TakeTestPage = () => {
           ))}
         </div>
       </main>
+
+      <AlertDialog open={showLeaveConfirm} onOpenChange={setShowLeaveConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Ieși din test?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Răspunsurile tale sunt salvate, dar testul va fi marcat ca întrerupt. Cronometrul continuă să ruleze — dacă expiră, cere profesorului să apese „Permite continuarea" pentru a-l relua.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Rămân în test</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmLeaveTest}>Ies din test</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </motion.div>
   );
 };
