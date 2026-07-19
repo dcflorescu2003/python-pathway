@@ -26,6 +26,11 @@ export function useMotivationalTip() {
   const type: TipType = useMemo(() => {
     if (!user || dismissed) return null;
 
+    // Only show after finishing a lesson in this session, not on app open
+    let hasTrigger = false;
+    try { hasTrigger = sessionStorage.getItem("pyro-tip-trigger") === "1"; } catch {}
+    if (!hasTrigger) return null;
+
     const entries = Object.entries(progress.completedLessons || {});
     if (entries.length === 0) return null;
 
@@ -61,6 +66,7 @@ export function useMotivationalTip() {
       if (!user) return;
       const key = t === "lessons" ? lessonsKey(user.id) : problemsKey(user.id);
       localStorage.setItem(key, String(Date.now()));
+      try { sessionStorage.removeItem("pyro-tip-trigger"); } catch {}
     },
     [user]
   );

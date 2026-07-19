@@ -26,14 +26,14 @@ const MotivationalTipCard = ({
 
   return (
     <motion.div
-      initial={{ y: -60, opacity: 0, scale: 0.9 }}
-      animate={{ y: 0, opacity: 1, scale: 1 }}
-      exit={{ y: -60, opacity: 0, scale: 0.9 }}
+      initial={{ opacity: 0, scale: 0.85 }}
+      animate={{ opacity: 1, scale: 1 }}
+      exit={{ opacity: 0, scale: 0.85 }}
       transition={{ type: "spring", stiffness: 260, damping: 22 }}
-      className="fixed left-1/2 -translate-x-1/2 top-[calc(var(--sat)+72px)] z-50 w-[92%] max-w-md pointer-events-none"
+      className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none px-4"
     >
       <div
-        className={`relative overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-r ${gradientClass} p-4 shadow-2xl`}
+        className={`relative overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-r ${gradientClass} p-4 shadow-2xl w-full max-w-md`}
       >
         {/* Sparkle overlay */}
         <motion.div
