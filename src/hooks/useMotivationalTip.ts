@@ -66,6 +66,7 @@ export function useMotivationalTip() {
       if (!user) return;
       const key = t === "lessons" ? lessonsKey(user.id) : problemsKey(user.id);
       localStorage.setItem(key, String(Date.now()));
+      try { sessionStorage.removeItem("pyro-tip-trigger"); } catch {}
     },
     [user]
   );
