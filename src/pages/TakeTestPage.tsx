@@ -367,18 +367,113 @@ const TakeTestPage = () => {
   const submitInFlightRef = useRef(false);
 
   // Periodic save every 30s + save on visibilitychange (localStorage + server draft)
+  // Marks pendingDraftSync when the server draft fails, so we can retry on reconnect.
   useEffect(() => {
     if (!draftKey || submitted || !submissionId) return;
-    const saveDraft = () => {
+    const saveDraft = async () => {
       try { localStorage.setItem(draftKey, JSON.stringify(answersRef.current)); } catch {}
-      // Fire-and-forget server draft persistence
-      saveSubmissionDraft(submissionId, answersRef.current).catch(() => {});
+      try {
+        await saveSubmissionDraft(submissionId, answersRef.current);
+        setPendingDraftSync(false);
+      } catch {
+        setPendingDraftSync(true);
+      }
     };
     const interval = setInterval(saveDraft, 30_000);
-    const onVis = () => { if (document.hidden) saveDraft(); };
+    const onVis = () => { if (document.hidden) void saveDraft(); };
     document.addEventListener("visibilitychange", onVis);
     return () => { clearInterval(interval); document.removeEventListener("visibilitychange", onVis); };
   }, [draftKey, submitted, submissionId]);
+
+  // Track network connectivity + flush pending draft on reconnect. Autosave
+  // continues to update localStorage even offline; the server flush happens
+  // as soon as we're back online.
+  useEffect(() => {
+    if (!submissionId || submitted) return;
+    const onOnline = async () => {
+      setIsOnline(true);
+      try {
+        await saveSubmissionDraft(submissionId, answersRef.current);
+        setPendingDraftSync(false);
+        toast.success("Conexiune restabilită. Răspunsurile au fost sincronizate.");
+      } catch {
+        setPendingDraftSync(true);
+      }
+    };
+    const onOffline = () => {
+      setIsOnline(false);
+      toast.warning("Fără conexiune. Răspunsurile se salvează local și se vor trimite la reconectare.");
+    };
+    window.addEventListener("online", onOnline);
+    window.addEventListener("offline", onOffline);
+    return () => {
+      window.removeEventListener("online", onOnline);
+      window.removeEventListener("offline", onOffline);
+    };
+  }, [submissionId, submitted]);
+
+  // Screen Wake Lock: keep the screen on during the test so a screen-off event
+  // isn't misinterpreted as a leave, and so students don't lose focus mid-answer.
+  useEffect(() => {
+    if (!submissionId || submitted) return;
+    const anyNav = navigator as any;
+    if (!anyNav?.wakeLock?.request) return;
+    let wakeLock: any = null;
+    let cancelled = false;
+    const acquire = async () => {
+      try {
+        wakeLock = await anyNav.wakeLock.request("screen");
+        wakeLock?.addEventListener?.("release", () => {
+          // Re-acquire silently if released while the test is still active
+          if (!cancelled && !document.hidden) void acquire();
+        });
+      } catch { /* wake lock not permitted — ignore */ }
+    };
+    const onVis = () => { if (!document.hidden) void acquire(); };
+    void acquire();
+    document.addEventListener("visibilitychange", onVis);
+    return () => {
+      cancelled = true;
+      document.removeEventListener("visibilitychange", onVis);
+      try { wakeLock?.release?.(); } catch {}
+    };
+  }, [submissionId, submitted]);
+
+  // Block copy/paste on the test surface (except within the code editor, which
+  // students legitimately need to edit). Toast the first time in each session
+  // so students understand why nothing happened.
+  useEffect(() => {
+    if (!submissionId || submitted) return;
+    let toastedPaste = false;
+    let toastedCopy = false;
+    const isInsideCodeEditor = (t: EventTarget | null) => {
+      const el = t as HTMLElement | null;
+      return !!el?.closest?.("[data-code-editor]");
+    };
+    const onPaste = (e: ClipboardEvent) => {
+      if (isInsideCodeEditor(e.target)) return;
+      e.preventDefault();
+      if (!toastedPaste) {
+        toastedPaste = true;
+        toast.warning("Lipirea din clipboard nu este permisă în timpul testului.");
+      }
+    };
+    const onCopy = (e: ClipboardEvent) => {
+      if (isInsideCodeEditor(e.target)) return;
+      e.preventDefault();
+      if (!toastedCopy) {
+        toastedCopy = true;
+        toast.warning("Copierea din enunț nu este permisă în timpul testului.");
+      }
+    };
+    document.addEventListener("paste", onPaste, { capture: true });
+    document.addEventListener("copy", onCopy, { capture: true });
+    return () => {
+      document.removeEventListener("paste", onPaste, { capture: true } as any);
+      document.removeEventListener("copy", onCopy, { capture: true } as any);
+    };
+  }, [submissionId, submitted]);
+
 
 
   // Clean up draft after successful submit
