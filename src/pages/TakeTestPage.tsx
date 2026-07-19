@@ -606,6 +606,7 @@ const TakeTestPage = () => {
       capListener?.remove();
       capPauseListener?.remove();
       capResumeListener?.remove();
+      capBackListener?.remove();
     };
   }, [submissionId, submitted, requireFullscreen, antiCheatMode, leaveGraceMs, navigate]);
 
