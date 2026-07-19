@@ -389,10 +389,10 @@ const TakeTestPage = () => {
   useEffect(() => {
     if (!submissionId || submitted) return;
     const onBeforeUnload = (e: BeforeUnloadEvent) => {
-      // Skip if already submitted or another submit path is in-flight
-      if (submittedRef.current || submitInFlightRef.current) {
-        // Native browser confirmation on tab close / reload / back-gesture
-        // (browsers only display the prompt when returnValue is set)
+      // Skip prompt entirely if the test has already been submitted
+      if (submittedRef.current) return;
+      // Don't re-fire the beacon if a submit is already in-flight, but still prompt
+      if (submitInFlightRef.current) {
         e.preventDefault();
         e.returnValue = "";
         return "";
