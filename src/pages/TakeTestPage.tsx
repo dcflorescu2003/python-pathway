@@ -388,9 +388,15 @@ const TakeTestPage = () => {
   // --- sendBeacon on beforeunload (browser close / crash) ---
   useEffect(() => {
     if (!submissionId || submitted) return;
-    const onBeforeUnload = () => {
-      // Skip if already submitted or another submit path is in-flight
-      if (submittedRef.current || submitInFlightRef.current) return;
+    const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      // Skip prompt entirely if the test has already been submitted
+      if (submittedRef.current) return;
+      // Don't re-fire the beacon if a submit is already in-flight, but still prompt
+      if (submitInFlightRef.current) {
+        e.preventDefault();
+        e.returnValue = "";
+        return "";
+      }
       // Save draft as last resort
       if (draftKey) {
         try { localStorage.setItem(draftKey, JSON.stringify(answersRef.current)); } catch {}
@@ -414,6 +420,11 @@ const TakeTestPage = () => {
           new Blob([payload], { type: "application/json" })
         );
       } catch {}
+      // Show the browser's native "Leave site?" prompt so a stray tab close /
+      // gesture doesn't drop the student out of the test silently.
+      e.preventDefault();
+      e.returnValue = "";
+      return "";
     };
     window.addEventListener("beforeunload", onBeforeUnload);
     return () => window.removeEventListener("beforeunload", onBeforeUnload);
