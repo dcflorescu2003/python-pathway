@@ -376,7 +376,10 @@ export function useSubmitTest() {
       if (ansError) throw ansError;
 
       // Mark as submitted (with optional auto-submit reason)
-      const updatePayload: Record<string, any> = { submitted_at: new Date().toISOString() };
+      const updatePayload: Record<string, any> = {
+        submitted_at: new Date().toISOString(),
+        status: "submitted",
+      };
       if (params.auto_submitted_reason) {
         updatePayload.auto_submitted_reason = params.auto_submitted_reason;
       }
@@ -386,16 +389,13 @@ export function useSubmitTest() {
         .eq("id", params.submission_id);
       if (subError) throw subError;
 
-      // Invoke grading
-      const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
-      await fetch(
-        `https://${projectId}.supabase.co/functions/v1/grade-submission`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ submission_id: params.submission_id }),
-        }
-      );
+      // Invoke grading (functions.invoke auto-attaches the user's Authorization header)
+      const { error: gradeErr } = await supabase.functions.invoke("grade-submission", {
+        body: { submission_id: params.submission_id },
+      });
+      if (gradeErr) {
+        console.error("grade-submission failed:", gradeErr);
+      }
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["student-test-assignments"] });
