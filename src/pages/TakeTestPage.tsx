@@ -184,7 +184,11 @@ const TakeTestPage = () => {
           });
 
         if (rpcError) throw rpcError;
-        if (!testItems || testItems.length === 0) { setLoading(false); return; }
+        if (!testItems || testItems.length === 0) {
+          setNoItemsReason("window_expired");
+          setLoading(false);
+          return;
+        }
 
         // Shuffle items if shuffle mode
         let orderedItems = testItems;
