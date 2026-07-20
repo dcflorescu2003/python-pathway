@@ -631,6 +631,21 @@ const TestResults = ({ testId, testTitle, onBack, initialClassId }: TestResultsP
                               </AlertDialogContent>
                             </AlertDialog>
                           )}
+                          {sub.submitted_at && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              disabled={!!regrading[sub.id]}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                regradeSubmission(sub.id);
+                              }}
+                              className="h-6 text-[10px] px-2 gap-1"
+                              title="Rulează din nou notarea automată"
+                            >
+                              <RotateCcw className="h-3 w-3" /> {regrading[sub.id] ? "Renotez…" : "Renotează"}
+                            </Button>
+                          )}
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
