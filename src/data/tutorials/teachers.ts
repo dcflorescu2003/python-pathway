@@ -5,6 +5,7 @@ import testBuilderAsset from "@/assets/test-builder.png.asset.json";
 import challengeAssignerAsset from "@/assets/challenge-assigner.png.asset.json";
 import testResultsAsset from "@/assets/test-results.png.asset.json";
 import classAnalyticsAsset from "@/assets/class-analytics.png.asset.json";
+import studentCompetencyAsset from "@/assets/student-competency-view.png.asset.json";
 
 export const teacherTutorials: TutorialArticle[] = [
   {
@@ -170,7 +171,7 @@ export const teacherTutorials: TutorialArticle[] = [
           "Pentru fiecare elev vezi câte microcompetențe a atins și unde stă slab. Elevul vede doar CG + CS, nu detaliul M.",
           "Poți să-ți creezi propriile microcompetențe personalizate pentru exercițiile tale custom.",
         ],
-        image: { alt: "Profil competențe elev", placeholder: "Screenshot: StudentCompetencyView" },
+        image: { src: studentCompetencyAsset.url, alt: "Profil de competențe elev: competențe generale (CG) cu procente, bare de progres și badge-uri de nivel (Insuficient, Nivel de bază, Consolidat, Avansat)" },
       },
     ],
   },
