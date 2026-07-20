@@ -15,6 +15,7 @@ import {
   AlertCircle, RotateCcw
 } from "lucide-react";
 import { toast } from "sonner";
+import { SubmissionReviewRow } from "./SubmissionReviewRow";
 
 interface StudentTabProps {
   memberClassName: string | null;
