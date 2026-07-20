@@ -139,7 +139,7 @@ export const teacherTutorials: TutorialArticle[] = [
         body: [
           "În detaliul clasei vezi: media pe test, performanța per elev, evoluția în timp, distribuția scorurilor.",
         ],
-        image: { alt: "Dashboard analitice clasă", placeholder: "Screenshot: ClassAnalytics" },
+        image: { src: classAnalyticsAsset.url, alt: "Tabel rezultate test pentru clasă cu elevii, variante, scoruri, maxim și procente, plus detaliu per item cu tip, punctaj și feedback" },
       },
       {
         heading: "Export",
