@@ -10,6 +10,7 @@ import problemsListAsset from "@/assets/tutorial-problems-list.png.asset.json";
 import problemEditorAsset from "@/assets/tutorial-problem-editor.png.asset.json";
 import joinClassAsset from "@/assets/tutorial-join-class.png.asset.json";
 import provocariAcasaAsset from "@/assets/tutorial-provocari-acasa.png.asset.json";
+import premiumAsset from "@/assets/tutorial-premium-elev.png.asset.json";
 
 export const studentTutorials: TutorialArticle[] = [
   {
@@ -198,8 +199,8 @@ export const studentTutorials: TutorialArticle[] = [
           "Sumar personalizat — vezi lecțiile la care stai mai slab (sub 80%) și pe cele stăpânite (peste 90%).",
           "Acces la întreg conținutul restricționat din curriculum.",
         ],
-        image: { alt: "Ecran Premium", placeholder: "Screenshot: PremiumDialog" },
-        tip: "Poți să-ți activezi Premium și cu un cupon primit de la profesor.",
+        image: { src: premiumAsset.url, alt: "Dialogul Premium Elev cu beneficii și preț" },
+        tip: "Ai acces la probleme suplimentare folosind contul Premium.",
       },
     ],
   },
