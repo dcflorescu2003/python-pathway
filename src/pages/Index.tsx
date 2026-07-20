@@ -48,6 +48,7 @@ import LivesRefilledDialog from "@/components/LivesRefilledDialog";
 import ComebackDialog from "@/components/ComebackDialog";
 import MotivationalTipCard from "@/components/tips/MotivationalTipCard";
 import { useMotivationalTip } from "@/hooks/useMotivationalTip";
+import TeacherTestsCard from "@/components/home/TeacherTestsCard";
 
 
 
