@@ -1983,6 +1983,30 @@ export type Database = {
           xp: number
         }[]
       }
+      get_submission_review: {
+        Args: { p_submission_id: string }
+        Returns: {
+          answer_data: Json
+          answer_id: string
+          blanks: Json
+          code_template: string
+          correct_answer: string
+          correct_option_id: string
+          explanation: string
+          feedback: string
+          is_true: boolean
+          item_type: string
+          lines: Json
+          max_points: number
+          options: Json
+          question: string
+          score: number
+          sort_order: number
+          source_type: string
+          statement: string
+          test_item_id: string
+        }[]
+      }
       get_test_items_for_student: {
         Args: { p_assignment_id: string; p_variant: string }
         Returns: {

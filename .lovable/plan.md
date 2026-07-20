@@ -1,39 +1,58 @@
-## Problema
+## Problemă
 
-Un elev a răspuns corect la un item quiz din bancă (a selectat opțiunea `a` = „7"), profesorul vede răspunsul evidențiat ca fiind cel corect (✓), dar punctajul apare `0/10`.
+În tab-ul „Elev" → istoric teste, rezultatele apar ca JSON brut (`{"selected":"a"}`, `{"blanks":{...}}`, `{"order":[...]}`) și doar „Exercițiul N", fără cerință și fără răspunsul corect. Cauze:
 
-Am investigat în baza de date:
-- Submisia `76a07a4c…` are `submitted_at` setat, dar `status = 'in_progress'`, `auto_graded = false`, `total_score = 0`.
-- Toate cele 10 răspunsuri au `score = 0`, deși comparate manual sunt corecte (`answer_data.selected` = `correct_option_id`).
+- Pentru itemii din **bancă / predefiniți** (`source_type != 'custom'`), `test_items.custom_data` e gol → nu avem enunț, opțiuni, blanks, ordine corectă. Codul cade pe fallback `JSON.stringify(answerData)`.
+- Răspunsul corect e afișat doar când `source_type === 'custom'`; itemii din bancă nu îl arată niciodată.
+- Renderer-ul tratează special doar `quiz`; pentru `truefalse`, `fill`, `reorder`, `code`, `open` nu formatează răspunsul elevului.
 
-Concluzie: **funcția `grade-submission` nu a rulat niciodată până la capăt pentru această submisie** (probabil pierdere de rețea la finalul testului sau eșec pe calea `sendBeacon`, care nu poate atașa `Authorization` și primește 401). Logica quiz din grader este corectă — problema e că notarea nu a fost declanșată. Rămân submisii „orfane" cu 0 puncte până când cineva le renotează manual.
+## Soluție
 
-## Ce vom construi
+### 1. Backend — RPC de review (o singură sursă de adevăr)
 
-1. **Buton „Renotează" în pagina de rezultate a profesorului** (`TestResults.tsx`)
-   - Apare lângă fiecare submisie care are `submitted_at` setat dar `auto_graded = false` (sau `total_score = 0 && max_score = 0`).
-   - Invocă `grade-submission` cu `submission_id`.
-   - Rulează cu tokenul profesorului, deci trece de verificarea `Authorization`.
+Migrare cu funcție SECURITY DEFINER:
 
-2. **Permite grader-ului să fie invocat de profesor**
-   - În `supabase/functions/grade-submission/index.ts`, verificarea actuală respinge orice caller care nu este `student_id`. Extindem verificarea: acceptă și profesorul testului (`tests.teacher_id`) pentru cazul de renotare manuală.
-   - Restul logicii rămâne neschimbat (folosește deja service role pentru citiri).
+`public.get_submission_review(_submission_id uuid) returns setof jsonb`
 
-3. **Auto-retry la deschiderea rezultatelor**
-   - Când profesorul deschide un submission expandat care e `submitted_at IS NOT NULL` și `auto_graded = false`, apelăm automat `grade-submission` o singură dată în background și reîncărcăm răspunsurile.
+Reguli de acces:
+- caller-ul trebuie să fie proprietarul submisiei **sau** profesorul clasei;
+- submisia trebuie să aibă `submitted_at` și assignment-ul `scores_released = true` (pentru elev; profesorul vede oricând).
 
-4. **Repară submisia existentă**
-   - Migrație one-shot: pentru submisia `76a07a4c-b508-4826-88c8-7590be65c9a9`, seta `status = 'submitted'` (rămâne `auto_graded = false` până când profesorul apasă „Renotează").
-   - Nu recalculăm scorurile în SQL — le lăsăm pe grader să le facă via butonul nou (păstrează consistența cu logica AI / office_points).
+Pentru fiecare `test_answers` întoarce un obiect unificat cu:
+- `sort_order`, `score`, `max_points`, `feedback`, `answer_data`
+- `type` (quiz / truefalse / fill / reorder / code / open)
+- `question` / `statement`
+- `options` (quiz) + `correct_option_id`
+- `blanks` (fill) cu `key` + `answer`
+- `order_correct` (reorder) – lista corectă de linii
+- `correct_answer` (open / short)
+- `starter_code` / `expected_output` (code) când există
+
+Sursa datelor:
+- itemi `custom` → `test_items.custom_data`
+- itemi din bancă → JOIN pe `eval_exercises` (folosim câmpurile existente: `question`, `statement`, `options`, `correct_option_id`, `blanks`, `order_lines`, `correct_answer`, etc.)
+
+Grant `EXECUTE` doar către `authenticated`.
+
+### 2. Frontend — `src/components/account/StudentTab.tsx`
+
+- Înlocuim query-ul direct pe `test_answers` cu apel `supabase.rpc('get_submission_review', { _submission_id })`.
+- Extragem un component nou `SubmissionAnswerRow` care primește itemul normalizat și randează după `type`:
+  - **quiz** – enunț + listă opțiuni (bifă verde pe corect, X roșu pe cel ales greșit).
+  - **truefalse** – afirmația, răspuns elev (Adevărat/Fals), răspuns corect.
+  - **fill** – enunț cu blank-urile listate: pentru fiecare blank „b1: `Hello`  →  corect: `hello`" (verde/roșu).
+  - **reorder** – două coloane / două liste numerotate: „Ordinea ta" vs „Ordinea corectă".
+  - **code** – bloc `<pre>` cu codul elevului + (dacă există) output așteptat / soluție.
+  - **open / short** – text elev + text corect.
+- Fallback lizibil: dacă tot nu avem tipul, afișăm câmpurile answer_data ca listă `cheie: valoare`, nu `JSON.stringify`.
+- Titlul devine cerința reală (`question` / `statement`), cu fallback „Exercițiul N".
+
+### 3. Fără schimbări în alte fluxuri
+
+Profesorul (`TestResults.tsx`) și pagina de test nu se modifică. Nu atingem policies existente; RPC-ul e strict pentru review post-submit.
 
 ## Detalii tehnice
 
-- `TestResults.tsx`: adăugăm în cardul submisiei un mic buton `RotateCcw` „Renotează" ce apelează `supabase.functions.invoke("grade-submission", { body: { submission_id } })` și apoi `qc.invalidateQueries` pentru answers + submissions.
-- `grade-submission/index.ts`, blocul de la liniile 58–69: după `owner` check, dacă `callerId !== student_id`, verificăm dacă `callerId` e profesorul testului (`tests.teacher_id`) și abia apoi întoarcem 403.
-- Nu modificăm fluxul studentului sau logica de grading pentru quiz/fill/etc — a fost confirmată corectă.
-
-## Ce NU facem
-
-- Nu schimbăm `gradeExercise` (quiz-ul e corect).
-- Nu atingem fluxul `sendBeacon` (subiect separat, mai riscant).
-- Nu forțăm renotarea automată din edge function fără trigger explicit.
+- Sanitizăm output-ul RPC: pentru elev întoarcem răspunsurile corecte doar dacă `scores_released`; verificarea e în funcție, nu în client.
+- Păstrăm `queryKey: ["student-test-answers", expandedTestId]` — doar sursa se schimbă.
+- Fără modificări de schemă; folosim coloanele existente din `eval_exercises` și `test_items.custom_data`.
