@@ -1357,6 +1357,16 @@ const TestBuilder = ({ onBack, editTestId, teacherStatus }: TestBuilderProps) =>
         </div>
       )}
 
+      <Button
+        variant="outline"
+        onClick={() => setFullPreviewOpen(true)}
+        disabled={items.length === 0}
+        className="w-full"
+      >
+        <Eye className="h-4 w-4 mr-2" />
+        Previzualizează test
+      </Button>
+
       <Button onClick={handleSave} disabled={createTest.isPending || updateTest.isPending} className="w-full">
         {createTest.isPending || updateTest.isPending
           ? "Se salvează..."
@@ -1364,6 +1374,67 @@ const TestBuilder = ({ onBack, editTestId, teacherStatus }: TestBuilderProps) =>
             ? `Salvează modificările (${items.length} itemi)`
             : `Creează test (${items.length} itemi)`}
       </Button>
+
+      <Dialog open={fullPreviewOpen} onOpenChange={setFullPreviewOpen}>
+        <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{title || "Previzualizare test"}</DialogTitle>
+            <p className="text-xs text-muted-foreground">
+              {items.length} itemi{timeLimitEnabled ? ` • ${timeLimit} min` : ""} • {officePoints}p din oficiu
+            </p>
+          </DialogHeader>
+
+          {variantMode === "manual" ? (
+            <div className="grid md:grid-cols-2 gap-4">
+              {(["A", "B"] as const).map((variant) => {
+                const vItems = variant === "A" ? variant1Items : variant2Items;
+                const label = variant === "A" ? "Nr. 1" : "Nr. 2";
+                return (
+                  <Card key={variant}>
+                    <CardContent className="p-3 space-y-3">
+                      <p className="text-sm font-semibold text-foreground">
+                        {label}{" "}
+                        <span className="text-muted-foreground font-normal">
+                          ({vItems.length} itemi • {vItems.reduce((s, i) => s + i.points, 0)}p)
+                        </span>
+                      </p>
+                      {vItems.length === 0 ? (
+                        <p className="text-xs text-muted-foreground italic">Niciun item</p>
+                      ) : (
+                        vItems.map((item, idx) => (
+                          <div key={idx} className="border border-border rounded-md p-2 space-y-1">
+                            <div className="flex items-center gap-1.5 text-xs text-foreground">
+                              <span className="text-muted-foreground shrink-0">{idx + 1}.</span>
+                              {getItemIcon(item)}
+                              <span className="flex-1 truncate">{getItemLabel(item)}</span>
+                              <span className="text-[10px] text-muted-foreground shrink-0">{item.points}p</span>
+                            </div>
+                            {renderItemPreview(item)}
+                          </div>
+                        ))
+                      )}
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {items.map((item, idx) => (
+                <div key={idx} className="border border-border rounded-md p-3 space-y-1">
+                  <div className="flex items-center gap-1.5 text-xs text-foreground">
+                    <span className="text-muted-foreground shrink-0">{idx + 1}.</span>
+                    {getItemIcon(item)}
+                    <span className="flex-1 truncate">{getItemLabel(item)}</span>
+                    <span className="text-[10px] text-muted-foreground shrink-0">{item.points}p</span>
+                  </div>
+                  {renderItemPreview(item)}
+                </div>
+              ))}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       <TestLimitReachedDialog
         open={limitDialogOpen}
