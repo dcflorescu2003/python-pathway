@@ -6,6 +6,8 @@ import schoolAsset from "@/assets/tutorial-creeaza-cont-school.png.asset.json";
 import xpCapitoleAsset from "@/assets/tutorial-xp-capitole.png.asset.json";
 import xpRoadmapAsset from "@/assets/tutorial-xp-roadmap.png.asset.json";
 import vietiBarAsset from "@/assets/tutorial-vieti-bar.png.asset.json";
+import problemsListAsset from "@/assets/tutorial-problems-list.png.asset.json";
+import problemEditorAsset from "@/assets/tutorial-problem-editor.png.asset.json";
 
 export const studentTutorials: TutorialArticle[] = [
   {
@@ -120,10 +122,10 @@ export const studentTutorials: TutorialArticle[] = [
       {
         heading: "Pagina Probleme",
         body: [
-          "Mergi la „Probleme” din meniul de jos. Ai 60 de probleme grupate pe dificultate.",
+          "Mergi la „Probleme” din meniul de jos. Ai peste 300 de probleme grupate pe dificultate.",
           "Apasă pe o problemă ca să vezi cerința, exemplele de input/output și editorul.",
         ],
-        image: { alt: "Lista de probleme", placeholder: "Screenshot: ProblemsPage" },
+        image: { src: problemsListAsset.url, alt: "Lista de probleme grupate pe capitole" },
       },
       {
         heading: "Editorul",
@@ -131,7 +133,7 @@ export const studentTutorials: TutorialArticle[] = [
           "Codul tău rulează direct în browser, prin Pyodide. Nu trebuie să instalezi nimic.",
           "Apasă „Rulează” ca să-ți testezi soluția. Ai timeout de 10 secunde pe execuție.",
         ],
-        image: { alt: "Editorul de cod", placeholder: "Screenshot: ProblemSolvePage cu editor" },
+        image: { src: problemEditorAsset.url, alt: "Editorul de cod Python cu cerința și butonul Rulează teste" },
         tip: "Dacă te blochezi, poți vedea soluția oficială după câteva încercări.",
       },
     ],
