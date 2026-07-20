@@ -24,7 +24,7 @@ export const teacherTutorials: TutorialArticle[] = [
           "Document — încarcă o poză sau un PDF cu legitimația/adeverința de la școală. Poți ascunde date sensibile (CNP, serie, număr document) — ne interesează doar numele, școala și calitatea de profesor.",
           "Cod de la un profesor — un coleg deja verificat din aceeași școală îți poate genera un cod de recomandare. Introdu codul primit și devii profesor verificat fără verificare suplimentară.",
         ],
-        image: { alt: "Formular verificare profesor", placeholder: "Screenshot: TeacherVerificationForm" },
+        image: { src: teacherVerificationAsset.url, alt: "Ecranul „Verificare profesor” cu cele 4 metode: Cod de invitație, Link public, Document și Cod de la un profesor" },
         tip: "Pentru link public și document, răspundem în 24-48h în zilele lucrătoare. Celelalte două metode sunt active imediat dacă codul este valid.",
       },
     ],
