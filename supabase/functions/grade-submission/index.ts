@@ -57,11 +57,20 @@ Deno.serve(async (req) => {
 
     const { data: ownerSub } = await supabase
       .from("test_submissions")
-      .select("student_id")
+      .select("student_id, assignment_id, test_assignments(test_id, tests(teacher_id))")
       .eq("id", submission_id)
       .single();
 
-    if (!ownerSub || ownerSub.student_id !== callerId) {
+    if (!ownerSub) {
+      return new Response(JSON.stringify({ error: "Forbidden" }), {
+        status: 403,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const teacherId = (ownerSub as any).test_assignments?.tests?.teacher_id;
+    const isOwner = ownerSub.student_id === callerId;
+    const isTeacher = teacherId && teacherId === callerId;
+    if (!isOwner && !isTeacher) {
       return new Response(JSON.stringify({ error: "Forbidden" }), {
         status: 403,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -424,7 +433,7 @@ Deno.serve(async (req) => {
     // Update submission
     await supabase
       .from("test_submissions")
-      .update({ total_score: totalScore, max_score: maxScore, auto_graded: true })
+      .update({ total_score: totalScore, max_score: maxScore, auto_graded: true, status: "submitted" })
       .eq("id", submission_id);
 
     // Record competency scores from this test (silent failure)

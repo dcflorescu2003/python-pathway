@@ -1,4 +1,5 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -81,6 +82,29 @@ const TestResults = ({ testId, testTitle, onBack, initialClassId }: TestResultsP
   const toggleScores = useToggleScoresReleased();
   const allowRetake = useAllowRetake();
   const resumeSubmission = useResumeSubmission();
+  const qc = useQueryClient();
+  const [regrading, setRegrading] = useState<Record<string, boolean>>({});
+  const autoRegradedRef = useRef<Set<string>>(new Set());
+
+  const regradeSubmission = async (submissionId: string, silent = false) => {
+    setRegrading((p) => ({ ...p, [submissionId]: true }));
+    try {
+      const { error } = await supabase.functions.invoke("grade-submission", {
+        body: { submission_id: submissionId },
+      });
+      if (error) throw error;
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ["test-submissions"] }),
+        qc.invalidateQueries({ queryKey: ["test-answers", submissionId] }),
+      ]);
+      if (!silent) toast.success("Test renotat.");
+    } catch (e: any) {
+      if (!silent) toast.error("Nu am putut renota testul. Încearcă din nou.");
+      console.error("regrade failed:", e);
+    } finally {
+      setRegrading((p) => ({ ...p, [submissionId]: false }));
+    }
+  };
 
   // Enriched data: exercise/problem details keyed by source_id
   const [enrichedData, setEnrichedData] = useState<Record<string, any>>({});
@@ -510,9 +534,20 @@ const TestResults = ({ testId, testTitle, onBack, initialClassId }: TestResultsP
                   <CardContent className="p-0">
                     <button
                       onClick={() => {
-                        setExpandedSubmissionId(isExpanded ? null : sub.id);
+                        const nextExpanded = isExpanded ? null : sub.id;
+                        setExpandedSubmissionId(nextExpanded);
                         setScoreEdits({});
                         setFeedbackEdits({});
+                        // Auto-regrade once if submitted but not graded
+                        if (
+                          nextExpanded &&
+                          sub.submitted_at &&
+                          sub.auto_graded === false &&
+                          !autoRegradedRef.current.has(sub.id)
+                        ) {
+                          autoRegradedRef.current.add(sub.id);
+                          regradeSubmission(sub.id, true);
+                        }
                       }}
                       className="w-full p-3 flex items-center justify-between text-left"
                     >
@@ -595,6 +630,21 @@ const TestResults = ({ testId, testTitle, onBack, initialClassId }: TestResultsP
                                 </AlertDialogFooter>
                               </AlertDialogContent>
                             </AlertDialog>
+                          )}
+                          {sub.submitted_at && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              disabled={!!regrading[sub.id]}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                regradeSubmission(sub.id);
+                              }}
+                              className="h-6 text-[10px] px-2 gap-1"
+                              title="Rulează din nou notarea automată"
+                            >
+                              <RotateCcw className="h-3 w-3" /> {regrading[sub.id] ? "Renotez…" : "Renotează"}
+                            </Button>
                           )}
                         </div>
                       </div>
