@@ -4,6 +4,7 @@ import classManagerAsset from "@/assets/class-manager.png.asset.json";
 import testBuilderAsset from "@/assets/test-builder.png.asset.json";
 import challengeAssignerAsset from "@/assets/challenge-assigner.png.asset.json";
 import testResultsAsset from "@/assets/test-results.png.asset.json";
+import classAnalyticsAsset from "@/assets/class-analytics.png.asset.json";
 
 export const teacherTutorials: TutorialArticle[] = [
   {
