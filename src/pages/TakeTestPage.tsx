@@ -365,6 +365,21 @@ const TakeTestPage = () => {
 
   // Single in-flight guard – set synchronously before any submit path fires
   const submitInFlightRef = useRef(false);
+  const accessTokenRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    let mounted = true;
+    supabase.auth.getSession().then(({ data }) => {
+      if (mounted) accessTokenRef.current = data.session?.access_token ?? null;
+    });
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+      accessTokenRef.current = session?.access_token ?? null;
+    });
+    return () => {
+      mounted = false;
+      listener.subscription.unsubscribe();
+    };
+  }, []);
 
   // Periodic save every 30s + save on visibilitychange (localStorage + server draft)
   // Marks pendingDraftSync when the server draft fails, so we can retry on reconnect.
@@ -499,7 +514,8 @@ const TakeTestPage = () => {
       if (draftKey) {
         try { localStorage.setItem(draftKey, JSON.stringify(answersRef.current)); } catch {}
       }
-      // Try to submit via beacon
+      // Try to submit with keepalive and auth headers. sendBeacon cannot attach
+      // Authorization, so it used to leave some tests submitted-but-ungraded.
       submitInFlightRef.current = true;
       const answersList = itemsRef.current.map((item) => ({
         test_item_id: item.id,
@@ -513,11 +529,23 @@ const TakeTestPage = () => {
         auto_submitted_reason: "browser_closed",
       });
       try {
-        navigator.sendBeacon(
-          `https://${projectId}.supabase.co/functions/v1/grade-submission`,
-          new Blob([payload], { type: "application/json" })
-        );
+        const token = accessTokenRef.current;
+        if (token) {
+          fetch(`https://${projectId}.supabase.co/functions/v1/grade-submission`, {
+            method: "POST",
+            keepalive: true,
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+              apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+            },
+            body: payload,
+          }).catch(() => {});
+        }
       } catch {}
+      window.setTimeout(() => {
+        if (!submittedRef.current) submitInFlightRef.current = false;
+      }, 1000);
       // Show the browser's native "Leave site?" prompt so a stray tab close /
       // gesture doesn't drop the student out of the test silently.
       e.preventDefault();

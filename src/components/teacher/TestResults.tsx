@@ -706,6 +706,60 @@ const typeLabel = (t: string) => {
   return map[t] || t;
 };
 
+const normalizeLoose = (value: unknown) =>
+  String(value ?? "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[\u200B-\u200D\uFEFF]/g, "")
+    .replace(/\u00A0/g, " ")
+    .trim()
+    .toLowerCase();
+
+const splitAlternatives = (value: unknown): string[] => {
+  const parts: string[] = [];
+  let buf = "";
+  let depth = 0;
+  let quote: '"' | "'" | null = null;
+  for (const ch of String(value ?? "")) {
+    if (quote) {
+      buf += ch;
+      if (ch === quote) quote = null;
+      continue;
+    }
+    if (ch === '"' || ch === "'") {
+      quote = ch;
+      buf += ch;
+      continue;
+    }
+    if (ch === "(" || ch === "[" || ch === "{") depth++;
+    else if (ch === ")" || ch === "]" || ch === "}") depth = Math.max(0, depth - 1);
+    if (depth === 0 && (ch === "," || ch === "|" || ch === ";" || ch === "/")) {
+      parts.push(buf);
+      buf = "";
+    } else {
+      buf += ch;
+    }
+  }
+  parts.push(buf);
+  return parts.map((p) => p.trim()).filter(Boolean);
+};
+
+const stripQuotes = (value: string) => {
+  const t = value.trim();
+  if (t.length >= 2 && ((t.startsWith('"') && t.endsWith('"')) || (t.startsWith("'") && t.endsWith("'")))) {
+    return t.slice(1, -1);
+  }
+  return t;
+};
+
+const toBool = (value: unknown): boolean | null => {
+  if (typeof value === "boolean") return value;
+  const normalized = normalizeLoose(value);
+  if (["true", "adevarat", "adevărat", "a", "1", "da"].includes(normalized)) return true;
+  if (["false", "fals", "f", "0", "nu"].includes(normalized)) return false;
+  return null;
+};
+
 // Always-expanded answer detail per item
 const AnswerDetail = ({
   answer,
@@ -731,7 +785,7 @@ const AnswerDetail = ({
   saving: boolean;
 }) => {
   const [showRaw, setShowRaw] = useState(false);
-  const isCorrect = answer.score >= answer.max_points;
+  const isCorrect = Number(answer.max_points ?? 0) > 0 && Number(answer.score ?? 0) >= Number(answer.max_points ?? 0);
   const itemType = questionInfo.type;
   const exerciseData = questionInfo.data;
   // For custom items, use custom_data; for exercise/problem, use enriched data
@@ -744,6 +798,10 @@ const AnswerDetail = ({
   const blanks = exerciseData?.blanks || customData?.blanks;
   const lines = exerciseData?.lines || customData?.lines;
   const pairs = exerciseData?.pairs || customData?.pairs;
+  const selectedId = answer.answer_data?.selected_option_id ?? answer.answer_data?.selected ?? answer.answer_data?.answer;
+  const selectedOption = Array.isArray(options) ? options.find((opt: any) => normalizeLoose(opt.id) === normalizeLoose(selectedId)) : null;
+  const correctOption = Array.isArray(options) ? options.find((opt: any) => normalizeLoose(opt.id) === normalizeLoose(correctOptionId)) : null;
+  const needsRegrade = itemType === "quiz" && Number(answer.max_points ?? 0) > 0 && Number(answer.score ?? 0) === 0 && selectedOption && correctOption && normalizeLoose(selectedId) === normalizeLoose(correctOptionId);
 
   return (
     <div className="rounded-lg border border-border overflow-hidden">
@@ -759,6 +817,11 @@ const AnswerDetail = ({
           {itemType && (
             <span className="text-[10px] bg-muted text-muted-foreground px-1.5 py-0.5 rounded">
               {typeLabel(itemType)}
+            </span>
+          )}
+          {needsRegrade && (
+            <span className="text-[10px] bg-warning/10 text-warning border border-warning/30 px-1.5 py-0.5 rounded">
+              Necesită renotare
             </span>
           )}
         </div>
@@ -792,10 +855,27 @@ const AnswerDetail = ({
         {itemType === "quiz" && options && (
           <div>
             <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">Variante</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-2">
+              <div className="text-xs rounded border border-border bg-muted/40 px-2 py-1.5">
+                <span className="block text-[10px] uppercase text-muted-foreground mb-0.5">Răspuns elev</span>
+                <span className={normalizeLoose(selectedId) === normalizeLoose(correctOptionId) ? "text-primary font-medium" : "text-destructive font-medium"}>
+                  {selectedOption?.text || "Necompletat"}
+                </span>
+              </div>
+              <div className="text-xs rounded border border-primary/30 bg-primary/5 px-2 py-1.5">
+                <span className="block text-[10px] uppercase text-muted-foreground mb-0.5">Răspuns corect</span>
+                <span className="text-primary font-medium">{correctOption?.text || correctOptionId || "—"}</span>
+              </div>
+            </div>
+            {needsRegrade && (
+              <p className="text-xs rounded border border-warning/30 bg-warning/10 text-warning px-2 py-1 mb-2">
+                Opțiunea bifată este răspunsul corect, dar punctajul salvat este 0. Apasă „Renotează”.
+              </p>
+            )}
             <div className="space-y-1">
               {(options as any[]).map((opt: any) => {
-                const isSelected = answer.answer_data?.selected === opt.id;
-                const isCorrectOpt = opt.id === correctOptionId;
+                const isSelected = normalizeLoose(selectedId) === normalizeLoose(opt.id);
+                const isCorrectOpt = normalizeLoose(opt.id) === normalizeLoose(correctOptionId);
                 return (
                   <div
                     key={opt.id}
@@ -824,10 +904,18 @@ const AnswerDetail = ({
             {statement && (
               <p className="text-xs text-foreground mb-1 italic">„{statement}"</p>
             )}
-            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">Răspuns elev</p>
-            <p className="text-xs text-foreground">
-              {answer.answer_data?.selected === true ? "Adevărat" : answer.answer_data?.selected === false ? "Fals" : "Necompletat"}
-            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <div className="text-xs rounded border border-border bg-muted/40 px-2 py-1.5">
+                <span className="block text-[10px] uppercase text-muted-foreground mb-0.5">Răspuns elev</span>
+                <span className="text-foreground">
+                  {toBool(answer.answer_data?.selected ?? answer.answer_data?.value ?? answer.answer_data?.answer) === true ? "Adevărat" : toBool(answer.answer_data?.selected ?? answer.answer_data?.value ?? answer.answer_data?.answer) === false ? "Fals" : "Necompletat"}
+                </span>
+              </div>
+              <div className="text-xs rounded border border-primary/30 bg-primary/5 px-2 py-1.5">
+                <span className="block text-[10px] uppercase text-muted-foreground mb-0.5">Răspuns corect</span>
+                <span className="text-primary font-medium">{toBool(exerciseData?.is_true ?? customData?.is_true) ? "Adevărat" : "Fals"}</span>
+              </div>
+            </div>
           </div>
         )}
 
@@ -835,36 +923,54 @@ const AnswerDetail = ({
         {itemType === "fill" && answer.answer_data?.blanks && (
           <div>
             <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">Răspunsuri completate</p>
-            {Object.entries(answer.answer_data.blanks).map(([key, val]) => (
-              <p key={key} className="text-xs text-foreground font-mono bg-muted px-2 py-1 rounded mt-1">
-                {val as string || "(gol)"}
-              </p>
-            ))}
+            <div className="space-y-1">
+              {((blanks as any[]) || Object.keys(answer.answer_data.blanks).map((key) => ({ id: key }))).map((blank: any, i: number) => {
+                const key = blank.id ?? blank.key ?? `b${i + 1}`;
+                const val = answer.answer_data.blanks[key];
+                const accepted = splitAlternatives(blank.answer ?? "").map(stripQuotes).join(" / ");
+                return (
+                  <div key={key} className="grid grid-cols-1 sm:grid-cols-2 gap-1 text-xs">
+                    <p className="font-mono bg-muted px-2 py-1 rounded"><span className="text-muted-foreground">Elev:</span> {String(val || "(gol)")}</p>
+                    <p className="font-mono bg-primary/5 border border-primary/20 px-2 py-1 rounded"><span className="text-muted-foreground">Corect:</span> <span className="text-primary font-medium">{accepted || "—"}</span></p>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         )}
 
         {/* Order */}
         {itemType === "order" && (
-          <div>
-            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">Ordinea elevului</p>
-            {answer.answer_data?.order && (answer.answer_data.order as string[]).length > 0 ? (
-              (answer.answer_data.order as string[]).map((lineId: string, i: number) => {
-                const line = lines?.find((l: any) => l.id === lineId);
-                return (
-                  <p key={lineId} className="text-xs font-mono bg-muted px-2 py-1 rounded mt-1">
-                    {i + 1}. {line?.text || lineId}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <div>
+              <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">Ordinea elevului</p>
+              {answer.answer_data?.order && (answer.answer_data.order as string[]).length > 0 ? (
+                (answer.answer_data.order as string[]).map((lineId: string, i: number) => {
+                  const line = lines?.find((l: any) => l.id === lineId);
+                  const sortedLine = [...((lines as any[]) || [])].sort((a: any, b: any) => (a.order ?? 0) - (b.order ?? 0))[i];
+                  const ok = line?.id === sortedLine?.id || line?.text === sortedLine?.text;
+                  return (
+                    <p key={`${lineId}-${i}`} className={`text-xs font-mono px-2 py-1 rounded mt-1 ${ok ? "bg-primary/10 text-primary" : "bg-destructive/10 text-destructive"}`}>
+                      {i + 1}. {line?.text || lineId}
+                    </p>
+                  );
+                })
+              ) : (
+                <p className="text-xs text-muted-foreground italic">Necompletat</p>
+              )}
+            </div>
+            <div>
+              <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">Ordinea corectă</p>
+              {lines && (lines as any[]).length > 0 ? (
+                [...(lines as any[])].sort((a: any, b: any) => (a.order ?? 0) - (b.order ?? 0)).map((line: any, i: number) => (
+                  <p key={`${line.id}-correct-${i}`} className="text-xs font-mono bg-primary/5 border border-primary/20 text-primary px-2 py-1 rounded mt-1">
+                    {i + 1}. {line.text}
                   </p>
-                );
-              })
-            ) : lines && (lines as any[]).length > 0 ? (
-              (lines as any[]).map((line: any, i: number) => (
-                <p key={line.id} className="text-xs font-mono bg-muted px-2 py-1 rounded mt-1 opacity-50">
-                  {i + 1}. {line.text}
-                </p>
-              ))
-            ) : (
-              <p className="text-xs text-muted-foreground italic">Necompletat</p>
-            )}
+                ))
+              ) : (
+                <p className="text-xs text-muted-foreground italic">—</p>
+              )}
+            </div>
           </div>
         )}
 
@@ -876,9 +982,10 @@ const AnswerDetail = ({
               const pair = pairs?.find((p: any) => p.id === pairId);
               const rightText = pairs?.find((p: any) => p.id === val)?.right || (val as string) || "(gol)";
               return (
-                <p key={pairId} className="text-xs bg-muted px-2 py-1 rounded mt-1">
-                  {pair?.left || pairId} → <span className="font-medium">{rightText}</span>
-                </p>
+                <div key={pairId} className="grid grid-cols-1 sm:grid-cols-2 gap-1 mt-1 text-xs">
+                  <p className="bg-muted px-2 py-1 rounded">{pair?.left || pairId} → <span className="font-medium">{rightText}</span></p>
+                  <p className="bg-primary/5 border border-primary/20 px-2 py-1 rounded"><span className="text-muted-foreground">Corect:</span> <span className="text-primary font-medium">{pair?.right || "—"}</span></p>
+                </div>
               );
             })}
           </div>

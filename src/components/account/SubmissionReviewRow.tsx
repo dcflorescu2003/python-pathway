@@ -42,6 +42,52 @@ const CorrectAnswer = ({ children }: { children: React.ReactNode }) => (
   </div>
 );
 
+const normalizeLoose = (value: unknown) =>
+  String(value ?? "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[\u200B-\u200D\uFEFF]/g, "")
+    .replace(/\u00A0/g, " ")
+    .trim()
+    .toLowerCase();
+
+const splitAlternatives = (value: unknown): string[] => {
+  const parts: string[] = [];
+  let buf = "";
+  let depth = 0;
+  let quote: '"' | "'" | null = null;
+  for (const ch of String(value ?? "")) {
+    if (quote) {
+      buf += ch;
+      if (ch === quote) quote = null;
+      continue;
+    }
+    if (ch === '"' || ch === "'") {
+      quote = ch;
+      buf += ch;
+      continue;
+    }
+    if (ch === "(" || ch === "[" || ch === "{") depth++;
+    else if (ch === ")" || ch === "]" || ch === "}") depth = Math.max(0, depth - 1);
+    if (depth === 0 && (ch === "," || ch === "|" || ch === ";" || ch === "/")) {
+      parts.push(buf);
+      buf = "";
+    } else {
+      buf += ch;
+    }
+  }
+  parts.push(buf);
+  return parts.map((p) => p.trim()).filter(Boolean);
+};
+
+const stripQuotes = (value: string) => {
+  const t = value.trim();
+  if (t.length >= 2 && ((t.startsWith('"') && t.endsWith('"')) || (t.startsWith("'") && t.endsWith("'")))) {
+    return t.slice(1, -1);
+  }
+  return t;
+};
+
 export function SubmissionReviewRow({ item, index }: { item: ReviewItem; index: number }) {
   const score = Number(item.score ?? 0);
   const max = Number(item.max_points ?? 0);
@@ -49,16 +95,31 @@ export function SubmissionReviewRow({ item, index }: { item: ReviewItem; index: 
   const cerinta = item.question || item.statement || `Exercițiul ${index + 1}`;
   const type = (item.item_type || "").toLowerCase();
   const ans = item.answer_data || {};
+  const selectedOptionId = ans.selected_option_id ?? ans.selected ?? ans.answer;
+  const selectedOptionIsCorrect = type === "quiz" && item.correct_option_id != null && normalizeLoose(selectedOptionId) === normalizeLoose(item.correct_option_id);
+  const needsRegrade = max > 0 && score === 0 && selectedOptionIsCorrect;
 
   const renderBody = () => {
     // QUIZ
     if (type === "quiz" && Array.isArray(item.options)) {
-      const selectedId = ans.selected_option_id ?? ans.selected;
+      const selectedId = selectedOptionId;
       return (
-        <div className="space-y-1 pl-2 border-l-2 border-border">
+        <div className="space-y-2">
+          <YourAnswer>
+            {item.options.find((opt: any) => normalizeLoose(opt.id) === normalizeLoose(selectedId))?.text ?? "—"}
+          </YourAnswer>
+          <CorrectAnswer>
+            {item.options.find((opt: any) => normalizeLoose(opt.id) === normalizeLoose(item.correct_option_id))?.text ?? item.correct_option_id ?? "—"}
+          </CorrectAnswer>
+          {needsRegrade && (
+            <div className="text-xs rounded-md border border-yellow-600/40 bg-yellow-500/10 px-2 py-1 text-yellow-700">
+              Răspunsul este corect, dar punctajul vechi este 0. Profesorul trebuie să apese „Renotează”.
+            </div>
+          )}
+          <div className="space-y-1 pl-2 border-l-2 border-border">
           {item.options.map((opt: any) => {
-            const isSel = opt.id === selectedId;
-            const isCor = opt.id === item.correct_option_id;
+            const isSel = normalizeLoose(opt.id) === normalizeLoose(selectedId);
+            const isCor = normalizeLoose(opt.id) === normalizeLoose(item.correct_option_id);
             const cls = isCor
               ? "text-green-600 font-medium"
               : isSel
@@ -83,6 +144,7 @@ export function SubmissionReviewRow({ item, index }: { item: ReviewItem; index: 
               </div>
             );
           })}
+          </div>
         </div>
       );
     }
@@ -114,12 +176,15 @@ export function SubmissionReviewRow({ item, index }: { item: ReviewItem; index: 
       return (
         <div className="space-y-1.5">
           {item.blanks.map((b: any, i: number) => {
-            const key = b.key ?? `b${i + 1}`;
+            const key = b.id ?? b.key ?? `b${i + 1}`;
             const given = studentBlanks[key];
             const correctVal = b.answer ?? "";
-            const ok =
-              given != null &&
-              String(given).trim().toLowerCase() === String(correctVal).trim().toLowerCase();
+            const normalizedGiven = normalizeLoose(given).replace(/\s+/g, "");
+            const accepted = splitAlternatives(correctVal).flatMap((part) => {
+              const stripped = stripQuotes(part);
+              return stripped === part.trim() ? [normalizeLoose(part).replace(/\s+/g, "")] : [normalizeLoose(part).replace(/\s+/g, ""), normalizeLoose(stripped).replace(/\s+/g, "")];
+            });
+            const ok = given != null && accepted.includes(normalizedGiven);
             return (
               <div
                 key={key}
@@ -151,6 +216,8 @@ export function SubmissionReviewRow({ item, index }: { item: ReviewItem; index: 
         .sort((a: any, b: any) => (a.order ?? 0) - (b.order ?? 0))
         .map((l: any) => l.id);
       const textOf = (id: string) => linesById[id]?.text ?? id;
+      const correctTexts = correctOrder.map(textOf);
+      const studentTexts = studentOrder.map(textOf);
       return (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
           <div className="text-xs pl-2 border-l-2 border-border">
@@ -159,7 +226,7 @@ export function SubmissionReviewRow({ item, index }: { item: ReviewItem; index: 
               {studentOrder.length === 0
                 ? <li className="list-none text-muted-foreground">—</li>
                 : studentOrder.map((id, i) => {
-                    const ok = correctOrder[i] === id;
+                    const ok = correctOrder[i] === id || studentTexts[i] === correctTexts[i];
                     return (
                       <li key={i} className={ok ? "text-green-600" : "text-destructive"}>
                         {textOf(id)}

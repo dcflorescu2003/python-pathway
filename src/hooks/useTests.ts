@@ -364,37 +364,18 @@ export function useSubmitTest() {
       answers: { test_item_id: string; answer_data: any; max_points: number }[];
       auto_submitted_reason?: string | null;
     }) => {
-      // Insert answers
-      const answersToInsert = params.answers.map((a) => ({
-        submission_id: params.submission_id,
-        test_item_id: a.test_item_id,
-        answer_data: a.answer_data,
-        max_points: a.max_points,
-        score: 0,
-      }));
-      const { error: ansError } = await supabase.from("test_answers").insert(answersToInsert);
-      if (ansError) throw ansError;
-
-      // Mark as submitted (with optional auto-submit reason)
-      const updatePayload: Record<string, any> = {
-        submitted_at: new Date().toISOString(),
-        status: "submitted",
-      };
-      if (params.auto_submitted_reason) {
-        updatePayload.auto_submitted_reason = params.auto_submitted_reason;
-      }
-      const { error: subError } = await (supabase as any)
-        .from("test_submissions")
-        .update(updatePayload)
-        .eq("id", params.submission_id);
-      if (subError) throw subError;
-
-      // Invoke grading (functions.invoke auto-attaches the user's Authorization header)
+      // Persist answers + mark submitted inside the grader so normal submit,
+      // auto-submit and regrade all use the same idempotent path.
       const { error: gradeErr } = await supabase.functions.invoke("grade-submission", {
-        body: { submission_id: params.submission_id },
+        body: {
+          submission_id: params.submission_id,
+          answers: params.answers,
+          auto_submitted_reason: params.auto_submitted_reason ?? null,
+        },
       });
       if (gradeErr) {
         console.error("grade-submission failed:", gradeErr);
+        throw gradeErr;
       }
     },
     onSuccess: () => {
