@@ -365,101 +365,15 @@ const StudentTab = ({ memberClassName, onLeaveClass }: StudentTabProps) => {
                           </span>
                         </div>
 
-                        {testAnswers.length > 0 && (
+                        {reviewItems.length > 0 && (
                           <div className="space-y-2.5">
-                            {testAnswers
-                              .sort((a: any, b: any) => (a.test_items?.sort_order ?? 0) - (b.test_items?.sort_order ?? 0))
-                              .map((answer: any, idx: number) => {
-                                const customData = answer.test_items?.custom_data;
-                                const sourceType = answer.test_items?.source_type;
-                                const isAutoGraded = sourceType === 'custom' && customData;
-                                const question = customData?.question || `Exercițiul ${idx + 1}`;
-                                const answerData = answer.answer_data;
-                                const itemType = customData?.type;
-                                const isQuiz = itemType === 'quiz';
-
-                                const selectedOptionId = answerData?.selected_option_id;
-                                const correctOptionId = customData?.correct_option_id;
-                                const options = customData?.options as any[] | undefined;
-
-                                return (
-                                  <div key={answer.id} className="rounded-md bg-muted/50 p-3 space-y-2">
-                                    <div className="flex items-start justify-between gap-2">
-                                      <pre className="text-xs text-foreground font-medium whitespace-pre-wrap flex-1">
-                                        {idx + 1}. {question}
-                                      </pre>
-                                      <span className={`text-xs font-semibold whitespace-nowrap ${
-                                        Number(answer.score) >= Number(answer.max_points)
-                                          ? "text-green-600"
-                                          : Number(answer.score) > 0
-                                            ? "text-yellow-600"
-                                            : "text-destructive"
-                                      }`}>
-                                        {answer.score ?? 0}/{answer.max_points ?? 0}p
-                                      </span>
-                                    </div>
-
-                                    {isQuiz && options && (
-                                      <div className="space-y-1 pl-2 border-l-2 border-border">
-                                        {options.map((opt: any) => {
-                                          const isSelected = opt.id === selectedOptionId;
-                                          const isCorrect = opt.id === correctOptionId;
-                                          let optClass = "text-muted-foreground";
-                                          if (isCorrect) optClass = "text-green-600 font-medium";
-                                          else if (isSelected && !isCorrect) optClass = "text-destructive font-medium";
-
-                                          return (
-                                            <div key={opt.id} className={`text-xs flex items-center gap-1.5 ${optClass}`}>
-                                              <span className={`inline-flex h-4 w-4 items-center justify-center rounded-full border text-[10px] ${
-                                                isCorrect ? "border-green-600 bg-green-500/10" :
-                                                isSelected ? "border-destructive bg-destructive/10" :
-                                                "border-border"
-                                              }`}>
-                                                {opt.id?.toUpperCase?.() || ""}
-                                              </span>
-                                              {opt.text}
-                                              {isCorrect && " ✅"}
-                                              {isSelected && !isCorrect && " ❌"}
-                                            </div>
-                                          );
-                                        })}
-                                      </div>
-                                    )}
-
-                                    {!isQuiz && answerData && (
-                                      <div className="text-xs pl-2 border-l-2 border-border">
-                                        <span className="text-muted-foreground">Răspunsul tău: </span>
-                                        <span className="text-foreground">
-                                          {typeof answerData === 'string'
-                                            ? answerData
-                                            : answerData.selected_option_text || answerData.answer || answerData.code || JSON.stringify(answerData)}
-                                        </span>
-                                      </div>
-                                    )}
-
-                                    {!isQuiz && isAutoGraded && Number(answer.score) < Number(answer.max_points) && (
-                                      <div className="text-xs pl-2 border-l-2 border-green-600/30">
-                                        <span className="text-muted-foreground">Răspuns corect: </span>
-                                        <span className="text-green-600 font-medium">
-                                          {customData.correct_answer
-                                            || (customData.blanks ? customData.blanks.map((b: any) => b.answer).join(', ') : null)
-                                            || "—"}
-                                        </span>
-                                      </div>
-                                    )}
-
-                                    {answer.feedback && (
-                                      <p className="text-xs text-muted-foreground italic pl-2">
-                                        💬 {answer.feedback}
-                                      </p>
-                                    )}
-                                  </div>
-                                );
-                              })}
+                            {reviewItems.map((item: any, idx: number) => (
+                              <SubmissionReviewRow key={item.answer_id} item={item} index={idx} />
+                            ))}
                           </div>
                         )}
 
-                        {testAnswers.length === 0 && (
+                        {reviewItems.length === 0 && (
                           <p className="text-xs text-muted-foreground">Se încarcă detaliile...</p>
                         )}
                       </div>
