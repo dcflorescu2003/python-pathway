@@ -67,15 +67,15 @@ export const studentTutorials: TutorialArticle[] = [
           "PyRo are 6 capitole care acoperă programa de clasa a IX-a: bazele Python, variabile, condiționale, bucle, funcții, liste și structuri.",
           "Fiecare capitol conține lecții scurte și interactive, cu exerciții variate: alege varianta corectă, completează spațiile, ordonează liniile de cod, scrie cod real.",
         ],
-        image: { alt: "Harta capitolelor", placeholder: "Screenshot: pagina Index cu capitole" },
+        image: { src: xpCapitoleAsset.url, alt: "Pagina principală cu cele 6 capitole și progresul fiecăruia" },
       },
       {
         heading: "XP și nivele",
         body: [
           "Primești XP la fiecare exercițiu rezolvat corect. La acumularea unui număr de XP, treci la următorul nivel (sunt 25 în total).",
-          "Avatarul tău — un șarpe Python — evoluează prin 10 stadii pe măsură ce crești în nivel.",
+          "Avatarul tău — un șarpe Python — evoluează prin 10 stadii pe măsură ce crești în nivel: de la „Oul Misterios” la „Master of Python”.",
         ],
-        image: { alt: "Evoluția avatarului", placeholder: "Screenshot: LevelRoadmap" },
+        image: { src: xpRoadmapAsset.url, alt: "Drumul spre Master: cele 10 stadii de evoluție a avatarului" },
       },
       {
         heading: "Deblocare capitole",
