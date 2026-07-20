@@ -1,49 +1,41 @@
-## Ce vrei
 
-1. Când un profesor distribuie un test unei clase, testul să apară și pe pagina principală (Home) a elevului — nu doar în tab-ul „Cont", ca să-l poată începe cu un tap.
-2. Timpul rămas să fie afișat pe card, calculat din momentul distribuirii.
+## Scop
+Popularea primului tutorial pentru elevi (`/tutoriale/elevi/creeaza-cont`) cu cele 4 screenshoturi încărcate, în locul placeholderelor.
 
-## Ce este deja în cod
+## Mapare imagini → secțiuni
 
-- `test_assignments` are `assigned_at` + `window_minutes` (fereastra de disponibilitate).
-- `TakeTestPage` deja calculează deadline-ul ferestrei ca `assigned_at + window_minutes` (linia 132–133), deci partea de "timp de când a fost distribuit" există deja în backend/logică.
-- Există hook-ul `useStudentAssignments()` în `src/hooks/useTests.ts` care întoarce assignments active + submission-ul elevului (join pe `tests` + `teacher_classes`).
-- Pe Home (`src/pages/Index.tsx`) nu se afișează nimic legat de testele profesorului.
-- În `StudentTab` (Cont) testele apar deja într-o listă simplă.
+Imaginile arată fluxul: Splash „Bine ai venit" → Rol (Elev/Profesor) → Auth → Alege liceul. Deci restructurez ușor secțiunile din tutorial ca să acopere logic tot onboarding-ul.
 
-## Ce construiesc
+| # | Secțiune | Imagine |
+|---|---|---|
+| 1 | **Deschide aplicația** (splash intro cu „Să începem") | `image-198.png` |
+| 2 | **Alege rolul** (Elev / Profesor) | `image-199.png` |
+| 3 | **Înregistrare / Autentificare** (email, Google, Apple) | `image-197.png` |
+| 4 | **Alege școala** (search cu liste 1500+) | `image-200.png` |
+| 5 | **Setează un nickname** (fără imagine, rămâne text) | — |
 
-### 1. Card „Teste de la profesor" pe Home
+Textele existente se păstrează, doar se extind cu 2 secțiuni noi (splash + rol) și se adaugă imaginile reale.
 
-Component nou `src/components/home/TeacherTestsCard.tsx`:
-- Folosește `useStudentAssignments()`.
-- Filtrează:
-  - fereastra activă (`window_minutes` null SAU `assigned_at + window_minutes > now`),
-  - fără submission trimis (`submission.submitted_at` null) — dar afișează și cele „în progres" (draft) cu buton „Continuă".
-- Sortare: cele care expiră cel mai curând primele, apoi cele fără deadline după `assigned_at desc`.
-- Limitat la max 3 carduri vizibile; dacă sunt mai multe, buton „Vezi toate" care duce la `/auth?tab=student` (tab-ul Cont).
-- Fiecare card afișează: titlu test, numele clasei, timp rămas din fereastră (countdown live la fiecare 30s, formatat „2h 15m rămase" / „12 min rămase" / „expiră curând"), badge dacă e „în progres", buton `Începe testul` / `Continuă` care navighează la `/test/{assignmentId}`.
-- Dacă nu există assignments active, cardul nu se randează (nu ocupă spațiu).
+## Pași tehnici
 
-Culori/stilistică: reutilizez tokens (`bg-card`, `text-primary`, badge `bg-warning/10 text-warning` pentru <30 min). Fără culori hardcodate.
+1. **Încărcare imagini ca asset-uri Lovable** (nu binar în repo) — pentru fiecare imagine:
+   ```
+   lovable-assets create --file /mnt/user-uploads/image-XXX.png \
+     --filename tutorial-creeaza-cont-<slug>.png \
+     > src/assets/tutorial-creeaza-cont-<slug>.png.asset.json
+   ```
+   4 pointere JSON în `src/assets/`.
 
-### 2. Integrare în Home
+2. **Editare `src/data/tutorials/students.ts`** pentru articolul `creeaza-cont`:
+   - Import pointere: `import splashAsset from "@/assets/tutorial-creeaza-cont-splash.png.asset.json"` etc.
+   - Restructurare `sections` în 5 blocuri conform tabelului de mai sus.
+   - Fiecare `section.image` primește `src: xxxAsset.url`, `alt` descriptiv; se elimină `placeholder`.
 
-În `src/pages/Index.tsx`, plasez `<TeacherTestsCard />` imediat sub header (după banner-uri de notificări/premium, înainte de „Continuă capitolul"). Aparține doar dacă elevul e membru într-o clasă (hook-ul returnează gol altfel — nu se randează).
+3. **Fără schimbări** în `TutorialArticleView.tsx` — deja randează `section.image.src` când există.
 
-### 3. Timp rămas — deja corect
+## Verificare
+- `/tutoriale/elevi/creeaza-cont` afișează cele 4 screenshoturi reale, cu caption-uri.
+- Restul tutorialelor rămân neatinse (placeholders până le trimiți).
 
-Deadline-ul se calculează din `assigned_at + window_minutes`, deci timpul „curge" de când profesorul a distribuit testul. Nu modific logica din `TakeTestPage`. Cardul de pe Home folosește aceeași formulă.
-
-## Ce NU fac
-
-- Nu modific `TestManager` (partea profesorului).
-- Nu schimb schema DB.
-- Nu ating logica de scoring/grading.
-- Nu adaug notificări push suplimentare (există deja pentru distribuire).
-
-## Detalii tehnice
-
-- Countdown: `useEffect` cu `setInterval(30_000)` care setează un `now` local; format ajutător `formatTimeLeft(ms)` (h+m, apoi doar m sub 1h).
-- Cache invalidation: `useStudentAssignments` folosește deja query key `["student-test-assignments", user?.id]`, se actualizează prin submit/unsubmit existent.
-- Fără date noi de fetch — reutilizez hook-ul existent.
+## Next
+După aprobare, îmi trimiți pe rând imaginile pentru celelalte 6 tutoriale elevi + cele pentru profesori și le adaug la fel.

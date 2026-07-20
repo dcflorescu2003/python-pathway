@@ -1,33 +1,54 @@
 import type { TutorialArticle } from "./types";
+import splashAsset from "@/assets/tutorial-creeaza-cont-splash.png.asset.json";
+import roleAsset from "@/assets/tutorial-creeaza-cont-role.png.asset.json";
+import authAsset from "@/assets/tutorial-creeaza-cont-auth.png.asset.json";
+import schoolAsset from "@/assets/tutorial-creeaza-cont-school.png.asset.json";
 
 export const studentTutorials: TutorialArticle[] = [
   {
     slug: "creeaza-cont",
     title: "Cum îți creezi cont și alegi școala",
-    excerpt: "Pașii pentru înregistrare, alegerea școlii și completarea profilului.",
-    durationMin: 3,
+    excerpt: "Pașii pentru înregistrare, alegerea rolului, alegerea școlii și completarea profilului.",
+    durationMin: 4,
     sections: [
       {
-        heading: "1. Înregistrare",
+        heading: "1. Deschide aplicația",
         body: [
-          "Intră pe pyroskill.info sau deschide aplicația și apasă „Cont”. Te poți înregistra cu email și parolă, cu Google sau cu Apple.",
-          "După înregistrare, primești un email de confirmare. Apasă linkul din email ca să-ți activezi contul.",
+          "Când deschizi PyRo prima dată, ești întâmpinat cu un scurt tur. Apasă „Să începem” ca să treci mai departe la configurarea contului.",
         ],
-        image: { alt: "Ecranul de înregistrare PyRo", placeholder: "Screenshot: pagina /auth" },
+        image: { src: splashAsset.url, alt: "Ecranul de întâmpinare PyRo cu butonul „Să începem”" },
       },
       {
-        heading: "2. Alege școala",
+        heading: "2. Alege rolul",
         body: [
-          "Prima dată când intri, ți se cere să alegi județul, orașul și școala dintr-o listă cu peste 1500 de licee din România.",
-          "Alegerea școlii e obligatorie ca să apari corect în clasamente.",
+          "Spune-ne cine ești: elev sau profesor. Ca elev te poți alătura unei clase, poți concura cu colegii de liceu și primești provocări de la profesori.",
+          "Rolul îl poți schimba mai târziu din pagina Cont dacă e nevoie.",
         ],
-        image: { alt: "Onboarding alegere școală", placeholder: "Screenshot: SchoolOnboarding" },
-        tip: "Dacă școala ta nu apare, contactează-ne la suport și o adăugăm.",
+        image: { src: roleAsset.url, alt: "Ecranul de selectare a rolului: Sunt Elev / Sunt Profesor" },
       },
       {
-        heading: "3. Setează un nickname",
+        heading: "3. Înregistrare sau autentificare",
         body: [
-          "Nickname-ul apare în clasamente. Poți să-l schimbi oricând din pagina Cont.",
+          "Te poți înregistra cu email și parolă, cu Google sau cu Apple. Toate opțiunile creează același tip de cont.",
+          "Dacă alegi email + parolă, primești un email de confirmare — apasă linkul din email ca să-ți activezi contul.",
+        ],
+        image: { src: authAsset.url, alt: "Ecranul de autentificare cu opțiuni Google, Apple și email/parolă" },
+        tip: "Te-ai logat inițial cu Google sau Apple? Poți seta ulterior o parolă din Cont → Profil ca să te poți loga și cu email.",
+      },
+      {
+        heading: "4. Alege școala",
+        body: [
+          "Caută liceul tău în lista cu peste 1500 de școli din România. Începe să scrii numele și îți sugerăm cele mai bune potriviri (liceele din București apar primele în rezultate).",
+          "Alegerea școlii e importantă ca să apari corect în clasamentul școlii și al orașului. Dacă vrei să sari peste acum, poți continua fără liceu și să-l setezi mai târziu din Cont.",
+        ],
+        image: { src: schoolAsset.url, alt: "Ecranul de alegere a liceului cu bară de căutare" },
+        tip: "Dacă școala ta nu apare deloc în listă, scrie-ne la suport și o adăugăm.",
+      },
+      {
+        heading: "5. Setează un nickname",
+        body: [
+          "Nickname-ul apare în clasamente și e vizibil altor elevi. Poți să-l schimbi oricând din pagina Cont.",
+          "Dacă te alături unei clase, profesorul te va vedea cu numele tău real (display name), nu cu nickname-ul.",
         ],
       },
     ],
