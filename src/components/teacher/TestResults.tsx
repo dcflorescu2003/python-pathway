@@ -534,9 +534,20 @@ const TestResults = ({ testId, testTitle, onBack, initialClassId }: TestResultsP
                   <CardContent className="p-0">
                     <button
                       onClick={() => {
-                        setExpandedSubmissionId(isExpanded ? null : sub.id);
+                        const nextExpanded = isExpanded ? null : sub.id;
+                        setExpandedSubmissionId(nextExpanded);
                         setScoreEdits({});
                         setFeedbackEdits({});
+                        // Auto-regrade once if submitted but not graded
+                        if (
+                          nextExpanded &&
+                          sub.submitted_at &&
+                          sub.auto_graded === false &&
+                          !autoRegradedRef.current.has(sub.id)
+                        ) {
+                          autoRegradedRef.current.add(sub.id);
+                          regradeSubmission(sub.id, true);
+                        }
                       }}
                       className="w-full p-3 flex items-center justify-between text-left"
                     >
