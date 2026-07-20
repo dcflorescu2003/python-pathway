@@ -48,6 +48,7 @@ import LivesRefilledDialog from "@/components/LivesRefilledDialog";
 import ComebackDialog from "@/components/ComebackDialog";
 import MotivationalTipCard from "@/components/tips/MotivationalTipCard";
 import { useMotivationalTip } from "@/hooks/useMotivationalTip";
+import TeacherTestsCard from "@/components/home/TeacherTestsCard";
 
 
 
@@ -363,6 +364,9 @@ const Index = (): JSX.Element => {
       </header>
 
       <main className="px-4 py-6">
+        <TeacherTestsCard />
+
+
         
 
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mb-4">
