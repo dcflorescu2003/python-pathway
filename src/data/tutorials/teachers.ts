@@ -1,4 +1,5 @@
 import type { TutorialArticle } from "./types";
+import teacherVerificationAsset from "@/assets/teacher-verification-form.png.asset.json";
 
 export const teacherTutorials: TutorialArticle[] = [
   {
