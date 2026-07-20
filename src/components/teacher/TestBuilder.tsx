@@ -81,6 +81,7 @@ const TestBuilder = ({ onBack, editTestId, teacherStatus }: TestBuilderProps) =>
   const [expandedLessons, setExpandedLessons] = useState<Set<string>>(new Set());
   const [previewItemId, setPreviewItemId] = useState<string | null>(null);
   const [previewVariantKey, setPreviewVariantKey] = useState<string | null>(null);
+  const [fullPreviewOpen, setFullPreviewOpen] = useState(false);
   const dragIdxRef = useRef<number | null>(null);
   const variantDragRef = useRef<{ variant: string; fromIdx: number } | null>(null);
 
