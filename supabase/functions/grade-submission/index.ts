@@ -433,7 +433,7 @@ Deno.serve(async (req) => {
     // Update submission
     await supabase
       .from("test_submissions")
-      .update({ total_score: totalScore, max_score: maxScore, auto_graded: true })
+      .update({ total_score: totalScore, max_score: maxScore, auto_graded: true, status: "submitted" })
       .eq("id", submission_id);
 
     // Record competency scores from this test (silent failure)
