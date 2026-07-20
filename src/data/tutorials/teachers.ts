@@ -1,5 +1,6 @@
 import type { TutorialArticle } from "./types";
 import teacherVerificationAsset from "@/assets/teacher-verification-form.png.asset.json";
+import classManagerAsset from "@/assets/class-manager.png.asset.json";
 
 export const teacherTutorials: TutorialArticle[] = [
   {
@@ -41,7 +42,7 @@ export const teacherTutorials: TutorialArticle[] = [
           "Mergi în Cont → Clase → „Adaugă clasă nouă”. Dă-i un nume (ex: „9A — Liceul X 2025-2026”).",
           "Sistemul generează un cod scurt (ex: ABC123). Trimite codul elevilor — îl folosesc ca să se alăture.",
         ],
-        image: { alt: "Manager de clase", placeholder: "Screenshot: ClassManager" },
+        image: { src: classManagerAsset.url, alt: "Manager de clase: ecranul de creare cu numele clasei și butonul Creează" },
       },
       {
         heading: "Roster",
