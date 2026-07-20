@@ -82,6 +82,29 @@ const TestResults = ({ testId, testTitle, onBack, initialClassId }: TestResultsP
   const toggleScores = useToggleScoresReleased();
   const allowRetake = useAllowRetake();
   const resumeSubmission = useResumeSubmission();
+  const qc = useQueryClient();
+  const [regrading, setRegrading] = useState<Record<string, boolean>>({});
+  const autoRegradedRef = useRef<Set<string>>(new Set());
+
+  const regradeSubmission = async (submissionId: string, silent = false) => {
+    setRegrading((p) => ({ ...p, [submissionId]: true }));
+    try {
+      const { error } = await supabase.functions.invoke("grade-submission", {
+        body: { submission_id: submissionId },
+      });
+      if (error) throw error;
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ["test-submissions"] }),
+        qc.invalidateQueries({ queryKey: ["test-answers", submissionId] }),
+      ]);
+      if (!silent) toast.success("Test renotat.");
+    } catch (e: any) {
+      if (!silent) toast.error("Nu am putut renota testul. Încearcă din nou.");
+      console.error("regrade failed:", e);
+    } finally {
+      setRegrading((p) => ({ ...p, [submissionId]: false }));
+    }
+  };
 
   // Enriched data: exercise/problem details keyed by source_id
   const [enrichedData, setEnrichedData] = useState<Record<string, any>>({});
