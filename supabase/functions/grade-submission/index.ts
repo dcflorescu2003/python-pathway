@@ -77,39 +77,66 @@ Deno.serve(async (req) => {
       });
     }
 
-    // If answers were sent inline (e.g. from sendBeacon on browser close),
-    // insert them and mark submission as submitted before grading.
+    // If answers were sent inline (normal submit / keepalive on browser close),
+    // persist them idempotently and mark submission as submitted before grading.
     if (inlineAnswers && Array.isArray(inlineAnswers) && inlineAnswers.length > 0) {
-      // Check if answers already exist (avoid duplicates)
       const { data: existingAnswers } = await supabase
         .from("test_answers")
-        .select("id")
+        .select("id, test_item_id")
         .eq("submission_id", submission_id)
-        .limit(1);
+        .in("test_item_id", inlineAnswers.map((a: any) => a.test_item_id).filter(Boolean));
 
-      if (!existingAnswers || existingAnswers.length === 0) {
-        const answersToInsert = inlineAnswers.map((a: any) => ({
-          submission_id,
-          test_item_id: a.test_item_id,
-          answer_data: a.answer_data,
-          max_points: a.max_points,
-          score: 0,
-        }));
-        await supabase.from("test_answers").insert(answersToInsert);
+      const existingByItem = new Map<string, string>();
+      for (const row of existingAnswers || []) {
+        if (!existingByItem.has(row.test_item_id)) existingByItem.set(row.test_item_id, row.id);
       }
 
-      // Mark as submitted if not already
+      for (const a of inlineAnswers) {
+        if (!a?.test_item_id) continue;
+        const payload = {
+          answer_data: a.answer_data ?? null,
+          max_points: a.max_points,
+          score: 0,
+          feedback: null,
+          ai_reviewed: false,
+        };
+        const existingId = existingByItem.get(a.test_item_id);
+        if (existingId) {
+          const { error: updErr } = await supabase
+            .from("test_answers")
+            .update(payload)
+            .eq("id", existingId);
+          if (updErr) throw updErr;
+        } else {
+          const { error: insErr } = await supabase
+            .from("test_answers")
+            .insert({
+              submission_id,
+              test_item_id: a.test_item_id,
+              ...payload,
+            });
+          if (insErr) throw insErr;
+        }
+      }
+
+      // Mark as submitted if not already, and fix older inconsistent rows whose
+      // submitted_at was set but status stayed in_progress/interrupted.
       const { data: sub } = await supabase
         .from("test_submissions")
         .select("submitted_at")
         .eq("id", submission_id)
         .single();
 
-      if (sub && !sub.submitted_at) {
-        const updatePayload: Record<string, any> = { submitted_at: new Date().toISOString() };
-        if (auto_submitted_reason) updatePayload.auto_submitted_reason = auto_submitted_reason;
-        await supabase.from("test_submissions").update(updatePayload).eq("id", submission_id);
-      }
+      const updatePayload: Record<string, any> = {
+        status: "submitted",
+        submitted_at: sub?.submitted_at || new Date().toISOString(),
+      };
+      if (auto_submitted_reason) updatePayload.auto_submitted_reason = auto_submitted_reason;
+      const { error: subUpdateErr } = await supabase
+        .from("test_submissions")
+        .update(updatePayload)
+        .eq("id", submission_id);
+      if (subUpdateErr) throw subUpdateErr;
     }
 
     // Get submission + answers
@@ -507,19 +534,40 @@ function gradeExercise(exercise: any, answerData: any, maxPoints: number): numbe
   if (!answerData) return 0;
   const type = exercise.type;
 
+  const normalizeLoose = (value: unknown) =>
+    String(value ?? "")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[\u200B-\u200D\uFEFF]/g, "")
+      .replace(/\u00A0/g, " ")
+      .trim()
+      .toLowerCase();
+
   if (type === "quiz") {
-    return answerData.selected === exercise.correct_option_id ? maxPoints : 0;
+    const selected = answerData.selected ?? answerData.selected_option_id ?? answerData.answer;
+    const correct = exercise.correct_option_id ?? exercise.correctOptionId;
+    return normalizeLoose(selected) === normalizeLoose(correct) ? maxPoints : 0;
   }
 
   if (type === "truefalse") {
-    return answerData.selected === exercise.is_true ? maxPoints : 0;
+    const rawSelected = answerData.selected ?? answerData.value ?? answerData.answer;
+    const toBool = (value: unknown): boolean | null => {
+      if (typeof value === "boolean") return value;
+      const normalized = normalizeLoose(value);
+      if (["true", "adevarat", "adevărat", "a", "1", "da"].includes(normalized)) return true;
+      if (["false", "fals", "f", "0", "nu"].includes(normalized)) return false;
+      return null;
+    };
+    const selected = toBool(rawSelected);
+    const correct = toBool(exercise.is_true ?? exercise.isTrue);
+    return selected !== null && correct !== null && selected === correct ? maxPoints : 0;
   }
 
   if (type === "fill") {
-    const blanks = (exercise.blanks || []) as { id: string; answer: string }[];
+    const blanks = (exercise.blanks || []) as { id?: string; key?: string; answer: string }[];
     if (blanks.length === 0) return 0;
-    const normalize = (s: string) =>
-      s
+    const normalize = (s: unknown) =>
+      String(s ?? "")
         .normalize("NFD")
         .replace(/[\u0300-\u036f]/g, "")
         .replace(/[\u200B-\u200D\uFEFF]/g, "")
@@ -527,26 +575,93 @@ function gradeExercise(exercise: any, answerData: any, maxPoints: number): numbe
         .replace(/\s+/g, "")
         .toLowerCase()
         .trim();
+    const splitAlternatives = (acceptedAnswers: string): string[] => {
+      const parts: string[] = [];
+      let buf = "";
+      let depth = 0;
+      let quote: '"' | "'" | null = null;
+      for (const ch of String(acceptedAnswers ?? "")) {
+        if (quote) {
+          buf += ch;
+          if (ch === quote) quote = null;
+          continue;
+        }
+        if (ch === '"' || ch === "'") {
+          quote = ch;
+          buf += ch;
+          continue;
+        }
+        if (ch === "(" || ch === "[" || ch === "{") depth++;
+        else if (ch === ")" || ch === "]" || ch === "}") depth = Math.max(0, depth - 1);
+        if (depth === 0 && (ch === "," || ch === "|" || ch === ";")) {
+          parts.push(buf);
+          buf = "";
+        } else {
+          buf += ch;
+        }
+      }
+      parts.push(buf);
+      return parts.map((p) => p.trim()).filter(Boolean);
+    };
+    const stripQuotes = (s: string) => {
+      const t = s.trim();
+      if (t.length >= 2 && ((t.startsWith('"') && t.endsWith('"')) || (t.startsWith("'") && t.endsWith("'")))) {
+        return t.slice(1, -1);
+      }
+      return t;
+    };
     let correct = 0;
     for (const blank of blanks) {
-      const studentAnswer = normalize(answerData.blanks?.[blank.id] || "");
-      const acceptedAnswers = blank.answer
-        .split(/[,|;/]/)
-        .map((a: string) => normalize(a))
-        .filter(Boolean);
+      const key = blank.id ?? blank.key ?? "";
+      const studentAnswer = normalize(answerData.blanks?.[key] || "");
+      const acceptedAnswers = splitAlternatives(blank.answer).flatMap((a: string) => {
+        const stripped = stripQuotes(a);
+        return stripped === a.trim() ? [normalize(a)] : [normalize(a), normalize(stripped)];
+      });
       if (acceptedAnswers.includes(studentAnswer)) correct++;
     }
     return Math.round((correct / blanks.length) * maxPoints);
   }
 
   if (type === "order") {
-    const lines = (exercise.lines || []) as { id: string; text: string; order: number }[];
-    const correctOrder = [...lines].sort((a, b) => (a.order ?? 0) - (b.order ?? 0)).map((l) => l.id);
-    const studentOrder = answerData.order || [];
+    const lines = (exercise.lines || []) as { id: string; text: string; order: number; group?: number }[];
+    const sortedLines = [...lines].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+    const correctOrder = sortedLines.map((l) => l.id);
+    const studentOrder = Array.isArray(answerData.order) ? answerData.order : [];
     if (studentOrder.length === 0) return 0;
+
+    const linesById = new Map(lines.map((line) => [line.id, line]));
+    const expectedTexts = sortedLines.map((line) => line.text);
+    const studentTexts = studentOrder.map((id: string) => linesById.get(id)?.text ?? id);
+    if (
+      expectedTexts.length === studentTexts.length &&
+      expectedTexts.every((text, idx) => text === studentTexts[idx])
+    ) {
+      return maxPoints;
+    }
+
+    const hasGroups = lines.some((line) => line.group !== undefined);
+    if (hasGroups) {
+      const groupMinOrder = new Map<number, number>();
+      for (const line of lines) {
+        if (line.group === undefined) continue;
+        const current = groupMinOrder.get(line.group);
+        if (current === undefined || line.order < current) groupMinOrder.set(line.group, line.order);
+      }
+      const effectiveOrder = (line: { order: number; group?: number }) =>
+        line.group !== undefined ? (groupMinOrder.get(line.group) ?? line.order) : line.order;
+      let inOrderPairs = 1;
+      for (let i = 1; i < studentOrder.length; i++) {
+        const prev = linesById.get(studentOrder[i - 1]);
+        const current = linesById.get(studentOrder[i]);
+        if (prev && current && effectiveOrder(current) >= effectiveOrder(prev)) inOrderPairs++;
+      }
+      return Math.round((inOrderPairs / correctOrder.length) * maxPoints);
+    }
+
     let correctPositions = 0;
     for (let i = 0; i < correctOrder.length; i++) {
-      if (studentOrder[i] === correctOrder[i]) correctPositions++;
+      if (studentOrder[i] === correctOrder[i] || studentTexts[i] === expectedTexts[i]) correctPositions++;
     }
     return Math.round((correctPositions / correctOrder.length) * maxPoints);
   }
@@ -556,8 +671,8 @@ function gradeExercise(exercise: any, answerData: any, maxPoints: number): numbe
     if (pairs.length === 0) return 0;
     let correct = 0;
     for (const pair of pairs) {
-      const studentAnswer = (answerData.matches?.[pair.id] || "").trim().toLowerCase();
-      if (studentAnswer === pair.right.trim().toLowerCase()) correct++;
+      const studentAnswer = answerData.matches?.[pair.id] || "";
+      if (normalizeLoose(studentAnswer) === normalizeLoose(pair.id) || normalizeLoose(studentAnswer) === normalizeLoose(pair.right)) correct++;
     }
     return Math.round((correct / pairs.length) * maxPoints);
   }
