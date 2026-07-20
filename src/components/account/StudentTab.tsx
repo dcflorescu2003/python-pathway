@@ -110,19 +110,16 @@ const StudentTab = ({ memberClassName, onLeaveClass }: StudentTabProps) => {
     enabled: !!user,
   });
 
-  // Get test answers for expanded test
-  const { data: testAnswers = [] } = useQuery({
-    queryKey: ["student-test-answers", expandedTestId],
+  // Get review items (question + student answer + correct answer) for expanded test
+  const { data: reviewItems = [] } = useQuery({
+    queryKey: ["student-submission-review", expandedTestId],
     queryFn: async () => {
-      if (!expandedTestId) return [];
+      if (!expandedTestId) return [] as any[];
       const submission = submissions.find((s) => s.assignment_id === expandedTestId && s.submitted_at);
-      if (!submission) return [];
-      const { data, error } = await supabase
-        .from("test_answers")
-        .select("*, test_items:test_item_id(sort_order, points, source_type, custom_data)")
-        .eq("submission_id", submission.id);
+      if (!submission) return [] as any[];
+      const { data, error } = await supabase.rpc("get_submission_review", { p_submission_id: submission.id });
       if (error) throw error;
-      return data || [];
+      return (data as any[]) || [];
     },
     enabled: !!expandedTestId && submissions.length > 0,
   });
