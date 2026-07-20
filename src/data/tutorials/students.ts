@@ -3,6 +3,8 @@ import splashAsset from "@/assets/tutorial-creeaza-cont-splash.png.asset.json";
 import roleAsset from "@/assets/tutorial-creeaza-cont-role.png.asset.json";
 import authAsset from "@/assets/tutorial-creeaza-cont-auth.png.asset.json";
 import schoolAsset from "@/assets/tutorial-creeaza-cont-school.png.asset.json";
+import xpCapitoleAsset from "@/assets/tutorial-xp-capitole.png.asset.json";
+import xpRoadmapAsset from "@/assets/tutorial-xp-roadmap.png.asset.json";
 
 export const studentTutorials: TutorialArticle[] = [
   {
