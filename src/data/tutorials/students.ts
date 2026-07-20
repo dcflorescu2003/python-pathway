@@ -99,7 +99,7 @@ export const studentTutorials: TutorialArticle[] = [
           "Vieţile se regenerează automat în timp. Dacă ai 0 vieți, nu poți începe lecții noi până se regenerează.",
           "Premium îți oferă vieți infinite, ca să exersezi fără limită.",
         ],
-        image: { alt: "Bara de vieți", placeholder: "Screenshot: bara cu vieți" },
+        image: { src: vietiBarAsset.url, alt: "Bara de vieți din colțul dreapta-sus a aplicației" },
       },
       {
         heading: "Streak",
