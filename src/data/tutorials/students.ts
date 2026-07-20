@@ -8,6 +8,7 @@ import xpRoadmapAsset from "@/assets/tutorial-xp-roadmap.png.asset.json";
 import vietiBarAsset from "@/assets/tutorial-vieti-bar.png.asset.json";
 import problemsListAsset from "@/assets/tutorial-problems-list.png.asset.json";
 import problemEditorAsset from "@/assets/tutorial-problem-editor.png.asset.json";
+import joinClassAsset from "@/assets/tutorial-join-class.png.asset.json";
 
 export const studentTutorials: TutorialArticle[] = [
   {
