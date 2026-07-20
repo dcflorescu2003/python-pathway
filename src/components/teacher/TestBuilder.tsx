@@ -1358,13 +1358,13 @@ const TestBuilder = ({ onBack, editTestId, teacherStatus }: TestBuilderProps) =>
       )}
 
       <Button
+        type="button"
         variant="outline"
         onClick={() => setFullPreviewOpen(true)}
-        disabled={items.length === 0}
-        className="w-full"
+        className="w-full border-primary/50 text-primary hover:bg-primary/10"
       >
         <Eye className="h-4 w-4 mr-2" />
-        Previzualizează test
+        Previzualizează test ({items.length} itemi)
       </Button>
 
       <Button onClick={handleSave} disabled={createTest.isPending || updateTest.isPending} className="w-full">
