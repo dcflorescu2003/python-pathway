@@ -6,6 +6,7 @@ import challengeAssignerAsset from "@/assets/challenge-assigner.png.asset.json";
 import testResultsAsset from "@/assets/test-results.png.asset.json";
 import classAnalyticsAsset from "@/assets/class-analytics.png.asset.json";
 import studentCompetencyAsset from "@/assets/student-competency-view.png.asset.json";
+import teacherPremiumDialogAsset from "@/assets/teacher-premium-dialog.png.asset.json";
 
 export const teacherTutorials: TutorialArticle[] = [
   {
@@ -188,7 +189,7 @@ export const teacherTutorials: TutorialArticle[] = [
           "Premium: 100 teste, 3 exerciții AI per test, export PDF.",
           "AI Teacher: 150 teste, limită AI mai generoasă, prioritate la suport.",
         ],
-        image: { alt: "Pagina Premium pentru profesori", placeholder: "Screenshot: TeacherPremiumDialog" },
+        image: { src: teacherPremiumDialogAsset.url, alt: "Dialog Premium Profesor AI: 150 teste salvate, 3 itemi AI per test, feedback automat, statistici avansate, corectură AI și vieți nelimitate" },
       },
     ],
   },
