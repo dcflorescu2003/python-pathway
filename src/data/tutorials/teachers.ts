@@ -81,17 +81,19 @@ export const teacherTutorials: TutorialArticle[] = [
   },
   {
     slug: "trimite-provocare",
-    title: "Cum trimiți o provocare individuală",
-    excerpt: "Provocările sunt exerciții punctuale trimise unui elev.",
+    title: "Cum trimiți o provocare",
+    excerpt: "Trimite exerciții și probleme unei clase; elevii le rezolvă în ritmul lor.",
     durationMin: 2,
     sections: [
       {
-        heading: "Provocări vs teste",
+        heading: "Provocări pentru clasă",
         body: [
-          "Testul = mai multe exerciții, cu timer și scor. Provocarea = un singur exercițiu, trimis unui elev anume.",
-          "Folosește provocările ca să-i dai unui elev exerciții suplimentare pe punctul lui slab.",
+          "O provocare este o selecție de exerciții și probleme pe care o trimiți unei clase. Elevii le primesc pe toate și le rezolvă în ritmul lor, fără timer sau presiune.",
+          "Poți alege din lecții (quiz, true/false, fill-in, ordonare, cod) sau din probleme cu evaluator Python.",
+          "Elevii văd provocarea în pagina Acasă sau Cont și pot relua orice item până îl termină corect.",
         ],
-        image: { alt: "Asignare provocare", placeholder: "Screenshot: ChallengeAssigner" },
+        image: { src: challengeAssignerAsset.url, alt: "Ecranul de atribuire provocări cu lista de capitole, butoanele Lectii/Probleme și acțiunea Atribuie" },
+        tip: "Folosește provocările pentru teme suplimentare, recapitulare sau exerciții pe puncte slabe — fără deadline strict.",
       },
     ],
   },
