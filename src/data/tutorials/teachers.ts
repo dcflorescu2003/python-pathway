@@ -2,6 +2,7 @@ import type { TutorialArticle } from "./types";
 import teacherVerificationAsset from "@/assets/teacher-verification-form.png.asset.json";
 import classManagerAsset from "@/assets/class-manager.png.asset.json";
 import testBuilderAsset from "@/assets/test-builder.png.asset.json";
+import challengeAssignerAsset from "@/assets/challenge-assigner.png.asset.json";
 
 export const teacherTutorials: TutorialArticle[] = [
   {
