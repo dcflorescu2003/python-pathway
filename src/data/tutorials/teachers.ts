@@ -3,6 +3,7 @@ import teacherVerificationAsset from "@/assets/teacher-verification-form.png.ass
 import classManagerAsset from "@/assets/class-manager.png.asset.json";
 import testBuilderAsset from "@/assets/test-builder.png.asset.json";
 import challengeAssignerAsset from "@/assets/challenge-assigner.png.asset.json";
+import testResultsAsset from "@/assets/test-results.png.asset.json";
 
 export const teacherTutorials: TutorialArticle[] = [
   {
@@ -115,7 +116,7 @@ export const teacherTutorials: TutorialArticle[] = [
           "Pentru exercițiile cu cod scris liber, AI-ul evaluează soluția în funcție de cerință și-ți dă scor + feedback.",
           "Cu planul Premiu AI poti include până la 3 itemi subiectivi / test pentru a fi corectați automat.",
         ],
-        image: { alt: "Rezultate test cu feedback AI", placeholder: "Screenshot: TestResults" },
+        image: { src: testResultsAsset.url, alt: "Rezultat test cu cod trimis de elev, feedback AI și nota 10/10, cu posibilitatea de a suprascrie scorul" },
         tip: "Tu rămâi profesorul: poți suprascrie manual orice scor dat de AI.",
       },
       {
