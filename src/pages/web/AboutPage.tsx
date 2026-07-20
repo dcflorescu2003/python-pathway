@@ -33,7 +33,7 @@ const teacherFeatures = [
   { icon: Users, title: "Clase și roster elevi", description: "Creezi clase, generezi cod de înrolare, urmărești elevii cu numele real." },
   { icon: FileText, title: "Teste predefinite + custom", description: "Folosește Eval Bank sau construiește teste cu propriile exerciții." },
   { icon: BrainCircuit, title: "Statistici pentru clasă", description: "Răspunsurile fixe se notează instant. Codul liber e evaluat de Gemini." },
-  { icon: BarChart3, title: "Analitice clasă", description: "Grafice de performanță, export CSV / PDF pentru rapoarte." },
+  { icon: BarChart3, title: "Date statistice", description: "Grafice de performanță, export CSV / PDF pentru rapoarte." },
   { icon: GraduationCap, title: "Profil de competențe", description: "Urmărește competențele generale, specifice și microcompetențele per elev." },
 ];
 
