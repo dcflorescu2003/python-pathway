@@ -5,6 +5,7 @@ import authAsset from "@/assets/tutorial-creeaza-cont-auth.png.asset.json";
 import schoolAsset from "@/assets/tutorial-creeaza-cont-school.png.asset.json";
 import xpCapitoleAsset from "@/assets/tutorial-xp-capitole.png.asset.json";
 import xpRoadmapAsset from "@/assets/tutorial-xp-roadmap.png.asset.json";
+import vietiBarAsset from "@/assets/tutorial-vieti-bar.png.asset.json";
 
 export const studentTutorials: TutorialArticle[] = [
   {
