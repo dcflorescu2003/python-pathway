@@ -169,12 +169,12 @@ export const studentTutorials: TutorialArticle[] = [
     durationMin: 3,
     sections: [
       {
-        heading: "Notificări",
+        heading: "Unde găsești testele și provocările",
         body: [
-          "Când profesorul îți trimite un test sau o provocare, primești o notificare în clopoțelul din colțul aplicației.",
-          "Click pe notificare te duce direct la conținutul respectiv.",
+          "Testele și provocările primite de la profesor apar direct în pagina Acasă, într-un card dedicat sub bara cu nivelul tău — apeși pe el și intri imediat în test sau provocare.",
+          "Le poți vedea și din pagina Cont, la secțiunea clasei tale, unde sunt listate toate cele active.",
         ],
-        image: { alt: "Clopoțelul de notificări", placeholder: "Screenshot: NotificationBell" },
+        image: { src: provocariAcasaAsset.url, alt: "Cardul „Vezi provocări” din pagina Acasă cu o provocare primită de la clasă" },
       },
       {
         heading: "Test cu timer",
