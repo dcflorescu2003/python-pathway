@@ -1,6 +1,7 @@
 import type { TutorialArticle } from "./types";
 import teacherVerificationAsset from "@/assets/teacher-verification-form.png.asset.json";
 import classManagerAsset from "@/assets/class-manager.png.asset.json";
+import testBuilderAsset from "@/assets/test-builder.png.asset.json";
 
 export const teacherTutorials: TutorialArticle[] = [
   {
@@ -65,7 +66,7 @@ export const teacherTutorials: TutorialArticle[] = [
           "Eval Bank — bibliotecă de exerciții predefinite pe capitole și competențe. Alegi de acolo.",
           "Test custom — îți construiești propriile exerciții: quiz, true/false, fill-in, completare cod, problemă cu cod real.",
         ],
-        image: { alt: "Test Builder", placeholder: "Screenshot: TestBuilder" },
+        image: { src: testBuilderAsset.url, alt: "Ecranul de creare test cu setări: puncte din oficiu, limită de timp, variante, anti-fraudă, bancă de testare și butonul Creează test" },
       },
       {
         heading: "Setări test",
