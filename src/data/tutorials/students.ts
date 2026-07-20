@@ -8,6 +8,7 @@ import xpRoadmapAsset from "@/assets/tutorial-xp-roadmap.png.asset.json";
 import vietiBarAsset from "@/assets/tutorial-vieti-bar.png.asset.json";
 import problemsListAsset from "@/assets/tutorial-problems-list.png.asset.json";
 import problemEditorAsset from "@/assets/tutorial-problem-editor.png.asset.json";
+import joinClassAsset from "@/assets/tutorial-join-class.png.asset.json";
 
 export const studentTutorials: TutorialArticle[] = [
   {
@@ -150,7 +151,7 @@ export const studentTutorials: TutorialArticle[] = [
           "Profesorul îți dă un cod scurt (ex: ABC123). Mergi în pagina Cont → Clase și introdu-l în câmpul „Alătură-te unei clase”.",
           "După ce te alături, profesorul îți poate trimite teste și provocări care apar în notificări.",
         ],
-        image: { alt: "Formular alăturare clasă", placeholder: "Screenshot: StudentTab join class" },
+        image: { src: joinClassAsset.url, alt: "Ecran cu alegerea rolului elev și introducerea codului clasei" },
       },
       {
         heading: "Display Name",
