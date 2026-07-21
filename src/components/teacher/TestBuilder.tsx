@@ -798,19 +798,19 @@ const TestBuilder = ({ onBack, editTestId, teacherStatus }: TestBuilderProps) =>
                   <p className="text-xs text-muted-foreground">Duplică un test predefinit în testul tău. Poți personaliza itemii, punctajele și timpul după duplicare.</p>
                   <Select value={selectedBankTestChapterId} onValueChange={setSelectedBankTestChapterId}>
                     <SelectTrigger className="h-8 text-xs">
-                      <SelectValue placeholder="Filtrează pe capitol" />
+                      <SelectValue placeholder="Alege capitol" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">Toate capitolele</SelectItem>
                       {testChapters.map((ch) => (
                         <SelectItem key={ch.id} value={ch.id}>{ch.icon} {ch.title}</SelectItem>
                       ))}
                       <SelectItem value="__none__">Fără capitol</SelectItem>
                     </SelectContent>
                   </Select>
-                  {(() => {
+                  {!selectedBankTestChapterId ? (
+                    <p className="text-xs text-muted-foreground italic">Alege un capitol pentru a vedea testele predefinite.</p>
+                  ) : (() => {
                     const filtered = predefinedTests.filter((t: any) => {
-                      if (selectedBankTestChapterId === "all") return true;
                       if (selectedBankTestChapterId === "__none__") return !t.chapter_id;
                       return t.chapter_id === selectedBankTestChapterId;
                     });
