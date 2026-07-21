@@ -1186,6 +1186,17 @@ const TestBuilder = ({ onBack, editTestId, teacherStatus }: TestBuilderProps) =>
                   </>
                 )}
 
+                {/* Open answer editor */}
+                {customType === "open_answer" && (
+                  <Textarea
+                    placeholder="Întrebarea (răspuns deschis, evaluată de AI)..."
+                    value={customQuestion}
+                    onChange={(e) => setCustomQuestion(e.target.value)}
+                    className="text-xs min-h-[80px]"
+                  />
+                )}
+
+
                 <div className="flex gap-2 pt-1">
                   <Button variant="outline" size="sm" onClick={resetCustomEditor} className="flex-1 text-xs">
                     Anulează
