@@ -77,7 +77,7 @@ const TestBuilder = ({ onBack, editTestId, teacherStatus }: TestBuilderProps) =>
   const [selectedProblemChapterId, setSelectedProblemChapterId] = useState<string>("");
   const [selectedBankExChapterId, setSelectedBankExChapterId] = useState<string>("");
   const [selectedBankProbChapterId, setSelectedBankProbChapterId] = useState<string>("");
-  const [selectedBankTestChapterId, setSelectedBankTestChapterId] = useState<string>("all");
+  const [selectedBankTestChapterId, setSelectedBankTestChapterId] = useState<string>("");
   const [expandedLessons, setExpandedLessons] = useState<Set<string>>(new Set());
   const [previewItemId, setPreviewItemId] = useState<string | null>(null);
   const [previewVariantKey, setPreviewVariantKey] = useState<string | null>(null);
@@ -798,19 +798,19 @@ const TestBuilder = ({ onBack, editTestId, teacherStatus }: TestBuilderProps) =>
                   <p className="text-xs text-muted-foreground">Duplică un test predefinit în testul tău. Poți personaliza itemii, punctajele și timpul după duplicare.</p>
                   <Select value={selectedBankTestChapterId} onValueChange={setSelectedBankTestChapterId}>
                     <SelectTrigger className="h-8 text-xs">
-                      <SelectValue placeholder="Filtrează pe capitol" />
+                      <SelectValue placeholder="Alege capitol" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">Toate capitolele</SelectItem>
                       {testChapters.map((ch) => (
                         <SelectItem key={ch.id} value={ch.id}>{ch.icon} {ch.title}</SelectItem>
                       ))}
                       <SelectItem value="__none__">Fără capitol</SelectItem>
                     </SelectContent>
                   </Select>
-                  {(() => {
+                  {!selectedBankTestChapterId ? (
+                    <p className="text-xs text-muted-foreground italic">Alege un capitol pentru a vedea testele predefinite.</p>
+                  ) : (() => {
                     const filtered = predefinedTests.filter((t: any) => {
-                      if (selectedBankTestChapterId === "all") return true;
                       if (selectedBankTestChapterId === "__none__") return !t.chapter_id;
                       return t.chapter_id === selectedBankTestChapterId;
                     });
@@ -1185,6 +1185,17 @@ const TestBuilder = ({ onBack, editTestId, teacherStatus }: TestBuilderProps) =>
                     </Button>
                   </>
                 )}
+
+                {/* Open answer editor */}
+                {customType === "open_answer" && (
+                  <Textarea
+                    placeholder="Întrebarea (răspuns deschis, evaluată de AI)..."
+                    value={customQuestion}
+                    onChange={(e) => setCustomQuestion(e.target.value)}
+                    className="text-xs min-h-[80px]"
+                  />
+                )}
+
 
                 <div className="flex gap-2 pt-1">
                   <Button variant="outline" size="sm" onClick={resetCustomEditor} className="flex-1 text-xs">
