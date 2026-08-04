@@ -417,19 +417,46 @@ function ExercisesList({ lesson, chapterTitle, editingExercise, setEditingExerci
         <SortableContext items={exercises.map((e: any) => e.id)} strategy={verticalListSortingStrategy}>
           {exercises.map((ex: any) => (
             <SortableItem key={ex.id} id={ex.id} gripSize="h-3.5 w-3.5">
-              <div className="flex items-center gap-2 p-2 rounded border border-border/50 bg-background/50 text-xs">
-                <span className="px-1.5 py-0.5 rounded bg-primary/10 text-primary font-medium">{typeLabels[ex.type] || ex.type}</span>
-                <span className="flex-1 truncate text-foreground">{ex.question}</span>
-                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setEditingExercise({ lessonId, exercise: ex })}>
-                  <Edit2 className="h-3 w-3" />
-                </Button>
-                <AlertDialog>
-                  <AlertDialogTrigger asChild><Button variant="ghost" size="icon" className="h-6 w-6 text-destructive"><Trash2 className="h-3 w-3" /></Button></AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader><AlertDialogTitle>Șterge exercițiul?</AlertDialogTitle></AlertDialogHeader>
-                    <AlertDialogFooter><AlertDialogCancel>Anulează</AlertDialogCancel><AlertDialogAction onClick={async () => { await mutations.deleteExercise.mutateAsync(ex.id); toast.success("Exercițiu șters!"); }}>Șterge</AlertDialogAction></AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
+              <div className="rounded border border-border/50 bg-background/50 text-xs">
+                <div className="flex items-center gap-2 p-2">
+                  <span className="px-1.5 py-0.5 rounded bg-primary/10 text-primary font-medium">{typeLabels[ex.type] || ex.type}</span>
+                  <span className="flex-1 truncate text-foreground">{ex.question}</span>
+                  {ex.type === "problem" && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-6 w-6"
+                      title="Vezi soluția propusă"
+                      onClick={() => setOpenSolutions(prev => {
+                        const n = new Set(prev);
+                        n.has(ex.id) ? n.delete(ex.id) : n.add(ex.id);
+                        return n;
+                      })}
+                    >
+                      <Code2 className="h-3 w-3" />
+                    </Button>
+                  )}
+                  <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => startEditExercise(ex)}>
+                    <Edit2 className="h-3 w-3" />
+                  </Button>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild><Button variant="ghost" size="icon" className="h-6 w-6 text-destructive"><Trash2 className="h-3 w-3" /></Button></AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader><AlertDialogTitle>Șterge exercițiul?</AlertDialogTitle></AlertDialogHeader>
+                      <AlertDialogFooter><AlertDialogCancel>Anulează</AlertDialogCancel><AlertDialogAction onClick={async () => { await mutations.deleteExercise.mutateAsync(ex.id); toast.success("Exercițiu șters!"); }}>Șterge</AlertDialogAction></AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </div>
+                {ex.type === "problem" && openSolutions.has(ex.id) && (
+                  <div className="border-t border-border/50 p-2 space-y-1 bg-muted/20">
+                    <p className="text-[10px] font-bold text-muted-foreground">
+                      Soluție propusă · {Array.isArray(ex.test_cases) ? ex.test_cases.length : 0} cazuri de test
+                    </p>
+                    <pre className="whitespace-pre-wrap font-mono text-[11px] text-foreground">
+                      {ex.solution?.trim() ? ex.solution : "(fără soluție salvată)"}
+                    </pre>
+                  </div>
+                )}
               </div>
             </SortableItem>
           ))}
