@@ -736,7 +736,8 @@ async function batchAIReview(
 
     // Group items by shared context (same problem / same question) so the
     // statement, solution and test cases are sent ONCE per group, with all
-    // student answers listed at the end of that group.
+    // student answers listed at the end of that group. Works across multiple
+    // submissions of the same test, so the context is sent once per class.
     const groups = new Map<string, typeof items>();
     for (const it of items) {
       const key = it.aiType === "open_answer"
@@ -747,19 +748,47 @@ async function batchAIReview(
       groups.set(key, arr);
     }
 
+    // Deduplicate identical student answers inside a group: send one block,
+    // then copy the score/feedback to every answer id that shares it.
+    const normalizeAnswer = (s: string) =>
+      String(s ?? "").replace(/\r\n/g, "\n").replace(/[ \t]+$/gm, "").replace(/\s+/g, " ").trim();
+
+    // blockId -> answer ids that share the exact same answer text
+    const blockToAnswerIds = new Map<string, string[]>();
+    const blockMaxPoints = new Map<string, number>();
+
     let gi = 0;
+    let blockCounter = 0;
+    let onlyShortOpenAnswers = true;
+
     const itemDescriptions = [...groups.values()].map((group) => {
       gi++;
       const head = group[0];
-      const answers = group
-        .map((p) => `- ID ${p.answerId} (max ${p.maxPoints}p):\n${truncate(
-          head.aiType === "open_answer" ? (p.studentText ?? "") : (p.studentCode ?? ""),
-          1200,
-        )}`)
-        .join("\n\n");
+
+      const dedup = new Map<string, { text: string; ids: string[]; maxPoints: number }>();
+      for (const p of group) {
+        const raw = head.aiType === "open_answer" ? (p.studentText ?? "") : (p.studentCode ?? "");
+        if (head.aiType !== "open_answer" || raw.length > 300) onlyShortOpenAnswers = false;
+        const key = `${normalizeAnswer(raw)}|${p.maxPoints}`;
+        const existing = dedup.get(key);
+        if (existing) existing.ids.push(p.answerId);
+        else dedup.set(key, { text: raw, ids: [p.answerId], maxPoints: p.maxPoints });
+      }
+
+      const answers = [...dedup.values()].map((entry) => {
+        blockCounter++;
+        const blockId = `A${blockCounter}`;
+        blockToAnswerIds.set(blockId, entry.ids);
+        blockMaxPoints.set(blockId, entry.maxPoints);
+        const dupNote = entry.ids.length > 1 ? ` (${entry.ids.length} elevi, răspuns identic)` : "";
+        return `- ID ${blockId} (max ${entry.maxPoints}p)${dupNote}:\n${truncate(
+          entry.text,
+          head.aiType === "open_answer" ? 700 : 900,
+        )}`;
+      }).join("\n\n");
 
       if (head.aiType === "open_answer") {
-        return `### Întrebarea ${gi}: ${truncate(head.questionText ?? head.problemTitle, 800)}
+        return `### Întrebarea ${gi}: ${truncate(head.questionText ?? head.problemTitle, 600)}
 
 Răspunsuri elevi:
 ${answers}`;
@@ -770,22 +799,25 @@ ${answers}`;
 
 Soluție de referință:
 \`\`\`python
-${truncate(head.solution ?? "", 1200)}
+${truncate(head.solution ?? "", 800)}
 \`\`\`
 ${tests ? `\nCazuri de test (extras):\n${tests}\n` : ""}
 Coduri elevi:
 ${answers}`;
     }).join("\n\n---\n\n");
 
-    const prompt = `Evaluează ${items.length} răspunsuri. Contextul (enunț/soluție/teste) apare o singură dată per grup, urmat de răspunsurile elevilor.
+    const blockCount = blockToAnswerIds.size;
+
+    const prompt = `Evaluează ${blockCount} răspunsuri. Contextul (enunț/soluție/teste) apare o singură dată per grup, urmat de răspunsurile elevilor.
 
 ${itemDescriptions}
 
-Răspunde DOAR cu JSON valid, un array cu ${items.length} obiecte (unul per ID):
-[{"id":"<answerId>","score":<number>,"feedback":"<max 200 caractere, română>"}]
+Răspunde DOAR cu JSON: {"results":[{"id":"<ID>","score":<number>,"feedback":"<max 200 caractere, română>"}]} — un obiect pentru fiecare din cele ${blockCount} ID-uri, exact ID-urile date, scor între 0 și punctajul maxim al ID-ului.`;
 
-Folosește exact ID-urile date. Scorul: între 0 și punctajul maxim al ID-ului respectiv.`;
-
+    const model = onlyShortOpenAnswers ? "google/gemini-2.5-flash-lite" : "google/gemini-2.5-flash";
+    console.log(
+      `[grade-submission] AI batch: ${items.length} answers, ${groups.size} groups, ${blockCount} unique blocks, prompt ${prompt.length} chars, model ${model}`,
+    );
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -794,12 +826,13 @@ Folosește exact ID-urile date. Scorul: între 0 și punctajul maxim al ID-ului 
         Authorization: `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
+        model,
         messages: [
-          { role: "system", content: "Ești un evaluator. Răspunde doar cu JSON valid." },
+          { role: "system", content: "Evaluator. Doar JSON valid." },
           { role: "user", content: prompt },
         ],
         temperature: 0.1,
+        response_format: { type: "json_object" },
       }),
     });
 
@@ -811,22 +844,35 @@ Folosește exact ID-urile date. Scorul: între 0 și punctajul maxim al ID-ului 
     const data = await response.json();
     const content = data.choices?.[0]?.message?.content || "";
 
-    // Extract JSON array from response
-    const jsonMatch = content.match(/\[[\s\S]*\]/);
-    if (!jsonMatch) return null;
+    // Parse JSON object ({"results":[...]}) with array fallback
+    let parsed: { id: string; score: number; feedback: string }[] | null = null;
+    try {
+      const objMatch = content.match(/\{[\s\S]*\}/);
+      if (objMatch) {
+        const obj = JSON.parse(objMatch[0]);
+        if (Array.isArray(obj?.results)) parsed = obj.results;
+        else if (Array.isArray(obj)) parsed = obj;
+      }
+    } catch { /* fall through */ }
+    if (!parsed) {
+      const arrMatch = content.match(/\[[\s\S]*\]/);
+      if (!arrMatch) return null;
+      parsed = JSON.parse(arrMatch[0]);
+    }
+    if (!Array.isArray(parsed)) return null;
 
-    const results = JSON.parse(jsonMatch[0]) as { id: string; score: number; feedback: string }[];
+    const out: { answerId: string; score: number; feedback: string }[] = [];
+    for (const r of parsed) {
+      const blockId = String(r?.id ?? "");
+      const answerIds = blockToAnswerIds.get(blockId);
+      if (!answerIds) continue;
+      const maxPoints = blockMaxPoints.get(blockId) ?? 0;
+      const score = Math.min(Math.max(0, Math.round(Number(r.score) || 0)), maxPoints);
+      const feedback = r.feedback || "Evaluat de AI";
+      for (const answerId of answerIds) out.push({ answerId, score, feedback });
+    }
 
-    return results.map((r, i) => {
-      const match = items.find((it) => it.answerId === r.id) ?? items[i];
-      if (!match) return null;
-      return {
-        answerId: match.answerId,
-        score: Math.min(Math.max(0, Math.round(Number(r.score) || 0)), match.maxPoints),
-        feedback: r.feedback || "Evaluat de AI",
-      };
-    }).filter(Boolean) as { answerId: string; score: number; feedback: string }[];
-
+    return out.length > 0 ? out : null;
   } catch (e) {
     console.error("AI batch review error:", e);
     return null;
