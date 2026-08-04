@@ -95,38 +95,41 @@ const EvalBankEditor = () => {
     <div className="space-y-3">
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleChapterReorder}>
         <SortableContext items={chapters.map(c => c.id)} strategy={verticalListSortingStrategy}>
-          {chapters.map(chapter => (
-            <SortableItem key={chapter.id} id={chapter.id} gripSize="h-5 w-5">
-              <ChapterBlock
-                chapter={chapter}
-                isExpanded={expandedChapter === chapter.id}
-                onToggle={() => setExpandedChapter(expandedChapter === chapter.id ? null : chapter.id)}
-                isEditing={editingChapter === chapter.id}
-                onStartEdit={() => { setEditingChapter(chapter.id); setChapterForm({ title: chapter.title, icon: chapter.icon }); }}
-                onCancelEdit={() => setEditingChapter(null)}
-                editForm={chapterForm}
-                setEditForm={setChapterForm}
-                onSaveEdit={async () => {
-                  await mutations.updateChapter.mutateAsync({ id: chapter.id, title: chapterForm.title, icon: chapterForm.icon });
-                  toast.success("Capitol salvat!"); setEditingChapter(null);
-                }}
-                onDelete={async () => { await mutations.deleteChapter.mutateAsync(chapter.id); toast.success("Capitol șters!"); }}
-                expandedLesson={expandedLesson}
-                setExpandedLesson={setExpandedLesson}
-                creatingLesson={creatingLesson}
-                setCreatingLesson={setCreatingLesson}
-                lessonForm={lessonForm}
-                setLessonForm={setLessonForm}
-                editingLesson={editingLesson}
-                setEditingLesson={setEditingLesson}
-                editingExercise={editingExercise}
-                setEditingExercise={setEditingExercise}
-                mutations={mutations}
-                sensors={sensors}
-                invalidateAll={invalidateAll}
-              />
-            </SortableItem>
-          ))}
+      {chapters.map(chapter => (
+        <SortableItem key={chapter.id} id={chapter.id} gripSize="h-5 w-5">
+          <ChapterBlock
+            chapter={chapter}
+            isExpanded={expandedChapter === chapter.id}
+            onToggle={() => setExpandedChapter(expandedChapter === chapter.id ? null : chapter.id)}
+            isEditing={editingChapter === chapter.id}
+            onStartEdit={() => { setEditingChapter(chapter.id); setChapterForm({ title: chapter.title, icon: chapter.icon }); }}
+            onCancelEdit={() => setEditingChapter(null)}
+            editForm={chapterForm}
+            setEditForm={setChapterForm}
+            onSaveEdit={async () => {
+              await mutations.updateChapter.mutateAsync({ id: chapter.id, title: chapterForm.title, icon: chapterForm.icon });
+              toast.success("Capitol salvat!"); setEditingChapter(null);
+            }}
+            onDelete={async () => { await mutations.deleteChapter.mutateAsync(chapter.id); toast.success("Capitol șters!"); }}
+            expandedLesson={expandedLesson}
+            setExpandedLesson={setExpandedLesson}
+            creatingLesson={creatingLesson}
+            setCreatingLesson={setCreatingLesson}
+            lessonForm={lessonForm}
+            setLessonForm={setLessonForm}
+            editingLesson={editingLesson}
+            setEditingLesson={setEditingLesson}
+            editingExercise={editingExercise}
+            setEditingExercise={setEditingExercise}
+            mutations={mutations}
+            sensors={sensors}
+            invalidateAll={invalidateAll}
+            exportingLessonId={exportingLessonId}
+            setExportingLessonId={setExportingLessonId}
+          />
+        </SortableItem>
+      ))}
+
         </SortableContext>
       </DndContext>
 
