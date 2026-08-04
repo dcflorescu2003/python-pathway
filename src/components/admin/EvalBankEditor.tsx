@@ -302,7 +302,7 @@ function LessonsList({ chapterId, chapterTitle, expandedLesson, setExpandedLesso
 
 
 // --- Lesson Block ---
-function LessonBlock({ lesson, isExpanded, onToggle, isEditing, onStartEdit, onCancelEdit, editForm, setEditForm, onSaveEdit, onDelete, editingExercise, setEditingExercise, mutations, sensors, invalidateAll }: any) {
+function LessonBlock({ lesson, chapterTitle, isExpanded, onToggle, isEditing, onStartEdit, onCancelEdit, editForm, setEditForm, onSaveEdit, onDelete, editingExercise, setEditingExercise, mutations, sensors, invalidateAll, exportingLessonId, setExportingLessonId }: any) {
   return (
     <div className="rounded-lg border border-border bg-secondary/30">
       <div className="flex items-center gap-2 p-3">
@@ -337,12 +337,15 @@ function LessonBlock({ lesson, isExpanded, onToggle, isEditing, onStartEdit, onC
           <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="border-t border-border">
             <div className="p-3 space-y-2">
               <ExercisesList
-                lessonId={lesson.id}
+                lesson={lesson}
+                chapterTitle={chapterTitle}
                 editingExercise={editingExercise}
                 setEditingExercise={setEditingExercise}
                 mutations={mutations}
                 sensors={sensors}
                 invalidateAll={invalidateAll}
+                exportingLessonId={exportingLessonId}
+                setExportingLessonId={setExportingLessonId}
               />
             </div>
           </motion.div>
@@ -351,6 +354,7 @@ function LessonBlock({ lesson, isExpanded, onToggle, isEditing, onStartEdit, onC
     </div>
   );
 }
+
 
 // --- Exercises List ---
 function ExercisesList({ lessonId, editingExercise, setEditingExercise, mutations, sensors, invalidateAll }: any) {
