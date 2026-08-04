@@ -172,15 +172,16 @@ const ExerciseEditor = ({ exercise, onSave, onCancel, lessonId, nextIndex, compe
               </div>
               <div>
                 <Label className="text-xs text-muted-foreground">Ieșire așteptată (stdout)</Label>
-                <Input
+                <Textarea
                   value={tc.expectedOutput}
                   onChange={(e) => {
                     const newTc = [...(data.testCases || [])];
                     newTc[i] = { ...newTc[i], expectedOutput: e.target.value };
                     updateField("testCases", newTc);
                   }}
-                  placeholder="10"
+                  placeholder={"10"}
                   className="font-mono text-sm"
+                  rows={2}
                 />
               </div>
               <div className="flex items-center gap-2">
