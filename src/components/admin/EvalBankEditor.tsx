@@ -759,17 +759,70 @@ function EvalExerciseEditor({ exercise, lessonId, nextIndex, onSave, onCancel }:
           <div className="space-y-2">
             <Label className="text-xs text-foreground">Cazuri de test</Label>
             <p className="text-[10px] text-muted-foreground">Poți scrie mai multe valori pe rânduri separate, atât la intrare cât și la ieșire.</p>
-            {testCases.map((tc, i) => (
-              <div key={i} className="grid grid-cols-[1fr_1fr_auto_auto] gap-2 items-start">
-                <Textarea rows={2} value={tc.input} onChange={e => { const n = [...testCases]; n[i] = { ...n[i], input: e.target.value }; setTestCases(n); }} placeholder={"Intrare (stdin)\n5\n1 2 3"} className="font-mono text-xs min-h-0" />
-                <Textarea rows={2} value={tc.expected_output} onChange={e => { const n = [...testCases]; n[i] = { ...n[i], expected_output: e.target.value }; setTestCases(n); }} placeholder={"Ieșire așteptată\n6"} className="font-mono text-xs min-h-0" />
-                <label className="flex items-center gap-1 text-[10px] text-muted-foreground cursor-pointer mt-2">
-                  <input type="checkbox" checked={tc.hidden} onChange={e => { const n = [...testCases]; n[i] = { ...n[i], hidden: e.target.checked }; setTestCases(n); }} />
-                  Ascuns
-                </label>
-                <Button variant="ghost" size="icon" className="h-7 w-7 mt-1" onClick={() => setTestCases(testCases.filter((_, j) => j !== i))}><Trash2 className="h-3 w-3" /></Button>
+            {testCases.map((tc, i) => {
+              const inputFiles = tc.inputFiles || {};
+              const expectedFiles = tc.expectedFiles || {};
+              const inEntries = Object.entries(inputFiles);
+              const outEntries = Object.entries(expectedFiles);
+              return (
+              <div key={i} className="space-y-2 rounded-md border border-border/60 p-2">
+                <div className="grid grid-cols-[1fr_1fr_auto_auto] gap-2 items-start">
+                  <Textarea rows={2} value={tc.input} onChange={e => { const n = [...testCases]; n[i] = { ...n[i], input: e.target.value }; setTestCases(n); }} placeholder={"Intrare (stdin)\n5\n1 2 3"} className="font-mono text-xs min-h-0" />
+                  <Textarea rows={2} value={tc.expected_output} onChange={e => { const n = [...testCases]; n[i] = { ...n[i], expected_output: e.target.value }; setTestCases(n); }} placeholder={"Ieșire așteptată\n6"} className="font-mono text-xs min-h-0" />
+                  <label className="flex items-center gap-1 text-[10px] text-muted-foreground cursor-pointer mt-2">
+                    <input type="checkbox" checked={tc.hidden} onChange={e => { const n = [...testCases]; n[i] = { ...n[i], hidden: e.target.checked }; setTestCases(n); }} />
+                    Ascuns
+                  </label>
+                  <Button variant="ghost" size="icon" className="h-7 w-7 mt-1" onClick={() => setTestCases(testCases.filter((_, j) => j !== i))}><Trash2 className="h-3 w-3" /></Button>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-1">
+                    <p className="text-[10px] font-bold text-muted-foreground">Fișiere de intrare</p>
+                    {inEntries.map(([name, content]) => (
+                      <div key={name} className="flex gap-1 items-start">
+                        <Input
+                          value={name}
+                          onChange={e => {
+                            const copy: Record<string, string> = {};
+                            for (const [k, v] of inEntries) copy[k === name ? e.target.value : k] = v;
+                            updateTestFiles(i, "inputFiles", copy);
+                          }}
+                          className="h-7 w-28 text-[10px] font-mono"
+                        />
+                        <Textarea value={content} onChange={e => updateTestFiles(i, "inputFiles", { ...inputFiles, [name]: e.target.value })} rows={2} placeholder="conținut" className="text-xs font-mono min-h-0 flex-1" />
+                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { const copy = { ...inputFiles }; delete copy[name]; updateTestFiles(i, "inputFiles", copy); }}><Trash2 className="h-3 w-3" /></Button>
+                      </div>
+                    ))}
+                    <Button variant="outline" size="sm" className="h-7 text-[10px]" onClick={() => updateTestFiles(i, "inputFiles", { ...inputFiles, [inEntries.length === 0 ? "date.in" : `file${inEntries.length + 1}.in`]: "" })}>
+                      <Plus className="h-3 w-3 mr-1" />Fișier intrare
+                    </Button>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-[10px] font-bold text-muted-foreground">Fișiere așteptate</p>
+                    {outEntries.map(([name, content]) => (
+                      <div key={name} className="flex gap-1 items-start">
+                        <Input
+                          value={name}
+                          onChange={e => {
+                            const copy: Record<string, string> = {};
+                            for (const [k, v] of outEntries) copy[k === name ? e.target.value : k] = v;
+                            updateTestFiles(i, "expectedFiles", copy);
+                          }}
+                          className="h-7 w-28 text-[10px] font-mono"
+                        />
+                        <Textarea value={content} onChange={e => updateTestFiles(i, "expectedFiles", { ...expectedFiles, [name]: e.target.value })} rows={2} placeholder="conținut așteptat" className="text-xs font-mono min-h-0 flex-1" />
+                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { const copy = { ...expectedFiles }; delete copy[name]; updateTestFiles(i, "expectedFiles", copy); }}><Trash2 className="h-3 w-3" /></Button>
+                      </div>
+                    ))}
+                    <Button variant="outline" size="sm" className="h-7 text-[10px]" onClick={() => updateTestFiles(i, "expectedFiles", { ...expectedFiles, [outEntries.length === 0 ? "date.out" : `file${outEntries.length + 1}.out`]: "" })}>
+                      <Plus className="h-3 w-3 mr-1" />Fișier ieșire
+                    </Button>
+                  </div>
+                </div>
               </div>
-            ))}
+            );})}
+
             <Button variant="outline" size="sm" onClick={() => setTestCases([...testCases, { input: "", expected_output: "", hidden: false }])}><Plus className="h-3 w-3 mr-1" />Caz de test</Button>
           </div>
 
