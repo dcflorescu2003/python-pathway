@@ -724,7 +724,7 @@ function EvalExerciseEditor({ exercise, lessonId, nextIndex, onSave, onCancel }:
             <CodeBlockEditor value={codeTemplate} onChange={setCodeTemplate} rows={3} placeholder="def rezolva(n):" />
           </div>
           <div>
-            <Label className="text-xs text-foreground">Soluție</Label>
+            <Label className="text-xs text-foreground">Soluție propusă (rulabilă)</Label>
             <Textarea value={solution} onChange={e => setSolution(e.target.value)} rows={4} className="font-mono text-sm" placeholder="def rezolva(n):&#10;    return n * 2" />
           </div>
           <div className="space-y-2">
