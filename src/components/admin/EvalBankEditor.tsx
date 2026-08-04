@@ -540,6 +540,13 @@ function EvalExerciseEditor({ exercise, lessonId, nextIndex, onSave, onCancel }:
     if (!question.trim() && type !== "truefalse" && type !== "open_answer") { toast.error("Completează întrebarea."); return; }
     if (type === "truefalse" && !statement.trim()) { toast.error("Completează afirmația."); return; }
     if (type === "problem" && !solution.trim()) { toast.error("Completează soluția."); return; }
+    // Schimbarea tipului dintr-o problemă în alt tip ar șterge soluția și testele.
+    if (exercise?.type === "problem" && type !== "problem") {
+      const ok = window.confirm(
+        "Ai schimbat tipul din „Problemă” în alt tip. Soluția propusă și cazurile de test vor fi șterse. Continui?"
+      );
+      if (!ok) return;
+    }
     onSave({
       id: stableId, type, question: type === "truefalse" ? statement : question,
       options: type === "quiz" ? options : null,
