@@ -62,6 +62,8 @@ const EvalBankEditor = () => {
   const [lessonForm, setLessonForm] = useState({ title: "" });
   const [editingLesson, setEditingLesson] = useState<string | null>(null);
   const [editingExercise, setEditingExercise] = useState<{ lessonId: string; exercise?: EvalExercise } | null>(null);
+  const [exportingLessonId, setExportingLessonId] = useState<string | null>(null);
+
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
