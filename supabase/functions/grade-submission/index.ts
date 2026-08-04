@@ -13,6 +13,27 @@ const TEACHER_PRODUCT_IDS = [
 
 const MAX_AI_ITEMS_PER_TEST = 4;
 
+interface ItemForAI {
+  subId: string;
+  answerId: string;
+  studentCode: string;
+  solution: string;
+  testCases: any;
+  maxPoints: number;
+  basicScore: number;
+  basicFeedback: string;
+  problemTitle: string;
+  aiType: "problem" | "open_answer";
+  studentText?: string;
+  questionText?: string;
+}
+
+interface TestContext {
+  teacherHasAI: boolean;
+  aiGradingItemIds: string[];
+  officePoints: number;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -20,19 +41,27 @@ Deno.serve(async (req) => {
 
   try {
     const body = await req.json();
-    const { submission_id, answers: inlineAnswers, auto_submitted_reason } = body;
-    if (!submission_id) {
+    const { submission_id, submission_ids, answers: inlineAnswers, auto_submitted_reason } = body;
+
+    const requestedIds: string[] = Array.isArray(submission_ids) && submission_ids.length > 0
+      ? [...new Set(submission_ids.filter((s: unknown) => typeof s === "string" && s))]
+      : submission_id
+        ? [submission_id]
+        : [];
+
+    if (requestedIds.length === 0) {
       return new Response(JSON.stringify({ error: "Missing submission_id" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+    const isBatch = requestedIds.length > 1;
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, serviceRoleKey);
 
-    // SECURITY: authenticate caller and verify they own the submission.
+    // SECURITY: authenticate caller and verify they own each submission.
     const authHeader = req.headers.get("Authorization");
     if (!authHeader?.startsWith("Bearer ")) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
@@ -55,22 +84,40 @@ Deno.serve(async (req) => {
     }
     const callerId = claimsData.claims.sub as string;
 
-    const { data: ownerSub } = await supabase
-      .from("test_submissions")
-      .select("student_id, assignment_id, test_assignments(test_id, tests(teacher_id))")
-      .eq("id", submission_id)
-      .single();
+    const allowedIds: string[] = [];
+    for (const id of requestedIds) {
+      const { data: ownerSub } = await supabase
+        .from("test_submissions")
+        .select("student_id, assignment_id, test_assignments(test_id, tests(teacher_id))")
+        .eq("id", id)
+        .single();
 
-    if (!ownerSub) {
-      return new Response(JSON.stringify({ error: "Forbidden" }), {
-        status: 403,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      if (!ownerSub) {
+        if (!isBatch) {
+          return new Response(JSON.stringify({ error: "Forbidden" }), {
+            status: 403,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+        continue;
+      }
+      const teacherId = (ownerSub as any).test_assignments?.tests?.teacher_id;
+      const isOwner = ownerSub.student_id === callerId;
+      const isTeacher = teacherId && teacherId === callerId;
+      // Batch mode is a teacher action (mass grading / regrading).
+      if (isBatch ? !isTeacher : (!isOwner && !isTeacher)) {
+        if (!isBatch) {
+          return new Response(JSON.stringify({ error: "Forbidden" }), {
+            status: 403,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+        continue;
+      }
+      allowedIds.push(id);
     }
-    const teacherId = (ownerSub as any).test_assignments?.tests?.teacher_id;
-    const isOwner = ownerSub.student_id === callerId;
-    const isTeacher = teacherId && teacherId === callerId;
-    if (!isOwner && !isTeacher) {
+
+    if (allowedIds.length === 0) {
       return new Response(JSON.stringify({ error: "Forbidden" }), {
         status: 403,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -79,367 +126,41 @@ Deno.serve(async (req) => {
 
     // If answers were sent inline (normal submit / keepalive on browser close),
     // persist them idempotently and mark submission as submitted before grading.
-    if (inlineAnswers && Array.isArray(inlineAnswers) && inlineAnswers.length > 0) {
-      const { data: existingAnswers } = await supabase
-        .from("test_answers")
-        .select("id, test_item_id")
-        .eq("submission_id", submission_id)
-        .in("test_item_id", inlineAnswers.map((a: any) => a.test_item_id).filter(Boolean));
-
-      const existingByItem = new Map<string, string>();
-      for (const row of existingAnswers || []) {
-        if (!existingByItem.has(row.test_item_id)) existingByItem.set(row.test_item_id, row.id);
-      }
-
-      for (const a of inlineAnswers) {
-        if (!a?.test_item_id) continue;
-        const payload = {
-          answer_data: a.answer_data ?? null,
-          max_points: a.max_points,
-          score: 0,
-          feedback: null,
-          ai_reviewed: false,
-        };
-        const existingId = existingByItem.get(a.test_item_id);
-        if (existingId) {
-          const { error: updErr } = await supabase
-            .from("test_answers")
-            .update(payload)
-            .eq("id", existingId);
-          if (updErr) throw updErr;
-        } else {
-          const { error: insErr } = await supabase
-            .from("test_answers")
-            .insert({
-              submission_id,
-              test_item_id: a.test_item_id,
-              ...payload,
-            });
-          if (insErr) throw insErr;
-        }
-      }
-
-      // Mark as submitted if not already, and fix older inconsistent rows whose
-      // submitted_at was set but status stayed in_progress/interrupted.
-      const { data: sub } = await supabase
-        .from("test_submissions")
-        .select("submitted_at")
-        .eq("id", submission_id)
-        .single();
-
-      const updatePayload: Record<string, any> = {
-        status: "submitted",
-        submitted_at: sub?.submitted_at || new Date().toISOString(),
-      };
-      if (auto_submitted_reason) updatePayload.auto_submitted_reason = auto_submitted_reason;
-      const { error: subUpdateErr } = await supabase
-        .from("test_submissions")
-        .update(updatePayload)
-        .eq("id", submission_id);
-      if (subUpdateErr) throw subUpdateErr;
+    if (!isBatch && inlineAnswers && Array.isArray(inlineAnswers) && inlineAnswers.length > 0) {
+      await persistInlineAnswers(supabase, allowedIds[0], inlineAnswers, auto_submitted_reason);
     }
 
-    // Get submission + answers
-    const { data: submission } = await supabase
-      .from("test_submissions")
-      .select("*")
-      .eq("id", submission_id)
-      .single();
+    // Cache the test context (subscription checks, AI item ids, office points)
+    // per test so a batch of submissions does it once.
+    const testContextCache = new Map<string, TestContext>();
+    const allItemsForAI: ItemForAI[] = [];
+    const results: { subId: string; totalScore: number; maxScore: number; studentId: string }[] = [];
+    const errors: { subId: string; error: string }[] = [];
 
-    if (!submission) {
-      return new Response(JSON.stringify({ error: "Submission not found" }), {
-        status: 404,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    const { data: answers } = await supabase
-      .from("test_answers")
-      .select("*, test_items(*)")
-      .eq("submission_id", submission_id);
-
-    if (!answers || answers.length === 0) {
-      return new Response(JSON.stringify({ error: "No answers found" }), {
-        status: 404,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    // Determine teacher and check Profesor AI subscription
-    let teacherHasAI = false;
-    let aiGradingItemIds: string[] = [];
-    let officePoints = 10;
-    const firstItem = answers[0]?.test_items;
-    if (firstItem?.test_id) {
-      const { data: test } = await supabase
-        .from("tests")
-        .select("teacher_id, ai_grading_item_ids, office_points")
-        .eq("id", firstItem.test_id)
-        .single();
-
-      aiGradingItemIds = (test as any)?.ai_grading_item_ids ?? [];
-      officePoints = (test as any)?.office_points ?? 10;
-
-      if (test) {
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("teacher_status")
-          .eq("user_id", test.teacher_id)
-          .single();
-
-        if (profile?.teacher_status === "verified") {
-          const nowIso = new Date().toISOString();
-
-          // 1) Coupon-based teacher premium
-          try {
-            const { data: redemptions } = await supabase
-              .from("coupon_redemptions")
-              .select("premium_until, coupon_type")
-              .eq("user_id", test.teacher_id)
-              .eq("coupon_type", "teacher")
-              .gt("premium_until", nowIso)
-              .order("premium_until", { ascending: false })
-              .limit(1);
-            if (redemptions && redemptions.length > 0) {
-              teacherHasAI = true;
-              console.log("[grade-submission] teacherHasAI via coupon");
-            }
-          } catch (e) {
-            console.error("Coupon check error:", e);
-          }
-
-          // 2) Native (Play / iOS) billing for Profesor AI products
-          if (!teacherHasAI) {
-            try {
-              const { data: nativeSubs } = await supabase
-                .from("play_billing_subscriptions")
-                .select("product_id, expiry_time, is_active")
-                .eq("user_id", test.teacher_id)
-                .eq("is_active", true)
-                .gt("expiry_time", nowIso)
-                .in("product_id", TEACHER_PRODUCT_IDS)
-                .limit(1);
-              if (nativeSubs && nativeSubs.length > 0) {
-                teacherHasAI = true;
-                console.log("[grade-submission] teacherHasAI via native billing");
-              }
-            } catch (e) {
-              console.error("Native billing check error:", e);
-            }
-          }
-
-          // 3) Stripe fallback
-          if (!teacherHasAI) {
-            const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
-            if (stripeKey) {
-              try {
-                const { data: authUser } = await supabase.auth.admin.getUserById(test.teacher_id);
-                if (authUser?.user?.email) {
-                  const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
-                  const customers = await stripe.customers.list({ email: authUser.user.email, limit: 1 });
-                  if (customers.data.length > 0) {
-                    const subs = await stripe.subscriptions.list({
-                      customer: customers.data[0].id,
-                      status: "active",
-                      limit: 10,
-                    });
-                    for (const sub of subs.data) {
-                      const productId = sub.items?.data?.[0]?.price?.product;
-                      const prodStr = typeof productId === "string" ? productId : productId?.id;
-                      if (prodStr && TEACHER_PRODUCT_IDS.includes(prodStr)) {
-                        teacherHasAI = true;
-                        console.log("[grade-submission] teacherHasAI via stripe");
-                        break;
-                      }
-                    }
-                  }
-                }
-              } catch (e) {
-                console.error("Stripe check error:", e);
-              }
-            }
-          }
-        }
-
+    for (const id of allowedIds) {
+      try {
+        const r = await gradeSubmissionBasics(supabase, id, testContextCache, allItemsForAI);
+        results.push(r);
+      } catch (e) {
+        if (!isBatch) throw e;
+        console.error(`[grade-submission] failed for ${id}:`, e);
+        errors.push({ subId: id, error: String(e) });
       }
     }
 
-    // First pass: grade exercises and collect problems/open_answers for batch AI
-    let totalScore = 0;
-    let maxScore = 0;
-
-    interface ItemForAI {
-      answerId: string;
-      answerIdx: number;
-      studentCode: string;
-      solution: string;
-      testCases: any;
-      maxPoints: number;
-      basicScore: number;
-      basicFeedback: string;
-      problemTitle: string;
-      aiType: "problem" | "open_answer";
-      studentText?: string;
-      questionText?: string;
-    }
-    const itemsForAI: ItemForAI[] = [];
-
-    // Helper: stable AI key matching the one produced by TestBuilder UI
-    const getAIKey = (item: any): string => {
-      if (item.source_type === "custom") {
-        const k = item.custom_data?._ai_key;
-        return k ? `custom:${k}` : `custom:unknown`;
-      }
-      return `${item.source_type}:${item.source_id ?? ""}`;
-    };
-
-    for (let i = 0; i < answers.length; i++) {
-      const answer = answers[i];
-      const item = answer.test_items;
-      if (!item) continue;
-
-      maxScore += item.points;
-      let score = 0;
-      let feedback = "";
-
-      const isEvalBank = typeof item.source_id === "string" && item.source_id.startsWith("eval-");
-      const itemAIKey = getAIKey(item);
-
-      if (item.source_type === "exercise" && item.source_id && !isEvalBank) {
-        const { data: exercise } = await supabase
-          .from("exercises")
-          .select("*")
-          .eq("id", item.source_id)
-          .single();
-
-        if (exercise) {
-          score = gradeExercise(exercise, answer.answer_data, item.points);
-        }
-      } else if (item.source_type === "exercise" && item.source_id && isEvalBank) {
-        const { data: ev } = await supabase
-          .from("eval_exercises")
-          .select("*")
-          .eq("id", item.source_id)
-          .single();
-        if (ev) {
-          if (ev.type === "open_answer") {
-            // Eval-bank open_answer: same flow as custom open_answer
-            score = 0;
-            feedback = "Necesită evaluare manuală sau AI.";
-            const shouldAIGrade = aiGradingItemIds.length > 0
-              ? aiGradingItemIds.includes(itemAIKey)
-              : itemsForAI.length < MAX_AI_ITEMS_PER_TEST;
-            if (teacherHasAI && answer.answer_data?.text && shouldAIGrade) {
-              itemsForAI.push({
-                answerId: answer.id,
-                answerIdx: i,
-                studentCode: "",
-                solution: "",
-                testCases: null,
-                maxPoints: item.points,
-                basicScore: 0,
-                basicFeedback: feedback,
-                problemTitle: (ev.question ?? "").split("\n")[0]?.substring(0, 80) || "Răspuns deschis",
-                aiType: "open_answer",
-                studentText: answer.answer_data.text,
-                questionText: ev.question,
-              });
-            }
-          } else {
-            score = gradeExercise(ev, answer.answer_data, item.points);
-          }
-        }
-      } else if (item.source_type === "problem" && item.source_id) {
-        const problemSource = isEvalBank ? "eval_exercises" : "problems";
-        const selectCols = isEvalBank ? "test_cases, solution, question" : "test_cases, solution, title";
-        const { data: problemRow } = await supabase
-          .from(problemSource)
-          .select(selectCols)
-          .eq("id", item.source_id)
-          .single();
-
-        const problem = problemRow
-          ? (isEvalBank
-              ? {
-                  test_cases: (problemRow as any).test_cases,
-                  solution: (problemRow as any).solution ?? "",
-                  title: ((problemRow as any).question ?? "").split("\n")[0]?.substring(0, 80) || item.source_id,
-                }
-              : (problemRow as any))
-          : null;
-
-        if (problem && answer.answer_data?.code) {
-          const result = gradeProblemBasic(problem, answer.answer_data.code, item.points);
-          score = result.score;
-          feedback = result.feedback;
-
-          // Collect for batch AI if teacher has Profesor AI and score < max
-          const shouldAIGrade = aiGradingItemIds.length > 0
-            ? aiGradingItemIds.includes(itemAIKey)
-            : itemsForAI.length < MAX_AI_ITEMS_PER_TEST;
-          if (teacherHasAI && score < item.points && shouldAIGrade) {
-            itemsForAI.push({
-              answerId: answer.id,
-              answerIdx: i,
-              studentCode: answer.answer_data.code,
-              solution: problem.solution,
-              testCases: problem.test_cases,
-              maxPoints: item.points,
-              basicScore: score,
-              basicFeedback: feedback,
-              problemTitle: problem.title || item.source_id,
-              aiType: "problem",
-            });
-          }
-        }
-      } else if (item.source_type === "custom" && item.custom_data) {
-        if (item.custom_data.type === "open_answer") {
-          // Open answer: score 0 automatically, collect for AI
-          score = 0;
-          feedback = "Necesită evaluare manuală sau AI.";
-          const shouldAIGrade = aiGradingItemIds.length > 0
-            ? aiGradingItemIds.includes(itemAIKey)
-            : itemsForAI.length < MAX_AI_ITEMS_PER_TEST;
-          if (teacherHasAI && answer.answer_data?.text && shouldAIGrade) {
-            itemsForAI.push({
-              answerId: answer.id,
-              answerIdx: i,
-              studentCode: "",
-              solution: "",
-              testCases: null,
-              maxPoints: item.points,
-              basicScore: 0,
-              basicFeedback: feedback,
-              problemTitle: item.custom_data.question || "Răspuns deschis",
-              aiType: "open_answer",
-              studentText: answer.answer_data.text,
-              questionText: item.custom_data.question,
-            });
-          }
-        } else {
-          score = gradeExercise(item.custom_data, answer.answer_data, item.points);
-        }
-      }
-
-      totalScore += score;
-
-      await supabase
-        .from("test_answers")
-        .update({ score, feedback: feedback || null })
-        .eq("id", answer.id);
-    }
-
-    // Batch AI review for all collected items in a single call
-    if (itemsForAI.length > 0) {
-      const aiResults = await batchAIReview(itemsForAI);
+    // Single AI call for all collected items across all submissions: the
+    // statement/solution/tests are sent once per problem, student answers last.
+    if (allItemsForAI.length > 0) {
+      const aiResults = await batchAIReview(allItemsForAI);
       if (aiResults) {
         for (const result of aiResults) {
-          const item = itemsForAI.find(p => p.answerId === result.answerId);
+          const item = allItemsForAI.find((p) => p.answerId === result.answerId);
           if (!item) continue;
 
           const finalScore = Math.max(item.basicScore, result.score);
           const scoreDelta = finalScore - item.basicScore;
-          totalScore += scoreDelta;
+          const target = results.find((r) => r.subId === item.subId);
+          if (target) target.totalScore += scoreDelta;
 
           await supabase
             .from("test_answers")
@@ -453,72 +174,34 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Add office points
-    totalScore += officePoints;
-    maxScore += officePoints;
+    // Finalize each submission (persist totals + competency tracking)
+    for (const r of results) {
+      await supabase
+        .from("test_submissions")
+        .update({ total_score: r.totalScore, max_score: r.maxScore, auto_graded: true, status: "submitted" })
+        .eq("id", r.subId);
 
-    // Update submission
-    await supabase
-      .from("test_submissions")
-      .update({ total_score: totalScore, max_score: maxScore, auto_graded: true, status: "submitted" })
-      .eq("id", submission_id);
-
-    // Record competency scores from this test (silent failure)
-    try {
-      // Re-read final answer scores (some were updated after AI review)
-      const { data: finalAnswers } = await supabase
-        .from("test_answers")
-        .select("score, max_points, test_items(id, source_type, source_id)")
-        .eq("submission_id", submission_id);
-
-      const competencyItems = (finalAnswers ?? [])
-        .map((a: any) => {
-          const ti = a.test_items;
-          if (!ti) return null;
-          let item_type: string;
-          let item_id: string;
-          if (ti.source_type === "custom") {
-            item_type = "test_item";
-            item_id = ti.id;
-          } else if (ti.source_type === "predefined") {
-            item_type = "predefined_test_item";
-            item_id = ti.source_id ?? "";
-          } else if (
-            ti.source_type === "exercise" ||
-            ti.source_type === "eval_exercise" ||
-            ti.source_type === "manual_exercise" ||
-            ti.source_type === "problem"
-          ) {
-            item_type = ti.source_type;
-            item_id = ti.source_id ?? "";
-          } else {
-            return null;
-          }
-          if (!item_id) return null;
-          return {
-            item_type,
-            item_id,
-            score: Number(a.score ?? 0),
-            max_score: Number(a.max_points ?? 0),
-          };
-        })
-        .filter(Boolean);
-
-      if (competencyItems.length > 0) {
-        const { error: rpcError } = await supabase.rpc("recalculate_competency_scores", {
-          p_user_id: submission.student_id,
-          p_items: competencyItems as any,
-        });
-        if (rpcError) {
-          console.warn("[grade-submission] competency RPC failed:", rpcError.message);
-        }
-      }
-    } catch (err) {
-      console.warn("[grade-submission] competency tracking error:", err);
+      await recordCompetencies(supabase, r.subId, r.studentId);
     }
 
+    if (isBatch) {
+      return new Response(
+        JSON.stringify({
+          graded: results.map((r) => ({ submission_id: r.subId, total_score: r.totalScore, max_score: r.maxScore })),
+          failed: errors,
+          ai_reviewed: allItemsForAI.length > 0,
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const single = results[0];
     return new Response(
-      JSON.stringify({ total_score: totalScore, max_score: maxScore, ai_reviewed: itemsForAI.length > 0 }),
+      JSON.stringify({
+        total_score: single?.totalScore ?? 0,
+        max_score: single?.maxScore ?? 0,
+        ai_reviewed: allItemsForAI.length > 0,
+      }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
@@ -529,6 +212,423 @@ Deno.serve(async (req) => {
     });
   }
 });
+
+async function persistInlineAnswers(
+  supabase: any,
+  submission_id: string,
+  inlineAnswers: any[],
+  auto_submitted_reason?: string,
+) {
+  const { data: existingAnswers } = await supabase
+    .from("test_answers")
+    .select("id, test_item_id")
+    .eq("submission_id", submission_id)
+    .in("test_item_id", inlineAnswers.map((a: any) => a.test_item_id).filter(Boolean));
+
+  const existingByItem = new Map<string, string>();
+  for (const row of existingAnswers || []) {
+    if (!existingByItem.has(row.test_item_id)) existingByItem.set(row.test_item_id, row.id);
+  }
+
+  for (const a of inlineAnswers) {
+    if (!a?.test_item_id) continue;
+    const payload = {
+      answer_data: a.answer_data ?? null,
+      max_points: a.max_points,
+      score: 0,
+      feedback: null,
+      ai_reviewed: false,
+    };
+    const existingId = existingByItem.get(a.test_item_id);
+    if (existingId) {
+      const { error: updErr } = await supabase
+        .from("test_answers")
+        .update(payload)
+        .eq("id", existingId);
+      if (updErr) throw updErr;
+    } else {
+      const { error: insErr } = await supabase
+        .from("test_answers")
+        .insert({
+          submission_id,
+          test_item_id: a.test_item_id,
+          ...payload,
+        });
+      if (insErr) throw insErr;
+    }
+  }
+
+  // Mark as submitted if not already, and fix older inconsistent rows whose
+  // submitted_at was set but status stayed in_progress/interrupted.
+  const { data: sub } = await supabase
+    .from("test_submissions")
+    .select("submitted_at")
+    .eq("id", submission_id)
+    .single();
+
+  const updatePayload: Record<string, any> = {
+    status: "submitted",
+    submitted_at: sub?.submitted_at || new Date().toISOString(),
+  };
+  if (auto_submitted_reason) updatePayload.auto_submitted_reason = auto_submitted_reason;
+  const { error: subUpdateErr } = await supabase
+    .from("test_submissions")
+    .update(updatePayload)
+    .eq("id", submission_id);
+  if (subUpdateErr) throw subUpdateErr;
+}
+
+async function getTestContext(
+  supabase: any,
+  testId: string,
+  cache: Map<string, TestContext>,
+): Promise<TestContext> {
+  const cached = cache.get(testId);
+  if (cached) return cached;
+
+  const ctx: TestContext = { teacherHasAI: false, aiGradingItemIds: [], officePoints: 10 };
+
+  const { data: test } = await supabase
+    .from("tests")
+    .select("teacher_id, ai_grading_item_ids, office_points")
+    .eq("id", testId)
+    .single();
+
+  ctx.aiGradingItemIds = (test as any)?.ai_grading_item_ids ?? [];
+  ctx.officePoints = (test as any)?.office_points ?? 10;
+
+  if (test) {
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("teacher_status")
+      .eq("user_id", test.teacher_id)
+      .single();
+
+    if (profile?.teacher_status === "verified") {
+      const nowIso = new Date().toISOString();
+
+      // 1) Coupon-based teacher premium
+      try {
+        const { data: redemptions } = await supabase
+          .from("coupon_redemptions")
+          .select("premium_until, coupon_type")
+          .eq("user_id", test.teacher_id)
+          .eq("coupon_type", "teacher")
+          .gt("premium_until", nowIso)
+          .order("premium_until", { ascending: false })
+          .limit(1);
+        if (redemptions && redemptions.length > 0) {
+          ctx.teacherHasAI = true;
+          console.log("[grade-submission] teacherHasAI via coupon");
+        }
+      } catch (e) {
+        console.error("Coupon check error:", e);
+      }
+
+      // 2) Native (Play / iOS) billing for Profesor AI products
+      if (!ctx.teacherHasAI) {
+        try {
+          const { data: nativeSubs } = await supabase
+            .from("play_billing_subscriptions")
+            .select("product_id, expiry_time, is_active")
+            .eq("user_id", test.teacher_id)
+            .eq("is_active", true)
+            .gt("expiry_time", nowIso)
+            .in("product_id", TEACHER_PRODUCT_IDS)
+            .limit(1);
+          if (nativeSubs && nativeSubs.length > 0) {
+            ctx.teacherHasAI = true;
+            console.log("[grade-submission] teacherHasAI via native billing");
+          }
+        } catch (e) {
+          console.error("Native billing check error:", e);
+        }
+      }
+
+      // 3) Stripe fallback
+      if (!ctx.teacherHasAI) {
+        const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
+        if (stripeKey) {
+          try {
+            const { data: authUser } = await supabase.auth.admin.getUserById(test.teacher_id);
+            if (authUser?.user?.email) {
+              const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
+              const customers = await stripe.customers.list({ email: authUser.user.email, limit: 1 });
+              if (customers.data.length > 0) {
+                const subs = await stripe.subscriptions.list({
+                  customer: customers.data[0].id,
+                  status: "active",
+                  limit: 10,
+                });
+                for (const sub of subs.data) {
+                  const productId = sub.items?.data?.[0]?.price?.product;
+                  const prodStr = typeof productId === "string" ? productId : productId?.id;
+                  if (prodStr && TEACHER_PRODUCT_IDS.includes(prodStr)) {
+                    ctx.teacherHasAI = true;
+                    console.log("[grade-submission] teacherHasAI via stripe");
+                    break;
+                  }
+                }
+              }
+            }
+          } catch (e) {
+            console.error("Stripe check error:", e);
+          }
+        }
+      }
+    }
+  }
+
+  cache.set(testId, ctx);
+  return ctx;
+}
+
+async function gradeSubmissionBasics(
+  supabase: any,
+  submission_id: string,
+  testContextCache: Map<string, TestContext>,
+  allItemsForAI: ItemForAI[],
+): Promise<{ subId: string; totalScore: number; maxScore: number; studentId: string }> {
+  const { data: submission } = await supabase
+    .from("test_submissions")
+    .select("*")
+    .eq("id", submission_id)
+    .single();
+
+  if (!submission) throw new Error("Submission not found");
+
+  const { data: answers } = await supabase
+    .from("test_answers")
+    .select("*, test_items(*)")
+    .eq("submission_id", submission_id);
+
+  if (!answers || answers.length === 0) throw new Error("No answers found");
+
+  let teacherHasAI = false;
+  let aiGradingItemIds: string[] = [];
+  let officePoints = 10;
+  const firstItem = answers[0]?.test_items;
+  if (firstItem?.test_id) {
+    const ctx = await getTestContext(supabase, firstItem.test_id, testContextCache);
+    teacherHasAI = ctx.teacherHasAI;
+    aiGradingItemIds = ctx.aiGradingItemIds;
+    officePoints = ctx.officePoints;
+  }
+
+  // First pass: grade exercises and collect problems/open_answers for batch AI
+  let totalScore = 0;
+  let maxScore = 0;
+  const itemsForAI: ItemForAI[] = [];
+
+  // Helper: stable AI key matching the one produced by TestBuilder UI
+  const getAIKey = (item: any): string => {
+    if (item.source_type === "custom") {
+      const k = item.custom_data?._ai_key;
+      return k ? `custom:${k}` : `custom:unknown`;
+    }
+    return `${item.source_type}:${item.source_id ?? ""}`;
+  };
+
+  for (let i = 0; i < answers.length; i++) {
+    const answer = answers[i];
+    const item = answer.test_items;
+    if (!item) continue;
+
+    maxScore += item.points;
+    let score = 0;
+    let feedback = "";
+
+    const isEvalBank = typeof item.source_id === "string" && item.source_id.startsWith("eval-");
+    const itemAIKey = getAIKey(item);
+
+    if (item.source_type === "exercise" && item.source_id && !isEvalBank) {
+      const { data: exercise } = await supabase
+        .from("exercises")
+        .select("*")
+        .eq("id", item.source_id)
+        .single();
+
+      if (exercise) {
+        score = gradeExercise(exercise, answer.answer_data, item.points);
+      }
+    } else if (item.source_type === "exercise" && item.source_id && isEvalBank) {
+      const { data: ev } = await supabase
+        .from("eval_exercises")
+        .select("*")
+        .eq("id", item.source_id)
+        .single();
+      if (ev) {
+        if (ev.type === "open_answer") {
+          // Eval-bank open_answer: same flow as custom open_answer
+          score = 0;
+          feedback = "Necesită evaluare manuală sau AI.";
+          const shouldAIGrade = aiGradingItemIds.length > 0
+            ? aiGradingItemIds.includes(itemAIKey)
+            : itemsForAI.length < MAX_AI_ITEMS_PER_TEST;
+          if (teacherHasAI && answer.answer_data?.text && shouldAIGrade) {
+            itemsForAI.push({
+              subId: submission_id,
+              answerId: answer.id,
+              studentCode: "",
+              solution: "",
+              testCases: null,
+              maxPoints: item.points,
+              basicScore: 0,
+              basicFeedback: feedback,
+              problemTitle: (ev.question ?? "").split("\n")[0]?.substring(0, 80) || "Răspuns deschis",
+              aiType: "open_answer",
+              studentText: answer.answer_data.text,
+              questionText: ev.question,
+            });
+          }
+        } else {
+          score = gradeExercise(ev, answer.answer_data, item.points);
+        }
+      }
+    } else if (item.source_type === "problem" && item.source_id) {
+      const problemSource = isEvalBank ? "eval_exercises" : "problems";
+      const selectCols = isEvalBank ? "test_cases, solution, question" : "test_cases, solution, title";
+      const { data: problemRow } = await supabase
+        .from(problemSource)
+        .select(selectCols)
+        .eq("id", item.source_id)
+        .single();
+
+      const problem = problemRow
+        ? (isEvalBank
+            ? {
+                test_cases: (problemRow as any).test_cases,
+                solution: (problemRow as any).solution ?? "",
+                title: ((problemRow as any).question ?? "").split("\n")[0]?.substring(0, 80) || item.source_id,
+              }
+            : (problemRow as any))
+        : null;
+
+      if (problem && answer.answer_data?.code) {
+        const result = gradeProblemBasic(problem, answer.answer_data.code, item.points);
+        score = result.score;
+        feedback = result.feedback;
+
+        // Collect for batch AI if teacher has Profesor AI and score < max
+        const shouldAIGrade = aiGradingItemIds.length > 0
+          ? aiGradingItemIds.includes(itemAIKey)
+          : itemsForAI.length < MAX_AI_ITEMS_PER_TEST;
+        if (teacherHasAI && score < item.points && shouldAIGrade) {
+          itemsForAI.push({
+            subId: submission_id,
+            answerId: answer.id,
+            studentCode: answer.answer_data.code,
+            solution: problem.solution,
+            testCases: problem.test_cases,
+            maxPoints: item.points,
+            basicScore: score,
+            basicFeedback: feedback,
+            problemTitle: problem.title || item.source_id,
+            aiType: "problem",
+          });
+        }
+      }
+    } else if (item.source_type === "custom" && item.custom_data) {
+      if (item.custom_data.type === "open_answer") {
+        // Open answer: score 0 automatically, collect for AI
+        score = 0;
+        feedback = "Necesită evaluare manuală sau AI.";
+        const shouldAIGrade = aiGradingItemIds.length > 0
+          ? aiGradingItemIds.includes(itemAIKey)
+          : itemsForAI.length < MAX_AI_ITEMS_PER_TEST;
+        if (teacherHasAI && answer.answer_data?.text && shouldAIGrade) {
+          itemsForAI.push({
+            subId: submission_id,
+            answerId: answer.id,
+            studentCode: "",
+            solution: "",
+            testCases: null,
+            maxPoints: item.points,
+            basicScore: 0,
+            basicFeedback: feedback,
+            problemTitle: item.custom_data.question || "Răspuns deschis",
+            aiType: "open_answer",
+            studentText: answer.answer_data.text,
+            questionText: item.custom_data.question,
+          });
+        }
+      } else {
+        score = gradeExercise(item.custom_data, answer.answer_data, item.points);
+      }
+    }
+
+    totalScore += score;
+
+    await supabase
+      .from("test_answers")
+      .update({ score, feedback: feedback || null })
+      .eq("id", answer.id);
+  }
+
+  for (const it of itemsForAI) allItemsForAI.push(it);
+
+  // Add office points
+  totalScore += officePoints;
+  maxScore += officePoints;
+
+  return { subId: submission_id, totalScore, maxScore, studentId: submission.student_id };
+}
+
+// Record competency scores from this test (silent failure)
+async function recordCompetencies(supabase: any, submission_id: string, studentId: string) {
+  try {
+    // Re-read final answer scores (some were updated after AI review)
+    const { data: finalAnswers } = await supabase
+      .from("test_answers")
+      .select("score, max_points, test_items(id, source_type, source_id)")
+      .eq("submission_id", submission_id);
+
+    const competencyItems = (finalAnswers ?? [])
+      .map((a: any) => {
+        const ti = a.test_items;
+        if (!ti) return null;
+        let item_type: string;
+        let item_id: string;
+        if (ti.source_type === "custom") {
+          item_type = "test_item";
+          item_id = ti.id;
+        } else if (ti.source_type === "predefined") {
+          item_type = "predefined_test_item";
+          item_id = ti.source_id ?? "";
+        } else if (
+          ti.source_type === "exercise" ||
+          ti.source_type === "eval_exercise" ||
+          ti.source_type === "manual_exercise" ||
+          ti.source_type === "problem"
+        ) {
+          item_type = ti.source_type;
+          item_id = ti.source_id ?? "";
+        } else {
+          return null;
+        }
+        if (!item_id) return null;
+        return {
+          item_type,
+          item_id,
+          score: Number(a.score ?? 0),
+          max_score: Number(a.max_points ?? 0),
+        };
+      })
+      .filter(Boolean);
+
+    if (competencyItems.length > 0) {
+      const { error: rpcError } = await supabase.rpc("recalculate_competency_scores", {
+        p_user_id: studentId,
+        p_items: competencyItems as any,
+      });
+      if (rpcError) {
+        console.warn("[grade-submission] competency RPC failed:", rpcError.message);
+      }
+    }
+  } catch (err) {
+    console.warn("[grade-submission] competency tracking error:", err);
+  }
+}
 
 function gradeExercise(exercise: any, answerData: any, maxPoints: number): number {
   if (!answerData) return 0;
@@ -736,7 +836,8 @@ async function batchAIReview(
 
     // Group items by shared context (same problem / same question) so the
     // statement, solution and test cases are sent ONCE per group, with all
-    // student answers listed at the end of that group.
+    // student answers listed at the end of that group. Works across multiple
+    // submissions of the same test, so the context is sent once per class.
     const groups = new Map<string, typeof items>();
     for (const it of items) {
       const key = it.aiType === "open_answer"
@@ -747,19 +848,47 @@ async function batchAIReview(
       groups.set(key, arr);
     }
 
+    // Deduplicate identical student answers inside a group: send one block,
+    // then copy the score/feedback to every answer id that shares it.
+    const normalizeAnswer = (s: string) =>
+      String(s ?? "").replace(/\r\n/g, "\n").replace(/[ \t]+$/gm, "").replace(/\s+/g, " ").trim();
+
+    // blockId -> answer ids that share the exact same answer text
+    const blockToAnswerIds = new Map<string, string[]>();
+    const blockMaxPoints = new Map<string, number>();
+
     let gi = 0;
+    let blockCounter = 0;
+    let onlyShortOpenAnswers = true;
+
     const itemDescriptions = [...groups.values()].map((group) => {
       gi++;
       const head = group[0];
-      const answers = group
-        .map((p) => `- ID ${p.answerId} (max ${p.maxPoints}p):\n${truncate(
-          head.aiType === "open_answer" ? (p.studentText ?? "") : (p.studentCode ?? ""),
-          1200,
-        )}`)
-        .join("\n\n");
+
+      const dedup = new Map<string, { text: string; ids: string[]; maxPoints: number }>();
+      for (const p of group) {
+        const raw = head.aiType === "open_answer" ? (p.studentText ?? "") : (p.studentCode ?? "");
+        if (head.aiType !== "open_answer" || raw.length > 300) onlyShortOpenAnswers = false;
+        const key = `${normalizeAnswer(raw)}|${p.maxPoints}`;
+        const existing = dedup.get(key);
+        if (existing) existing.ids.push(p.answerId);
+        else dedup.set(key, { text: raw, ids: [p.answerId], maxPoints: p.maxPoints });
+      }
+
+      const answers = [...dedup.values()].map((entry) => {
+        blockCounter++;
+        const blockId = `A${blockCounter}`;
+        blockToAnswerIds.set(blockId, entry.ids);
+        blockMaxPoints.set(blockId, entry.maxPoints);
+        const dupNote = entry.ids.length > 1 ? ` (${entry.ids.length} elevi, răspuns identic)` : "";
+        return `- ID ${blockId} (max ${entry.maxPoints}p)${dupNote}:\n${truncate(
+          entry.text,
+          head.aiType === "open_answer" ? 700 : 900,
+        )}`;
+      }).join("\n\n");
 
       if (head.aiType === "open_answer") {
-        return `### Întrebarea ${gi}: ${truncate(head.questionText ?? head.problemTitle, 800)}
+        return `### Întrebarea ${gi}: ${truncate(head.questionText ?? head.problemTitle, 600)}
 
 Răspunsuri elevi:
 ${answers}`;
@@ -770,22 +899,25 @@ ${answers}`;
 
 Soluție de referință:
 \`\`\`python
-${truncate(head.solution ?? "", 1200)}
+${truncate(head.solution ?? "", 800)}
 \`\`\`
 ${tests ? `\nCazuri de test (extras):\n${tests}\n` : ""}
 Coduri elevi:
 ${answers}`;
     }).join("\n\n---\n\n");
 
-    const prompt = `Evaluează ${items.length} răspunsuri. Contextul (enunț/soluție/teste) apare o singură dată per grup, urmat de răspunsurile elevilor.
+    const blockCount = blockToAnswerIds.size;
+
+    const prompt = `Evaluează ${blockCount} răspunsuri. Contextul (enunț/soluție/teste) apare o singură dată per grup, urmat de răspunsurile elevilor.
 
 ${itemDescriptions}
 
-Răspunde DOAR cu JSON valid, un array cu ${items.length} obiecte (unul per ID):
-[{"id":"<answerId>","score":<number>,"feedback":"<max 200 caractere, română>"}]
+Răspunde DOAR cu JSON: {"results":[{"id":"<ID>","score":<number>,"feedback":"<max 200 caractere, română>"}]} — un obiect pentru fiecare din cele ${blockCount} ID-uri, exact ID-urile date, scor între 0 și punctajul maxim al ID-ului.`;
 
-Folosește exact ID-urile date. Scorul: între 0 și punctajul maxim al ID-ului respectiv.`;
-
+    const model = onlyShortOpenAnswers ? "google/gemini-2.5-flash-lite" : "google/gemini-2.5-flash";
+    console.log(
+      `[grade-submission] AI batch: ${items.length} answers, ${groups.size} groups, ${blockCount} unique blocks, prompt ${prompt.length} chars, model ${model}`,
+    );
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -794,12 +926,13 @@ Folosește exact ID-urile date. Scorul: între 0 și punctajul maxim al ID-ului 
         Authorization: `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
+        model,
         messages: [
-          { role: "system", content: "Ești un evaluator. Răspunde doar cu JSON valid." },
+          { role: "system", content: "Evaluator. Doar JSON valid." },
           { role: "user", content: prompt },
         ],
         temperature: 0.1,
+        response_format: { type: "json_object" },
       }),
     });
 
@@ -811,22 +944,35 @@ Folosește exact ID-urile date. Scorul: între 0 și punctajul maxim al ID-ului 
     const data = await response.json();
     const content = data.choices?.[0]?.message?.content || "";
 
-    // Extract JSON array from response
-    const jsonMatch = content.match(/\[[\s\S]*\]/);
-    if (!jsonMatch) return null;
+    // Parse JSON object ({"results":[...]}) with array fallback
+    let parsed: { id: string; score: number; feedback: string }[] | null = null;
+    try {
+      const objMatch = content.match(/\{[\s\S]*\}/);
+      if (objMatch) {
+        const obj = JSON.parse(objMatch[0]);
+        if (Array.isArray(obj?.results)) parsed = obj.results;
+        else if (Array.isArray(obj)) parsed = obj;
+      }
+    } catch { /* fall through */ }
+    if (!parsed) {
+      const arrMatch = content.match(/\[[\s\S]*\]/);
+      if (!arrMatch) return null;
+      parsed = JSON.parse(arrMatch[0]);
+    }
+    if (!Array.isArray(parsed)) return null;
 
-    const results = JSON.parse(jsonMatch[0]) as { id: string; score: number; feedback: string }[];
+    const out: { answerId: string; score: number; feedback: string }[] = [];
+    for (const r of parsed) {
+      const blockId = String(r?.id ?? "");
+      const answerIds = blockToAnswerIds.get(blockId);
+      if (!answerIds) continue;
+      const maxPoints = blockMaxPoints.get(blockId) ?? 0;
+      const score = Math.min(Math.max(0, Math.round(Number(r.score) || 0)), maxPoints);
+      const feedback = r.feedback || "Evaluat de AI";
+      for (const answerId of answerIds) out.push({ answerId, score, feedback });
+    }
 
-    return results.map((r, i) => {
-      const match = items.find((it) => it.answerId === r.id) ?? items[i];
-      if (!match) return null;
-      return {
-        answerId: match.answerId,
-        score: Math.min(Math.max(0, Math.round(Number(r.score) || 0)), match.maxPoints),
-        feedback: r.feedback || "Evaluat de AI",
-      };
-    }).filter(Boolean) as { answerId: string; score: number; feedback: string }[];
-
+    return out.length > 0 ? out : null;
   } catch (e) {
     console.error("AI batch review error:", e);
     return null;

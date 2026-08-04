@@ -106,6 +106,35 @@ const TestResults = ({ testId, testTitle, onBack, initialClassId }: TestResultsP
     }
   };
 
+  const [bulkRegrading, setBulkRegrading] = useState(false);
+
+  // Regrade every submission of the assignment in ONE edge call, so the AI
+  // context (statement / solution / tests) is sent once for the whole class.
+  const regradeAllSubmissions = async () => {
+    const ids = (submissions as any[]).filter((s) => s.submitted_at).map((s) => s.id);
+    if (ids.length === 0) {
+      toast.error("Nu există submiteri de renotat.");
+      return;
+    }
+    setBulkRegrading(true);
+    try {
+      const { error } = await supabase.functions.invoke("grade-submission", {
+        body: { submission_ids: ids },
+      });
+      if (error) throw error;
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ["test-submissions"] }),
+        qc.invalidateQueries({ queryKey: ["test-answers"] }),
+      ]);
+      toast.success(`${ids.length} teste renotate.`);
+    } catch (e: any) {
+      toast.error("Nu am putut renota testele. Încearcă din nou.");
+      console.error("bulk regrade failed:", e);
+    } finally {
+      setBulkRegrading(false);
+    }
+  };
+
   // Enriched data: exercise/problem details keyed by source_id
   const [enrichedData, setEnrichedData] = useState<Record<string, any>>({});
   // All answers for all submissions in the selected assignment (for badge computation)
@@ -507,6 +536,16 @@ const TestResults = ({ testId, testTitle, onBack, initialClassId }: TestResultsP
             </div>
             {submissions.length > 0 && (
               <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-7 text-xs gap-1"
+                  disabled={bulkRegrading}
+                  onClick={regradeAllSubmissions}
+                >
+                  <RotateCcw className={`h-3.5 w-3.5 ${bulkRegrading ? "animate-spin" : ""}`} />
+                  {bulkRegrading ? "Renotez…" : "Renotează toate"}
+                </Button>
                 <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={exportTestCSV}>
                   <FileSpreadsheet className="h-3.5 w-3.5" /> CSV
                 </Button>
