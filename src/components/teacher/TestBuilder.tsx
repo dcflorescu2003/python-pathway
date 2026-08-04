@@ -24,7 +24,7 @@ import TeacherPremiumDialog from "@/components/TeacherPremiumDialog";
 import RichContent from "@/components/RichContent";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
-const MAX_AI_ITEMS_PER_TEST = 3;
+const MAX_AI_ITEMS_PER_TEST = 4;
 
 interface TestBuilderProps {
   onBack: () => void;

@@ -117,7 +117,7 @@ export const teacherTutorials: TutorialArticle[] = [
         heading: "Notare cu AI (Gemini)",
         body: [
           "Pentru exercițiile cu cod scris liber, AI-ul evaluează soluția în funcție de cerință și-ți dă scor + feedback.",
-          "Cu planul Premiu AI poti include până la 3 itemi subiectivi / test pentru a fi corectați automat.",
+          "Cu planul Premiu AI poti include până la 4 itemi subiectivi / test pentru a fi corectați automat.",
         ],
         image: { src: testResultsAsset.url, alt: "Rezultat test cu cod trimis de elev, feedback AI și nota 10/10, cu posibilitatea de a suprascrie scorul" },
         tip: "Tu rămâi profesorul: poți suprascrie manual orice scor dat de AI.",
@@ -189,7 +189,7 @@ export const teacherTutorials: TutorialArticle[] = [
           "Premium: 100 teste, 3 exerciții AI per test, export PDF.",
           "AI Teacher: 150 teste, limită AI mai generoasă, prioritate la suport.",
         ],
-        image: { src: teacherPremiumDialogAsset.url, alt: "Dialog Premium Profesor AI: 150 teste salvate, 3 itemi AI per test, feedback automat, statistici avansate, corectură AI și vieți nelimitate" },
+        image: { src: teacherPremiumDialogAsset.url, alt: "Dialog Premium Profesor AI: 150 teste salvate, 4 itemi AI per test, feedback automat, statistici avansate, corectură AI și vieți nelimitate" },
       },
     ],
   },
