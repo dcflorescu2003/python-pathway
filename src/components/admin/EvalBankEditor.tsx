@@ -476,6 +476,31 @@ function EvalExerciseEditor({ exercise, lessonId, nextIndex, onSave, onCancel }:
       ? exercise.test_cases
       : [{ input: "", expected_output: "", hidden: false }]
   );
+  const { loading: pyLoading, running: pyRunning, runCode } = usePyodide();
+  const [runResults, setRunResults] = useState<TestResult[] | null>(null);
+
+  const handleRunSolution = async () => {
+    if (!solution.trim()) {
+      toast.error("Scrie o soluție înainte de a rula testele.");
+      return;
+    }
+    try {
+      const results = await runCode(
+        solution,
+        testCases.map(tc => ({
+          input: (tc.input || "").replace(/\r\n/g, "\n"),
+          expectedOutput: (tc.expected_output || "").replace(/\r\n/g, "\n"),
+          hidden: tc.hidden,
+        }))
+      );
+      setRunResults(results);
+      const passed = results.filter(r => r.passed).length;
+      if (passed === results.length) toast.success(`Toate testele trec (${passed}/${results.length})`);
+      else toast.error(`${passed}/${results.length} teste trecute`);
+    } catch (e: any) {
+      toast.error(e?.message || "Eroare la rularea codului");
+    }
+  };
   // Pre-generăm un ID stabil pentru exercițiile noi, ca să putem atașa
   // microcompetențe înainte de prima salvare. La Anulare facem cleanup.
   const [stableId] = useState(
