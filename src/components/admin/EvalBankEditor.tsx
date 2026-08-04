@@ -551,7 +551,13 @@ function EvalExerciseEditor({ exercise, lessonId, nextIndex, onSave, onCancel }:
       explanation: explanation || null,
       code_template: (type === "fill" || type === "problem" || type === "quiz" || type === "truefalse" || type === "card" || type === "open_answer") ? (codeTemplate || null) : null,
       solution: type === "problem" ? solution : null,
-      test_cases: type === "problem" ? testCases : null,
+      test_cases: type === "problem"
+        ? testCases.map(tc => ({
+            ...tc,
+            input: (tc.input || "").replace(/\r\n/g, "\n"),
+            expected_output: (tc.expected_output || "").replace(/\r\n/g, "\n"),
+          }))
+        : null,
     });
   };
 
