@@ -5,7 +5,7 @@ import { jsPDF } from "jspdf";
   return { ok: true, arrayBuffer: async () => buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength) } as any;
 };
 let out: any;
-(jsPDF as any).prototype.save = function () { out = this.output("arraybuffer"); };
+(jsPDF as any).API.save = function () { out = this.output("arraybuffer"); };
 const { exportTestToPdf } = await import("/dev-server/src/lib/testPdfExport.ts");
 const ex = (o: any) => o;
 const items = [
