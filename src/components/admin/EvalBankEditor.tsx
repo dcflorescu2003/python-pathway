@@ -2,6 +2,7 @@ import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 import { useEvalChapters, useEvalLessons, useEvalExercises, useEvalBankMutations, EvalExercise, EvalChapter } from "@/hooks/useEvalBank";
+import { exportEvalLessonToPdf } from "@/lib/testPdfExport";
 import CsvImporter from "./CsvImporter";
 import CsvLessonImporter from "./CsvLessonImporter";
 import EvalProblemsCsvImporter from "./EvalProblemsCsvImporter";
@@ -12,9 +13,10 @@ import { Textarea } from "@/components/ui/textarea";
 import RichTextEditor from "./RichTextEditor";
 import CodeBlockEditor from "./CodeBlockEditor";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ChevronDown, ChevronRight, Edit2, Trash2, Plus, Save, X, GripVertical } from "lucide-react";
+import { ChevronDown, ChevronRight, Edit2, Trash2, Plus, Save, X, GripVertical, FileDown, Loader2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
+
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
@@ -60,6 +62,8 @@ const EvalBankEditor = () => {
   const [lessonForm, setLessonForm] = useState({ title: "" });
   const [editingLesson, setEditingLesson] = useState<string | null>(null);
   const [editingExercise, setEditingExercise] = useState<{ lessonId: string; exercise?: EvalExercise } | null>(null);
+  const [exportingLessonId, setExportingLessonId] = useState<string | null>(null);
+
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -91,38 +95,41 @@ const EvalBankEditor = () => {
     <div className="space-y-3">
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleChapterReorder}>
         <SortableContext items={chapters.map(c => c.id)} strategy={verticalListSortingStrategy}>
-          {chapters.map(chapter => (
-            <SortableItem key={chapter.id} id={chapter.id} gripSize="h-5 w-5">
-              <ChapterBlock
-                chapter={chapter}
-                isExpanded={expandedChapter === chapter.id}
-                onToggle={() => setExpandedChapter(expandedChapter === chapter.id ? null : chapter.id)}
-                isEditing={editingChapter === chapter.id}
-                onStartEdit={() => { setEditingChapter(chapter.id); setChapterForm({ title: chapter.title, icon: chapter.icon }); }}
-                onCancelEdit={() => setEditingChapter(null)}
-                editForm={chapterForm}
-                setEditForm={setChapterForm}
-                onSaveEdit={async () => {
-                  await mutations.updateChapter.mutateAsync({ id: chapter.id, title: chapterForm.title, icon: chapterForm.icon });
-                  toast.success("Capitol salvat!"); setEditingChapter(null);
-                }}
-                onDelete={async () => { await mutations.deleteChapter.mutateAsync(chapter.id); toast.success("Capitol șters!"); }}
-                expandedLesson={expandedLesson}
-                setExpandedLesson={setExpandedLesson}
-                creatingLesson={creatingLesson}
-                setCreatingLesson={setCreatingLesson}
-                lessonForm={lessonForm}
-                setLessonForm={setLessonForm}
-                editingLesson={editingLesson}
-                setEditingLesson={setEditingLesson}
-                editingExercise={editingExercise}
-                setEditingExercise={setEditingExercise}
-                mutations={mutations}
-                sensors={sensors}
-                invalidateAll={invalidateAll}
-              />
-            </SortableItem>
-          ))}
+      {chapters.map(chapter => (
+        <SortableItem key={chapter.id} id={chapter.id} gripSize="h-5 w-5">
+          <ChapterBlock
+            chapter={chapter}
+            isExpanded={expandedChapter === chapter.id}
+            onToggle={() => setExpandedChapter(expandedChapter === chapter.id ? null : chapter.id)}
+            isEditing={editingChapter === chapter.id}
+            onStartEdit={() => { setEditingChapter(chapter.id); setChapterForm({ title: chapter.title, icon: chapter.icon }); }}
+            onCancelEdit={() => setEditingChapter(null)}
+            editForm={chapterForm}
+            setEditForm={setChapterForm}
+            onSaveEdit={async () => {
+              await mutations.updateChapter.mutateAsync({ id: chapter.id, title: chapterForm.title, icon: chapterForm.icon });
+              toast.success("Capitol salvat!"); setEditingChapter(null);
+            }}
+            onDelete={async () => { await mutations.deleteChapter.mutateAsync(chapter.id); toast.success("Capitol șters!"); }}
+            expandedLesson={expandedLesson}
+            setExpandedLesson={setExpandedLesson}
+            creatingLesson={creatingLesson}
+            setCreatingLesson={setCreatingLesson}
+            lessonForm={lessonForm}
+            setLessonForm={setLessonForm}
+            editingLesson={editingLesson}
+            setEditingLesson={setEditingLesson}
+            editingExercise={editingExercise}
+            setEditingExercise={setEditingExercise}
+            mutations={mutations}
+            sensors={sensors}
+            invalidateAll={invalidateAll}
+            exportingLessonId={exportingLessonId}
+            setExportingLessonId={setExportingLessonId}
+          />
+        </SortableItem>
+      ))}
+
         </SortableContext>
       </DndContext>
 
@@ -152,7 +159,7 @@ const EvalBankEditor = () => {
 };
 
 // --- Chapter Block ---
-function ChapterBlock({ chapter, isExpanded, onToggle, isEditing, onStartEdit, onCancelEdit, editForm, setEditForm, onSaveEdit, onDelete, expandedLesson, setExpandedLesson, creatingLesson, setCreatingLesson, lessonForm, setLessonForm, editingLesson, setEditingLesson, editingExercise, setEditingExercise, mutations, sensors, invalidateAll }: any) {
+function ChapterBlock({ chapter, isExpanded, onToggle, isEditing, onStartEdit, onCancelEdit, editForm, setEditForm, onSaveEdit, onDelete, expandedLesson, setExpandedLesson, creatingLesson, setCreatingLesson, lessonForm, setLessonForm, editingLesson, setEditingLesson, editingExercise, setEditingExercise, mutations, sensors, invalidateAll, exportingLessonId, setExportingLessonId }: any) {
   return (
     <div className="rounded-xl border border-border bg-card overflow-hidden">
       <div className="flex items-center gap-3 p-4">
@@ -192,6 +199,7 @@ function ChapterBlock({ chapter, isExpanded, onToggle, isEditing, onStartEdit, o
             <div className="p-3 space-y-2">
               <LessonsList
                 chapterId={chapter.id}
+                chapterTitle={chapter.title}
                 expandedLesson={expandedLesson}
                 setExpandedLesson={setExpandedLesson}
                 creatingLesson={creatingLesson}
@@ -205,6 +213,8 @@ function ChapterBlock({ chapter, isExpanded, onToggle, isEditing, onStartEdit, o
                 mutations={mutations}
                 sensors={sensors}
                 invalidateAll={invalidateAll}
+                exportingLessonId={exportingLessonId}
+                setExportingLessonId={setExportingLessonId}
               />
             </div>
           </motion.div>
@@ -214,8 +224,9 @@ function ChapterBlock({ chapter, isExpanded, onToggle, isEditing, onStartEdit, o
   );
 }
 
+
 // --- Lessons List ---
-function LessonsList({ chapterId, expandedLesson, setExpandedLesson, creatingLesson, setCreatingLesson, lessonForm, setLessonForm, editingLesson, setEditingLesson, editingExercise, setEditingExercise, mutations, sensors, invalidateAll }: any) {
+function LessonsList({ chapterId, chapterTitle, expandedLesson, setExpandedLesson, creatingLesson, setCreatingLesson, lessonForm, setLessonForm, editingLesson, setEditingLesson, editingExercise, setEditingExercise, mutations, sensors, invalidateAll, exportingLessonId, setExportingLessonId }: any) {
   const { data: lessons = [] } = useEvalLessons(chapterId);
 
   const handleLessonReorder = async (event: DragEndEvent) => {
@@ -238,6 +249,7 @@ function LessonsList({ chapterId, expandedLesson, setExpandedLesson, creatingLes
             <SortableItem key={lesson.id} id={lesson.id} gripSize="h-4 w-4">
               <LessonBlock
                 lesson={lesson}
+                chapterTitle={chapterTitle}
                 isExpanded={expandedLesson === lesson.id}
                 onToggle={() => setExpandedLesson(expandedLesson === lesson.id ? null : lesson.id)}
                 isEditing={editingLesson === lesson.id}
@@ -255,6 +267,8 @@ function LessonsList({ chapterId, expandedLesson, setExpandedLesson, creatingLes
                 mutations={mutations}
                 sensors={sensors}
                 invalidateAll={invalidateAll}
+                exportingLessonId={exportingLessonId}
+                setExportingLessonId={setExportingLessonId}
               />
             </SortableItem>
           ))}
@@ -286,8 +300,9 @@ function LessonsList({ chapterId, expandedLesson, setExpandedLesson, creatingLes
   );
 }
 
+
 // --- Lesson Block ---
-function LessonBlock({ lesson, isExpanded, onToggle, isEditing, onStartEdit, onCancelEdit, editForm, setEditForm, onSaveEdit, onDelete, editingExercise, setEditingExercise, mutations, sensors, invalidateAll }: any) {
+function LessonBlock({ lesson, chapterTitle, isExpanded, onToggle, isEditing, onStartEdit, onCancelEdit, editForm, setEditForm, onSaveEdit, onDelete, editingExercise, setEditingExercise, mutations, sensors, invalidateAll, exportingLessonId, setExportingLessonId }: any) {
   return (
     <div className="rounded-lg border border-border bg-secondary/30">
       <div className="flex items-center gap-2 p-3">
@@ -322,12 +337,15 @@ function LessonBlock({ lesson, isExpanded, onToggle, isEditing, onStartEdit, onC
           <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="border-t border-border">
             <div className="p-3 space-y-2">
               <ExercisesList
-                lessonId={lesson.id}
+                lesson={lesson}
+                chapterTitle={chapterTitle}
                 editingExercise={editingExercise}
                 setEditingExercise={setEditingExercise}
                 mutations={mutations}
                 sensors={sensors}
                 invalidateAll={invalidateAll}
+                exportingLessonId={exportingLessonId}
+                setExportingLessonId={setExportingLessonId}
               />
             </div>
           </motion.div>
@@ -337,9 +355,12 @@ function LessonBlock({ lesson, isExpanded, onToggle, isEditing, onStartEdit, onC
   );
 }
 
+
 // --- Exercises List ---
-function ExercisesList({ lessonId, editingExercise, setEditingExercise, mutations, sensors, invalidateAll }: any) {
+function ExercisesList({ lesson, chapterTitle, editingExercise, setEditingExercise, mutations, sensors, invalidateAll, exportingLessonId, setExportingLessonId }: any) {
+  const lessonId = lesson.id;
   const { data: exercises = [] } = useEvalExercises(lessonId);
+  const isExporting = exportingLessonId === lessonId;
 
   const handleExerciseReorder = async (event: DragEndEvent) => {
     const { active, over } = event;
@@ -351,6 +372,20 @@ function ExercisesList({ lessonId, editingExercise, setEditingExercise, mutation
     await Promise.all(reordered.map((e: any, i: number) => supabase.from("eval_exercises").update({ sort_order: i } as any).eq("id", e.id)));
     toast.success("Ordine exerciții actualizată!");
     invalidateAll();
+  };
+
+  const handleExportPdf = async () => {
+    if (exercises.length === 0) return;
+    setExportingLessonId(lessonId);
+    try {
+      await exportEvalLessonToPdf(lesson, chapterTitle || null, exercises);
+      toast.success("PDF generat!");
+    } catch (e: any) {
+      console.error("Export PDF lecție error:", e);
+      toast.error(e?.message || "Eroare la generarea PDF-ului.");
+    } finally {
+      setExportingLessonId(null);
+    }
   };
 
   if (editingExercise?.lessonId === lessonId) {
@@ -399,16 +434,29 @@ function ExercisesList({ lessonId, editingExercise, setEditingExercise, mutation
           ))}
         </SortableContext>
       </DndContext>
+
       <div className="flex items-center gap-2 flex-wrap">
         <Button variant="ghost" size="sm" className="flex-1 text-xs" onClick={() => setEditingExercise({ lessonId })}>
           <Plus className="h-3 w-3 mr-1" />Exercițiu nou
         </Button>
         <CsvImporter targetTable="eval_exercises" lessonId={lessonId} existingCount={exercises.length} existingExercises={exercises} onSuccess={invalidateAll} />
         <EvalProblemsCsvImporter lessonId={lessonId} existingCount={exercises.length} onSuccess={invalidateAll} />
+        <Button
+          variant="outline"
+          size="sm"
+          className="text-xs gap-1"
+          onClick={handleExportPdf}
+          disabled={isExporting || exercises.length === 0}
+          title={exercises.length === 0 ? "Lecția nu are exerciții" : "Export PDF cu răspunsuri corecte"}
+        >
+          {isExporting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileDown className="h-3.5 w-3.5" />}
+          PDF
+        </Button>
       </div>
     </>
   );
 }
+
 
 // --- Eval Exercise Editor (simplified from ExerciseEditor) ---
 function EvalExerciseEditor({ exercise, lessonId, nextIndex, onSave, onCancel }: { exercise?: EvalExercise; lessonId: string; nextIndex: number; onSave: (ex: any) => void; onCancel: () => void }) {

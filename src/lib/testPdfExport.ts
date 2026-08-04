@@ -89,8 +89,10 @@ function slugify(text: string): string {
 export async function exportTestToPdf(
   test: PdfTest,
   items: PdfItem[],
-  resolveExercise: (item: PdfItem) => any | null
+  resolveExercise: (item: PdfItem) => any | null,
+  filename?: string
 ): Promise<void> {
+
   const fonts = await loadFonts();
 
   const doc = new jsPDF({ unit: "mm", format: "a4" });
@@ -322,5 +324,38 @@ export async function exportTestToPdf(
     doc.text(`Pagina ${p} / ${pageCount}`, PAGE_W - M, PAGE_H - 8, { align: "right" });
   }
 
-  doc.save(`${slugify(test.title)}.pdf`);
+  doc.save(`${filename || slugify(test.title)}.pdf`);
 }
+
+/** Exportă o lecție din banca de evaluare ca PDF cu barem. */
+export async function exportEvalLessonToPdf(
+  lesson: { title: string; id?: string },
+  chapterTitle: string | null,
+  exercises: any[]
+): Promise<void> {
+  const title = chapterTitle
+    ? `${chapterTitle} — ${lesson.title}`
+    : lesson.title;
+  const syntheticTest: PdfTest = {
+    title,
+    description: null,
+    difficulty: null,
+    time_limit_minutes: null,
+    variant_mode: "shuffle",
+  };
+  const syntheticItems: PdfItem[] = exercises.map((ex, i) => ({
+    variant: "both",
+    sort_order: ex.sort_order ?? i,
+    source_type: "custom",
+    source_id: null,
+    custom_data: ex,
+    points: ex.points ?? 10,
+  }));
+  await exportTestToPdf(
+    syntheticTest,
+    syntheticItems,
+    (item) => item.custom_data || null,
+    `lectie-${slugify(title)}`
+  );
+}
+
