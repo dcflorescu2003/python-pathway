@@ -645,18 +645,46 @@ function EvalExerciseEditor({ exercise, lessonId, nextIndex, onSave, onCancel }:
           </div>
           <div className="space-y-2">
             <Label className="text-xs text-foreground">Cazuri de test</Label>
+            <p className="text-[10px] text-muted-foreground">Poți scrie mai multe valori pe rânduri separate, atât la intrare cât și la ieșire.</p>
             {testCases.map((tc, i) => (
-              <div key={i} className="grid grid-cols-[1fr_1fr_auto_auto] gap-2 items-center">
-                <Input value={tc.input} onChange={e => { const n = [...testCases]; n[i] = { ...n[i], input: e.target.value }; setTestCases(n); }} placeholder="Input" className="font-mono text-xs" />
-                <Input value={tc.expected_output} onChange={e => { const n = [...testCases]; n[i] = { ...n[i], expected_output: e.target.value }; setTestCases(n); }} placeholder="Output așteptat" className="font-mono text-xs" />
-                <label className="flex items-center gap-1 text-[10px] text-muted-foreground cursor-pointer">
+              <div key={i} className="grid grid-cols-[1fr_1fr_auto_auto] gap-2 items-start">
+                <Textarea rows={2} value={tc.input} onChange={e => { const n = [...testCases]; n[i] = { ...n[i], input: e.target.value }; setTestCases(n); }} placeholder={"Intrare (stdin)\n5\n1 2 3"} className="font-mono text-xs min-h-0" />
+                <Textarea rows={2} value={tc.expected_output} onChange={e => { const n = [...testCases]; n[i] = { ...n[i], expected_output: e.target.value }; setTestCases(n); }} placeholder={"Ieșire așteptată\n6"} className="font-mono text-xs min-h-0" />
+                <label className="flex items-center gap-1 text-[10px] text-muted-foreground cursor-pointer mt-2">
                   <input type="checkbox" checked={tc.hidden} onChange={e => { const n = [...testCases]; n[i] = { ...n[i], hidden: e.target.checked }; setTestCases(n); }} />
                   Ascuns
                 </label>
-                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setTestCases(testCases.filter((_, j) => j !== i))}><Trash2 className="h-3 w-3" /></Button>
+                <Button variant="ghost" size="icon" className="h-7 w-7 mt-1" onClick={() => setTestCases(testCases.filter((_, j) => j !== i))}><Trash2 className="h-3 w-3" /></Button>
               </div>
             ))}
             <Button variant="outline" size="sm" onClick={() => setTestCases([...testCases, { input: "", expected_output: "", hidden: false }])}><Plus className="h-3 w-3 mr-1" />Caz de test</Button>
+          </div>
+
+          <div className="space-y-2 rounded-md border border-border bg-muted/20 p-3">
+            <div className="flex items-center gap-2">
+              <Button size="sm" variant="outline" onClick={handleRunSolution} disabled={pyLoading || pyRunning}>
+                {(pyLoading || pyRunning) ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <Play className="h-3.5 w-3.5 mr-1" />}
+                {pyLoading ? "Se încarcă Python..." : pyRunning ? "Se rulează..." : "Rulează soluția"}
+              </Button>
+              {runResults && (
+                <span className={`text-xs font-bold ${runResults.every(r => r.passed) ? "text-emerald-500" : "text-destructive"}`}>
+                  {runResults.filter(r => r.passed).length}/{runResults.length} teste trecute
+                </span>
+              )}
+            </div>
+            {runResults && (
+              <div className="space-y-2">
+                {runResults.map((r, i) => (
+                  <div key={i} className={`rounded border p-2 text-[11px] font-mono whitespace-pre-wrap ${r.passed ? "border-emerald-500/40 bg-emerald-500/5" : "border-destructive/40 bg-destructive/5"}`}>
+                    <div className="font-sans font-bold mb-1">Test #{i + 1} — {r.passed ? "trecut" : "picat"}{r.hidden ? " (ascuns)" : ""}</div>
+                    <div className="text-muted-foreground">Intrare: {r.input || "(gol)"}</div>
+                    <div className="text-muted-foreground">Așteptat: {r.expectedOutput || "(gol)"}</div>
+                    <div className={r.passed ? "text-muted-foreground" : "text-destructive"}>Obținut: {r.actualOutput || "(gol)"}</div>
+                    {r.error && <div className="text-destructive">Eroare: {r.error}</div>}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       )}
