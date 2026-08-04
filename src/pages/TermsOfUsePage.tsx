@@ -53,7 +53,7 @@ const TermsOfUsePage = () => {
           <li>
             <strong className="text-foreground">PyRo Profesor AI</strong> — durată: 1 lună, reînnoire
             automată lunară. Preț: 29 RON / lună (sau echivalentul afișat în App Store, care
-            prevalează). Beneficii: până la 10 teste/lună cu max. 3 itemi evaluați AI/test, feedback
+            prevalează). Beneficii: până la 10 teste/lună cu max. 4 itemi evaluați AI/test, feedback
             AI automat, statistici și rapoarte avansate, inimi nelimitate.
           </li>
         </ul>

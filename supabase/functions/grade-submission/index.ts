@@ -11,7 +11,7 @@ const TEACHER_PRODUCT_IDS = [
   "prod_UJyudq2JiikIbg",
 ];
 
-const MAX_AI_ITEMS_PER_TEST = 3;
+const MAX_AI_ITEMS_PER_TEST = 4;
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
