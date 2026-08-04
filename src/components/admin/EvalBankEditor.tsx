@@ -357,8 +357,10 @@ function LessonBlock({ lesson, chapterTitle, isExpanded, onToggle, isEditing, on
 
 
 // --- Exercises List ---
-function ExercisesList({ lessonId, editingExercise, setEditingExercise, mutations, sensors, invalidateAll }: any) {
+function ExercisesList({ lesson, chapterTitle, editingExercise, setEditingExercise, mutations, sensors, invalidateAll, exportingLessonId, setExportingLessonId }: any) {
+  const lessonId = lesson.id;
   const { data: exercises = [] } = useEvalExercises(lessonId);
+  const isExporting = exportingLessonId === lessonId;
 
   const handleExerciseReorder = async (event: DragEndEvent) => {
     const { active, over } = event;
@@ -370,6 +372,20 @@ function ExercisesList({ lessonId, editingExercise, setEditingExercise, mutation
     await Promise.all(reordered.map((e: any, i: number) => supabase.from("eval_exercises").update({ sort_order: i } as any).eq("id", e.id)));
     toast.success("Ordine exerciții actualizată!");
     invalidateAll();
+  };
+
+  const handleExportPdf = async () => {
+    if (exercises.length === 0) return;
+    setExportingLessonId(lessonId);
+    try {
+      await exportEvalLessonToPdf(lesson, chapterTitle || null, exercises);
+      toast.success("PDF generat!");
+    } catch (e: any) {
+      console.error("Export PDF lecție error:", e);
+      toast.error(e?.message || "Eroare la generarea PDF-ului.");
+    } finally {
+      setExportingLessonId(null);
+    }
   };
 
   if (editingExercise?.lessonId === lessonId) {
@@ -418,16 +434,29 @@ function ExercisesList({ lessonId, editingExercise, setEditingExercise, mutation
           ))}
         </SortableContext>
       </DndContext>
+
       <div className="flex items-center gap-2 flex-wrap">
         <Button variant="ghost" size="sm" className="flex-1 text-xs" onClick={() => setEditingExercise({ lessonId })}>
           <Plus className="h-3 w-3 mr-1" />Exercițiu nou
         </Button>
         <CsvImporter targetTable="eval_exercises" lessonId={lessonId} existingCount={exercises.length} existingExercises={exercises} onSuccess={invalidateAll} />
         <EvalProblemsCsvImporter lessonId={lessonId} existingCount={exercises.length} onSuccess={invalidateAll} />
+        <Button
+          variant="outline"
+          size="sm"
+          className="text-xs gap-1"
+          onClick={handleExportPdf}
+          disabled={isExporting || exercises.length === 0}
+          title={exercises.length === 0 ? "Lecția nu are exerciții" : "Export PDF cu răspunsuri corecte"}
+        >
+          {isExporting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileDown className="h-3.5 w-3.5" />}
+          PDF
+        </Button>
       </div>
     </>
   );
 }
+
 
 // --- Eval Exercise Editor (simplified from ExerciseEditor) ---
 function EvalExerciseEditor({ exercise, lessonId, nextIndex, onSave, onCancel }: { exercise?: EvalExercise; lessonId: string; nextIndex: number; onSave: (ex: any) => void; onCancel: () => void }) {
