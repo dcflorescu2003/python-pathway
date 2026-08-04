@@ -12,7 +12,10 @@ import { Switch } from "@/components/ui/switch";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { ArrowLeft, Plus, Trash2, Save, Edit2, ChevronDown, ChevronRight, BookOpen, GripVertical, Eye, ChevronLeft, Clock } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Save, Edit2, ChevronDown, ChevronRight, BookOpen, GripVertical, Eye, ChevronLeft, Clock, FileDown, Loader2 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { exportTestToPdf } from "@/lib/testPdfExport";
+
 import {
   DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors,
   type DragEndEvent,
@@ -47,6 +50,34 @@ const PredefinedTestEditor = () => {
   const [editingChapter, setEditingChapter] = useState<TestChapter | null>(null);
   const [creatingChapter, setCreatingChapter] = useState(false);
   const [expandedChapters, setExpandedChapters] = useState<Set<string>>(new Set());
+  const [exportingId, setExportingId] = useState<string | null>(null);
+  const { data: allExercisesForPdf = [] } = useAllEvalExercises();
+
+  const handleExportPdf = async (test: PredefinedTest) => {
+    setExportingId(test.id);
+    try {
+      const { data, error } = await supabase
+        .from("predefined_test_items")
+        .select("*")
+        .eq("test_id", test.id)
+        .order("sort_order");
+      if (error) throw error;
+      const items = (data || []) as any[];
+      await exportTestToPdf(test, items, (item: any) => {
+        if (item.source_type === "eval_exercise" && item.source_id) {
+          return allExercisesForPdf.find((e) => e.id === item.source_id) || null;
+        }
+        return item.custom_data || null;
+      });
+      toast.success("PDF generat!");
+    } catch (e: any) {
+      console.error("Export PDF error:", e);
+      toast.error(e?.message || "Eroare la generarea PDF-ului.");
+    } finally {
+      setExportingId(null);
+    }
+  };
+
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -109,7 +140,11 @@ const PredefinedTestEditor = () => {
         </div>
       </div>
       <Button variant="ghost" size="icon" onClick={() => setPreviewTestId(test.id)} title="Previzualizare"><Eye className="h-4 w-4" /></Button>
+      <Button variant="ghost" size="icon" onClick={() => handleExportPdf(test)} disabled={exportingId === test.id} title="Export PDF (cu răspunsuri corecte)">
+        {exportingId === test.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileDown className="h-4 w-4" />}
+      </Button>
       <Button variant="ghost" size="icon" onClick={() => setEditingTest(test.id)}><Edit2 className="h-4 w-4" /></Button>
+
       <AlertDialog>
         <AlertDialogTrigger asChild><Button variant="ghost" size="icon" className="text-destructive"><Trash2 className="h-4 w-4" /></Button></AlertDialogTrigger>
         <AlertDialogContent>
