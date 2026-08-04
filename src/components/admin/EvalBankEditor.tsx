@@ -619,12 +619,26 @@ function EvalExerciseEditor({ exercise, lessonId, nextIndex, onSave, onCancel }:
       code_template: (type === "fill" || type === "problem" || type === "quiz" || type === "truefalse" || type === "card" || type === "open_answer") ? (codeTemplate || null) : null,
       solution: type === "problem" ? solution : null,
       test_cases: type === "problem"
-        ? testCases.map(tc => ({
-            ...tc,
-            input: (tc.input || "").replace(/\r\n/g, "\n"),
-            expected_output: (tc.expected_output || "").replace(/\r\n/g, "\n"),
-          }))
+        ? testCases.map(tc => {
+            const normFiles = (files?: Record<string, string>) => {
+              if (!files) return undefined;
+              const entries = Object.entries(files).filter(([name]) => name.trim());
+              if (entries.length === 0) return undefined;
+              return Object.fromEntries(entries.map(([name, content]) => [name, (content || "").replace(/\r\n/g, "\n")]));
+            };
+            const out: any = {
+              input: (tc.input || "").replace(/\r\n/g, "\n"),
+              expected_output: (tc.expected_output || "").replace(/\r\n/g, "\n"),
+              hidden: !!tc.hidden,
+            };
+            const inF = normFiles(tc.inputFiles);
+            const outF = normFiles(tc.expectedFiles);
+            if (inF) out.inputFiles = inF;
+            if (outF) out.expectedFiles = outF;
+            return out;
+          })
         : null,
+
     });
   };
 
