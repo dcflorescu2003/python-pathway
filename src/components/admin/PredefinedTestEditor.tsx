@@ -109,7 +109,11 @@ const PredefinedTestEditor = () => {
         </div>
       </div>
       <Button variant="ghost" size="icon" onClick={() => setPreviewTestId(test.id)} title="Previzualizare"><Eye className="h-4 w-4" /></Button>
+      <Button variant="ghost" size="icon" onClick={() => handleExportPdf(test)} disabled={exportingId === test.id} title="Export PDF (cu răspunsuri corecte)">
+        {exportingId === test.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileDown className="h-4 w-4" />}
+      </Button>
       <Button variant="ghost" size="icon" onClick={() => setEditingTest(test.id)}><Edit2 className="h-4 w-4" /></Button>
+
       <AlertDialog>
         <AlertDialogTrigger asChild><Button variant="ghost" size="icon" className="text-destructive"><Trash2 className="h-4 w-4" /></Button></AlertDialogTrigger>
         <AlertDialogContent>
