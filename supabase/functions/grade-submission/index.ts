@@ -817,11 +817,16 @@ Folosește exact ID-urile date. Scorul: între 0 și punctajul maxim al ID-ului 
 
     const results = JSON.parse(jsonMatch[0]) as { id: string; score: number; feedback: string }[];
 
-    return results.map((r, i) => ({
-      answerId: r.id || items[i].answerId,
-      score: Math.min(Math.max(0, Math.round(r.score)), items[i].maxPoints),
-      feedback: r.feedback || "Evaluat de AI",
-    }));
+    return results.map((r, i) => {
+      const match = items.find((it) => it.answerId === r.id) ?? items[i];
+      if (!match) return null;
+      return {
+        answerId: match.answerId,
+        score: Math.min(Math.max(0, Math.round(Number(r.score) || 0)), match.maxPoints),
+        feedback: r.feedback || "Evaluat de AI",
+      };
+    }).filter(Boolean) as { answerId: string; score: number; feedback: string }[];
+
   } catch (e) {
     console.error("AI batch review error:", e);
     return null;
