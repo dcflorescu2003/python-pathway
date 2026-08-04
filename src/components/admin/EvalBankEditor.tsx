@@ -159,7 +159,7 @@ const EvalBankEditor = () => {
 };
 
 // --- Chapter Block ---
-function ChapterBlock({ chapter, isExpanded, onToggle, isEditing, onStartEdit, onCancelEdit, editForm, setEditForm, onSaveEdit, onDelete, expandedLesson, setExpandedLesson, creatingLesson, setCreatingLesson, lessonForm, setLessonForm, editingLesson, setEditingLesson, editingExercise, setEditingExercise, mutations, sensors, invalidateAll }: any) {
+function ChapterBlock({ chapter, isExpanded, onToggle, isEditing, onStartEdit, onCancelEdit, editForm, setEditForm, onSaveEdit, onDelete, expandedLesson, setExpandedLesson, creatingLesson, setCreatingLesson, lessonForm, setLessonForm, editingLesson, setEditingLesson, editingExercise, setEditingExercise, mutations, sensors, invalidateAll, exportingLessonId, setExportingLessonId }: any) {
   return (
     <div className="rounded-xl border border-border bg-card overflow-hidden">
       <div className="flex items-center gap-3 p-4">
@@ -199,6 +199,7 @@ function ChapterBlock({ chapter, isExpanded, onToggle, isEditing, onStartEdit, o
             <div className="p-3 space-y-2">
               <LessonsList
                 chapterId={chapter.id}
+                chapterTitle={chapter.title}
                 expandedLesson={expandedLesson}
                 setExpandedLesson={setExpandedLesson}
                 creatingLesson={creatingLesson}
@@ -212,6 +213,8 @@ function ChapterBlock({ chapter, isExpanded, onToggle, isEditing, onStartEdit, o
                 mutations={mutations}
                 sensors={sensors}
                 invalidateAll={invalidateAll}
+                exportingLessonId={exportingLessonId}
+                setExportingLessonId={setExportingLessonId}
               />
             </div>
           </motion.div>
@@ -220,6 +223,7 @@ function ChapterBlock({ chapter, isExpanded, onToggle, isEditing, onStartEdit, o
     </div>
   );
 }
+
 
 // --- Lessons List ---
 function LessonsList({ chapterId, expandedLesson, setExpandedLesson, creatingLesson, setCreatingLesson, lessonForm, setLessonForm, editingLesson, setEditingLesson, editingExercise, setEditingExercise, mutations, sensors, invalidateAll }: any) {
