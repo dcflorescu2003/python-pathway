@@ -13,7 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import RichTextEditor from "./RichTextEditor";
 import CodeBlockEditor from "./CodeBlockEditor";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ChevronDown, ChevronRight, Edit2, Trash2, Plus, Save, X, GripVertical, FileDown, Loader2, Play } from "lucide-react";
+import { ChevronDown, ChevronRight, Edit2, Trash2, Plus, Save, X, GripVertical, FileDown, Loader2, Play, Code2 } from "lucide-react";
 import { usePyodide, type TestResult } from "@/hooks/usePyodide";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
