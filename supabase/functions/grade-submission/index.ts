@@ -713,39 +713,79 @@ async function batchAIReview(
     const apiKey = Deno.env.get("LOVABLE_API_KEY");
     if (!apiKey) return null;
 
-    // Build a single prompt for all items
-    const itemDescriptions = items.map((p, i) => {
-      if (p.aiType === "open_answer") {
-        return `### Întrebarea ${i + 1} (ID: ${p.answerId}, max ${p.maxPoints} puncte): "${p.problemTitle}"
+    const truncate = (s: string, n: number) =>
+      !s ? "" : s.length > n ? `${s.slice(0, n)}\n… (trunchiat)` : s;
 
-Întrebarea: ${p.questionText}
-
-Răspunsul elevului:
-${p.studentText}`;
+    // Compact test cases: max 3 cases, short values
+    const compactTests = (tc: any): string => {
+      if (!tc) return "";
+      let arr: any[] = [];
+      try {
+        arr = Array.isArray(tc) ? tc : typeof tc === "string" ? JSON.parse(tc) : [tc];
+      } catch {
+        return truncate(String(tc), 200);
       }
-      return `### Problema ${i + 1} (ID: ${p.answerId}, max ${p.maxPoints} puncte): "${p.problemTitle}"
+      if (!Array.isArray(arr)) arr = [arr];
+      const shown = arr.slice(0, 3).map((c: any) => {
+        const input = truncate(String(c?.input ?? c?.stdin ?? ""), 80);
+        const output = truncate(String(c?.expected_output ?? c?.output ?? c?.stdout ?? ""), 80);
+        return `in: ${input} | out: ${output}`;
+      });
+      return shown.join("\n") + (arr.length > 3 ? `\n(+${arr.length - 3} cazuri)` : "");
+    };
 
-Soluția corectă:
+    // Group items by shared context (same problem / same question) so the
+    // statement, solution and test cases are sent ONCE per group, with all
+    // student answers listed at the end of that group.
+    const groups = new Map<string, typeof items>();
+    for (const it of items) {
+      const key = it.aiType === "open_answer"
+        ? `q:${it.questionText ?? it.problemTitle}`
+        : `p:${it.problemTitle}|${it.solution?.slice(0, 200) ?? ""}`;
+      const arr = groups.get(key) ?? [];
+      arr.push(it);
+      groups.set(key, arr);
+    }
+
+    let gi = 0;
+    const itemDescriptions = [...groups.values()].map((group) => {
+      gi++;
+      const head = group[0];
+      const answers = group
+        .map((p) => `- ID ${p.answerId} (max ${p.maxPoints}p):\n${truncate(
+          head.aiType === "open_answer" ? (p.studentText ?? "") : (p.studentCode ?? ""),
+          1200,
+        )}`)
+        .join("\n\n");
+
+      if (head.aiType === "open_answer") {
+        return `### Întrebarea ${gi}: ${truncate(head.questionText ?? head.problemTitle, 800)}
+
+Răspunsuri elevi:
+${answers}`;
+      }
+
+      const tests = compactTests(head.testCases);
+      return `### Problema ${gi}: ${head.problemTitle}
+
+Soluție de referință:
 \`\`\`python
-${p.solution}
+${truncate(head.solution ?? "", 1200)}
 \`\`\`
-
-Codul elevului:
-\`\`\`python
-${p.studentCode}
-\`\`\`
-
-Test cases: ${JSON.stringify(p.testCases)}`;
+${tests ? `\nCazuri de test (extras):\n${tests}\n` : ""}
+Coduri elevi:
+${answers}`;
     }).join("\n\n---\n\n");
 
-    const prompt = `Evaluează răspunsurile a ${items.length} elevi. Pentru fiecare item, acordă un scor și oferă feedback scurt în română. Itemii pot fi probleme de cod sau răspunsuri deschise la întrebări.
+    const prompt = `Evaluează ${items.length} răspunsuri. Contextul (enunț/soluție/teste) apare o singură dată per grup, urmat de răspunsurile elevilor.
 
 ${itemDescriptions}
 
-Răspunde DOAR cu un JSON valid - un array cu ${items.length} obiecte, câte unul pentru fiecare item, în ordine:
-[{"id": "<answerId>", "score": <number>, "feedback": "<explicație scurtă în română>"}, ...]
+Răspunde DOAR cu JSON valid, un array cu ${items.length} obiecte (unul per ID):
+[{"id":"<answerId>","score":<number>,"feedback":"<max 200 caractere, română>"}]
 
-IMPORTANT: Folosește exact ID-urile furnizate. Scorul trebuie să fie între 0 și punctajul maxim al fiecărui item.`;
+Folosește exact ID-urile date. Scorul: între 0 și punctajul maxim al ID-ului respectiv.`;
+
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
