@@ -2,6 +2,7 @@ import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 import { useEvalChapters, useEvalLessons, useEvalExercises, useEvalBankMutations, EvalExercise, EvalChapter } from "@/hooks/useEvalBank";
+import { exportEvalLessonToPdf } from "@/lib/testPdfExport";
 import CsvImporter from "./CsvImporter";
 import CsvLessonImporter from "./CsvLessonImporter";
 import EvalProblemsCsvImporter from "./EvalProblemsCsvImporter";
@@ -12,9 +13,10 @@ import { Textarea } from "@/components/ui/textarea";
 import RichTextEditor from "./RichTextEditor";
 import CodeBlockEditor from "./CodeBlockEditor";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ChevronDown, ChevronRight, Edit2, Trash2, Plus, Save, X, GripVertical } from "lucide-react";
+import { ChevronDown, ChevronRight, Edit2, Trash2, Plus, Save, X, GripVertical, FileDown, Loader2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
+
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
