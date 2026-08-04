@@ -507,6 +507,16 @@ const TestResults = ({ testId, testTitle, onBack, initialClassId }: TestResultsP
             </div>
             {submissions.length > 0 && (
               <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-7 text-xs gap-1"
+                  disabled={bulkRegrading}
+                  onClick={regradeAllSubmissions}
+                >
+                  <RotateCcw className={`h-3.5 w-3.5 ${bulkRegrading ? "animate-spin" : ""}`} />
+                  {bulkRegrading ? "Renotez…" : "Renotează toate"}
+                </Button>
                 <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={exportTestCSV}>
                   <FileSpreadsheet className="h-3.5 w-3.5" /> CSV
                 </Button>
