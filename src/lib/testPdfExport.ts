@@ -89,8 +89,10 @@ function slugify(text: string): string {
 export async function exportTestToPdf(
   test: PdfTest,
   items: PdfItem[],
-  resolveExercise: (item: PdfItem) => any | null
+  resolveExercise: (item: PdfItem) => any | null,
+  filename?: string
 ): Promise<void> {
+
   const fonts = await loadFonts();
 
   const doc = new jsPDF({ unit: "mm", format: "a4" });
