@@ -362,6 +362,24 @@ function ExercisesList({ lesson, chapterTitle, editingExercise, setEditingExerci
   const lessonId = lesson.id;
   const { data: exercises = [] } = useEvalExercises(lessonId);
   const isExporting = exportingLessonId === lessonId;
+  const [openSolutions, setOpenSolutions] = useState<Set<string>>(new Set());
+
+  // Recitim exercițiul direct din baza de date la editare, ca formularul să
+  // pornească mereu cu soluția și cazurile de test reale (nu dintr-un cache).
+  const startEditExercise = async (ex: any) => {
+    try {
+      const { data, error } = await supabase.rpc("get_eval_exercises_for_teacher", { p_ids: [ex.id] });
+      if (error) throw error;
+      const fresh = (data as any[] | null)?.[0];
+      setEditingExercise({ lessonId, exercise: fresh ?? ex });
+      if (!fresh) toast.warning("Nu am putut reciti exercițiul; se folosesc datele din listă.");
+    } catch (e: any) {
+      console.error("Reload eval exercise error:", e);
+      toast.warning("Nu am putut reciti exercițiul; se folosesc datele din listă.");
+      setEditingExercise({ lessonId, exercise: ex });
+    }
+  };
+
 
   const handleExerciseReorder = async (event: DragEndEvent) => {
     const { active, over } = event;
