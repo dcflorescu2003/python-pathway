@@ -758,7 +758,7 @@ function EvalExerciseEditor({ exercise, lessonId, nextIndex, onSave, onCancel }:
           </div>
           <div className="space-y-2">
             <Label className="text-xs text-foreground">Cazuri de test</Label>
-            <p className="text-[10px] text-muted-foreground">Poți scrie mai multe valori pe rânduri separate, atât la intrare cât și la ieșire.</p>
+            <p className="text-[10px] text-muted-foreground">Poți scrie mai multe valori pe rânduri separate, atât la intrare cât și la ieșire. Pentru probleme cu fișiere (ex. <span className="font-mono">date.in</span> / <span className="font-mono">date.out</span>) folosește secțiunile de fișiere de mai jos.</p>
             {testCases.map((tc, i) => {
               const inputFiles = tc.inputFiles || {};
               const expectedFiles = tc.expectedFiles || {};
