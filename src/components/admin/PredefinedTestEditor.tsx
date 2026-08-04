@@ -47,6 +47,34 @@ const PredefinedTestEditor = () => {
   const [editingChapter, setEditingChapter] = useState<TestChapter | null>(null);
   const [creatingChapter, setCreatingChapter] = useState(false);
   const [expandedChapters, setExpandedChapters] = useState<Set<string>>(new Set());
+  const [exportingId, setExportingId] = useState<string | null>(null);
+  const { data: allExercisesForPdf = [] } = useAllEvalExercises();
+
+  const handleExportPdf = async (test: PredefinedTest) => {
+    setExportingId(test.id);
+    try {
+      const { data, error } = await supabase
+        .from("predefined_test_items")
+        .select("*")
+        .eq("test_id", test.id)
+        .order("sort_order");
+      if (error) throw error;
+      const items = (data || []) as any[];
+      await exportTestToPdf(test, items, (item: any) => {
+        if (item.source_type === "eval_exercise" && item.source_id) {
+          return allExercisesForPdf.find((e) => e.id === item.source_id) || null;
+        }
+        return item.custom_data || null;
+      });
+      toast.success("PDF generat!");
+    } catch (e: any) {
+      console.error("Export PDF error:", e);
+      toast.error(e?.message || "Eroare la generarea PDF-ului.");
+    } finally {
+      setExportingId(null);
+    }
+  };
+
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
