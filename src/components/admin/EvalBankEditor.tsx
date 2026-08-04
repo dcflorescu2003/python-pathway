@@ -517,13 +517,19 @@ function EvalExerciseEditor({ exercise, lessonId, nextIndex, onSave, onCancel }:
   const [explanation, setExplanation] = useState(exercise?.explanation || "");
   const [codeTemplate, setCodeTemplate] = useState(exercise?.code_template || "");
   const [solution, setSolution] = useState(exercise?.solution || "");
-  const [testCases, setTestCases] = useState<{ input: string; expected_output: string; hidden: boolean }[]>(
+  const [testCases, setTestCases] = useState<{ input: string; expected_output: string; hidden: boolean; inputFiles?: Record<string, string>; expectedFiles?: Record<string, string> }[]>(
     exercise?.test_cases && Array.isArray(exercise.test_cases) && exercise.test_cases.length > 0
       ? exercise.test_cases
       : [{ input: "", expected_output: "", hidden: false }]
   );
   const { loading: pyLoading, running: pyRunning, runCode } = usePyodide();
   const [runResults, setRunResults] = useState<TestResult[] | null>(null);
+
+  const updateTestFiles = (index: number, bucket: "inputFiles" | "expectedFiles", files: Record<string, string>) => {
+    const n = [...testCases];
+    n[index] = { ...n[index], [bucket]: files };
+    setTestCases(n);
+  };
 
   const handleRunSolution = async () => {
     if (!solution.trim()) {
@@ -533,11 +539,19 @@ function EvalExerciseEditor({ exercise, lessonId, nextIndex, onSave, onCancel }:
     try {
       const results = await runCode(
         solution,
-        testCases.map(tc => ({
-          input: (tc.input || "").replace(/\r\n/g, "\n"),
-          expectedOutput: (tc.expected_output || "").replace(/\r\n/g, "\n"),
-          hidden: tc.hidden,
-        }))
+        testCases.map(tc => {
+          const expectedFiles = tc.expectedFiles && Object.keys(tc.expectedFiles).length > 0 ? tc.expectedFiles : undefined;
+          const expectedOut = (tc.expected_output || "").replace(/\r\n/g, "\n");
+          return {
+            input: (tc.input || "").replace(/\r\n/g, "\n"),
+            // Dacă nu există stdout așteptat dar există fișiere așteptate,
+            // validăm doar pe fișiere.
+            expectedOutput: !expectedOut.trim() && expectedFiles ? undefined : expectedOut,
+            inputFiles: tc.inputFiles && Object.keys(tc.inputFiles).length > 0 ? tc.inputFiles : undefined,
+            expectedFiles,
+            hidden: tc.hidden,
+          };
+        })
       );
       setRunResults(results);
       const passed = results.filter(r => r.passed).length;
@@ -547,6 +561,7 @@ function EvalExerciseEditor({ exercise, lessonId, nextIndex, onSave, onCancel }:
       toast.error(e?.message || "Eroare la rularea codului");
     }
   };
+
   // Pre-generăm un ID stabil pentru exercițiile noi, ca să putem atașa
   // microcompetențe înainte de prima salvare. La Anulare facem cleanup.
   const [stableId] = useState(
