@@ -846,6 +846,14 @@ function EvalExerciseEditor({ exercise, lessonId, nextIndex, onSave, onCancel }:
                     <div className="text-muted-foreground">Intrare: {r.input || "(gol)"}</div>
                     <div className="text-muted-foreground">Așteptat: {r.expectedOutput || "(gol)"}</div>
                     <div className={r.passed ? "text-muted-foreground" : "text-destructive"}>Obținut: {r.actualOutput || "(gol)"}</div>
+                    {r.fileResults?.map((f) => (
+                      <div key={f.name} className={`mt-1 border-t border-border/40 pt-1 ${f.passed ? "text-muted-foreground" : "text-destructive"}`}>
+                        <div className="font-sans font-bold">{f.name} — {f.passed ? "corect" : f.missing ? "fișier lipsă" : "diferit"}</div>
+                        <div>Așteptat: {f.expected || "(gol)"}</div>
+                        {!f.missing && <div>Obținut: {f.actual || "(gol)"}</div>}
+                      </div>
+                    ))}
+
                     {r.error && <div className="text-destructive">Eroare: {r.error}</div>}
                   </div>
                 ))}
