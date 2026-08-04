@@ -517,13 +517,19 @@ function EvalExerciseEditor({ exercise, lessonId, nextIndex, onSave, onCancel }:
   const [explanation, setExplanation] = useState(exercise?.explanation || "");
   const [codeTemplate, setCodeTemplate] = useState(exercise?.code_template || "");
   const [solution, setSolution] = useState(exercise?.solution || "");
-  const [testCases, setTestCases] = useState<{ input: string; expected_output: string; hidden: boolean }[]>(
+  const [testCases, setTestCases] = useState<{ input: string; expected_output: string; hidden: boolean; inputFiles?: Record<string, string>; expectedFiles?: Record<string, string> }[]>(
     exercise?.test_cases && Array.isArray(exercise.test_cases) && exercise.test_cases.length > 0
       ? exercise.test_cases
       : [{ input: "", expected_output: "", hidden: false }]
   );
   const { loading: pyLoading, running: pyRunning, runCode } = usePyodide();
   const [runResults, setRunResults] = useState<TestResult[] | null>(null);
+
+  const updateTestFiles = (index: number, bucket: "inputFiles" | "expectedFiles", files: Record<string, string>) => {
+    const n = [...testCases];
+    n[index] = { ...n[index], [bucket]: files };
+    setTestCases(n);
+  };
 
   const handleRunSolution = async () => {
     if (!solution.trim()) {
@@ -533,11 +539,19 @@ function EvalExerciseEditor({ exercise, lessonId, nextIndex, onSave, onCancel }:
     try {
       const results = await runCode(
         solution,
-        testCases.map(tc => ({
-          input: (tc.input || "").replace(/\r\n/g, "\n"),
-          expectedOutput: (tc.expected_output || "").replace(/\r\n/g, "\n"),
-          hidden: tc.hidden,
-        }))
+        testCases.map(tc => {
+          const expectedFiles = tc.expectedFiles && Object.keys(tc.expectedFiles).length > 0 ? tc.expectedFiles : undefined;
+          const expectedOut = (tc.expected_output || "").replace(/\r\n/g, "\n");
+          return {
+            input: (tc.input || "").replace(/\r\n/g, "\n"),
+            // Dacă nu există stdout așteptat dar există fișiere așteptate,
+            // validăm doar pe fișiere.
+            expectedOutput: !expectedOut.trim() && expectedFiles ? undefined : expectedOut,
+            inputFiles: tc.inputFiles && Object.keys(tc.inputFiles).length > 0 ? tc.inputFiles : undefined,
+            expectedFiles,
+            hidden: tc.hidden,
+          };
+        })
       );
       setRunResults(results);
       const passed = results.filter(r => r.passed).length;
@@ -547,6 +561,7 @@ function EvalExerciseEditor({ exercise, lessonId, nextIndex, onSave, onCancel }:
       toast.error(e?.message || "Eroare la rularea codului");
     }
   };
+
   // Pre-generăm un ID stabil pentru exercițiile noi, ca să putem atașa
   // microcompetențe înainte de prima salvare. La Anulare facem cleanup.
   const [stableId] = useState(
@@ -604,12 +619,26 @@ function EvalExerciseEditor({ exercise, lessonId, nextIndex, onSave, onCancel }:
       code_template: (type === "fill" || type === "problem" || type === "quiz" || type === "truefalse" || type === "card" || type === "open_answer") ? (codeTemplate || null) : null,
       solution: type === "problem" ? solution : null,
       test_cases: type === "problem"
-        ? testCases.map(tc => ({
-            ...tc,
-            input: (tc.input || "").replace(/\r\n/g, "\n"),
-            expected_output: (tc.expected_output || "").replace(/\r\n/g, "\n"),
-          }))
+        ? testCases.map(tc => {
+            const normFiles = (files?: Record<string, string>) => {
+              if (!files) return undefined;
+              const entries = Object.entries(files).filter(([name]) => name.trim());
+              if (entries.length === 0) return undefined;
+              return Object.fromEntries(entries.map(([name, content]) => [name, (content || "").replace(/\r\n/g, "\n")]));
+            };
+            const out: any = {
+              input: (tc.input || "").replace(/\r\n/g, "\n"),
+              expected_output: (tc.expected_output || "").replace(/\r\n/g, "\n"),
+              hidden: !!tc.hidden,
+            };
+            const inF = normFiles(tc.inputFiles);
+            const outF = normFiles(tc.expectedFiles);
+            if (inF) out.inputFiles = inF;
+            if (outF) out.expectedFiles = outF;
+            return out;
+          })
         : null,
+
     });
   };
 
@@ -729,18 +758,71 @@ function EvalExerciseEditor({ exercise, lessonId, nextIndex, onSave, onCancel }:
           </div>
           <div className="space-y-2">
             <Label className="text-xs text-foreground">Cazuri de test</Label>
-            <p className="text-[10px] text-muted-foreground">Poți scrie mai multe valori pe rânduri separate, atât la intrare cât și la ieșire.</p>
-            {testCases.map((tc, i) => (
-              <div key={i} className="grid grid-cols-[1fr_1fr_auto_auto] gap-2 items-start">
-                <Textarea rows={2} value={tc.input} onChange={e => { const n = [...testCases]; n[i] = { ...n[i], input: e.target.value }; setTestCases(n); }} placeholder={"Intrare (stdin)\n5\n1 2 3"} className="font-mono text-xs min-h-0" />
-                <Textarea rows={2} value={tc.expected_output} onChange={e => { const n = [...testCases]; n[i] = { ...n[i], expected_output: e.target.value }; setTestCases(n); }} placeholder={"Ieșire așteptată\n6"} className="font-mono text-xs min-h-0" />
-                <label className="flex items-center gap-1 text-[10px] text-muted-foreground cursor-pointer mt-2">
-                  <input type="checkbox" checked={tc.hidden} onChange={e => { const n = [...testCases]; n[i] = { ...n[i], hidden: e.target.checked }; setTestCases(n); }} />
-                  Ascuns
-                </label>
-                <Button variant="ghost" size="icon" className="h-7 w-7 mt-1" onClick={() => setTestCases(testCases.filter((_, j) => j !== i))}><Trash2 className="h-3 w-3" /></Button>
+            <p className="text-[10px] text-muted-foreground">Poți scrie mai multe valori pe rânduri separate, atât la intrare cât și la ieșire. Pentru probleme cu fișiere (ex. <span className="font-mono">date.in</span> / <span className="font-mono">date.out</span>) folosește secțiunile de fișiere de mai jos.</p>
+            {testCases.map((tc, i) => {
+              const inputFiles = tc.inputFiles || {};
+              const expectedFiles = tc.expectedFiles || {};
+              const inEntries = Object.entries(inputFiles);
+              const outEntries = Object.entries(expectedFiles);
+              return (
+              <div key={i} className="space-y-2 rounded-md border border-border/60 p-2">
+                <div className="grid grid-cols-[1fr_1fr_auto_auto] gap-2 items-start">
+                  <Textarea rows={2} value={tc.input} onChange={e => { const n = [...testCases]; n[i] = { ...n[i], input: e.target.value }; setTestCases(n); }} placeholder={"Intrare (stdin)\n5\n1 2 3"} className="font-mono text-xs min-h-0" />
+                  <Textarea rows={2} value={tc.expected_output} onChange={e => { const n = [...testCases]; n[i] = { ...n[i], expected_output: e.target.value }; setTestCases(n); }} placeholder={"Ieșire așteptată\n6"} className="font-mono text-xs min-h-0" />
+                  <label className="flex items-center gap-1 text-[10px] text-muted-foreground cursor-pointer mt-2">
+                    <input type="checkbox" checked={tc.hidden} onChange={e => { const n = [...testCases]; n[i] = { ...n[i], hidden: e.target.checked }; setTestCases(n); }} />
+                    Ascuns
+                  </label>
+                  <Button variant="ghost" size="icon" className="h-7 w-7 mt-1" onClick={() => setTestCases(testCases.filter((_, j) => j !== i))}><Trash2 className="h-3 w-3" /></Button>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-1">
+                    <p className="text-[10px] font-bold text-muted-foreground">Fișiere de intrare</p>
+                    {inEntries.map(([name, content]) => (
+                      <div key={name} className="flex gap-1 items-start">
+                        <Input
+                          value={name}
+                          onChange={e => {
+                            const copy: Record<string, string> = {};
+                            for (const [k, v] of inEntries) copy[k === name ? e.target.value : k] = v;
+                            updateTestFiles(i, "inputFiles", copy);
+                          }}
+                          className="h-7 w-28 text-[10px] font-mono"
+                        />
+                        <Textarea value={content} onChange={e => updateTestFiles(i, "inputFiles", { ...inputFiles, [name]: e.target.value })} rows={2} placeholder="conținut" className="text-xs font-mono min-h-0 flex-1" />
+                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { const copy = { ...inputFiles }; delete copy[name]; updateTestFiles(i, "inputFiles", copy); }}><Trash2 className="h-3 w-3" /></Button>
+                      </div>
+                    ))}
+                    <Button variant="outline" size="sm" className="h-7 text-[10px]" onClick={() => updateTestFiles(i, "inputFiles", { ...inputFiles, [inEntries.length === 0 ? "date.in" : `file${inEntries.length + 1}.in`]: "" })}>
+                      <Plus className="h-3 w-3 mr-1" />Fișier intrare
+                    </Button>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-[10px] font-bold text-muted-foreground">Fișiere așteptate</p>
+                    {outEntries.map(([name, content]) => (
+                      <div key={name} className="flex gap-1 items-start">
+                        <Input
+                          value={name}
+                          onChange={e => {
+                            const copy: Record<string, string> = {};
+                            for (const [k, v] of outEntries) copy[k === name ? e.target.value : k] = v;
+                            updateTestFiles(i, "expectedFiles", copy);
+                          }}
+                          className="h-7 w-28 text-[10px] font-mono"
+                        />
+                        <Textarea value={content} onChange={e => updateTestFiles(i, "expectedFiles", { ...expectedFiles, [name]: e.target.value })} rows={2} placeholder="conținut așteptat" className="text-xs font-mono min-h-0 flex-1" />
+                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { const copy = { ...expectedFiles }; delete copy[name]; updateTestFiles(i, "expectedFiles", copy); }}><Trash2 className="h-3 w-3" /></Button>
+                      </div>
+                    ))}
+                    <Button variant="outline" size="sm" className="h-7 text-[10px]" onClick={() => updateTestFiles(i, "expectedFiles", { ...expectedFiles, [outEntries.length === 0 ? "date.out" : `file${outEntries.length + 1}.out`]: "" })}>
+                      <Plus className="h-3 w-3 mr-1" />Fișier ieșire
+                    </Button>
+                  </div>
+                </div>
               </div>
-            ))}
+            );})}
+
             <Button variant="outline" size="sm" onClick={() => setTestCases([...testCases, { input: "", expected_output: "", hidden: false }])}><Plus className="h-3 w-3 mr-1" />Caz de test</Button>
           </div>
 
@@ -764,6 +846,14 @@ function EvalExerciseEditor({ exercise, lessonId, nextIndex, onSave, onCancel }:
                     <div className="text-muted-foreground">Intrare: {r.input || "(gol)"}</div>
                     <div className="text-muted-foreground">Așteptat: {r.expectedOutput || "(gol)"}</div>
                     <div className={r.passed ? "text-muted-foreground" : "text-destructive"}>Obținut: {r.actualOutput || "(gol)"}</div>
+                    {r.fileResults?.map((f) => (
+                      <div key={f.name} className={`mt-1 border-t border-border/40 pt-1 ${f.passed ? "text-muted-foreground" : "text-destructive"}`}>
+                        <div className="font-sans font-bold">{f.name} — {f.passed ? "corect" : f.missing ? "fișier lipsă" : "diferit"}</div>
+                        <div>Așteptat: {f.expected || "(gol)"}</div>
+                        {!f.missing && <div>Obținut: {f.actual || "(gol)"}</div>}
+                      </div>
+                    ))}
+
                     {r.error && <div className="text-destructive">Eroare: {r.error}</div>}
                   </div>
                 ))}
