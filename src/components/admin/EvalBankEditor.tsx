@@ -226,7 +226,7 @@ function ChapterBlock({ chapter, isExpanded, onToggle, isEditing, onStartEdit, o
 
 
 // --- Lessons List ---
-function LessonsList({ chapterId, expandedLesson, setExpandedLesson, creatingLesson, setCreatingLesson, lessonForm, setLessonForm, editingLesson, setEditingLesson, editingExercise, setEditingExercise, mutations, sensors, invalidateAll }: any) {
+function LessonsList({ chapterId, chapterTitle, expandedLesson, setExpandedLesson, creatingLesson, setCreatingLesson, lessonForm, setLessonForm, editingLesson, setEditingLesson, editingExercise, setEditingExercise, mutations, sensors, invalidateAll, exportingLessonId, setExportingLessonId }: any) {
   const { data: lessons = [] } = useEvalLessons(chapterId);
 
   const handleLessonReorder = async (event: DragEndEvent) => {
@@ -249,6 +249,7 @@ function LessonsList({ chapterId, expandedLesson, setExpandedLesson, creatingLes
             <SortableItem key={lesson.id} id={lesson.id} gripSize="h-4 w-4">
               <LessonBlock
                 lesson={lesson}
+                chapterTitle={chapterTitle}
                 isExpanded={expandedLesson === lesson.id}
                 onToggle={() => setExpandedLesson(expandedLesson === lesson.id ? null : lesson.id)}
                 isEditing={editingLesson === lesson.id}
@@ -266,6 +267,8 @@ function LessonsList({ chapterId, expandedLesson, setExpandedLesson, creatingLes
                 mutations={mutations}
                 sensors={sensors}
                 invalidateAll={invalidateAll}
+                exportingLessonId={exportingLessonId}
+                setExportingLessonId={setExportingLessonId}
               />
             </SortableItem>
           ))}
@@ -296,6 +299,7 @@ function LessonsList({ chapterId, expandedLesson, setExpandedLesson, creatingLes
     </>
   );
 }
+
 
 // --- Lesson Block ---
 function LessonBlock({ lesson, isExpanded, onToggle, isEditing, onStartEdit, onCancelEdit, editForm, setEditForm, onSaveEdit, onDelete, editingExercise, setEditingExercise, mutations, sensors, invalidateAll }: any) {
