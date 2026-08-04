@@ -12,7 +12,10 @@ import { Switch } from "@/components/ui/switch";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { ArrowLeft, Plus, Trash2, Save, Edit2, ChevronDown, ChevronRight, BookOpen, GripVertical, Eye, ChevronLeft, Clock } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Save, Edit2, ChevronDown, ChevronRight, BookOpen, GripVertical, Eye, ChevronLeft, Clock, FileDown, Loader2 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { exportTestToPdf } from "@/lib/testPdfExport";
+
 import {
   DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors,
   type DragEndEvent,
