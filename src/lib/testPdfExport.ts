@@ -249,10 +249,16 @@ export async function exportTestToPdf(
         y += 1.5;
       } else if (type === "truefalse") {
         if (codeTemplate) writeCode(codeTemplate);
+        const statement = stripMarkup(ex.statement ?? item.custom_data?.statement ?? "");
+        if (statement && statement !== question) {
+          writeText("Afirmație:", { size: 9.5, variant: "bold", indent: 3, color: [90, 95, 105], gap: 0.8 });
+          writeText(statement, { size: 10.5, indent: 6, color: [30, 30, 30] });
+        }
         const isTrue = ex.is_true ?? ex.isTrue;
         writeAnswerLine("Adevărat", isTrue === true);
         writeAnswerLine("Fals", isTrue === false);
         y += 1.5;
+
       } else if (type === "fill") {
         if (codeTemplate) writeCode(codeTemplate);
         const blanks = (ex.blanks || []) as { id: string; answer: string }[];
