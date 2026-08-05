@@ -48,7 +48,7 @@ const AboutPage = () => {
         />
         <link rel="canonical" href="https://pyroskill.info/about" />
         <meta property="og:title" content="PyRo — Învață Python pas cu pas" />
-        <meta property="og:description" content="Platformă educațională Python pentru elevi și profesori. Lecții, teste, AI grading și analitice." />
+        <meta property="og:description" content="Platformă educațională Python pentru elevi și profesori. Lecții, teste, AI grading și date statistice." />
         <meta property="og:url" content="https://pyroskill.info/about" />
         <meta property="og:type" content="website" />
         <script type="application/ld+json">
@@ -96,7 +96,7 @@ const AboutPage = () => {
             </p>
             <p className="mt-3 text-muted-foreground">
               Pe lângă lecții, PyRo oferă o suită completă de unelte pentru profesori: clase, teste,
-              notare cu AI și analitice detaliate pe elevi.
+              notare cu AI și date statistice detaliate pe elevi.
             </p>
           </div>
           <div className="rounded-xl border border-border bg-card p-6">
