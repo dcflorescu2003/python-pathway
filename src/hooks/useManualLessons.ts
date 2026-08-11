@@ -41,7 +41,7 @@ async function fetchManualLessons(): Promise<ManualLesson[]> {
 
   const { data: exercises, error: eErr } = await supabase
     .from("manual_exercises")
-    .select(await manualExerciseColumns())
+    .select(await manualExerciseColumns()) as unknown as { data: any[] | null; error: any }
     .order("sort_order");
   if (eErr) throw eErr;
 
