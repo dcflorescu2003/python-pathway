@@ -1,6 +1,6 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Sparkles } from "lucide-react";
+import { Sparkles, X } from "lucide-react";
 
 interface Props {
   icon: string;
@@ -17,11 +17,31 @@ const MotivationalTipCard = ({
   message,
   gradientClass,
   onDismiss,
-  durationMs = 2000,
+  durationMs = 5000,
 }: Props) => {
+  const [progress, setProgress] = useState(0);
+
   useEffect(() => {
-    const t = setTimeout(onDismiss, durationMs);
-    return () => clearTimeout(t);
+    const start = Date.now();
+    const duration = Math.max(durationMs, 5000);
+    let raf = 0;
+
+    const tick = () => {
+      const elapsed = Date.now() - start;
+      const p = Math.min(elapsed / duration, 1);
+      setProgress(p);
+      if (p < 1) {
+        raf = requestAnimationFrame(tick);
+      }
+    };
+
+    raf = requestAnimationFrame(tick);
+    const t = setTimeout(onDismiss, duration);
+
+    return () => {
+      cancelAnimationFrame(raf);
+      clearTimeout(t);
+    };
   }, [onDismiss, durationMs]);
 
   return (
@@ -30,11 +50,28 @@ const MotivationalTipCard = ({
       animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 0.85 }}
       transition={{ type: "spring", stiffness: 260, damping: 22 }}
-      className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none px-4"
+      className="fixed inset-0 z-50 flex items-center justify-center px-4"
     >
       <div
         className={`relative overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-r ${gradientClass} p-4 shadow-2xl w-full max-w-md`}
       >
+        {/* Progress bar */}
+        <div className="absolute bottom-0 left-0 h-1 bg-white/30">
+          <motion.div
+            className="h-full bg-white/80"
+            style={{ width: `${progress * 100}%` }}
+          />
+        </div>
+
+        {/* Close button */}
+        <button
+          onClick={onDismiss}
+          aria-label="Închide"
+          className="absolute top-2 right-2 z-10 p-1 rounded-full bg-white/10 hover:bg-white/20 text-white/80 hover:text-white transition-colors pointer-events-auto"
+        >
+          <X className="h-4 w-4" />
+        </button>
+
         {/* Sparkle overlay */}
         <motion.div
           className="absolute -top-4 -right-4 text-white/40"
@@ -51,7 +88,7 @@ const MotivationalTipCard = ({
           <Sparkles className="h-20 w-20" />
         </motion.div>
 
-        <div className="relative flex items-center gap-3">
+        <div className="relative flex items-center gap-3 pr-6">
           <motion.div
             className="text-4xl shrink-0"
             animate={{ scale: [1, 1.15, 1], rotate: [0, -8, 8, 0] }}
