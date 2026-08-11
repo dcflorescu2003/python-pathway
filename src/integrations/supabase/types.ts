@@ -1940,6 +1940,21 @@ export type Database = {
         }
       }
       get_problem_solution: { Args: { p_id: string }; Returns: string }
+      get_problems_catalog: {
+        Args: never
+        Returns: {
+          chapter_id: string
+          description: string
+          difficulty: string
+          hint: string
+          id: string
+          is_premium: boolean
+          sort_order: number
+          test_cases: Json
+          title: string
+          xp_reward: number
+        }[]
+      }
       get_student_competency_profile:
         | {
             Args: { p_user_id: string }
@@ -2041,6 +2056,7 @@ export type Database = {
           variant: string
         }[]
       }
+      has_premium_access: { Args: { _user_id: string }; Returns: boolean }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -2110,6 +2126,10 @@ export type Database = {
       save_submission_draft: {
         Args: { p_answers: Json; p_submission_id: string }
         Returns: undefined
+      }
+      source_in_accessible_test: {
+        Args: { _source_id: string }
+        Returns: boolean
       }
       student_can_view_test: { Args: { p_test_id: string }; Returns: boolean }
       submit_teacher_verification: {

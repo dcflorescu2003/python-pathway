@@ -1,7 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { fetchAllPaginated } from "@/lib/supabasePagination";
 
 export interface TestCase {
   input?: string;
@@ -51,13 +50,9 @@ async function fetchProblems(): Promise<{ problems: Problem[]; problemChapters: 
 
   if (chaptersError) throw chaptersError;
 
-  const problemsData = await fetchAllPaginated<any>(() =>
-    supabase
-      .from("problems")
-      .select("id, title, description, difficulty, xp_reward, test_cases, hint, chapter_id, sort_order, is_premium")
-      .order("sort_order", { ascending: true })
-      .order("id", { ascending: true })
-  );
+  const { data: catalog, error: problemsError } = await supabase.rpc("get_problems_catalog");
+  if (problemsError) throw problemsError;
+  const problemsData = (catalog || []) as any[];
 
   const problemChapters: ProblemChapter[] = (chaptersData || []).map((ch: any) => ({
     id: ch.id,

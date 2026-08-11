@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { manualExerciseColumns } from "@/lib/manualExerciseColumns";
 import { useQuery } from "@tanstack/react-query";
 import type { Exercise } from "@/hooks/useChapters";
 import { useAuth } from "@/hooks/useAuth";
@@ -107,11 +108,11 @@ const ManualLessonPage = () => {
         .maybeSingle();
       if (lErr || !l) return null;
 
-      const { data: exs } = await supabase
+      const { data: exs } = (await supabase
         .from("manual_exercises")
-        .select("*")
+        .select(await manualExerciseColumns())
         .eq("lesson_id", lessonId!)
-        .order("sort_order");
+        .order("sort_order")) as unknown as { data: any[] | null };
 
       return {
         id: l.id,
