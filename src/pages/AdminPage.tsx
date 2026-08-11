@@ -124,6 +124,12 @@ const AdminPage = () => {
             <UsersManager />
           </TabsContent>
 
+          <TabsContent value="stats">
+            <StatsDashboard />
+          </TabsContent>
+
+
+
           <TabsContent value="settings">
             <div className="space-y-4">
               <AdminPushTester />
