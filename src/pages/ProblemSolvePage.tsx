@@ -23,11 +23,11 @@ const ProblemSolvePage = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const fromChapter = (location.state as { fromChapter?: string } | null)?.fromChapter;
-  const { data, isLoading: problemsLoading } = useProblems();
+  const { data, isLoading: problemsLoading, refetch: refetchProblems } = useProblems();
   const problem = data?.problems.find((p) => p.id === problemId);
   const { loading, running, runCode, runStaticChecks } = usePyodide();
   const { progress, completeLesson, streakJustIncreased, newStreakCount, dismissStreakCelebration } = useProgress();
-  const { subscribed } = useSubscription();
+  const { subscribed, checkSubscription } = useSubscription();
   const { user } = useAuth();
   const [code, setCode] = useState("");
   const [results, setResults] = useState<TestResult[] | null>(null);
@@ -36,6 +36,7 @@ const ProblemSolvePage = () => {
   const [showSolution, setShowSolution] = useState(false);
   const [solutionText, setSolutionText] = useState<string | null>(null);
   const [loadingSolution, setLoadingSolution] = useState(false);
+  const premiumRetryDone = useRef(false);
 
   const fetchSolution = useCallback(async () => {
     if (!problem || solutionText !== null) return;
@@ -51,6 +52,22 @@ const ProblemSolvePage = () => {
       navigate("/problems", { state: { fromChapter: fromChapter ?? problem?.chapter } });
     }
   }, [problem, subscribed, navigate]);
+
+  // Abonat activ, dar catalogul a venit fără cazuri de test (flag premium
+  // nesincronizat pe server). Reîmprospătăm abonamentul o singură dată și
+  // reîncărcăm catalogul, ca să nu rămână problema imposibil de rulat.
+  useEffect(() => {
+    if (!problem || !problem.isPremium || !subscribed) return;
+    const hasContent =
+      (problem.testCases?.length ?? 0) > 0 || (problem.staticChecks?.length ?? 0) > 0;
+    if (hasContent || premiumRetryDone.current) return;
+    premiumRetryDone.current = true;
+    void (async () => {
+      await checkSubscription(true);
+      await refetchProblems();
+    })();
+  }, [problem, subscribed, checkSubscription, refetchProblems]);
+
 
   if (problemsLoading) return <LoadingScreen />;
 
