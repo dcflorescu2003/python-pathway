@@ -39,10 +39,10 @@ async function fetchManualLessons(): Promise<ManualLesson[]> {
     .order("sort_order");
   if (lErr) throw lErr;
 
-  const { data: exercises, error: eErr } = await supabase
+  const { data: exercises, error: eErr } = (await supabase
     .from("manual_exercises")
-    .select(await manualExerciseColumns()) as unknown as { data: any[] | null; error: any }
-    .order("sort_order");
+    .select(await manualExerciseColumns())
+    .order("sort_order")) as unknown as { data: any[] | null; error: any };
   if (eErr) throw eErr;
 
   const byLesson: Record<string, Exercise[]> = {};
