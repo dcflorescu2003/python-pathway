@@ -109,7 +109,7 @@ const ManualLessonPage = () => {
 
       const { data: exs } = await supabase
         .from("manual_exercises")
-        .select("*")
+        .select(await manualExerciseColumns())
         .eq("lesson_id", lessonId!)
         .order("sort_order");
 

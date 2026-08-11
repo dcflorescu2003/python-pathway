@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { manualExerciseColumns } from "@/lib/manualExerciseColumns";
 import type { Exercise } from "@/hooks/useChapters";
 
 export interface ManualLesson {
@@ -40,7 +41,7 @@ async function fetchManualLessons(): Promise<ManualLesson[]> {
 
   const { data: exercises, error: eErr } = await supabase
     .from("manual_exercises")
-    .select("*")
+    .select(await manualExerciseColumns())
     .order("sort_order");
   if (eErr) throw eErr;
 
