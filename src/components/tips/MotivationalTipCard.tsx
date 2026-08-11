@@ -50,13 +50,13 @@ const MotivationalTipCard = ({
       animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 0.85 }}
       transition={{ type: "spring", stiffness: 260, damping: 22 }}
-      className="fixed inset-0 z-50 flex items-center justify-center px-4"
+      className="fixed inset-0 z-50 flex items-center justify-center px-4 pointer-events-none"
     >
       <div
-        className={`relative overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-r ${gradientClass} p-4 shadow-2xl w-full max-w-md`}
+        className={`relative overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-r ${gradientClass} p-4 shadow-2xl w-full max-w-md pointer-events-auto`}
       >
         {/* Progress bar */}
-        <div className="absolute bottom-0 left-0 h-1 bg-white/30">
+        <div className="absolute bottom-0 left-0 h-1 bg-white/30 w-full">
           <motion.div
             className="h-full bg-white/80"
             style={{ width: `${progress * 100}%` }}
