@@ -82,6 +82,10 @@ const AdminPage = () => {
               <Users className="h-4 w-4" />
               Utilizatori
             </TabsTrigger>
+            <TabsTrigger value="stats" className="flex-1 gap-2">
+              <BarChart3 className="h-4 w-4" />
+              Statistici
+            </TabsTrigger>
             <TabsTrigger value="settings" className="flex-1 gap-2">
               <Settings className="h-4 w-4" />
               Setări
