@@ -13,9 +13,10 @@ import TeacherApproval from "@/components/admin/TeacherApproval";
 import EvalBankEditor from "@/components/admin/EvalBankEditor";
 import PredefinedTestEditor from "@/components/admin/PredefinedTestEditor";
 import UsersManager from "@/components/admin/UsersManager";
+import StatsDashboard from "@/components/admin/StatsDashboard";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { BookOpen, Ticket, Code2, Settings, FileText, GraduationCap, Database, ClipboardList, Users } from "lucide-react";
+import { BookOpen, Ticket, Code2, Settings, FileText, GraduationCap, Database, ClipboardList, Users, BarChart3 } from "lucide-react";
 
 const AdminPage = () => {
   const navigate = useNavigate();
@@ -81,6 +82,10 @@ const AdminPage = () => {
               <Users className="h-4 w-4" />
               Utilizatori
             </TabsTrigger>
+            <TabsTrigger value="stats" className="flex-1 gap-2">
+              <BarChart3 className="h-4 w-4" />
+              Statistici
+            </TabsTrigger>
             <TabsTrigger value="settings" className="flex-1 gap-2">
               <Settings className="h-4 w-4" />
               Setări
@@ -118,6 +123,12 @@ const AdminPage = () => {
           <TabsContent value="users">
             <UsersManager />
           </TabsContent>
+
+          <TabsContent value="stats">
+            <StatsDashboard />
+          </TabsContent>
+
+
 
           <TabsContent value="settings">
             <div className="space-y-4">
