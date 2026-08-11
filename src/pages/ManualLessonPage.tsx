@@ -108,11 +108,11 @@ const ManualLessonPage = () => {
         .maybeSingle();
       if (lErr || !l) return null;
 
-      const { data: exs } = await supabase
+      const { data: exs } = (await supabase
         .from("manual_exercises")
-        .select(await manualExerciseColumns()) as unknown as { data: any[] | null }
+        .select(await manualExerciseColumns())
         .eq("lesson_id", lessonId!)
-        .order("sort_order");
+        .order("sort_order")) as unknown as { data: any[] | null };
 
       return {
         id: l.id,
