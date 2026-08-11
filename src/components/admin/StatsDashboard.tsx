@@ -83,6 +83,7 @@ const StatsDashboard = () => {
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
+            <SelectItem value="1">Azi</SelectItem>
             <SelectItem value="7">Ultimele 7 zile</SelectItem>
             <SelectItem value="30">Ultimele 30 zile</SelectItem>
             <SelectItem value="90">Ultimele 90 zile</SelectItem>
