@@ -1,7 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { fetchAllPaginated } from "@/lib/supabasePagination";
 
 export interface TestCase {
   input?: string;
