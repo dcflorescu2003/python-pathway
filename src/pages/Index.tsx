@@ -373,7 +373,11 @@ const Index = (): JSX.Element => {
       </header>
 
       <main className="px-4 py-6">
+        <h1 className="text-2xl font-bold text-foreground mb-4">Tablou de bord PyRo</h1>
         <TeacherTestsCard />
+
+
+        
 
 
         
