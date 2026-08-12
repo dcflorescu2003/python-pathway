@@ -558,12 +558,17 @@ const AuthPage = () => {
         <div className="text-center mb-8">
           <PyroLogo size="lg" className="mx-auto mb-3" />
           <h1 className="text-2xl font-bold text-foreground">
-            {isLogin ? "Bine ai revenit!" : "Creează un cont"}
+            {isLogin ? "Bine ai revenit pe PyRo!" : "Creează un cont PyRo"}
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
             {isLogin ? "Conectează-te pentru a continua" : "Începe să înveți Python"}
           </p>
+          <p className="text-xs text-muted-foreground mt-2 max-w-xs mx-auto">
+            PyRo (pyroskill.info) este o platformă educațională de învățare a limbajului Python
+            pentru elevi și profesori. Contul îți salvează progresul la lecții și probleme.
+          </p>
         </div>
+
 
         <Card className="w-full max-w-sm border-border">
           <CardContent className="p-5 space-y-4">
