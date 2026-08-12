@@ -146,7 +146,18 @@ serve(async (req) => {
       }
     }
 
-    const isPremium = stripeActive || couponActive || playActive;
+    // Premium acordat manual din panoul de admin
+    const { data: manualProfile } = await supabaseClient
+      .from("profiles")
+      .select("premium_manual, premium_manual_until")
+      .eq("user_id", userId)
+      .maybeSingle();
+
+    const manualActive = !!manualProfile?.premium_manual &&
+      (!manualProfile.premium_manual_until || new Date(manualProfile.premium_manual_until) > now);
+    if (manualActive) logStep("Active manual admin premium", { until: manualProfile?.premium_manual_until });
+
+    const isPremium = stripeActive || couponActive || playActive || manualActive;
 
     const profileUpdate: Record<string, any> = { is_premium: isPremium };
     // (teacher coupon expiration logic preserved below)
