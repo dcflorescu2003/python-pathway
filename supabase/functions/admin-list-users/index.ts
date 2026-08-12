@@ -56,7 +56,7 @@ Deno.serve(async (req) => {
     // Fetch profiles with optional name search
     let pq = admin
       .from("profiles")
-      .select("user_id, display_name, first_name, last_name, nickname, is_premium, is_teacher, teacher_status, created_at", { count: "exact" });
+      .select("user_id, display_name, first_name, last_name, nickname, is_premium, is_teacher, teacher_status, premium_manual, premium_manual_until, created_at", { count: "exact" });
 
     if (filter === "premium") pq = pq.eq("is_premium", true);
     if (filter === "free") pq = pq.eq("is_premium", false);
@@ -98,7 +98,7 @@ Deno.serve(async (req) => {
       const s = `%${search}%`;
       const { data, error, count } = await admin
         .from("profiles")
-        .select("user_id, display_name, first_name, last_name, nickname, is_premium, is_teacher, teacher_status, created_at", { count: "exact" })
+        .select("user_id, display_name, first_name, last_name, nickname, is_premium, is_teacher, teacher_status, premium_manual, premium_manual_until, created_at", { count: "exact" })
         .or(
           `user_id.in.(${emailMatchedIds.join(",")}),display_name.ilike.${s},first_name.ilike.${s},last_name.ilike.${s},nickname.ilike.${s}`
         )
@@ -160,8 +160,11 @@ Deno.serve(async (req) => {
       const play = playMap[p.user_id];
       const coupon = couponMap[p.user_id];
       let premium_source: string = "none";
+      const manualActive = !!p.premium_manual &&
+        (!p.premium_manual_until || new Date(p.premium_manual_until) > new Date());
       if (play) premium_source = play.platform === "ios" ? "appstore" : "play";
       else if (coupon) premium_source = "coupon";
+      else if (manualActive) premium_source = "manual";
       else if (p.is_premium) premium_source = "stripe";
 
       return {
