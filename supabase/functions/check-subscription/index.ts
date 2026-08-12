@@ -182,9 +182,9 @@ serve(async (req) => {
       couponDaysRemaining = Math.ceil((new Date(couponEnd).getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
     }
 
-    // Determine source priority: native (ios/android) > stripe > coupon
+    // Determine source priority: native (ios/android) > stripe > coupon > admin manual
     const nativeSource = playPlatform === "ios" ? "ios_iap" : "play_billing";
-    const source = playActive ? nativeSource : stripeActive ? "stripe" : couponActive ? "coupon" : null;
+    const source = playActive ? nativeSource : stripeActive ? "stripe" : couponActive ? "coupon" : manualActive ? "admin" : null;
     const finalProductId = playActive ? playProductId : productId;
     const finalEnd = playActive ? playEnd : (subscriptionEnd || couponEnd);
 
