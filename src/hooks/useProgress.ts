@@ -413,64 +413,61 @@ export function useProgress() {
     };
   }, [user]);
 
+  const applyServerAward = useCallback(
+    (lessonId: string, result: any) => {
+      if (!result) return;
+      setProgress((prev) => {
+        const newStarted = { ...prev.startedLessons };
+        delete newStarted[lessonId];
+        const newProgress: UserProgress = {
+          ...prev,
+          xp: typeof result.total_xp === "number" ? result.total_xp : prev.xp,
+          streak: typeof result.streak === "number" ? result.streak : prev.streak,
+          lastActivityDate: getTodayDate(),
+          completedLessons: {
+            ...prev.completedLessons,
+            [lessonId]: {
+              score: Math.max(prev.completedLessons[lessonId]?.score ?? 0, result.score ?? 0),
+              completed: true,
+            },
+          },
+          startedLessons: newStarted,
+        };
+        saveLocalProgress(newProgress, user?.id);
+        return newProgress;
+      });
+      if (result.streak_increased) {
+        setStreakJustIncreased(true);
+        setNewStreakCount(result.streak ?? 0);
+      }
+    },
+    [user]
+  );
+
   const completeLesson = useCallback(
     async (lessonId: string, xpEarned: number, score: number) => {
-      let bonusMultiplier = 1;
-      if (user) {
-        try {
-          const { data: memberships } = await supabase
-            .from("class_members")
-            .select("class_id")
-            .eq("student_id", user.id);
-          if (memberships && memberships.length > 0) {
-            const classIds = memberships.map((membership) => membership.class_id);
-            const { data: matchingChallenges } = await supabase
-              .from("challenges")
-              .select("id")
-              .in("class_id", classIds)
-              .eq("item_id", lessonId)
-              .limit(1);
-            if (matchingChallenges && matchingChallenges.length > 0) {
-              bonusMultiplier = 1.1;
-            }
-          }
-        } catch {}
-      }
-
+      // Actualizare optimistă locală (XP-ul final este calculat pe server)
       setProgress((prev) => {
         const previousEntry = prev.completedLessons[lessonId];
         const alreadyCompleted = !!previousEntry?.completed;
-        const finalXP = Math.round((alreadyCompleted ? 3 : xpEarned) * bonusMultiplier);
-
-        // Diagnostic temporar: să vedem când și de ce se acordă 3 XP
-        console.log("[completeLesson]", {
-          lessonId,
-          xpRewardSetat: xpEarned,
-          alreadyCompleted,
-          previousEntry,
-          finalXP,
-          bonusMultiplier,
-        });
+        const optimisticXP = alreadyCompleted ? 3 : xpEarned;
 
         const today = getTodayDate();
         const isFirstActivityToday = prev.lastActivityDate !== today;
         const newStreak = computeNewStreak(prev.streak, prev.lastActivityDate);
 
-        if (isFirstActivityToday) {
+        if (isFirstActivityToday && !user) {
           setStreakJustIncreased(true);
           setNewStreakCount(newStreak);
         }
 
-        // Keep best score across redos — never lower a previously achieved score
         const bestScore = Math.max(previousEntry?.score ?? 0, score);
-
-        // Lecția devine completă, deci o scoatem din "started"
         const newStarted = { ...prev.startedLessons };
         delete newStarted[lessonId];
 
         const newProgress: UserProgress = {
           ...prev,
-          xp: prev.xp + finalXP,
+          xp: prev.xp + optimisticXP,
           streak: newStreak,
           lastActivityDate: today,
           completedLessons: {
@@ -481,15 +478,53 @@ export function useProgress() {
         };
 
         saveLocalProgress(newProgress, user?.id);
-        if (user) {
-          syncToCloudWithRetry(user.id, newProgress).catch(console.error);
-        }
-
         return newProgress;
       });
+
+      if (!user) return;
+
+      // Sursa de adevăr pentru XP: funcția de server (anti-fraudă)
+      const { data, error } = await supabase.rpc("award_progress" as any, {
+        p_item_id: lessonId,
+        p_score: score,
+        p_allow_redo: true,
+        p_via_solution: false,
+      });
+
+      if (error) {
+        console.error("[completeLesson] award_progress failed:", error.message);
+        markPendingSync(user.id);
+        return;
+      }
+
+      applyServerAward(lessonId, data as any);
     },
-    [user]
+    [user, applyServerAward]
   );
+
+  /**
+   * Elevul a apelat la rezolvarea unei probleme: o marcăm ca rezolvată și
+   * primește 1 XP (doar prima dată).
+   */
+  const revealSolution = useCallback(
+    async (itemId: string) => {
+      if (!user) return null;
+      const { data, error } = await supabase.rpc("award_progress" as any, {
+        p_item_id: itemId,
+        p_score: 0,
+        p_allow_redo: false,
+        p_via_solution: true,
+      });
+      if (error) {
+        console.error("[revealSolution] award_progress failed:", error.message);
+        return null;
+      }
+      applyServerAward(itemId, data as any);
+      return data as any;
+    },
+    [user, applyServerAward]
+  );
+
 
   const loseLife = useCallback(() => {
     setProgress((prev) => {
