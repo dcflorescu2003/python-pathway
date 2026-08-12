@@ -315,11 +315,11 @@ const Index = (): JSX.Element => {
           <div className="flex items-center gap-3">
             <NotificationBell />
             {!progress.isPremium && (
-              <button onClick={() => teacherStatus === "verified" ? setShowTeacherPremium(true) : setShowPremium(true)} className="text-yellow-500 active:scale-95 transition-transform">
+              <button onClick={() => teacherStatus === "verified" ? setShowTeacherPremium(true) : setShowPremium(true)} className="text-yellow-500 active:scale-95 transition-transform" aria-label="Upgrade la Premium">
                 <Crown className="h-5 w-5" />
               </button>
             )}
-            <button onClick={() => setShowStreak(true)} className="flex items-center gap-1 text-warning relative">
+            <button onClick={() => setShowStreak(true)} className="flex items-center gap-1 text-warning relative" aria-label={`Streak: ${progress.streak} zile`}>
               <motion.div
                 animate={progress.streak > 0 ? {
                   scale: [1, 1.2, 1],
