@@ -791,40 +791,26 @@ function mergeProgress(a: UserProgress, b: UserProgress): UserProgress {
 }
 
 async function syncToCloud(userId: string, p: UserProgress) {
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("best_streak")
-    .eq("user_id", userId)
-    .single();
-
-  const currentBest = profile?.best_streak ?? 0;
-  const newBest = Math.max(currentBest, p.streak);
-
+  // XP / streak / best_streak sunt server-authoritative (anti-fraudă):
+  // se scriu exclusiv prin award_progress / record_activity.
   await supabase
     .from("profiles")
     .update({
-      xp: p.xp,
-      streak: p.streak,
       // Do NOT write `lives` or `lives_updated_at` here. Those are managed
       // exclusively by loseLife / setLivesFromReward / regenerateLives so that
       // a page refresh or a stale localStorage copy cannot reset the 30-min
       // regeneration timer on web.
       is_premium: p.isPremium,
       last_activity_date: p.lastActivityDate,
-      best_streak: newBest,
     })
     .eq("user_id", userId);
 
   const lessonEntries = Object.entries(p.completedLessons)
     .filter(([, value]) => value.completed)
-    .map(([lessonId, value]) => ({
-      user_id: userId,
-      lesson_id: lessonId,
-      score: value.score,
-    }));
+    .map(([lessonId, value]) => ({ lesson_id: lessonId, score: value.score }));
 
   if (lessonEntries.length > 0) {
-    // Fetch existing cloud scores to avoid lowering a previously achieved best
+    // Fetch existing cloud scores to avoid redundant writes
     const lessonIds = lessonEntries.map((e) => e.lesson_id);
     const { data: existing } = await supabase
       .from("completed_lessons")
@@ -835,10 +821,18 @@ async function syncToCloud(userId: string, p: UserProgress) {
     const existingMap = new Map((existing ?? []).map((r) => [r.lesson_id, r.score ?? 0]));
 
     for (const entry of lessonEntries) {
-      const cloudScore = existingMap.get(entry.lesson_id) ?? -1;
-      if (entry.score >= cloudScore) {
-        await supabase.from("completed_lessons").upsert(entry, { onConflict: "user_id,lesson_id" });
+      const cloudScore = existingMap.get(entry.lesson_id);
+      if (cloudScore === undefined || entry.score > cloudScore) {
+        // Sincronizare offline: fără XP de reluare, doar prima finalizare.
+        const { error } = await supabase.rpc("award_progress" as any, {
+          p_item_id: entry.lesson_id,
+          p_score: entry.score,
+          p_allow_redo: false,
+          p_via_solution: false,
+        });
+        if (error) console.warn("[syncToCloud] award_progress:", entry.lesson_id, error.message);
       }
     }
   }
 }
+
