@@ -48,6 +48,8 @@ import LivesRefilledDialog from "@/components/LivesRefilledDialog";
 import ComebackDialog from "@/components/ComebackDialog";
 import MotivationalTipCard from "@/components/tips/MotivationalTipCard";
 import { useMotivationalTip } from "@/hooks/useMotivationalTip";
+import TeacherVerificationTipCard from "@/components/teacher/TeacherVerificationTipCard";
+import { useTeacherVerificationTip } from "@/hooks/useTeacherVerificationTip";
 import TeacherTestsCard from "@/components/home/TeacherTestsCard";
 
 
@@ -90,6 +92,7 @@ const Index = (): JSX.Element => {
   const [comebackDays, setComebackDays] = useState(0);
 
   const { type: tipType, markShown: markTipShown, dismiss: dismissTip } = useMotivationalTip();
+  const { show: showTeacherVerifyTip, dismiss: dismissTeacherVerifyTip } = useTeacherVerificationTip();
   useEffect(() => {
     if (tipType) markTipShown(tipType);
   }, [tipType, markTipShown]);
@@ -273,7 +276,13 @@ const Index = (): JSX.Element => {
           className="min-h-screen bg-background"
         >
       <AnimatePresence>
-        {tipType === "lessons" && (
+        {showTeacherVerifyTip && (
+          <TeacherVerificationTipCard
+            key="tip-teacher-verify"
+            onDismiss={dismissTeacherVerifyTip}
+          />
+        )}
+        {!showTeacherVerifyTip && tipType === "lessons" && (
           <MotivationalTipCard
             key="tip-lessons"
             icon="🎯"
@@ -283,7 +292,7 @@ const Index = (): JSX.Element => {
             onDismiss={dismissTip}
           />
         )}
-        {tipType === "problems" && (
+        {!showTeacherVerifyTip && tipType === "problems" && (
           <MotivationalTipCard
             key="tip-problems"
             icon="💻"
