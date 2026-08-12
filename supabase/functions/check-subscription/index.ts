@@ -192,7 +192,7 @@ serve(async (req) => {
       subscribed: isPremium,
       subscription_end: finalEnd,
       source,
-      coupon_expired: couponExpired && !stripeActive && !playActive,
+      coupon_expired: couponExpired && !stripeActive && !playActive && !manualActive,
       coupon_type: couponType,
       coupon_days_remaining: couponDaysRemaining,
       product_id: finalProductId,
