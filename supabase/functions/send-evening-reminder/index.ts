@@ -40,6 +40,7 @@ Deno.serve(async (req) => {
     const { data: users, error } = await adminClient
       .from("profiles")
       .select("user_id, display_name, streak, last_evening_reminder_at, last_activity_date")
+      .eq("is_teacher", false)
       .lt("last_activity_date", todayStr)
       .gte("last_activity_date", cutoffStr)
       .or(`last_evening_reminder_at.is.null,last_evening_reminder_at.neq.${todayStr}`);

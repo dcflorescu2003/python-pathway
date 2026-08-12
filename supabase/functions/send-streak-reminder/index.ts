@@ -53,6 +53,7 @@ Deno.serve(async (req) => {
     const { data: users, error } = await adminClient
       .from("profiles")
       .select("user_id, streak, display_name, last_activity_date")
+      .eq("is_teacher", false)
       .gte("last_activity_date", sevenDaysAgoStr)
       .lte("last_activity_date", yesterdayStr)
       .gt("streak", 0);
