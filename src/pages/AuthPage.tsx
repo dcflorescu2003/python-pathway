@@ -655,14 +655,25 @@ const AuthPage = () => {
           </CardContent>
         </Card>
 
-        <div className="mt-4 text-center">
+        <div className="mt-4 text-center space-y-2">
           <button
             onClick={() => navigate("/support")}
             className="text-xs text-muted-foreground hover:text-primary hover:underline transition-colors"
           >
             Ai nevoie de ajutor? Contactează suportul
           </button>
+          <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+            <button onClick={() => navigate("/about")} className="hover:text-primary hover:underline">Despre PyRo</button>
+            <span aria-hidden="true">·</span>
+            <button onClick={() => navigate("/privacy-policy")} className="hover:text-primary hover:underline">Confidențialitate</button>
+            <span aria-hidden="true">·</span>
+            <button onClick={() => navigate("/terms-of-use")} className="hover:text-primary hover:underline">Termeni</button>
+          </div>
+          <p className="text-[11px] text-muted-foreground/80">
+            Site oficial PyRo — pyroskill.info. Nu îți cerem niciodată parola prin email sau mesaje.
+          </p>
         </div>
+
       </div>
 
       {showForgot && (
