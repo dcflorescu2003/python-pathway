@@ -39,12 +39,16 @@ const ProblemSolvePage = () => {
   const premiumRetryDone = useRef(false);
 
   const fetchSolution = useCallback(async () => {
-    if (!problem || solutionText !== null) return;
+    if (!problem) return;
+    // Marcăm problema ca rezolvată prin ajutor: 1 XP, fără XP integral.
+    revealSolution(`problem-${problem.id}`);
+    if (solutionText !== null) return;
     setLoadingSolution(true);
     const { data, error } = await supabase.rpc("get_problem_solution", { p_id: problem.id });
     if (!error && data) setSolutionText(data as string);
     setLoadingSolution(false);
-  }, [problem, solutionText]);
+  }, [problem, solutionText, revealSolution]);
+
 
   useEffect(() => {
     if (problem && problem.isPremium && !subscribed) {
