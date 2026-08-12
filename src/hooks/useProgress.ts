@@ -611,11 +611,24 @@ export function useProgress() {
 
       saveLocalProgress(newProgress, user?.id);
       if (user) {
-        syncToCloud(user.id, newProgress).catch(console.error);
+        // Streak-ul este calculat pe server (anti-fraudă)
+        supabase
+          .rpc("record_activity" as any)
+          .then(({ data, error }: any) => {
+            if (error) return console.error("[recordActivity]", error.message);
+            if (data && typeof data.streak === "number") {
+              setProgress((cur) => {
+                const synced = { ...cur, streak: data.streak, lastActivityDate: today };
+                saveLocalProgress(synced, user.id);
+                return synced;
+              });
+            }
+          });
       }
       return newProgress;
     });
   }, [user]);
+
 
   const dismissStreakCelebration = useCallback(() => setStreakJustIncreased(false), []);
 
