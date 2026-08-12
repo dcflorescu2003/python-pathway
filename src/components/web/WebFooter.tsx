@@ -11,7 +11,13 @@ const WebFooter = () => {
             PyRo te învață Python pas cu pas, prin lecții practice. Curriculum aliniat cu programa de
             clasa a IX-a, cu unelte pentru elevi și profesori.
           </p>
+          <p className="mt-3 max-w-sm text-xs text-muted-foreground">
+            Site oficial: <span className="text-foreground">pyroskill.info</span><br />
+            Contact: <a href="mailto:florescu.cosmin.tr@gmail.com" className="text-foreground hover:underline">florescu.cosmin.tr@gmail.com</a><br />
+            Aplicațiile mobile PyRo sunt publicate pe Google Play și App Store de același operator.
+          </p>
         </div>
+
 
         <div>
           <h3 className="mb-3 text-sm font-semibold">Produs</h3>

@@ -54,16 +54,36 @@
           var hasCodeInQuery = searchParams.has('code');
           var state = hashParams.get('state') || searchParams.get('state') || '';
 
+          // Punte de întoarcere în aplicația nativă PyRo după autentificare.
+          // Se declanșează DOAR pentru fluxul nativ (state = "native:...") și afișează
+          // un mesaj vizibil înainte de a deschide aplicația, fără redirect ascuns.
           if ((hasTokensInHash || hasTokensInQuery || hasCodeInHash || hasCodeInQuery) && state.indexOf('native:') === 0) {
             var payload = hasTokensInHash || hasCodeInHash
               ? hashParams.toString()
               : searchParams.toString();
             var intentUrl = 'intent://auth?' + payload + '#Intent;scheme=pyro;package=ro.pythonpathway.app;end';
-            window.location.replace(intentUrl);
+
+            document.addEventListener('DOMContentLoaded', function() {
+              var root = document.getElementById('root');
+              if (root) {
+                root.innerHTML =
+                  '<div style="min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:24px;background:#0f1219;color:#e6edf3;font-family:system-ui,-apple-system,sans-serif;text-align:center">' +
+                  '<h1 style="font-size:20px;margin:0">PyRo</h1>' +
+                  '<p style="margin:0;max-width:420px;line-height:1.5">Autentificare reușită. Te ducem înapoi în aplicația PyRo instalată pe telefon.</p>' +
+                  '<a id="pyro-native-continue" href="' + intentUrl.replace(/"/g, '&quot;') + '" style="display:inline-block;padding:12px 24px;border-radius:12px;background:#22c55e;color:#0f1219;font-weight:600;text-decoration:none">Deschide aplicația PyRo</a>' +
+                  '<p style="margin:0;font-size:12px;opacity:.7;max-width:420px">Dacă aplicația nu se deschide automat, apasă butonul de mai sus.</p>' +
+                  '</div>';
+              }
+            });
+
+            window.setTimeout(function() {
+              window.location.replace(intentUrl);
+            }, 1200);
           }
         } catch(e) {}
       })();
     </script>
+
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
