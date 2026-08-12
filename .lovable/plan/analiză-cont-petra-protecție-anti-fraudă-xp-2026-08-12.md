@@ -20,17 +20,14 @@ De asemenea, `completed_lessons` acceptă INSERT/UPDATE direct din client cu ori
 ## Ce propun să construim
 
 1. **Blocarea scrierii directe pe XP**
-   - Extinderea triggerului `protect_profile_privileged_columns` astfel încât `xp`, `streak`, `best_streak` să nu mai poată fi modificate direct de client (se păstrează valoarea veche), cu excepția adminilor și a funcțiilor server marcate ca de încredere.
-
+  - Extinderea triggerului `protect_profile_privileged_columns` astfel încât `xp`, `streak`, `best_streak` să nu mai poată fi modificate direct de client (se păstrează valoarea veche), cu excepția adminilor și a funcțiilor server marcate ca de încredere.
 2. **Funcție server pentru acordarea XP** (`award_progress`, SECURITY DEFINER)
-   - Primește `lesson_id`/`problem-<id>` și scorul; verifică pe server că itemul există, calculează XP-ul din `lessons.xp_reward` / `problems.xp_reward`, refuză XP la reluare, scrie `completed_lessons` și incrementează `profiles.xp` atomic.
-   - Frontend-ul (`useProgress.ts`, `LessonPage`, `ManualLessonPage`, `ProblemSolvePage`) apelează această funcție în loc să scrie direct XP-ul.
-
-3. **Validare pe `completed_lessons`**
-   - Trigger care respinge `lesson_id` inexistent și scoruri în afara intervalului 0-100, plus blocarea rescrierii scorului în sus fără trecere prin funcția server.
-
+  - Primește `lesson_id`/`problem-<id>` și scorul; verifică pe server că itemul există, calculează XP-ul din `lessons.xp_reward` / `problems.xp_reward`, refuză XP la reluare, scrie `completed_lessons` și incrementează `profiles.xp` atomic.
+  - Frontend-ul (`useProgress.ts`, `LessonPage`, `ManualLessonPage`, `ProblemSolvePage`) apelează această funcție în loc să scrie direct XP-ul.
+3. **Validare pe `completed_lessons**`
+  - Trigger care respinge `lesson_id` inexistent și scoruri în afara intervalului 0-100, plus blocarea rescrierii scorului în sus fără trecere prin funcția server.
 4. **Detecție pentru admin (tab Statistici)**
-   - Un card „Semnale suspecte": conturi unde XP-ul din profil diferă de XP-ul calculat din activitate cu peste 10%, conturi cu peste N finalizări/oră sau cu intervale sub 10 secunde între itemi. Astfel viitoarele anomalii se văd imediat, fără interogări manuale.
+  - Un card „Semnale suspecte": conturi unde XP-ul din profil diferă de XP-ul calculat din activitate cu peste 10%, conturi cu peste N finalizări/oră sau cu intervale sub 10 secunde între itemi. Astfel viitoarele anomalii se văd imediat, fără interogări manuale.
 
 ## Detalii tehnice
 
@@ -39,3 +36,7 @@ De asemenea, `completed_lessons` acceptă INSERT/UPDATE direct din client cu ori
 - Frontend: `src/hooks/useProgress.ts` rămâne sursa unică — se înlocuiesc scrierile directe de XP cu `supabase.rpc("award_progress", ...)`; logica offline/retry existentă se păstrează (coada de sincronizare apelează RPC-ul la revenire online).
 - Admin: extindere `admin_get_stats` cu o secțiune `anomalies` și un card nou în `src/components/admin/StatsDashboard.tsx`.
 - Fără modificări asupra XP-ului existent al conturilor; nu se resetează nimic pentru Petra, activitatea ei fiind validă.
+
+Mai vreau ca daca in sectiunea de pribleme cineva apasa pe rezolvare, sa se marcheze cumva ca rezolvata pentru user si sa primeasca 1 xp pentru ca a apelat la rezolvare
+
+&nbsp;

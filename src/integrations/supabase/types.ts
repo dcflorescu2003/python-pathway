@@ -1844,6 +1844,7 @@ export type Database = {
       }
     }
     Functions: {
+      admin_get_anomalies: { Args: never; Returns: Json }
       admin_get_stats: { Args: { p_days?: number }; Returns: Json }
       admin_set_premium: {
         Args: { p_premium: boolean; p_user_id: string }
@@ -1852,6 +1853,15 @@ export type Database = {
       approve_teacher_request: {
         Args: { p_notes?: string; p_request_id: string }
         Returns: undefined
+      }
+      award_progress: {
+        Args: {
+          p_allow_redo?: boolean
+          p_item_id: string
+          p_score: number
+          p_via_solution?: boolean
+        }
+        Returns: Json
       }
       backfill_competency_scores: { Args: { p_user_id: string }; Returns: Json }
       can_teacher_view_student: {
@@ -2109,6 +2119,7 @@ export type Database = {
         Args: { p_items: Json; p_user_id: string }
         Returns: undefined
       }
+      record_activity: { Args: never; Returns: Json }
       redeem_coupon_atomic: {
         Args: { p_code: string; p_user_id: string }
         Returns: Json

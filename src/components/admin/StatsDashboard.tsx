@@ -52,6 +52,11 @@ const StatCard = ({ icon: Icon, label, value, hint }: {
   </Card>
 );
 
+interface Anomaly {
+  user_id: string; name: string; nickname: string | null; xp: number;
+  expected_xp: number; xp_gap: number; items: number; bursts: number; max_per_hour: number;
+}
+
 const StatsDashboard = () => {
   const [days, setDays] = useState("30");
 
@@ -66,6 +71,17 @@ const StatsDashboard = () => {
     },
     staleTime: 1000 * 60 * 5,
   });
+
+  const { data: anomalies = [] } = useQuery({
+    queryKey: ["admin-anomalies"],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("admin_get_anomalies" as any);
+      if (error) throw error;
+      return (data ?? []) as unknown as Anomaly[];
+    },
+    staleTime: 1000 * 60 * 5,
+  });
+
 
   const s = data?.summary;
   const a = data?.activity;
@@ -295,7 +311,47 @@ const StatsDashboard = () => {
               </Table>
             </CardContent>
           </Card>
+          <Card className="border-border">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base">Semnale suspecte</CardTitle>
+            </CardHeader>
+            <CardContent className="p-0 overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Utilizator</TableHead>
+                    <TableHead className="text-right">XP</TableHead>
+                    <TableHead className="text-right">XP estimat</TableHead>
+                    <TableHead className="text-right">Diferență</TableHead>
+                    <TableHead className="text-right">Itemi</TableHead>
+                    <TableHead className="text-right">Sub 10s</TableHead>
+                    <TableHead className="text-right">Max/oră</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {anomalies.map((u) => (
+                    <TableRow key={u.user_id}>
+                      <TableCell className="text-sm">
+                        {u.name}
+                        {u.nickname && <span className="text-xs text-muted-foreground ml-1">@{u.nickname}</span>}
+                      </TableCell>
+                      <TableCell className="text-right font-mono text-sm">{u.xp}</TableCell>
+                      <TableCell className="text-right font-mono text-sm">{u.expected_xp}</TableCell>
+                      <TableCell className="text-right font-mono text-sm text-destructive">{u.xp_gap}</TableCell>
+                      <TableCell className="text-right font-mono text-sm">{u.items}</TableCell>
+                      <TableCell className="text-right font-mono text-sm">{u.bursts}</TableCell>
+                      <TableCell className="text-right font-mono text-sm">{u.max_per_hour}</TableCell>
+                    </TableRow>
+                  ))}
+                  {anomalies.length === 0 && (
+                    <TableRow><TableCell colSpan={7} className="text-center text-sm text-muted-foreground py-6">Niciun semnal suspect</TableCell></TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
         </>
+
       )}
     </div>
   );
