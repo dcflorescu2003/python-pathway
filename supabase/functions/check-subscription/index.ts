@@ -146,7 +146,18 @@ serve(async (req) => {
       }
     }
 
-    const isPremium = stripeActive || couponActive || playActive;
+    // Premium acordat manual din panoul de admin
+    const { data: manualProfile } = await supabaseClient
+      .from("profiles")
+      .select("premium_manual, premium_manual_until")
+      .eq("user_id", userId)
+      .maybeSingle();
+
+    const manualActive = !!manualProfile?.premium_manual &&
+      (!manualProfile.premium_manual_until || new Date(manualProfile.premium_manual_until) > now);
+    if (manualActive) logStep("Active manual admin premium", { until: manualProfile?.premium_manual_until });
+
+    const isPremium = stripeActive || couponActive || playActive || manualActive;
 
     const profileUpdate: Record<string, any> = { is_premium: isPremium };
     // (teacher coupon expiration logic preserved below)
@@ -171,9 +182,9 @@ serve(async (req) => {
       couponDaysRemaining = Math.ceil((new Date(couponEnd).getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
     }
 
-    // Determine source priority: native (ios/android) > stripe > coupon
+    // Determine source priority: native (ios/android) > stripe > coupon > admin manual
     const nativeSource = playPlatform === "ios" ? "ios_iap" : "play_billing";
-    const source = playActive ? nativeSource : stripeActive ? "stripe" : couponActive ? "coupon" : null;
+    const source = playActive ? nativeSource : stripeActive ? "stripe" : couponActive ? "coupon" : manualActive ? "admin" : null;
     const finalProductId = playActive ? playProductId : productId;
     const finalEnd = playActive ? playEnd : (subscriptionEnd || couponEnd);
 
@@ -181,7 +192,7 @@ serve(async (req) => {
       subscribed: isPremium,
       subscription_end: finalEnd,
       source,
-      coupon_expired: couponExpired && !stripeActive && !playActive,
+      coupon_expired: couponExpired && !stripeActive && !playActive && !manualActive,
       coupon_type: couponType,
       coupon_days_remaining: couponDaysRemaining,
       product_id: finalProductId,

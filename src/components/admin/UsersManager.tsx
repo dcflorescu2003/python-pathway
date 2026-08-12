@@ -29,7 +29,7 @@ interface AdminUser {
   is_premium: boolean;
   is_teacher: boolean;
   teacher_status: string | null;
-  premium_source: "none" | "stripe" | "play" | "appstore" | "coupon";
+  premium_source: "none" | "stripe" | "play" | "appstore" | "coupon" | "manual";
   play_expiry: string | null;
   coupon_until: string | null;
   coupon_type: string | null;
@@ -107,6 +107,8 @@ const UsersManager = () => {
         return <Badge className="bg-emerald-600 text-emerald-50">Plătit · Web</Badge>;
       case "coupon":
         return <Badge className="bg-blue-600 text-blue-50">Cupon</Badge>;
+      case "manual":
+        return <Badge className="bg-purple-600 text-purple-50">Manual · Admin</Badge>;
       default:
         return <span className="text-xs text-muted-foreground">—</span>;
     }

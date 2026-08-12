@@ -1081,6 +1081,9 @@ export type Database = {
           lives_refilled_dialog_shown_at: string | null
           lives_updated_at: string | null
           nickname: string | null
+          premium_manual: boolean
+          premium_manual_by: string | null
+          premium_manual_until: string | null
           school_id: string | null
           streak: number
           teacher_status: string | null
@@ -1113,6 +1116,9 @@ export type Database = {
           lives_refilled_dialog_shown_at?: string | null
           lives_updated_at?: string | null
           nickname?: string | null
+          premium_manual?: boolean
+          premium_manual_by?: string | null
+          premium_manual_until?: string | null
           school_id?: string | null
           streak?: number
           teacher_status?: string | null
@@ -1145,6 +1151,9 @@ export type Database = {
           lives_refilled_dialog_shown_at?: string | null
           lives_updated_at?: string | null
           nickname?: string | null
+          premium_manual?: boolean
+          premium_manual_by?: string | null
+          premium_manual_until?: string | null
           school_id?: string | null
           streak?: number
           teacher_status?: string | null
