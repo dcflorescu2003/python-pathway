@@ -331,19 +331,25 @@ const StatsDashboard = () => {
           </Card>
           <Card className="border-border">
             <CardHeader className="pb-2">
-              <CardTitle className="text-base">Semnale suspecte</CardTitle>
+              <CardTitle className="text-base">
+                Semnale suspecte
+                <span className="ml-2 text-xs font-normal text-muted-foreground">
+                  (comportament în perioada selectată; minim 2 semnale)
+                </span>
+              </CardTitle>
             </CardHeader>
             <CardContent className="p-0 overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead>Utilizator</TableHead>
-                    <TableHead className="text-right">XP</TableHead>
-                    <TableHead className="text-right">XP estimat</TableHead>
-                    <TableHead className="text-right">Diferență</TableHead>
+                    <TableHead className="text-right">Risc</TableHead>
                     <TableHead className="text-right">Itemi</TableHead>
+                    <TableHead className="text-right">Itemi/zi</TableHead>
                     <TableHead className="text-right">Sub 10s</TableHead>
                     <TableHead className="text-right">Max/oră</TableHead>
+                    <TableHead className="text-right">100% rapid</TableHead>
+                    <TableHead className="text-right">XP total</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -353,21 +359,36 @@ const StatsDashboard = () => {
                         {u.name}
                         {u.nickname && <span className="text-xs text-muted-foreground ml-1">@{u.nickname}</span>}
                       </TableCell>
-                      <TableCell className="text-right font-mono text-sm">{u.xp}</TableCell>
-                      <TableCell className="text-right font-mono text-sm">{u.expected_xp}</TableCell>
-                      <TableCell className="text-right font-mono text-sm text-destructive">{u.xp_gap}</TableCell>
+                      <TableCell className="text-right">
+                        <Badge
+                          variant="outline"
+                          className={
+                            u.risk === "ridicat"
+                              ? "border-destructive text-destructive text-[10px]"
+                              : u.risk === "mediu"
+                              ? "border-amber-500 text-amber-500 text-[10px]"
+                              : "text-[10px]"
+                          }
+                        >
+                          {u.risk}
+                        </Badge>
+                      </TableCell>
                       <TableCell className="text-right font-mono text-sm">{u.items}</TableCell>
+                      <TableCell className="text-right font-mono text-sm">{u.items_per_day}</TableCell>
                       <TableCell className="text-right font-mono text-sm">{u.bursts}</TableCell>
                       <TableCell className="text-right font-mono text-sm">{u.max_per_hour}</TableCell>
+                      <TableCell className="text-right font-mono text-sm">{u.fast_perfect}</TableCell>
+                      <TableCell className="text-right font-mono text-sm">{u.xp}</TableCell>
                     </TableRow>
                   ))}
                   {anomalies.length === 0 && (
-                    <TableRow><TableCell colSpan={7} className="text-center text-sm text-muted-foreground py-6">Niciun semnal suspect</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={8} className="text-center text-sm text-muted-foreground py-6">Niciun semnal suspect</TableCell></TableRow>
                   )}
                 </TableBody>
               </Table>
             </CardContent>
           </Card>
+
         </>
 
       )}
