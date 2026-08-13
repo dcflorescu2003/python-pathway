@@ -9,6 +9,7 @@ import {
   readNativeAuthBackup,
   clearNativeAuthBackup,
 } from "@/integrations/supabase/native-persistence";
+import { wipeLocalUserData } from "@/lib/localWipe";
 
 const PRODUCTION_URL = 'https://pyroskill.info';
 const OAUTH_BROKER_URL = `${PRODUCTION_URL}/~oauth/initiate`;
