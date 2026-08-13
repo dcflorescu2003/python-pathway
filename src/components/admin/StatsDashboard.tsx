@@ -19,7 +19,7 @@ interface StatsData {
   days: number;
   summary: {
     total_users: number; premium_users: number; teachers: number; verified_teachers: number;
-    active_today: number; active_7d: number; active_30d: number; new_users_period: number;
+    active_today: number; active_7d: number; active_30d: number; active_period: number; new_users_period: number;
   };
   activity: {
     lessons_today: number; lessons_7d: number; lessons_period: number;
