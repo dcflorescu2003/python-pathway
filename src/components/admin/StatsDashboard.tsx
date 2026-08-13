@@ -34,6 +34,7 @@ interface StatsData {
   top_users: {
     user_id: string; name: string; nickname: string | null; xp: number; streak: number;
     is_premium: boolean; is_teacher: boolean; last_activity_date: string; items_period: number;
+    active_days: number;
   }[];
 }
 
