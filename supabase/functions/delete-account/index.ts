@@ -90,11 +90,31 @@ Deno.serve(async (req) => {
       await adminClient.from("teacher_referral_codes").delete().eq("teacher_id", userId);
     }
 
+    // Delete student submissions (answers first, FK order)
+    const { data: mySubmissions } = await adminClient
+      .from("test_submissions")
+      .select("id")
+      .eq("student_id", userId);
+    const mySubmissionIds = mySubmissions?.map((s) => s.id) || [];
+    if (mySubmissionIds.length > 0) {
+      await adminClient.from("test_answers").delete().in("submission_id", mySubmissionIds);
+      await adminClient.from("test_submissions").delete().in("id", mySubmissionIds);
+    }
+
     // Delete user data from all tables
     await adminClient.from("completed_lessons").delete().eq("user_id", userId);
+    await adminClient.from("skip_unlocked_lessons").delete().eq("user_id", userId);
+    await adminClient.from("student_competency_scores").delete().eq("user_id", userId);
+    await adminClient.from("student_competency_notes").delete().eq("student_id", userId);
+    await adminClient.from("student_competency_notes").delete().eq("teacher_id", userId);
+    await adminClient.from("class_members").delete().eq("student_id", userId);
     await adminClient.from("coupon_redemptions").delete().eq("user_id", userId);
     await adminClient.from("notifications").delete().eq("user_id", userId);
     await adminClient.from("device_tokens").delete().eq("user_id", userId);
+    await adminClient.from("user_email_reminders").delete().eq("user_id", userId);
+    await adminClient.from("email_change_otps").delete().eq("user_id", userId);
+    await adminClient.from("play_billing_subscriptions").delete().eq("user_id", userId);
+    await adminClient.from("teacher_referral_codes").delete().eq("teacher_id", userId);
     await adminClient.from("user_roles").delete().eq("user_id", userId);
     await adminClient.from("profiles").delete().eq("user_id", userId);
 

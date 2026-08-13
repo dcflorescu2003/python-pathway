@@ -10,6 +10,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useSubscription } from "@/hooks/useSubscription";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { wipeLocalUserData } from "@/lib/localWipe";
 
 const DeleteAccountPage = () => {
   const navigate = useNavigate();
@@ -66,8 +67,10 @@ const DeleteAccountPage = () => {
       }
 
       await signOut();
+      await wipeLocalUserData();
       toast.success("Contul tău a fost șters cu succes.");
-      navigate("/auth", { replace: true });
+      // Hard reload so no in-memory state from the deleted account survives.
+      window.location.replace("/auth");
     } catch {
       toast.error("Eroare la ștergerea contului.");
     } finally {

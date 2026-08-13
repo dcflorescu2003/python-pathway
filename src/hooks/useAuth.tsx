@@ -9,6 +9,7 @@ import {
   readNativeAuthBackup,
   clearNativeAuthBackup,
 } from "@/integrations/supabase/native-persistence";
+import { wipeLocalUserData } from "@/lib/localWipe";
 
 const PRODUCTION_URL = 'https://pyroskill.info';
 const OAUTH_BROKER_URL = `${PRODUCTION_URL}/~oauth/initiate`;
@@ -367,6 +368,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (Capacitor.isNativePlatform()) {
       await clearNativeAuthBackup().catch(() => undefined);
     }
+    // Clear all app-owned local data so the next account starts clean.
+    await wipeLocalUserData();
   };
 
   return (
