@@ -46,3 +46,7 @@ Noua logică propusă:
 - `src/components/account/AccountProfileTab.tsx`: afișarea raportului de sincronizare.
 - Migrare: rescrierea `public.admin_get_anomalies()` cu parametru `p_days`, semnale comportamentale, excludere admin/profesor verificat, scor de risc.
 - `src/components/admin/StatsDashboard.tsx`: tabel „Semnale suspecte” actualizat (coloane noi, badge de risc, transmiterea perioadei selectate).
+
+&nbsp;
+
+Ceva s-a intamplat, pentru ca pana astazi apareau si in browser problemele rezolvate. Cauta cumva un istoric si remediaza problema. In realitate acest cont are toate problemele rezolvate. Verifica sa nu se fi intamplat si la alti utilizatori

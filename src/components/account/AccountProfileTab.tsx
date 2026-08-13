@@ -48,6 +48,8 @@ const AccountProfileTab = ({
   const { user } = useAuth();
   const { progress, resyncFromCloud } = useProgress();
   const [resyncing, setResyncing] = useState(false);
+  const [syncInfo, setSyncInfo] = useState<string | null>(null);
+
   const { data: chapters } = useChapters();
   const { subscribed, subscriptionEnd, source, openPortal, isIOSNative, isAndroidNative } = useSubscription();
   const { data: referralCodes = [] } = useTeacherReferralCodes();
@@ -197,17 +199,31 @@ const AccountProfileTab = ({
               const res = await resyncFromCloud();
               setResyncing(false);
               if (res.ok) {
+                const r = res.report;
+                setSyncInfo(
+                  r
+                    ? `Local: ${res.pushed ?? 0} · trimise cu XP: ${r.awarded} · restaurate: ${r.restored} · ignorate (id necunoscut): ${r.skipped} · în cloud acum: ${res.count}`
+                    : `În cloud acum: ${res.count}`
+                );
                 toast.success(`${res.count} lecții sincronizate din cloud.`);
               } else {
+                setSyncInfo(null);
                 toast.error(res.error ? `Eroare: ${res.error}` : "Sincronizarea a eșuat. Încearcă să te reloghezi.");
               }
             }}
+
           >
             {resyncing ? "Se sincronizează..." : "Resincronizează progresul din cloud"}
           </Button>
           <p className="text-xs text-muted-foreground mt-2 text-center">
             Recuperează lecțiile completate pe alte dispozitive.
           </p>
+          {syncInfo && (
+            <p className="text-[11px] text-muted-foreground mt-2 text-center font-mono break-words">
+              {syncInfo}
+            </p>
+          )}
+
         </CardContent>
       </Card>
 
