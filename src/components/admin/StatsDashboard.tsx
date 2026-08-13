@@ -278,7 +278,12 @@ const StatsDashboard = () => {
 
           <Card className="border-border">
             <CardHeader className="pb-2">
-              <CardTitle className="text-base">Cei mai activi utilizatori</CardTitle>
+              <CardTitle className="text-base">
+                Cei mai activi utilizatori
+                <span className="ml-2 text-xs font-normal text-muted-foreground">
+                  (doar cei activi în perioada selectată)
+                </span>
+              </CardTitle>
             </CardHeader>
             <CardContent className="p-0 overflow-x-auto">
               <Table>
