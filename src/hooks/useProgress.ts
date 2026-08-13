@@ -673,26 +673,19 @@ export function useProgress() {
     [user]
   );
 
-  const resyncFromCloud = useCallback(async (): Promise<{ ok: boolean; count: number; error?: string; pushed?: number }> => {
+  const resyncFromCloud = useCallback(async (): Promise<{ ok: boolean; count: number; error?: string; pushed?: number; report?: SyncReport | null }> => {
     if (!user) return { ok: false, count: 0, error: "Nu ești autentificat." };
     try {
       // PUSH first: trimite în cloud orice lecție completată local care lipsește acolo.
       const localProgress = loadLocalProgress(user.id);
-      const { data: existingCloud, error: existingErr } = await supabase
-        .from("completed_lessons")
-        .select("lesson_id, score")
-        .eq("user_id", user.id);
+      const localCompleted = Object.entries(localProgress.completedLessons).filter(([, v]) => v.completed);
       let pushed = 0;
-      if (!existingErr) {
-        const cloudMap = new Map((existingCloud ?? []).map((r) => [r.lesson_id, r.score ?? 0]));
-        const toPush = Object.entries(localProgress.completedLessons)
-          .filter(([id, v]) => v.completed && (!cloudMap.has(id) || (v.score ?? 0) > (cloudMap.get(id) ?? 0)));
-        if (toPush.length > 0) {
-          console.log("[useProgress] resync push:", toPush.length, "local-only/better lessons");
-          await syncToCloudWithRetry(user.id, localProgress);
-          pushed = toPush.length;
-        }
+      if (localCompleted.length > 0) {
+        console.log("[useProgress] resync push:", localCompleted.length, "local completions");
+        await syncToCloudWithRetry(user.id, localProgress);
+        pushed = localCompleted.length;
       }
+
 
       const [profileRes, lessonsRes, skipRes] = await Promise.all([
         supabase
