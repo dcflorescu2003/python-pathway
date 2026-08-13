@@ -7,15 +7,9 @@ import { Preferences } from "@capacitor/preferences";
  *
  * Supabase auth keys (`sb-*`) are NOT touched here — sign-out handles those.
  */
-const KEY_PREFIXES = [
-  "pyro-",
-  "pylearn-",
-  "pyro-progress",
-  "test-draft",
-  "skip-cooldown",
-];
+const KEY_PREFIXES = ["pyro-", "pylearn-", "test_draft_"];
 
-const EXACT_KEYS = ["pyro-school-id", "school-id", "selected-school"];
+const EXACT_KEYS = ["pyro-school"];
 
 const isAppKey = (key: string) =>
   !key.startsWith("sb-") &&
