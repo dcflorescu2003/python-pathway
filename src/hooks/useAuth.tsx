@@ -368,6 +368,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (Capacitor.isNativePlatform()) {
       await clearNativeAuthBackup().catch(() => undefined);
     }
+    // Clear all app-owned local data so the next account starts clean.
+    await wipeLocalUserData();
   };
 
   return (
