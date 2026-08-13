@@ -317,6 +317,11 @@ const StatsDashboard = () => {
                   ))}
                 </TableBody>
               </Table>
+              {data.top_users.length === 0 && (
+                <div className="p-4 text-sm text-muted-foreground text-center">
+                  Niciun utilizator activ în perioada selectată.
+                </div>
+              )}
             </CardContent>
           </Card>
           <Card className="border-border">
