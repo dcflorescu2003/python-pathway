@@ -44,3 +44,6 @@ verify_jwt = false
 
 [functions.notify-new-lesson]
 verify_jwt = false
+
+[functions.send-friday-streak-boost]
+verify_jwt = false
