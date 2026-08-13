@@ -55,7 +55,9 @@ const StatCard = ({ icon: Icon, label, value, hint }: {
 
 interface Anomaly {
   user_id: string; name: string; nickname: string | null; xp: number;
-  expected_xp: number; xp_gap: number; items: number; bursts: number; max_per_hour: number;
+  items: number; active_days: number; items_per_day: number;
+  bursts: number; max_per_hour: number; fast_perfect: number;
+  signals: number; risk: "scazut" | "mediu" | "ridicat";
 }
 
 const StatsDashboard = () => {
@@ -74,14 +76,17 @@ const StatsDashboard = () => {
   });
 
   const { data: anomalies = [] } = useQuery({
-    queryKey: ["admin-anomalies"],
+    queryKey: ["admin-anomalies", days],
     queryFn: async () => {
-      const { data, error } = await supabase.rpc("admin_get_anomalies" as any);
+      const { data, error } = await supabase.rpc("admin_get_anomalies" as any, {
+        p_days: parseInt(days),
+      });
       if (error) throw error;
       return (data ?? []) as unknown as Anomaly[];
     },
     staleTime: 1000 * 60 * 5,
   });
+
 
 
   const s = data?.summary;
