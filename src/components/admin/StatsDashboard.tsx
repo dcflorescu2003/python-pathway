@@ -127,8 +127,10 @@ const StatsDashboard = () => {
         <>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
             <StatCard
-              icon={Users} label="Activi azi" value={s!.active_today}
-              hint={`${s!.active_7d} în 7 zile · ${s!.active_30d} în 30 zile`}
+              icon={Users}
+              label={data.days === 1 ? "Activi azi" : `Activi în ${data.days} zile`}
+              value={data.days === 1 ? s!.active_today : s!.active_period}
+              hint={`azi: ${s!.active_today} · 7 zile: ${s!.active_7d} · 30 zile: ${s!.active_30d}`}
             />
             <StatCard
               icon={Users} label="Total conturi" value={s!.total_users}
