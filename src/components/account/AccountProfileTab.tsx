@@ -218,6 +218,12 @@ const AccountProfileTab = ({
           <p className="text-xs text-muted-foreground mt-2 text-center">
             Recuperează lecțiile completate pe alte dispozitive.
           </p>
+          {syncInfo && (
+            <p className="text-[11px] text-muted-foreground mt-2 text-center font-mono break-words">
+              {syncInfo}
+            </p>
+          )}
+
         </CardContent>
       </Card>
 
