@@ -160,14 +160,14 @@ function loadLocalProgress(userId?: string): UserProgress {
 }
 
 function saveLocalProgress(p: UserProgress, userId?: string) {
+  // Never write progress to the un-scoped key: it is read at boot before the
+  // user is known, so a leftover snapshot would leak into the next account
+  // that signs in on this device.
+  if (!userId) return;
   try {
-    const key = userId ? getScopedStorageKey(userId) : STORAGE_KEY_PREFIX;
-    localStorage.setItem(key, JSON.stringify(p));
-
-    if (userId) {
-      localStorage.removeItem(STORAGE_KEY_PREFIX);
-      localStorage.removeItem(LEGACY_KEY);
-    }
+    localStorage.setItem(getScopedStorageKey(userId), JSON.stringify(p));
+    localStorage.removeItem(STORAGE_KEY_PREFIX);
+    localStorage.removeItem(LEGACY_KEY);
   } catch {}
 }
 
