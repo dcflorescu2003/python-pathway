@@ -803,6 +803,18 @@ function mergeProgress(a: UserProgress, b: UserProgress): UserProgress {
   };
 }
 
+export interface SyncReport {
+  awarded: number;
+  restored: number;
+  skipped: number;
+  unknownIds: string[];
+}
+
+let lastSyncReport: SyncReport | null = null;
+export function getLastSyncReport() {
+  return lastSyncReport;
+}
+
 async function syncToCloud(userId: string, p: UserProgress) {
   // XP / streak / best_streak sunt server-authoritative (anti-fraudă):
   // se scriu exclusiv prin award_progress / record_activity.
@@ -821,6 +833,8 @@ async function syncToCloud(userId: string, p: UserProgress) {
   const lessonEntries = Object.entries(p.completedLessons)
     .filter(([, value]) => value.completed)
     .map(([lessonId, value]) => ({ lesson_id: lessonId, score: value.score }));
+
+  const report: SyncReport = { awarded: 0, restored: 0, skipped: 0, unknownIds: [] };
 
   if (lessonEntries.length > 0) {
     // Fetch existing cloud scores to avoid redundant writes
@@ -843,9 +857,32 @@ async function syncToCloud(userId: string, p: UserProgress) {
           p_allow_redo: false,
           p_via_solution: false,
         });
-        if (error) console.warn("[syncToCloud] award_progress:", entry.lesson_id, error.message);
+        if (error) {
+          console.warn("[syncToCloud] award_progress:", entry.lesson_id, error.message);
+        } else {
+          report.awarded += 1;
+        }
       }
     }
+
+    // Plasă de siguranță: orice item local care nu a putut fi trimis prin
+    // award_progress (ex. eroare punctuală) este restaurat fără XP, ca istoricul
+    // să existe pe toate dispozitivele.
+    const { data: restoreRes, error: restoreErr } = await supabase.rpc("restore_progress" as any, {
+      p_items: lessonEntries,
+    });
+    if (restoreErr) {
+      console.warn("[syncToCloud] restore_progress:", restoreErr.message);
+      throw restoreErr;
+    }
+    const r = (restoreRes ?? {}) as { restored?: number; skipped?: number; unknown_ids?: string[] };
+    report.restored = r.restored ?? 0;
+    report.skipped = r.skipped ?? 0;
+    report.unknownIds = r.unknown_ids ?? [];
   }
+
+  lastSyncReport = report;
+  return report;
 }
+
 
