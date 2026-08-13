@@ -1072,6 +1072,7 @@ export type Database = {
           last_activity_date: string
           last_comeback_shown_at: string | null
           last_evening_reminder_at: string | null
+          last_friday_boost_at: string | null
           last_life_refill_at: string | null
           last_name: string | null
           last_teacher_reminder_at: string | null
@@ -1107,6 +1108,7 @@ export type Database = {
           last_activity_date?: string
           last_comeback_shown_at?: string | null
           last_evening_reminder_at?: string | null
+          last_friday_boost_at?: string | null
           last_life_refill_at?: string | null
           last_name?: string | null
           last_teacher_reminder_at?: string | null
@@ -1142,6 +1144,7 @@ export type Database = {
           last_activity_date?: string
           last_comeback_shown_at?: string | null
           last_evening_reminder_at?: string | null
+          last_friday_boost_at?: string | null
           last_life_refill_at?: string | null
           last_name?: string | null
           last_teacher_reminder_at?: string | null
