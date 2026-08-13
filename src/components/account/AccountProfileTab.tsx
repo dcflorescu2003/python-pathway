@@ -48,6 +48,8 @@ const AccountProfileTab = ({
   const { user } = useAuth();
   const { progress, resyncFromCloud } = useProgress();
   const [resyncing, setResyncing] = useState(false);
+  const [syncInfo, setSyncInfo] = useState<string | null>(null);
+
   const { data: chapters } = useChapters();
   const { subscribed, subscriptionEnd, source, openPortal, isIOSNative, isAndroidNative } = useSubscription();
   const { data: referralCodes = [] } = useTeacherReferralCodes();
