@@ -737,7 +737,7 @@ export function useProgress() {
         return merged;
       });
 
-      return { ok: true, count: Object.keys(cloudCompleted).length, pushed };
+      return { ok: true, count: Object.keys(cloudCompleted).length, pushed, report: getLastSyncReport() };
     } catch (err: any) {
       return { ok: false, count: 0, error: err?.message ?? "Eroare necunoscută" };
     }
