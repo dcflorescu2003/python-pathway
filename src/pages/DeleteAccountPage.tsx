@@ -66,8 +66,10 @@ const DeleteAccountPage = () => {
       }
 
       await signOut();
+      await wipeLocalUserData();
       toast.success("Contul tău a fost șters cu succes.");
-      navigate("/auth", { replace: true });
+      // Hard reload so no in-memory state from the deleted account survives.
+      window.location.replace("/auth");
     } catch {
       toast.error("Eroare la ștergerea contului.");
     } finally {
