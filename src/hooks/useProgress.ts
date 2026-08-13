@@ -677,13 +677,15 @@ export function useProgress() {
   const resyncFromCloud = useCallback(async (): Promise<{ ok: boolean; count: number; error?: string; pushed?: number; report?: SyncReport | null }> => {
     if (!user) return { ok: false, count: 0, error: "Nu ești autentificat." };
     try {
-      // PUSH first: trimite în cloud orice lecție completată local care lipsește acolo.
+      // PUSH first: restore the local history in one server-side batch. Historical
+      // synchronization must never call award_progress or grant XP again.
       const localProgress = loadLocalProgress(user.id);
       const localCompleted = Object.entries(localProgress.completedLessons).filter(([, v]) => v.completed);
       let pushed = 0;
+      let syncReport: SyncReport | null = null;
       if (localCompleted.length > 0) {
         console.log("[useProgress] resync push:", localCompleted.length, "local completions");
-        await syncToCloudWithRetry(user.id, localProgress);
+        syncReport = await syncToCloud(user.id, localProgress);
         pushed = localCompleted.length;
       }
 
@@ -738,7 +740,7 @@ export function useProgress() {
         return merged;
       });
 
-      return { ok: true, count: Object.keys(cloudCompleted).length, pushed, report: getLastSyncReport() };
+      return { ok: true, count: Object.keys(cloudCompleted).length, pushed, report: syncReport ?? getLastSyncReport() };
     } catch (err: any) {
       return { ok: false, count: 0, error: err?.message ?? "Eroare necunoscută" };
     }
@@ -781,11 +783,10 @@ function mergeProgress(a: UserProgress, b: UserProgress): UserProgress {
   }
 
   return {
-    xp: Math.max(a.xp, b.xp),
-    streak: Math.max(a.streak, b.streak),
-    // IMPORTANT: lives & livesUpdatedAt are server-authoritative.
-    // Never take max(local, cloud) — that would let a refresh reset the 30-min
-    // regen timer (web bypass). Always trust the cloud copy (param `b`).
+    // XP, streak, lives, and their timestamps are server-authoritative. Taking
+    // max(local, cloud) would preserve stale inflated values after a correction.
+    xp: b.xp,
+    streak: b.streak,
     lives: b.lives,
     livesUpdatedAt: b.livesUpdatedAt,
     isPremium: a.isPremium || b.isPremium,
@@ -798,8 +799,8 @@ function mergeProgress(a: UserProgress, b: UserProgress): UserProgress {
 }
 
 export interface SyncReport {
-  awarded: number;
   restored: number;
+  existing: number;
   skipped: number;
   unknownIds: string[];
 }
@@ -828,40 +829,11 @@ async function syncToCloud(userId: string, p: UserProgress) {
     .filter(([, value]) => value.completed)
     .map(([lessonId, value]) => ({ lesson_id: lessonId, score: value.score }));
 
-  const report: SyncReport = { awarded: 0, restored: 0, skipped: 0, unknownIds: [] };
+  const report: SyncReport = { restored: 0, existing: 0, skipped: 0, unknownIds: [] };
 
   if (lessonEntries.length > 0) {
-    // Fetch existing cloud scores to avoid redundant writes
-    const lessonIds = lessonEntries.map((e) => e.lesson_id);
-    const { data: existing } = await supabase
-      .from("completed_lessons")
-      .select("lesson_id, score")
-      .eq("user_id", userId)
-      .in("lesson_id", lessonIds);
-
-    const existingMap = new Map((existing ?? []).map((r) => [r.lesson_id, r.score ?? 0]));
-
-    for (const entry of lessonEntries) {
-      const cloudScore = existingMap.get(entry.lesson_id);
-      if (cloudScore === undefined || entry.score > cloudScore) {
-        // Sincronizare offline: fără XP de reluare, doar prima finalizare.
-        const { error } = await supabase.rpc("award_progress" as any, {
-          p_item_id: entry.lesson_id,
-          p_score: entry.score,
-          p_allow_redo: false,
-          p_via_solution: false,
-        });
-        if (error) {
-          console.warn("[syncToCloud] award_progress:", entry.lesson_id, error.message);
-        } else {
-          report.awarded += 1;
-        }
-      }
-    }
-
-    // Plasă de siguranță: orice item local care nu a putut fi trimis prin
-    // award_progress (ex. eroare punctuală) este restaurat fără XP, ca istoricul
-    // să existe pe toate dispozitivele.
+    // A single idempotent call validates every ID and restores the whole history
+    // without touching XP, streak, or activity dates.
     const { data: restoreRes, error: restoreErr } = await supabase.rpc("restore_progress" as any, {
       p_items: lessonEntries,
     });
@@ -869,8 +841,9 @@ async function syncToCloud(userId: string, p: UserProgress) {
       console.warn("[syncToCloud] restore_progress:", restoreErr.message);
       throw restoreErr;
     }
-    const r = (restoreRes ?? {}) as { restored?: number; skipped?: number; unknown_ids?: string[] };
+    const r = (restoreRes ?? {}) as { restored?: number; existing?: number; skipped?: number; unknown_ids?: string[] };
     report.restored = r.restored ?? 0;
+    report.existing = r.existing ?? 0;
     report.skipped = r.skipped ?? 0;
     report.unknownIds = r.unknown_ids ?? [];
   }

@@ -60,7 +60,13 @@ const SUPPORTED_EXERCISE_TYPES: ExerciseType[] = [
 ];
 
 function getNativeFallbackChapters() {
-  return localChapters as Chapter[];
+  // Keep the native safety-net aligned with the cloud catalog. courses.ts still
+  // generates legacy `...f` Fixare duplicates in memory, but those IDs are not
+  // real lesson rows and cannot be persisted as progress.
+  return localChapters.map((chapter) => ({
+    ...chapter,
+    lessons: chapter.lessons.filter((lesson) => !lesson.id.endsWith("f")),
+  })) as Chapter[];
 }
 
 function handleNativeFallback<T>(isNativePlatform: boolean, error: T, message: string): Chapter[] {
@@ -198,7 +204,7 @@ async function fetchChapters(): Promise<Chapter[]> {
   }));
 
   // DB is the single source of truth — no auto-generated "Fixare" duplicates here.
-  // Native offline fallback (`getNativeFallbackChapters`) still includes them via courses.ts.
+  // The native fallback applies the same rule to avoid unsynchronizable IDs.
   return result as Chapter[];
 }
 
