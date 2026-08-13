@@ -197,11 +197,19 @@ const AccountProfileTab = ({
               const res = await resyncFromCloud();
               setResyncing(false);
               if (res.ok) {
+                const r = res.report;
+                setSyncInfo(
+                  r
+                    ? `Local: ${res.pushed ?? 0} · trimise cu XP: ${r.awarded} · restaurate: ${r.restored} · ignorate (id necunoscut): ${r.skipped} · în cloud acum: ${res.count}`
+                    : `În cloud acum: ${res.count}`
+                );
                 toast.success(`${res.count} lecții sincronizate din cloud.`);
               } else {
+                setSyncInfo(null);
                 toast.error(res.error ? `Eroare: ${res.error}` : "Sincronizarea a eșuat. Încearcă să te reloghezi.");
               }
             }}
+
           >
             {resyncing ? "Se sincronizează..." : "Resincronizează progresul din cloud"}
           </Button>
