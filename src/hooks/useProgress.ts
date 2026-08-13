@@ -783,11 +783,10 @@ function mergeProgress(a: UserProgress, b: UserProgress): UserProgress {
   }
 
   return {
-    xp: Math.max(a.xp, b.xp),
-    streak: Math.max(a.streak, b.streak),
-    // IMPORTANT: lives & livesUpdatedAt are server-authoritative.
-    // Never take max(local, cloud) — that would let a refresh reset the 30-min
-    // regen timer (web bypass). Always trust the cloud copy (param `b`).
+    // XP, streak, lives, and their timestamps are server-authoritative. Taking
+    // max(local, cloud) would preserve stale inflated values after a correction.
+    xp: b.xp,
+    streak: b.streak,
     lives: b.lives,
     livesUpdatedAt: b.livesUpdatedAt,
     isPremium: a.isPremium || b.isPremium,
