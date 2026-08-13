@@ -19,7 +19,7 @@ interface StatsData {
   days: number;
   summary: {
     total_users: number; premium_users: number; teachers: number; verified_teachers: number;
-    active_today: number; active_7d: number; active_30d: number; new_users_period: number;
+    active_today: number; active_7d: number; active_30d: number; active_period: number; new_users_period: number;
   };
   activity: {
     lessons_today: number; lessons_7d: number; lessons_period: number;
@@ -34,6 +34,7 @@ interface StatsData {
   top_users: {
     user_id: string; name: string; nickname: string | null; xp: number; streak: number;
     is_premium: boolean; is_teacher: boolean; last_activity_date: string; items_period: number;
+    active_days: number;
   }[];
 }
 
@@ -126,8 +127,10 @@ const StatsDashboard = () => {
         <>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
             <StatCard
-              icon={Users} label="Activi azi" value={s!.active_today}
-              hint={`${s!.active_7d} în 7 zile · ${s!.active_30d} în 30 zile`}
+              icon={Users}
+              label={data.days === 1 ? "Activi azi" : `Activi în ${data.days} zile`}
+              value={data.days === 1 ? s!.active_today : s!.active_period}
+              hint={`azi: ${s!.active_today} · 7 zile: ${s!.active_7d} · 30 zile: ${s!.active_30d}`}
             />
             <StatCard
               icon={Users} label="Total conturi" value={s!.total_users}
@@ -275,7 +278,12 @@ const StatsDashboard = () => {
 
           <Card className="border-border">
             <CardHeader className="pb-2">
-              <CardTitle className="text-base">Cei mai activi utilizatori</CardTitle>
+              <CardTitle className="text-base">
+                Cei mai activi utilizatori
+                <span className="ml-2 text-xs font-normal text-muted-foreground">
+                  (doar cei activi în perioada selectată)
+                </span>
+              </CardTitle>
             </CardHeader>
             <CardContent className="p-0 overflow-x-auto">
               <Table>
@@ -309,6 +317,11 @@ const StatsDashboard = () => {
                   ))}
                 </TableBody>
               </Table>
+              {data.top_users.length === 0 && (
+                <div className="p-4 text-sm text-muted-foreground text-center">
+                  Niciun utilizator activ în perioada selectată.
+                </div>
+              )}
             </CardContent>
           </Card>
           <Card className="border-border">
