@@ -1856,7 +1856,7 @@ export type Database = {
       }
     }
     Functions: {
-      admin_get_anomalies: { Args: never; Returns: Json }
+      admin_get_anomalies: { Args: { p_days?: number }; Returns: Json }
       admin_get_stats: { Args: { p_days?: number }; Returns: Json }
       admin_set_premium: {
         Args: { p_premium: boolean; p_user_id: string }
@@ -2141,6 +2141,7 @@ export type Database = {
         Returns: undefined
       }
       request_teacher_status: { Args: never; Returns: undefined }
+      restore_progress: { Args: { p_items: Json }; Returns: Json }
       resume_interrupted_submission: {
         Args: { p_submission_id: string }
         Returns: undefined
