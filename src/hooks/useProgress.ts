@@ -175,6 +175,8 @@ function saveLocalProgress(p: UserProgress, userId?: string) {
 
 export function useProgress() {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
+
   // Start from a clean slate; real progress is loaded once the user id is known.
   const [progress, setProgress] = useState<UserProgress>(() => createDefaultProgress());
   const [streakJustIncreased, setStreakJustIncreased] = useState(false);
