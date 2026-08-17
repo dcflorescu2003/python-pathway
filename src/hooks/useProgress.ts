@@ -456,9 +456,13 @@ export function useProgress() {
         setStreakJustIncreased(true);
         setNewStreakCount(result.streak ?? 0);
       }
+      // XP-ul s-a schimbat pe server → clasamentele trebuie recitite.
+      queryClient.invalidateQueries({ queryKey: ["leaderboard-top"] });
+      queryClient.invalidateQueries({ queryKey: ["leaderboard-user-rank"] });
     },
-    [user]
+    [user, queryClient]
   );
+
 
   const completeLesson = useCallback(
     async (lessonId: string, xpEarned: number, score: number) => {
