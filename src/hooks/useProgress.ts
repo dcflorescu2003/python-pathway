@@ -29,6 +29,65 @@ const FULL_REGEN_MS = 30 * 60 * 1000;
 const STORAGE_KEY_PREFIX = "pyro-progress";
 const LEGACY_KEY = "pylearn-progress";
 const PENDING_SYNC_PREFIX = "pyro-progress-pending-sync";
+const AWARD_QUEUE_PREFIX = "pyro-award-queue";
+
+/** Un item de progres care trebuie trimis la server pentru XP. */
+export interface AwardQueueItem {
+  itemId: string;
+  score: number;
+  allowRedo: boolean;
+  viaSolution: boolean;
+  optimisticXp: number;
+  attempts: number;
+  lastAttemptAt: number;
+  queuedAt: number;
+}
+
+function getAwardQueueKey(userId: string) {
+  return `${AWARD_QUEUE_PREFIX}:${userId}`;
+}
+
+function readAwardQueue(userId: string): AwardQueueItem[] {
+  try {
+    const raw = localStorage.getItem(getAwardQueueKey(userId));
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? (parsed as AwardQueueItem[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeAwardQueue(userId: string, items: AwardQueueItem[]) {
+  try {
+    if (items.length === 0) localStorage.removeItem(getAwardQueueKey(userId));
+    else localStorage.setItem(getAwardQueueKey(userId), JSON.stringify(items));
+  } catch {}
+}
+
+function enqueueAward(userId: string, item: Omit<AwardQueueItem, "attempts" | "lastAttemptAt" | "queuedAt">) {
+  const queue = readAwardQueue(userId);
+  // Un singur item în coadă per (itemId, viaSolution): păstrăm scorul maxim.
+  const existing = queue.find((q) => q.itemId === item.itemId && q.viaSolution === item.viaSolution);
+  if (existing) {
+    existing.score = Math.max(existing.score, item.score);
+    existing.allowRedo = existing.allowRedo || item.allowRedo;
+    existing.optimisticXp = Math.max(existing.optimisticXp, item.optimisticXp);
+  } else {
+    queue.push({ ...item, attempts: 0, lastAttemptAt: 0, queuedAt: Date.now() });
+  }
+  writeAwardQueue(userId, queue);
+}
+
+function dequeueAward(userId: string, itemId: string, viaSolution: boolean) {
+  const queue = readAwardQueue(userId).filter((q) => !(q.itemId === itemId && q.viaSolution === viaSolution));
+  writeAwardQueue(userId, queue);
+}
+
+/** XP estimat, încă netrimis la server. */
+function pendingQueueXp(userId: string): number {
+  return readAwardQueue(userId).reduce((sum, q) => sum + (q.optimisticXp || 0), 0);
+}
 
 function getPendingSyncKey(userId: string) {
   return `${PENDING_SYNC_PREFIX}:${userId}`;
@@ -45,6 +104,7 @@ function clearPendingSync(userId: string) {
 function hasPendingSync(userId: string) {
   try { return localStorage.getItem(getPendingSyncKey(userId)) === "1"; } catch { return false; }
 }
+
 
 async function syncToCloudWithRetry(userId: string, p: UserProgress, attempts = 3) {
   let lastErr: unknown = null;
@@ -181,7 +241,11 @@ export function useProgress() {
   const [progress, setProgress] = useState<UserProgress>(() => createDefaultProgress());
   const [streakJustIncreased, setStreakJustIncreased] = useState(false);
   const [newStreakCount, setNewStreakCount] = useState(0);
+  // Câte acordări de XP așteaptă încă trimiterea către server.
+  const [pendingAwards, setPendingAwards] = useState(0);
   const prevUserId = useRef<string | null>(null);
+  const flushingRef = useRef(false);
+
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -305,7 +369,11 @@ export function useProgress() {
         // Apply 30-min lives regeneration immediately on cloud load so a user who
         // reopens the app after the timer elapsed sees 5/5 right away instead of
         // waiting for the 60s interval tick.
-        const finalProgress = regenerateLives(mergedProgress);
+        const regenerated = regenerateLives(mergedProgress);
+        // XP încă netrimis (coadă offline) rămâne vizibil până la sincronizare.
+        const queuedXp = pendingQueueXp(user.id);
+        const finalProgress = queuedXp > 0 ? { ...regenerated, xp: regenerated.xp + queuedXp } : regenerated;
+
 
         setProgress(finalProgress);
         saveLocalProgress(finalProgress, user.id);
@@ -350,7 +418,10 @@ export function useProgress() {
 
         setProgress((prev) => {
           const cloudDate = profile.last_activity_date ?? "";
-          const cloudXP = profile.xp ?? prev.xp;
+          // Dacă mai avem acordări netrimise, nu scădem XP-ul afișat sub
+          // valoarea locală: adăugăm estimarea din coadă până la sincronizare.
+          const cloudXP = (profile.xp ?? prev.xp) + pendingQueueXp(user.id);
+
           const cloudStreak = profile.streak ?? prev.streak;
 
           const isPremiumCloud = profile.is_premium ?? prev.isPremium;
@@ -435,9 +506,11 @@ export function useProgress() {
       setProgress((prev) => {
         const newStarted = { ...prev.startedLessons };
         delete newStarted[lessonId];
+        // XP-ul serverului + estimarea itemilor rămași în coadă (netrimiși).
+        const pending = user ? pendingQueueXp(user.id) : 0;
         const newProgress: UserProgress = {
           ...prev,
-          xp: typeof result.total_xp === "number" ? result.total_xp : prev.xp,
+          xp: typeof result.total_xp === "number" ? result.total_xp + pending : prev.xp,
           streak: typeof result.streak === "number" ? result.streak : prev.streak,
           lastActivityDate: getTodayDate(),
           completedLessons: {
@@ -463,14 +536,120 @@ export function useProgress() {
     [user, queryClient]
   );
 
+  /**
+   * Trimite către server toate acordările de XP rămase în coadă (offline,
+   * sesiune expirată, erori de rețea). Idempotent: `award_progress` nu acordă
+   * XP de două ori pentru același item și scor.
+   */
+  const flushAwardQueue = useCallback(async () => {
+    if (!user) return;
+    if (flushingRef.current) return;
+    const queue = readAwardQueue(user.id);
+    if (queue.length === 0) {
+      setPendingAwards(0);
+      return;
+    }
+    if (typeof navigator !== "undefined" && navigator.onLine === false) {
+      setPendingAwards(queue.length);
+      return;
+    }
+
+    flushingRef.current = true;
+    let anySuccess = false;
+    try {
+      for (const item of queue) {
+        // Backoff: nu reîncercăm imediat un item care tocmai a eșuat.
+        const backoffMs = Math.min(5 * 60_000, 5_000 * Math.pow(2, Math.min(item.attempts, 6)));
+        if (item.attempts > 0 && Date.now() - item.lastAttemptAt < backoffMs) continue;
+
+        const { data, error } = await supabase.rpc("award_progress" as any, {
+          p_item_id: item.itemId,
+          p_score: item.score,
+          p_allow_redo: item.allowRedo,
+          p_via_solution: item.viaSolution,
+        });
+
+        if (error) {
+          console.warn("[flushAwardQueue] award_progress failed:", item.itemId, error.message);
+          const current = readAwardQueue(user.id);
+          const entry = current.find((q) => q.itemId === item.itemId && q.viaSolution === item.viaSolution);
+          if (entry) {
+            entry.attempts += 1;
+            entry.lastAttemptAt = Date.now();
+            writeAwardQueue(user.id, current);
+          }
+          continue;
+        }
+
+        dequeueAward(user.id, item.itemId, item.viaSolution);
+        anySuccess = true;
+        applyServerAward(item.itemId, data as any);
+      }
+    } finally {
+      flushingRef.current = false;
+      const remaining = readAwardQueue(user.id);
+      setPendingAwards(remaining.length);
+      if (remaining.length === 0) clearPendingSync(user.id);
+      if (anySuccess) {
+        queryClient.invalidateQueries({ queryKey: ["leaderboard-top"] });
+        queryClient.invalidateQueries({ queryKey: ["leaderboard-user-rank"] });
+      }
+    }
+  }, [user, applyServerAward, queryClient]);
+
+  // Golim coada la pornire/autentificare, la revenirea online, la revenirea în
+  // prim-plan și periodic cât timp mai există elemente nesincronizate.
+  useEffect(() => {
+    if (!user) {
+      setPendingAwards(0);
+      return;
+    }
+    setPendingAwards(readAwardQueue(user.id).length);
+    void flushAwardQueue();
+
+    const onOnline = () => void flushAwardQueue();
+    const onVisible = () => {
+      if (document.visibilityState === "visible") void flushAwardQueue();
+    };
+    window.addEventListener("online", onOnline);
+    window.addEventListener("focus", onOnline);
+    document.addEventListener("visibilitychange", onVisible);
+
+    const interval = setInterval(() => {
+      if (readAwardQueue(user.id).length > 0) void flushAwardQueue();
+    }, 30_000);
+
+    let removeNative: (() => void) | undefined;
+    void (async () => {
+      try {
+        const { Capacitor } = await import("@capacitor/core");
+        if (!Capacitor.isNativePlatform()) return;
+        const { App } = await import("@capacitor/app");
+        const handle = await App.addListener("appStateChange", ({ isActive }) => {
+          if (isActive) void flushAwardQueue();
+        });
+        removeNative = () => { void handle.remove(); };
+      } catch {}
+    })();
+
+    return () => {
+      window.removeEventListener("online", onOnline);
+      window.removeEventListener("focus", onOnline);
+      document.removeEventListener("visibilitychange", onVisible);
+      clearInterval(interval);
+      removeNative?.();
+    };
+  }, [user, flushAwardQueue]);
 
   const completeLesson = useCallback(
     async (lessonId: string, xpEarned: number, score: number) => {
+      let optimisticAwarded = 0;
       // Actualizare optimistă locală (XP-ul final este calculat pe server)
       setProgress((prev) => {
         const previousEntry = prev.completedLessons[lessonId];
         const alreadyCompleted = !!previousEntry?.completed;
         const optimisticXP = alreadyCompleted ? 3 : xpEarned;
+        optimisticAwarded = optimisticXP;
 
         const today = getTodayDate();
         const isFirstActivityToday = prev.lastActivityDate !== today;
@@ -503,23 +682,21 @@ export function useProgress() {
 
       if (!user) return;
 
-      // Sursa de adevăr pentru XP: funcția de server (anti-fraudă)
-      const { data, error } = await supabase.rpc("award_progress" as any, {
-        p_item_id: lessonId,
-        p_score: score,
-        p_allow_redo: true,
-        p_via_solution: false,
+      // Outbox: itemul intră în coadă înainte de apelul de rețea, ca să nu se
+      // piardă XP-ul dacă apelul eșuează (offline, semnal slab, token expirat).
+      enqueueAward(user.id, {
+        itemId: lessonId,
+        score,
+        allowRedo: true,
+        viaSolution: false,
+        optimisticXp: optimisticAwarded,
       });
+      setPendingAwards(readAwardQueue(user.id).length);
 
-      if (error) {
-        console.error("[completeLesson] award_progress failed:", error.message);
-        markPendingSync(user.id);
-        return;
-      }
-
-      applyServerAward(lessonId, data as any);
+      await flushAwardQueue();
+      if (readAwardQueue(user.id).length > 0) markPendingSync(user.id);
     },
-    [user, applyServerAward]
+    [user, flushAwardQueue]
   );
 
   /**
@@ -537,6 +714,15 @@ export function useProgress() {
       });
       if (error) {
         console.error("[revealSolution] award_progress failed:", error.message);
+        enqueueAward(user.id, {
+          itemId,
+          score: 0,
+          allowRedo: false,
+          viaSolution: true,
+          optimisticXp: 1,
+        });
+        setPendingAwards(readAwardQueue(user.id).length);
+        markPendingSync(user.id);
         return null;
       }
       applyServerAward(itemId, data as any);
@@ -544,6 +730,7 @@ export function useProgress() {
     },
     [user, applyServerAward]
   );
+
 
 
   const loseLife = useCallback(() => {
@@ -696,9 +883,12 @@ export function useProgress() {
   const resyncFromCloud = useCallback(async (): Promise<{ ok: boolean; count: number; error?: string; pushed?: number; report?: SyncReport | null }> => {
     if (!user) return { ok: false, count: 0, error: "Nu ești autentificat." };
     try {
-      // PUSH first: restore the local history in one server-side batch. Historical
+      // Mai întâi trimitem XP-ul rămas în coadă (offline), apoi restaurăm istoricul.
+      await flushAwardQueue();
+      // PUSH: restore the local history in one server-side batch. Historical
       // synchronization must never call award_progress or grant XP again.
       const localProgress = loadLocalProgress(user.id);
+
       const localCompleted = Object.entries(localProgress.completedLessons).filter(([, v]) => v.completed);
       let pushed = 0;
       let syncReport: SyncReport | null = null;
@@ -763,9 +953,10 @@ export function useProgress() {
     } catch (err: any) {
       return { ok: false, count: 0, error: err?.message ?? "Eroare necunoscută" };
     }
-  }, [user]);
+  }, [user, flushAwardQueue]);
 
-  return { progress, completeLesson, revealSolution, loseLife, resetLives, setLivesFromReward, setPremium, recordActivity, unlockLessonViaSkip, markLessonStarted, streakJustIncreased, newStreakCount, dismissStreakCelebration, resyncFromCloud };
+
+  return { progress, completeLesson, revealSolution, loseLife, resetLives, setLivesFromReward, setPremium, recordActivity, unlockLessonViaSkip, markLessonStarted, streakJustIncreased, newStreakCount, dismissStreakCelebration, resyncFromCloud, pendingAwards, flushAwardQueue };
 }
 
 function mergeProgress(a: UserProgress, b: UserProgress): UserProgress {
