@@ -11,76 +11,84 @@ interface SeoOptions {
   noindex?: boolean;
 }
 
-function upsert(selector: string, create: () => HTMLElement) {
-  let el = document.head.querySelector<HTMLElement>(`${selector}[${MARK}]`);
-  if (!el) {
-    el = create();
-    el.setAttribute(MARK, "");
-    document.head.appendChild(el);
-  }
-  return el;
-}
-
 /**
  * Sets title / description / canonical (or noindex) for pages that don't use Helmet.
- * Tags are marked and removed on unmount so they never conflict with react-helmet-async.
+ * Existing head tags are updated in place (never duplicated) and restored on unmount,
+ * so this never produces conflicting canonical signals.
  */
 export function useSeoHead({ title, description, canonicalPath, noindex }: SeoOptions) {
   useEffect(() => {
-    const previousTitle = document.title;
-    if (title) document.title = title;
+    const restore: Array<() => void> = [];
+
+    const setAttr = (el: Element, attr: string, value: string) => {
+      const prev = el.getAttribute(attr);
+      el.setAttribute(attr, value);
+      restore.push(() => {
+        if (prev === null) el.removeAttribute(attr);
+        else el.setAttribute(attr, prev);
+      });
+    };
+
+    const ensure = (selector: string, create: () => HTMLElement) => {
+      const existing = document.head.querySelector<HTMLElement>(selector);
+      if (existing) return existing;
+      const el = create();
+      el.setAttribute(MARK, "");
+      document.head.appendChild(el);
+      restore.push(() => el.remove());
+      return el;
+    };
+
+    if (title) {
+      const prevTitle = document.title;
+      document.title = title;
+      restore.push(() => {
+        document.title = prevTitle;
+      });
+    }
 
     if (description) {
-      const existing = document.head.querySelector<HTMLMetaElement>('meta[name="description"]');
-      if (existing) existing.setAttribute("content", description);
+      const meta = document.head.querySelector('meta[name="description"]');
+      if (meta) setAttr(meta, "content", description);
     }
 
     if (noindex) {
-      const robots = upsert('meta[name="robots"]', () => {
+      const robots = ensure('meta[name="robots"]', () => {
         const m = document.createElement("meta");
         m.setAttribute("name", "robots");
         return m;
       });
-      robots.setAttribute("content", "noindex, follow");
+      setAttr(robots, "content", "noindex, follow");
     } else if (canonicalPath) {
-      const url = `${SITE_URL}${canonicalPath === "/" ? "/" : canonicalPath}`;
+      const url = `${SITE_URL}${canonicalPath}`;
 
-      const link = upsert('link[rel="canonical"]', () => {
+      const link = ensure('link[rel="canonical"]', () => {
         const l = document.createElement("link");
         l.setAttribute("rel", "canonical");
         return l;
       });
-      link.setAttribute("href", url);
+      setAttr(link, "href", url);
 
-      const ogUrl = upsert('meta[property="og:url"]', () => {
+      const ogUrl = ensure('meta[property="og:url"]', () => {
         const m = document.createElement("meta");
         m.setAttribute("property", "og:url");
         return m;
       });
-      ogUrl.setAttribute("content", url);
+      setAttr(ogUrl, "content", url);
 
       if (title) {
-        const ogTitle = upsert('meta[property="og:title"]', () => {
-          const m = document.createElement("meta");
-          m.setAttribute("property", "og:title");
-          return m;
-        });
-        ogTitle.setAttribute("content", title);
+        const ogTitle = document.head.querySelector('meta[property="og:title"]');
+        if (ogTitle) setAttr(ogTitle, "content", title);
       }
 
       if (description) {
-        const ogDesc = upsert('meta[property="og:description"]', () => {
-          const m = document.createElement("meta");
-          m.setAttribute("property", "og:description");
-          return m;
-        });
-        ogDesc.setAttribute("content", description);
+        const ogDesc = document.head.querySelector('meta[property="og:description"]');
+        if (ogDesc) setAttr(ogDesc, "content", description);
       }
     }
 
     return () => {
-      document.title = previousTitle;
-      document.head.querySelectorAll(`[${MARK}]`).forEach((el) => el.remove());
+      restore.reverse().forEach((fn) => fn());
     };
   }, [title, description, canonicalPath, noindex]);
 }
