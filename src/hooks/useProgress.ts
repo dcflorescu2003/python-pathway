@@ -499,9 +499,11 @@ export function useProgress() {
       setProgress((prev) => {
         const newStarted = { ...prev.startedLessons };
         delete newStarted[lessonId];
+        // XP-ul serverului + estimarea itemilor rămași în coadă (netrimiși).
+        const pending = user ? pendingQueueXp(user.id) : 0;
         const newProgress: UserProgress = {
           ...prev,
-          xp: typeof result.total_xp === "number" ? result.total_xp : prev.xp,
+          xp: typeof result.total_xp === "number" ? result.total_xp + pending : prev.xp,
           streak: typeof result.streak === "number" ? result.streak : prev.streak,
           lastActivityDate: getTodayDate(),
           completedLessons: {
@@ -527,14 +529,120 @@ export function useProgress() {
     [user, queryClient]
   );
 
+  /**
+   * Trimite către server toate acordările de XP rămase în coadă (offline,
+   * sesiune expirată, erori de rețea). Idempotent: `award_progress` nu acordă
+   * XP de două ori pentru același item și scor.
+   */
+  const flushAwardQueue = useCallback(async () => {
+    if (!user) return;
+    if (flushingRef.current) return;
+    const queue = readAwardQueue(user.id);
+    if (queue.length === 0) {
+      setPendingAwards(0);
+      return;
+    }
+    if (typeof navigator !== "undefined" && navigator.onLine === false) {
+      setPendingAwards(queue.length);
+      return;
+    }
+
+    flushingRef.current = true;
+    let anySuccess = false;
+    try {
+      for (const item of queue) {
+        // Backoff: nu reîncercăm imediat un item care tocmai a eșuat.
+        const backoffMs = Math.min(5 * 60_000, 5_000 * Math.pow(2, Math.min(item.attempts, 6)));
+        if (item.attempts > 0 && Date.now() - item.lastAttemptAt < backoffMs) continue;
+
+        const { data, error } = await supabase.rpc("award_progress" as any, {
+          p_item_id: item.itemId,
+          p_score: item.score,
+          p_allow_redo: item.allowRedo,
+          p_via_solution: item.viaSolution,
+        });
+
+        if (error) {
+          console.warn("[flushAwardQueue] award_progress failed:", item.itemId, error.message);
+          const current = readAwardQueue(user.id);
+          const entry = current.find((q) => q.itemId === item.itemId && q.viaSolution === item.viaSolution);
+          if (entry) {
+            entry.attempts += 1;
+            entry.lastAttemptAt = Date.now();
+            writeAwardQueue(user.id, current);
+          }
+          continue;
+        }
+
+        dequeueAward(user.id, item.itemId, item.viaSolution);
+        anySuccess = true;
+        applyServerAward(item.itemId, data as any);
+      }
+    } finally {
+      flushingRef.current = false;
+      const remaining = readAwardQueue(user.id);
+      setPendingAwards(remaining.length);
+      if (remaining.length === 0) clearPendingSync(user.id);
+      if (anySuccess) {
+        queryClient.invalidateQueries({ queryKey: ["leaderboard-top"] });
+        queryClient.invalidateQueries({ queryKey: ["leaderboard-user-rank"] });
+      }
+    }
+  }, [user, applyServerAward, queryClient]);
+
+  // Golim coada la pornire/autentificare, la revenirea online, la revenirea în
+  // prim-plan și periodic cât timp mai există elemente nesincronizate.
+  useEffect(() => {
+    if (!user) {
+      setPendingAwards(0);
+      return;
+    }
+    setPendingAwards(readAwardQueue(user.id).length);
+    void flushAwardQueue();
+
+    const onOnline = () => void flushAwardQueue();
+    const onVisible = () => {
+      if (document.visibilityState === "visible") void flushAwardQueue();
+    };
+    window.addEventListener("online", onOnline);
+    window.addEventListener("focus", onOnline);
+    document.addEventListener("visibilitychange", onVisible);
+
+    const interval = setInterval(() => {
+      if (readAwardQueue(user.id).length > 0) void flushAwardQueue();
+    }, 30_000);
+
+    let removeNative: (() => void) | undefined;
+    void (async () => {
+      try {
+        const { Capacitor } = await import("@capacitor/core");
+        if (!Capacitor.isNativePlatform()) return;
+        const { App } = await import("@capacitor/app");
+        const handle = await App.addListener("appStateChange", ({ isActive }) => {
+          if (isActive) void flushAwardQueue();
+        });
+        removeNative = () => { void handle.remove(); };
+      } catch {}
+    })();
+
+    return () => {
+      window.removeEventListener("online", onOnline);
+      window.removeEventListener("focus", onOnline);
+      document.removeEventListener("visibilitychange", onVisible);
+      clearInterval(interval);
+      removeNative?.();
+    };
+  }, [user, flushAwardQueue]);
 
   const completeLesson = useCallback(
     async (lessonId: string, xpEarned: number, score: number) => {
+      let optimisticAwarded = 0;
       // Actualizare optimistă locală (XP-ul final este calculat pe server)
       setProgress((prev) => {
         const previousEntry = prev.completedLessons[lessonId];
         const alreadyCompleted = !!previousEntry?.completed;
         const optimisticXP = alreadyCompleted ? 3 : xpEarned;
+        optimisticAwarded = optimisticXP;
 
         const today = getTodayDate();
         const isFirstActivityToday = prev.lastActivityDate !== today;
@@ -567,23 +675,21 @@ export function useProgress() {
 
       if (!user) return;
 
-      // Sursa de adevăr pentru XP: funcția de server (anti-fraudă)
-      const { data, error } = await supabase.rpc("award_progress" as any, {
-        p_item_id: lessonId,
-        p_score: score,
-        p_allow_redo: true,
-        p_via_solution: false,
+      // Outbox: itemul intră în coadă înainte de apelul de rețea, ca să nu se
+      // piardă XP-ul dacă apelul eșuează (offline, semnal slab, token expirat).
+      enqueueAward(user.id, {
+        itemId: lessonId,
+        score,
+        allowRedo: true,
+        viaSolution: false,
+        optimisticXp: optimisticAwarded,
       });
+      setPendingAwards(readAwardQueue(user.id).length);
 
-      if (error) {
-        console.error("[completeLesson] award_progress failed:", error.message);
-        markPendingSync(user.id);
-        return;
-      }
-
-      applyServerAward(lessonId, data as any);
+      await flushAwardQueue();
+      if (readAwardQueue(user.id).length > 0) markPendingSync(user.id);
     },
-    [user, applyServerAward]
+    [user, flushAwardQueue]
   );
 
   /**
@@ -601,6 +707,15 @@ export function useProgress() {
       });
       if (error) {
         console.error("[revealSolution] award_progress failed:", error.message);
+        enqueueAward(user.id, {
+          itemId,
+          score: 0,
+          allowRedo: false,
+          viaSolution: true,
+          optimisticXp: 1,
+        });
+        setPendingAwards(readAwardQueue(user.id).length);
+        markPendingSync(user.id);
         return null;
       }
       applyServerAward(itemId, data as any);
@@ -608,6 +723,7 @@ export function useProgress() {
     },
     [user, applyServerAward]
   );
+
 
 
   const loseLife = useCallback(() => {
