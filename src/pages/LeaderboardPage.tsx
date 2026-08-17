@@ -406,7 +406,15 @@ const LeaderboardPage = () => {
           </div>
         )}
 
+        {tab === "city" && userSchool && citySchoolIds.length === 0 && (
+          <div className="rounded-xl border border-border bg-card p-4 mb-4 text-center text-sm text-foreground/70">
+            Nu putem determina orașul liceului tău. Apasă „Schimbă" și selectează din nou liceul
+            pentru a vedea clasamentul pe oraș.
+          </div>
+        )}
+
         {isLoading ? (
+
           <div className="flex justify-center py-12">
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
           </div>
