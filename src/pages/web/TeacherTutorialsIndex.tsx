@@ -3,8 +3,10 @@ import WebLayout from "@/components/web/WebLayout";
 import TutorialCard from "@/components/web/TutorialCard";
 import AppDownloadCTA from "@/components/web/AppDownloadCTA";
 import { teacherTutorials } from "@/data/tutorials/teachers";
+import { useSeoHead } from "@/hooks/useSeoHead";
 
 const TeacherTutorialsIndex = () => {
+  useSeoHead({ canonicalPath: "/tutoriale/profesori" });
   return (
     <WebLayout>
       <Helmet>
@@ -13,10 +15,8 @@ const TeacherTutorialsIndex = () => {
           name="description"
           content="Ghiduri pentru profesori: verificare cont, clase, teste, notare cu AI, analitice și profil de competențe."
         />
-        <link rel="canonical" href="https://pyroskill.info/tutoriale/profesori" />
         <meta property="og:title" content="Tutoriale pentru profesori | PyRo" />
         <meta property="og:description" content="Folosește PyRo în clasă: tot ce trebuie să știi ca profesor." />
-        <meta property="og:url" content="https://pyroskill.info/tutoriale/profesori" />
         <meta property="og:type" content="website" />
       </Helmet>
 

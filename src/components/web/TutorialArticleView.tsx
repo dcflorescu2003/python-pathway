@@ -1,4 +1,5 @@
 import { Helmet } from "react-helmet-async";
+import { useSeoHead } from "@/hooks/useSeoHead";
 import { Link, useParams } from "react-router-dom";
 import { ArrowLeft, ArrowRight, Clock, Lightbulb } from "lucide-react";
 import type { TutorialArticle } from "@/data/tutorials/types";
@@ -16,6 +17,8 @@ const TutorialArticleView = ({ articles, basePath, audience }: Props) => {
   const article = currentIndex >= 0 ? articles[currentIndex] : undefined;
   const prev = currentIndex > 0 ? articles[currentIndex - 1] : null;
   const next = currentIndex >= 0 && currentIndex < articles.length - 1 ? articles[currentIndex + 1] : null;
+
+  useSeoHead({ canonicalPath: article ? `${basePath}/${article.slug}` : undefined });
 
   const handleNavClick = () => window.scrollTo({ top: 0, behavior: "auto" });
 
@@ -41,10 +44,8 @@ const TutorialArticleView = ({ articles, basePath, audience }: Props) => {
       <Helmet>
         <title>{article.title} | PyRo</title>
         <meta name="description" content={article.excerpt} />
-        <link rel="canonical" href={canonical} />
         <meta property="og:title" content={`${article.title} | PyRo`} />
         <meta property="og:description" content={article.excerpt} />
-        <meta property="og:url" content={canonical} />
         <meta property="og:type" content="article" />
         <script type="application/ld+json">
           {JSON.stringify({

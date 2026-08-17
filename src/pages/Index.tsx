@@ -51,11 +51,18 @@ import { useMotivationalTip } from "@/hooks/useMotivationalTip";
 import TeacherVerificationTipCard from "@/components/teacher/TeacherVerificationTipCard";
 import { useTeacherVerificationTip } from "@/hooks/useTeacherVerificationTip";
 import TeacherTestsCard from "@/components/home/TeacherTestsCard";
+import { useSeoHead } from "@/hooks/useSeoHead";
 
 
 
 
 const Index = (): JSX.Element => {
+  useSeoHead({
+    title: "PyRo — Învață Python pas cu pas",
+    description: "Tablou de bord PyRo: lecții interactive de Python, probleme rezolvate, XP și clasamente pentru elevi de liceu.",
+    canonicalPath: "/",
+  });
+
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
   const { progress, setLivesFromReward } = useProgress();

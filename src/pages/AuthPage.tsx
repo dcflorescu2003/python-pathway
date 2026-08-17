@@ -21,6 +21,7 @@ import StudentTab from "@/components/account/StudentTab";
 import TeacherClassesTab from "@/components/account/TeacherClassesTab";
 import TeacherTestsTab from "@/components/account/TeacherTestsTab";
 import LoadingScreen from "@/components/states/LoadingScreen";
+import { useSeoHead } from "@/hooks/useSeoHead";
 
 const AccountView = () => {
   const navigate = useNavigate();
@@ -464,6 +465,8 @@ const AccountView = () => {
 };
 
 const AuthPage = () => {
+  useSeoHead({ noindex: true });
+
   const navigate = useNavigate();
   const { user, signUp, signIn, signInWithGoogle, signInWithApple, loading: authLoading } = useAuth();
   const [isLogin, setIsLogin] = useState(true);
