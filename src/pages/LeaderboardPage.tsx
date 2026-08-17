@@ -124,10 +124,18 @@ const LeaderboardPage = () => {
     setTabInitialized(true);
   }, [classData, isClassMember, tabInitialized]);
 
+  // Tabul "oraș" este valid doar dacă liceul din profil există în catalogul local
+  // (build-uri mobile mai vechi pot avea alt catalog) — altfel am afișa un
+  // clasament greșit (fără filtru = național).
+  const cityUnavailable = tab === "city" && (!userSchool || citySchoolIds.length === 0);
+
   // Query 1: Top 15 filtered by tab
   const { data: top15 = [], isLoading } = useQuery({
     queryKey: ["leaderboard-top", tab, userSchool, classData?.classId],
-    enabled: tab !== "class" || !!classData,
+    enabled: (tab !== "class" || !!classData) && !cityUnavailable,
+    staleTime: 15_000,
+    refetchOnWindowFocus: true,
+    refetchOnMount: "always",
     queryFn: async () => {
       let query = supabase
         .from("public_profiles" as any)
@@ -155,7 +163,10 @@ const LeaderboardPage = () => {
   // Query 2: Current user's profile + rank
   const { data: userRankData } = useQuery({
     queryKey: ["leaderboard-user-rank", tab, userSchool, classData?.classId, user?.id],
-    enabled: !!user && (tab !== "class" || !!classData),
+    enabled: !!user && (tab !== "class" || !!classData) && !cityUnavailable,
+    staleTime: 15_000,
+    refetchOnWindowFocus: true,
+    refetchOnMount: "always",
     queryFn: async () => {
       const { data: profile } = await supabase
         .from("public_profiles" as any)
@@ -189,6 +200,27 @@ const LeaderboardPage = () => {
       return { ...myProfile, rank: (count || 0) + 1 } as LeaderboardEntry & { rank: number };
     },
   });
+
+  // Reîmprospătare la revenirea aplicației native în prim-plan (Capacitor nu
+  // declanșează fiabil `focus` / `visibilitychange`).
+  useEffect(() => {
+    let remove: (() => void) | undefined;
+    void (async () => {
+      try {
+        const { Capacitor } = await import("@capacitor/core");
+        if (!Capacitor.isNativePlatform()) return;
+        const { App } = await import("@capacitor/app");
+        const handle = await App.addListener("appStateChange", ({ isActive }) => {
+          if (!isActive) return;
+          queryClient.invalidateQueries({ queryKey: ["leaderboard-top"] });
+          queryClient.invalidateQueries({ queryKey: ["leaderboard-user-rank"] });
+        });
+        remove = () => { void handle.remove(); };
+      } catch {}
+    })();
+    return () => remove?.();
+  }, [queryClient]);
+
 
   const userInTop15 = user ? top15.some(e => e.user_id === user.id) : false;
   const showUserBelow = !!userRankData && !userInTop15;
