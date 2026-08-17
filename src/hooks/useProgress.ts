@@ -29,6 +29,65 @@ const FULL_REGEN_MS = 30 * 60 * 1000;
 const STORAGE_KEY_PREFIX = "pyro-progress";
 const LEGACY_KEY = "pylearn-progress";
 const PENDING_SYNC_PREFIX = "pyro-progress-pending-sync";
+const AWARD_QUEUE_PREFIX = "pyro-award-queue";
+
+/** Un item de progres care trebuie trimis la server pentru XP. */
+export interface AwardQueueItem {
+  itemId: string;
+  score: number;
+  allowRedo: boolean;
+  viaSolution: boolean;
+  optimisticXp: number;
+  attempts: number;
+  lastAttemptAt: number;
+  queuedAt: number;
+}
+
+function getAwardQueueKey(userId: string) {
+  return `${AWARD_QUEUE_PREFIX}:${userId}`;
+}
+
+function readAwardQueue(userId: string): AwardQueueItem[] {
+  try {
+    const raw = localStorage.getItem(getAwardQueueKey(userId));
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? (parsed as AwardQueueItem[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeAwardQueue(userId: string, items: AwardQueueItem[]) {
+  try {
+    if (items.length === 0) localStorage.removeItem(getAwardQueueKey(userId));
+    else localStorage.setItem(getAwardQueueKey(userId), JSON.stringify(items));
+  } catch {}
+}
+
+function enqueueAward(userId: string, item: Omit<AwardQueueItem, "attempts" | "lastAttemptAt" | "queuedAt">) {
+  const queue = readAwardQueue(userId);
+  // Un singur item în coadă per (itemId, viaSolution): păstrăm scorul maxim.
+  const existing = queue.find((q) => q.itemId === item.itemId && q.viaSolution === item.viaSolution);
+  if (existing) {
+    existing.score = Math.max(existing.score, item.score);
+    existing.allowRedo = existing.allowRedo || item.allowRedo;
+    existing.optimisticXp = Math.max(existing.optimisticXp, item.optimisticXp);
+  } else {
+    queue.push({ ...item, attempts: 0, lastAttemptAt: 0, queuedAt: Date.now() });
+  }
+  writeAwardQueue(userId, queue);
+}
+
+function dequeueAward(userId: string, itemId: string, viaSolution: boolean) {
+  const queue = readAwardQueue(userId).filter((q) => !(q.itemId === itemId && q.viaSolution === viaSolution));
+  writeAwardQueue(userId, queue);
+}
+
+/** XP estimat, încă netrimis la server. */
+function pendingQueueXp(userId: string): number {
+  return readAwardQueue(userId).reduce((sum, q) => sum + (q.optimisticXp || 0), 0);
+}
 
 function getPendingSyncKey(userId: string) {
   return `${PENDING_SYNC_PREFIX}:${userId}`;
@@ -45,6 +104,7 @@ function clearPendingSync(userId: string) {
 function hasPendingSync(userId: string) {
   try { return localStorage.getItem(getPendingSyncKey(userId)) === "1"; } catch { return false; }
 }
+
 
 async function syncToCloudWithRetry(userId: string, p: UserProgress, attempts = 3) {
   let lastErr: unknown = null;
