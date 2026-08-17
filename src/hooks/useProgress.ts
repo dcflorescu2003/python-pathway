@@ -369,7 +369,11 @@ export function useProgress() {
         // Apply 30-min lives regeneration immediately on cloud load so a user who
         // reopens the app after the timer elapsed sees 5/5 right away instead of
         // waiting for the 60s interval tick.
-        const finalProgress = regenerateLives(mergedProgress);
+        const regenerated = regenerateLives(mergedProgress);
+        // XP încă netrimis (coadă offline) rămâne vizibil până la sincronizare.
+        const queuedXp = pendingQueueXp(user.id);
+        const finalProgress = queuedXp > 0 ? { ...regenerated, xp: regenerated.xp + queuedXp } : regenerated;
+
 
         setProgress(finalProgress);
         saveLocalProgress(finalProgress, user.id);
