@@ -65,7 +65,7 @@ const Index = (): JSX.Element => {
 
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
-  const { progress, setLivesFromReward } = useProgress();
+  const { progress, setLivesFromReward, pendingAwards } = useProgress();
   const { data: chapters, isLoading: chaptersLoading } = useChapters();
   const { challenges, isChallenge } = useChallenges();
   
