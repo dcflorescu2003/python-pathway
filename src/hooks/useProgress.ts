@@ -883,9 +883,12 @@ export function useProgress() {
   const resyncFromCloud = useCallback(async (): Promise<{ ok: boolean; count: number; error?: string; pushed?: number; report?: SyncReport | null }> => {
     if (!user) return { ok: false, count: 0, error: "Nu ești autentificat." };
     try {
-      // PUSH first: restore the local history in one server-side batch. Historical
+      // Mai întâi trimitem XP-ul rămas în coadă (offline), apoi restaurăm istoricul.
+      await flushAwardQueue();
+      // PUSH: restore the local history in one server-side batch. Historical
       // synchronization must never call award_progress or grant XP again.
       const localProgress = loadLocalProgress(user.id);
+
       const localCompleted = Object.entries(localProgress.completedLessons).filter(([, v]) => v.completed);
       let pushed = 0;
       let syncReport: SyncReport | null = null;
