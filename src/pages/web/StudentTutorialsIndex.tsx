@@ -3,8 +3,10 @@ import WebLayout from "@/components/web/WebLayout";
 import TutorialCard from "@/components/web/TutorialCard";
 import AppDownloadCTA from "@/components/web/AppDownloadCTA";
 import { studentTutorials } from "@/data/tutorials/students";
+import { useSeoHead } from "@/hooks/useSeoHead";
 
 const StudentTutorialsIndex = () => {
+  useSeoHead({ canonicalPath: "/tutoriale/elevi" });
   return (
     <WebLayout>
       <Helmet>
@@ -13,10 +15,8 @@ const StudentTutorialsIndex = () => {
           name="description"
           content="Ghiduri pas-cu-pas pentru elevi: cum îți creezi cont, cum funcționează lecțiile, vieți, streak, probleme și provocări."
         />
-        <link rel="canonical" href="https://pyroskill.info/tutoriale/elevi" />
         <meta property="og:title" content="Tutoriale pentru elevi | PyRo" />
         <meta property="og:description" content="Învață cum să folosești PyRo eficient ca elev." />
-        <meta property="og:url" content="https://pyroskill.info/tutoriale/elevi" />
         <meta property="og:type" content="website" />
       </Helmet>
 

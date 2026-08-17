@@ -19,6 +19,7 @@ import FeatureCard from "@/components/web/FeatureCard";
 import AppDownloadCTA from "@/components/web/AppDownloadCTA";
 import PyroLogo from "@/components/brand/PyroLogo";
 import { Button } from "@/components/ui/button";
+import { useSeoHead } from "@/hooks/useSeoHead";
 
 const studentFeatures = [
   { icon: BookOpen, title: "Lecții interactive scurte", description: "Peste 1500 de exerciții și probleme. Lecții scurte, exerciții variate, progres rapid." },
@@ -38,6 +39,7 @@ const teacherFeatures = [
 ];
 
 const AboutPage = () => {
+  useSeoHead({ canonicalPath: "/about" });
   return (
     <WebLayout>
       <Helmet>
@@ -46,10 +48,8 @@ const AboutPage = () => {
           name="description"
           content="PyRo este platforma educațională care învață Python prin lecții interactive. Curriculum aliniat cu clasa a IX-a, editor de cod în browser, unelte complete pentru profesori."
         />
-        <link rel="canonical" href="https://pyroskill.info/about" />
         <meta property="og:title" content="PyRo — Învață Python pas cu pas" />
         <meta property="og:description" content="Platformă educațională Python pentru elevi și profesori. Lecții, teste, AI grading și date statistice." />
-        <meta property="og:url" content="https://pyroskill.info/about" />
         <meta property="og:type" content="website" />
         <script type="application/ld+json">
           {JSON.stringify({
