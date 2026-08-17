@@ -414,7 +414,10 @@ export function useProgress() {
 
         setProgress((prev) => {
           const cloudDate = profile.last_activity_date ?? "";
-          const cloudXP = profile.xp ?? prev.xp;
+          // Dacă mai avem acordări netrimise, nu scădem XP-ul afișat sub
+          // valoarea locală: adăugăm estimarea din coadă până la sincronizare.
+          const cloudXP = (profile.xp ?? prev.xp) + pendingQueueXp(user.id);
+
           const cloudStreak = profile.streak ?? prev.streak;
 
           const isPremiumCloud = profile.is_premium ?? prev.isPremium;
