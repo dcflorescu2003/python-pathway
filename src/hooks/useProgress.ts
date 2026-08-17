@@ -953,7 +953,8 @@ export function useProgress() {
     } catch (err: any) {
       return { ok: false, count: 0, error: err?.message ?? "Eroare necunoscută" };
     }
-  }, [user]);
+  }, [user, flushAwardQueue]);
+
 
   return { progress, completeLesson, revealSolution, loseLife, resetLives, setLivesFromReward, setPremium, recordActivity, unlockLessonViaSkip, markLessonStarted, streakJustIncreased, newStreakCount, dismissStreakCelebration, resyncFromCloud, pendingAwards, flushAwardQueue };
 }
