@@ -371,10 +371,14 @@ const Index = (): JSX.Element => {
               <Heart className="h-5 w-5" />
               <span className="text-sm font-bold">{progress.hasUnlimitedLives ? "∞" : progress.lives}</span>
             </button>
-            <div className="flex items-center gap-1 text-xp">
+            <div className="flex items-center gap-1 text-xp" title={pendingAwards > 0 ? "Se sincronizează XP-ul…" : undefined}>
               <Zap className="h-5 w-5" />
               <span className="text-sm font-bold">{progress.xp}</span>
+              {pendingAwards > 0 && (
+                <span className="ml-0.5 h-1.5 w-1.5 animate-pulse rounded-full bg-muted-foreground" aria-label="Se sincronizează XP-ul" />
+              )}
             </div>
+
           </div>
         </div>
       </header>
