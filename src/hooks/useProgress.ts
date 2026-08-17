@@ -952,7 +952,7 @@ export function useProgress() {
     }
   }, [user]);
 
-  return { progress, completeLesson, revealSolution, loseLife, resetLives, setLivesFromReward, setPremium, recordActivity, unlockLessonViaSkip, markLessonStarted, streakJustIncreased, newStreakCount, dismissStreakCelebration, resyncFromCloud };
+  return { progress, completeLesson, revealSolution, loseLife, resetLives, setLivesFromReward, setPremium, recordActivity, unlockLessonViaSkip, markLessonStarted, streakJustIncreased, newStreakCount, dismissStreakCelebration, resyncFromCloud, pendingAwards, flushAwardQueue };
 }
 
 function mergeProgress(a: UserProgress, b: UserProgress): UserProgress {
