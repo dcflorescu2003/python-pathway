@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { ArrowLeft, Mail, ChevronDown, ChevronUp, LifeBuoy } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { useSeoHead } from "@/hooks/useSeoHead";
 
 const SUPPORT_EMAIL = "florescu.cosmin.tr@gmail.com";
 
@@ -51,6 +52,12 @@ const FAQS: { q: string; a: string }[] = [
 ];
 
 const SupportPage = () => {
+  useSeoHead({
+    title: "Suport PyRo — întrebări frecvente și contact",
+    description: "Răspunsuri la întrebările frecvente despre conturi, vieți, XP și abonamente PyRo, plus adresa de contact pentru suport.",
+    canonicalPath: "/support",
+  });
+
   const navigate = useNavigate();
   const [openIndex, setOpenIndex] = useState<number | null>(0);
 

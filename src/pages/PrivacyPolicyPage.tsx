@@ -1,8 +1,15 @@
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { ArrowLeft } from "lucide-react";
+import { useSeoHead } from "@/hooks/useSeoHead";
 
 const PrivacyPolicyPage = () => {
+  useSeoHead({
+    title: "Politica de confidențialitate | PyRo",
+    description: "Cum colectează, folosește și protejează PyRo datele personale ale elevilor și profesorilor.",
+    canonicalPath: "/privacy-policy",
+  });
+
   const navigate = useNavigate();
 
   return (

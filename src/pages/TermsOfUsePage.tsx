@@ -1,8 +1,15 @@
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { ArrowLeft } from "lucide-react";
+import { useSeoHead } from "@/hooks/useSeoHead";
 
 const TermsOfUsePage = () => {
+  useSeoHead({
+    title: "Termeni de utilizare | PyRo",
+    description: "Termenii și condițiile de utilizare a aplicației educaționale PyRo pentru învățarea limbajului Python.",
+    canonicalPath: "/terms-of-use",
+  });
+
   const navigate = useNavigate();
 
   return (
