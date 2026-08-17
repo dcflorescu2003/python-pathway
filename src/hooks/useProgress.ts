@@ -1,6 +1,8 @@
 import { useState, useCallback, useEffect, useRef } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+
 
 export interface UserProgress {
   xp: number;
@@ -173,6 +175,8 @@ function saveLocalProgress(p: UserProgress, userId?: string) {
 
 export function useProgress() {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
+
   // Start from a clean slate; real progress is loaded once the user id is known.
   const [progress, setProgress] = useState<UserProgress>(() => createDefaultProgress());
   const [streakJustIncreased, setStreakJustIncreased] = useState(false);
@@ -346,44 +350,37 @@ export function useProgress() {
 
         setProgress((prev) => {
           const cloudDate = profile.last_activity_date ?? "";
-          const isCloudNewer =
-            (cloudDate && cloudDate > prev.lastActivityDate) ||
-            (profile.streak ?? 0) > prev.streak ||
-            (profile.xp ?? 0) > prev.xp;
+          const cloudXP = profile.xp ?? prev.xp;
+          const cloudStreak = profile.streak ?? prev.streak;
 
           const isPremiumCloud = profile.is_premium ?? prev.isPremium;
           const isVerifiedTeacher = (profile as any).teacher_status === "verified";
 
-          const base: UserProgress = isCloudNewer
-            ? {
-                ...prev,
-                xp: Math.max(prev.xp, profile.xp ?? 0),
-                streak: Math.max(prev.streak, profile.streak ?? 0),
-                lives: profile.lives ?? prev.lives,
-                isPremium: isPremiumCloud,
-                hasUnlimitedLives: isPremiumCloud || isVerifiedTeacher,
-                lastActivityDate: cloudDate > prev.lastActivityDate ? cloudDate : prev.lastActivityDate,
-                livesUpdatedAt: profile.lives_updated_at ?? prev.livesUpdatedAt,
-              }
-            : {
-                ...prev,
-                // Still adopt cloud lives/livesUpdatedAt so regen can fire even
-                // if no other field changed (e.g. user closed app at 0 lives).
-                lives: profile.lives ?? prev.lives,
-                livesUpdatedAt: profile.lives_updated_at ?? prev.livesUpdatedAt,
-                isPremium: isPremiumCloud,
-                hasUnlimitedLives: isPremiumCloud || isVerifiedTeacher,
-              };
+          // XP / streak sunt autoritare pe server (award_progress). Nu mai
+          // folosim max(local, cloud): altfel o valoare locală veche/optimistă
+          // rămâne pe telefon și diferă de web și de clasamente.
+          const base: UserProgress = {
+            ...prev,
+            xp: cloudXP,
+            streak: cloudStreak,
+            lives: profile.lives ?? prev.lives,
+            isPremium: isPremiumCloud,
+            hasUnlimitedLives: isPremiumCloud || isVerifiedTeacher,
+            lastActivityDate: cloudDate > prev.lastActivityDate ? cloudDate : prev.lastActivityDate,
+            livesUpdatedAt: profile.lives_updated_at ?? prev.livesUpdatedAt,
+          };
 
           const regenerated = regenerateLives(base);
 
-          if (
-            !isCloudNewer &&
+          const unchanged =
+            regenerated.xp === prev.xp &&
+            regenerated.streak === prev.streak &&
+            regenerated.lastActivityDate === prev.lastActivityDate &&
+            regenerated.isPremium === prev.isPremium &&
+            regenerated.hasUnlimitedLives === prev.hasUnlimitedLives &&
             regenerated.lives === prev.lives &&
-            regenerated.livesUpdatedAt === prev.livesUpdatedAt
-          ) {
-            return prev;
-          }
+            regenerated.livesUpdatedAt === prev.livesUpdatedAt;
+          if (unchanged) return prev;
 
           saveLocalProgress(regenerated, user.id);
 
@@ -408,10 +405,28 @@ export function useProgress() {
 
     document.addEventListener("visibilitychange", onVisible);
     window.addEventListener("focus", onFocus);
+
+    // Native (Capacitor): `focus`/`visibilitychange` nu se declanșează fiabil la
+    // revenirea din background, deci ascultăm explicit appStateChange.
+    let removeNative: (() => void) | undefined;
+    void (async () => {
+      try {
+        const { Capacitor } = await import("@capacitor/core");
+        if (!Capacitor.isNativePlatform()) return;
+        const { App } = await import("@capacitor/app");
+        const handle = await App.addListener("appStateChange", ({ isActive }) => {
+          if (isActive) void refetch();
+        });
+        removeNative = () => { void handle.remove(); };
+      } catch {}
+    })();
+
     return () => {
       document.removeEventListener("visibilitychange", onVisible);
       window.removeEventListener("focus", onFocus);
+      removeNative?.();
     };
+
   }, [user]);
 
   const applyServerAward = useCallback(
@@ -441,9 +456,13 @@ export function useProgress() {
         setStreakJustIncreased(true);
         setNewStreakCount(result.streak ?? 0);
       }
+      // XP-ul s-a schimbat pe server → clasamentele trebuie recitite.
+      queryClient.invalidateQueries({ queryKey: ["leaderboard-top"] });
+      queryClient.invalidateQueries({ queryKey: ["leaderboard-user-rank"] });
     },
-    [user]
+    [user, queryClient]
   );
+
 
   const completeLesson = useCallback(
     async (lessonId: string, xpEarned: number, score: number) => {
