@@ -241,7 +241,11 @@ export function useProgress() {
   const [progress, setProgress] = useState<UserProgress>(() => createDefaultProgress());
   const [streakJustIncreased, setStreakJustIncreased] = useState(false);
   const [newStreakCount, setNewStreakCount] = useState(0);
+  // Câte acordări de XP așteaptă încă trimiterea către server.
+  const [pendingAwards, setPendingAwards] = useState(0);
   const prevUserId = useRef<string | null>(null);
+  const flushingRef = useRef(false);
+
 
   useEffect(() => {
     const interval = setInterval(() => {
