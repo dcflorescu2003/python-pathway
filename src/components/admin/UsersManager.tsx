@@ -81,6 +81,19 @@ const UsersManager = () => {
     qc.invalidateQueries({ queryKey: ["admin-users"] });
   };
 
+  const recomputeXp = async (u: AdminUser) => {
+    const { data, error } = await supabase.rpc("admin_recompute_xp" as any, {
+      p_user_id: u.user_id,
+    });
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    const res = data as { old_xp?: number; new_xp?: number } | null;
+    toast.success(`XP recalculat: ${res?.old_xp ?? "?"} → ${res?.new_xp ?? "?"}`);
+    qc.invalidateQueries({ queryKey: ["admin-users"] });
+  };
+
   const renderName = (u: AdminUser) => {
     const parts = [u.last_name, u.first_name].filter(Boolean).join(" ").trim();
     return parts || u.display_name || u.nickname || "—";
