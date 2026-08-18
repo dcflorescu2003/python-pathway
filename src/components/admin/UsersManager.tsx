@@ -190,7 +190,17 @@ const UsersManager = () => {
                     </div>
                   </TableCell>
                   <TableCell>{renderSourceBadge(u)}</TableCell>
-                  <TableCell className="text-right">
+                  <TableCell className="text-right space-x-2 whitespace-nowrap">
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="gap-1"
+                      onClick={() => recomputeXp(u)}
+                      title="Recalculează XP-ul din lecțiile și problemele finalizate"
+                    >
+                      <Calculator className="h-3 w-3" /> XP
+                    </Button>
+
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
                         <Button
