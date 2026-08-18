@@ -17,7 +17,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
-import { Search, RefreshCw, Crown, User as UserIcon } from "lucide-react";
+import { Search, RefreshCw, Crown, User as UserIcon, Calculator } from "lucide-react";
 
 interface AdminUser {
   user_id: string;
