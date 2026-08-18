@@ -17,7 +17,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
-import { Search, RefreshCw, Crown, User as UserIcon } from "lucide-react";
+import { Search, RefreshCw, Crown, User as UserIcon, Calculator } from "lucide-react";
 
 interface AdminUser {
   user_id: string;
@@ -78,6 +78,19 @@ const UsersManager = () => {
       return;
     }
     toast.success(value ? "Promovat la Premium" : "Retrogradat la Free");
+    qc.invalidateQueries({ queryKey: ["admin-users"] });
+  };
+
+  const recomputeXp = async (u: AdminUser) => {
+    const { data, error } = await supabase.rpc("admin_recompute_xp" as any, {
+      p_user_id: u.user_id,
+    });
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    const res = data as { old_xp?: number; new_xp?: number } | null;
+    toast.success(`XP recalculat: ${res?.old_xp ?? "?"} → ${res?.new_xp ?? "?"}`);
     qc.invalidateQueries({ queryKey: ["admin-users"] });
   };
 
@@ -190,7 +203,17 @@ const UsersManager = () => {
                     </div>
                   </TableCell>
                   <TableCell>{renderSourceBadge(u)}</TableCell>
-                  <TableCell className="text-right">
+                  <TableCell className="text-right space-x-2 whitespace-nowrap">
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="gap-1"
+                      onClick={() => recomputeXp(u)}
+                      title="Recalculează XP-ul din lecțiile și problemele finalizate"
+                    >
+                      <Calculator className="h-3 w-3" /> XP
+                    </Button>
+
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
                         <Button

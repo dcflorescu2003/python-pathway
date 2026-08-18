@@ -1858,6 +1858,7 @@ export type Database = {
     Functions: {
       admin_get_anomalies: { Args: { p_days?: number }; Returns: Json }
       admin_get_stats: { Args: { p_days?: number }; Returns: Json }
+      admin_recompute_xp: { Args: { p_user_id: string }; Returns: Json }
       admin_set_premium: {
         Args: { p_premium: boolean; p_user_id: string }
         Returns: undefined
