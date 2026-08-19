@@ -1867,15 +1867,26 @@ export type Database = {
         Args: { p_notes?: string; p_request_id: string }
         Returns: undefined
       }
-      award_progress: {
-        Args: {
-          p_allow_redo?: boolean
-          p_item_id: string
-          p_score: number
-          p_via_solution?: boolean
-        }
-        Returns: Json
-      }
+      award_progress:
+        | {
+            Args: {
+              p_allow_redo?: boolean
+              p_item_id: string
+              p_score: number
+              p_via_solution?: boolean
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
+              p_allow_redo?: boolean
+              p_client_version?: string
+              p_item_id: string
+              p_score: number
+              p_via_solution?: boolean
+            }
+            Returns: Json
+          }
       backfill_competency_scores: { Args: { p_user_id: string }; Returns: Json }
       can_teacher_view_student: {
         Args: { p_student_id: string; p_teacher_id: string }
