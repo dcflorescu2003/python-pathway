@@ -1,0 +1,1 @@
+DROP FUNCTION IF EXISTS public.award_progress(text, integer, boolean, boolean);
