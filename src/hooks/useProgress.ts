@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { APP_VERSION } from "@/lib/appVersion";
 import { useAuth } from "@/hooks/useAuth";
 
 
@@ -567,6 +568,7 @@ export function useProgress() {
           p_score: item.score,
           p_allow_redo: item.allowRedo,
           p_via_solution: item.viaSolution,
+          p_client_version: APP_VERSION,
         });
 
         if (error) {
@@ -711,6 +713,7 @@ export function useProgress() {
         p_score: 0,
         p_allow_redo: false,
         p_via_solution: true,
+        p_client_version: APP_VERSION,
       });
       if (error) {
         console.error("[revealSolution] award_progress failed:", error.message);

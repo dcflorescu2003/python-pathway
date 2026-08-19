@@ -1870,6 +1870,7 @@ export type Database = {
       award_progress: {
         Args: {
           p_allow_redo?: boolean
+          p_client_version?: string
           p_item_id: string
           p_score: number
           p_via_solution?: boolean
