@@ -267,6 +267,11 @@ const Index = (): JSX.Element => {
 
   const currentSchool = schools.find((s) => s.id === selectedSchool);
 
+  // Vizitator web fără cont: pagina publică de prezentare (indexabilă).
+  if (!authLoading && !user && !Capacitor.isNativePlatform()) {
+    return <LandingPage />;
+  }
+
   return (
     <AnimatePresence mode="wait">
       {!isReady ? (
