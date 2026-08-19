@@ -1,4 +1,6 @@
 // Runs before `vite dev` and `vite build` (predev/prebuild hooks); writes public/sitemap.xml.
+// Minimal, spec-strict output: only <loc>. Google ignores <changefreq>/<priority>,
+// and we have no authoritative per-page modification date, so <lastmod> is omitted.
 
 import { writeFileSync } from "fs";
 import { resolve } from "path";
@@ -26,47 +28,40 @@ const teacherSlugs = [
   "premium-profesor",
 ];
 
-const entries = [
-  { path: "/", changefreq: "weekly", priority: "1.0" },
-  { path: "/about", changefreq: "monthly", priority: "0.9" },
-  { path: "/tutoriale/elevi", changefreq: "monthly", priority: "0.8" },
-  { path: "/tutoriale/profesori", changefreq: "monthly", priority: "0.8" },
-  { path: "/privacy-policy", changefreq: "yearly", priority: "0.3" },
-  { path: "/terms-of-use", changefreq: "yearly", priority: "0.3" },
-  { path: "/support", changefreq: "yearly", priority: "0.4" },
-  ...studentSlugs.map((slug) => ({
-    path: `/tutoriale/elevi/${slug}`,
-    changefreq: "monthly",
-    priority: "0.6",
-  })),
-  ...teacherSlugs.map((slug) => ({
-    path: `/tutoriale/profesori/${slug}`,
-    changefreq: "monthly",
-    priority: "0.6",
-  })),
+const paths = [
+  "/",
+  "/about",
+  "/tutoriale/elevi",
+  "/tutoriale/profesori",
+  "/privacy-policy",
+  "/terms-of-use",
+  "/support",
+  ...studentSlugs.map((slug) => `/tutoriale/elevi/${slug}`),
+  ...teacherSlugs.map((slug) => `/tutoriale/profesori/${slug}`),
 ];
 
+const escapeXml = (value) =>
+  value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&apos;");
+
 function generateSitemap(items) {
-  const urls = items.map((entry) =>
-    [
-      "  <url>",
-      `    <loc>${BASE_URL}${entry.path}</loc>`,
-      entry.lastmod ? `    <lastmod>${entry.lastmod}</lastmod>` : null,
-      entry.changefreq ? `    <changefreq>${entry.changefreq}</changefreq>` : null,
-      entry.priority ? `    <priority>${entry.priority}</priority>` : null,
-      "  </url>",
-    ]
-      .filter(Boolean)
-      .join("\n"),
-  );
+  const urls = items.map((path) => {
+    const loc = escapeXml(new URL(path, BASE_URL).toString());
+    return `  <url>\n    <loc>${loc}</loc>\n  </url>`;
+  });
 
   return [
     '<?xml version="1.0" encoding="UTF-8"?>',
     '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
     ...urls,
     "</urlset>",
+    "",
   ].join("\n");
 }
 
-writeFileSync(resolve("public/sitemap.xml"), generateSitemap(entries));
-console.log(`sitemap.xml written (${entries.length} entries)`);
+writeFileSync(resolve("public/sitemap.xml"), generateSitemap(paths), { encoding: "utf8" });
+console.log(`sitemap.xml written (${paths.length} entries)`);
