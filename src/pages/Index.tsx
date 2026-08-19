@@ -1,4 +1,6 @@
 import { useState, useEffect, useRef } from "react";
+import { Capacitor } from "@capacitor/core";
+import LandingPage from "@/pages/web/LandingPage";
 import PyroLogo from "@/components/brand/PyroLogo";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
