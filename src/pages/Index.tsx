@@ -104,9 +104,11 @@ const Index = (): JSX.Element => {
     if (tipType) markTipShown(tipType);
   }, [tipType, markTipShown]);
 
+  // În aplicația nativă, vizitatorii fără sesiune merg direct la autentificare.
+  // Pe web rămân pe "/" și văd pagina publică de prezentare (indexabilă de Google).
   useEffect(() => {
     if (authLoading) return;
-    if (!user) {
+    if (!user && Capacitor.isNativePlatform()) {
       // Wait a beat for auth state to settle after OAuth redirects
       const timeout = setTimeout(() => {
         navigate("/auth", { replace: true });
