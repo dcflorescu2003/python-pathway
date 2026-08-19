@@ -66,7 +66,10 @@ const MAIN_PAGES = ["/", "/leaderboard", "/problems"];
 
 const AppRoutes = () => {
   const location = useLocation();
-  const isMainPage = MAIN_PAGES.includes(location.pathname);
+  const { user, loading: authLoading } = useAuth();
+  // Pe "/" fără cont se afișează pagina publică de prezentare, fără bara de jos.
+  const isPublicLanding = location.pathname === "/" && !authLoading && !user;
+  const isMainPage = MAIN_PAGES.includes(location.pathname) && !isPublicLanding;
 
   const content = (
     <Suspense fallback={<LoadingScreen />}>
