@@ -58,8 +58,17 @@ const LeaderboardPage = () => {
   const localSchoolValid = localSchool && localSchool !== "skipped" ? localSchool : null;
   const userSchool = myProfileSchool ?? localSchoolValid ?? null;
 
-  const userCity = userSchool ? schools.find(s => s.id === userSchool)?.city : null;
-  const citySchoolIds = userCity ? schools.filter(s => s.city === userCity).map(s => s.id) : [];
+  const userSchoolObj = userSchool ? schools.find(s => s.id === userSchool) : null;
+  const userCity = userSchoolObj?.city ?? null;
+  const userInBucharest = userSchoolObj ? isBucharestSchool(userSchoolObj) : false;
+  const cityLabel = userInBucharest ? "București" : userCity;
+  const citySchoolIds = userCity
+    ? (userInBucharest
+        ? schools.filter(s => isBucharestSchool(s))
+        : schools.filter(s => s.city === userCity)
+      ).map(s => s.id)
+    : [];
+
 
   const filteredSchools = useMemo(() => {
     if (!schoolSearch.trim()) return [];
