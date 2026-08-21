@@ -1,75 +1,41 @@
-# Conținut extern în lecții: LIVRESQ (embed) + SCORM 1.2 (import)
+# Verificare XP după o lecție pe mobil
 
-## Ce am verificat pe LIVRESQ
+## Situația curentă (verificată acum)
 
-- LIVRESQ (Ascendia) e un editor de lecții eLearning care produce materiale **compatibile SCORM și HTML5**.
-- Are două căi de distribuire: **publicare în Bibliotecă** (lecția rămâne găzduită la ei, primești un link pe care elevii îl deschid fără cont) și **export** (pachet SCORM/HTML descărcabil, pentru alt LMS).
-- Am verificat tehnic `library.livresq.com`: răspunde 200 și **nu trimite `X-Frame-Options` sau `frame-ancestors`**, deci lecțiile lor pot fi afișate într-un `iframe` în PyRo.
+Cont: dcflorescu2003@gmail.com (Florescu Cosmin)
 
-## Verdictul pe ideea ta
+- XP curent: **15460**
+- Lecții marcate ca finalizate: **576**
+- Ultima activitate înregistrată: 19 august 2026 (restaurare în masă a progresului), nimic nou după
+- Versiunea aplicației în cod: **1.117** (Android și iOS la fel), iar acordarea de XP pe server acceptă doar clienți de la această versiune în sus
 
-Da, merge — și e clar mai ieftin ca stocare. Dar are un compromis pe care trebuie să-l accepți explicit:
+Deci baza de comparație este clară: XP = 15460 înainte de lecția pe care urmează să o faci.
 
-**O lecție LIVRESQ încărcată prin link rulează pe domeniul lor. Din motive de securitate a browserului, nu putem citi din interiorul acelui iframe niciun scor, progres sau finalizare.** Comunicarea cross-origin cu API-ul SCORM este blocată. Practic: redare da, scor și XP automat nu.
+## Ce facem
 
-Ca urmare, propun două moduri de conținut extern, alese de admin per lecție:
+1. Tu faci o lecție pe telefon (ideal una **deja finalizată anterior** și apoi una **nouă**, ca să testăm ambele cazuri).
+2. Eu verific imediat după, direct în baza de date:
+   - cât XP ai acum față de 15460
+   - dacă lecția a fost înregistrată o singură dată sau de mai multe ori
+   - ce scor a fost salvat și la ce oră
 
-| Mod | Stocare | Scor / XP | Când îl folosim |
-|---|---|---|---|
-| **A. Link LIVRESQ (embed)** | zero | fără scor automat | material de citit/parcurs, teorie, demonstrații |
-| **B. Import pachet SCORM 1.2** | pachet stocat la noi | scor real → XP | conținut evaluat, unde vrem punctaj |
+## Rezultat așteptat
 
-## Recomandare
+- Lecție **refăcută** cu scor egal sau mai mic: **0 XP** acordat (doar scorul se poate actualiza dacă e mai bun)
+- Lecție **nouă**: XP acordat exact o dată, în limita recompensei lecției (zeci de XP, nu sute/mii)
+- Fără sărituri bruște de XP la sincronizare între telefon și web
 
-Începem cu **modul A (embed LIVRESQ)** — e mult mai simplu, aproape fără stocare, și acoperă cazul „vreau materiale bogate în lecție”. XP-ul îl acordăm ca la exercițiul de tip „card”: elevul parcurge conținutul și apasă „Am terminat” (cu un timp minim petrecut pe pagină, ca să nu fie doar un click), iar XP-ul vine tot prin fluxul server-side existent.
+## Dacă apare din nou XP gigantic
 
-Modul B (SCORM real, cu scor) îl construim doar dacă îți trebuie punctaj automat din material.
-
-## Ce construim — Etapa 1: embed LIVRESQ
-
-### Admin
-- Tip nou de exercițiu `embed` în editorul de exerciții.
-- Câmpuri: URL-ul lecției, titlu, înălțime preferată, timp minim de parcurgere (secunde), XP.
-- Validare de securitate: acceptăm doar URL-uri `https` de pe o **listă albă de domenii** (inițial `livresq.com` și subdomeniile ei). Fără listă albă, un URL greșit sau rău intenționat ar rula conținut arbitrar în aplicație.
-- Previzualizare în admin înainte de salvare.
-
-### Elev
-- Componentă `EmbedExercise`: `iframe` responsive, cu `sandbox` și `referrerpolicy`, plus fallback „Deschide în filă nouă” dacă lecția refuză încadrarea.
-- Buton „Am terminat” activ după timpul minim configurat.
-- Pe mobil nativ: afișăm conținutul tot în iframe, iar dacă nu se încarcă, buton de deschidere în browserul de sistem.
-
-### Progres și XP
-- Se comportă ca un `card`: nu are răspuns corect/greșit, nu consumă inimi.
-- XP-ul se acordă o singură dată, prin fluxul server-side existent (`award_progress`), care rămâne idempotent.
-
-## Etapa 2 (opțională): import SCORM 1.2 cu scor
-
-Doar dacă vrei punctaj automat din material:
-- Upload `.zip` în admin, citirea `imsmanifest.xml`, urcarea fișierelor într-un bucket de stocare.
-- Redare din același domeniu, cu `window.API` implementat de noi (`LMSInitialize`, `LMSGetValue`, `LMSSetValue`, `LMSCommit`, `LMSFinish`).
-- Urmărim `cmi.core.lesson_status`, `cmi.core.score.raw/max`, `cmi.suspend_data` (pentru reluare după întrerupere).
-- Tabel de stare SCORM per elev/exercițiu, cu RLS: fiecare elev doar rândul propriu.
-- Scorul se normalizează în procent și intră tot prin `award_progress`, plafonat la XP-ul definit de admin.
-
-## Riscuri și limite
-
-- Conținutul găzduit la LIVRESQ dispare din PyRo dacă autorul îl șterge sau retrage publicarea — linkurile se pot rupe în timp. Merită un marcaj în admin pentru lecțiile cu embed.
-- Ei pot adăuga oricând `X-Frame-Options`, ceea ce ar bloca încadrarea; de aceea includem fallback-ul „deschide în filă nouă”.
-- Aspectul lecțiilor LIVRESQ nu respectă tema PyRo (fundal închis, monospace) — vor arăta ca un corp străin în lecție.
-- Fără scor în modul A: dacă un elev doar deschide și închide, tot ia XP-ul după timpul minim. E același nivel de „încredere” ca la exercițiile card.
-- SCORM 2004 și xAPI nu sunt incluse.
+Investighez în ordine:
+- dacă mecanismul de trimitere în așteptare de pe mobil („outbox”) retrimite aceeași lecție de mai multe ori
+- dacă sincronizarea locală rescrie XP-ul din cloud în loc să-l respecte
+- dacă versiunea instalată pe telefon este cu adevărat 1.117 (o versiune mai veche trimite XP pe care serverul ar trebui să-l refuze)
 
 ## Detalii tehnice
 
-- Tipuri noi în `SUPPORTED_EXERCISE_TYPES` (`src/hooks/useChapters.ts`) și în constrângerea CHECK de tip exercițiu din baza de date.
-- Coloane noi pe exerciții pentru URL embed, domeniu validat, timp minim.
-- Randarea se adaugă în `src/pages/LessonPage.tsx` lângă celelalte tipuri, în `ExerciseErrorBoundary`.
-- Lista albă de domenii se validează atât în client (admin) cât și la nivel de bază de date, ca să nu poată fi ocolită.
+- Verificare pe `profiles.xp`, `completed_lessons` (lesson_id, score, completed_at) pentru user_id `e66e2524-...`
+- XP-ul este decis exclusiv server-side de funcția `award_progress`, care este idempotentă și filtrată pe `p_client_version`
+- Clientul trimite `APP_VERSION` din `src/lib/appVersion.ts` la fiecare acordare
 
-## Ordinea de implementare
-
-1. Schema: tip `embed`, coloane noi, validare domeniu.
-2. Admin: câmpuri + previzualizare.
-3. Elev: `EmbedExercise` + timp minim + fallback.
-4. Legare la XP prin fluxul existent și test cap-coadă cu o lecție LIVRESQ reală.
-5. (Opțional, ulterior) Etapa SCORM cu scor.
+Nu sunt necesare modificări de cod în acest pas — este strict verificare. Dacă apare o problemă, revin cu un plan de reparare.
