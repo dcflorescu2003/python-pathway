@@ -227,8 +227,9 @@ const TakeTestPage = () => {
         // Fetch all in parallel
         const [exRes, probRes, evalResArr] = await Promise.all([
           exerciseIds.length
-            ? supabase.from("exercises").select("*").in("id", exerciseIds)
+            ? supabase.rpc("get_exercises_for_student", { p_ids: exerciseIds })
             : Promise.resolve({ data: [] as any[] } as any),
+
           problemIds.length
             ? supabase
                 .from("problems")
