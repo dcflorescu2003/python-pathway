@@ -1963,6 +1963,23 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      get_exercises_for_student: {
+        Args: { p_ids: string[] }
+        Returns: {
+          blanks: Json
+          code_template: string
+          id: string
+          lesson_id: string
+          lines: Json
+          options: Json
+          pairs: Json
+          question: string
+          sort_order: number
+          statement: string
+          type: string
+          xp: number
+        }[]
+      }
       get_problem_solution: { Args: { p_id: string }; Returns: string }
       get_problems_catalog: {
         Args: never
