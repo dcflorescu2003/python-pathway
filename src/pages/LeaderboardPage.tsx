@@ -3,7 +3,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getSelectedSchool, setSelectedSchool, schools } from "@/data/schools";
-import { filterAndSortSchools } from "@/lib/searchUtils";
+import { filterAndSortSchools, isBucharestSchool } from "@/lib/searchUtils";
 import { getLevelInfo } from "@/data/levels";
 import { getLevelFromXP, useXPThresholds } from "@/hooks/useXPThresholds";
 import { Flame, Zap, Medal, Loader2, Search } from "lucide-react";
