@@ -3,7 +3,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getSelectedSchool, setSelectedSchool, schools } from "@/data/schools";
-import { filterAndSortSchools } from "@/lib/searchUtils";
+import { filterAndSortSchools, isBucharestSchool } from "@/lib/searchUtils";
 import { getLevelInfo } from "@/data/levels";
 import { getLevelFromXP, useXPThresholds } from "@/hooks/useXPThresholds";
 import { Flame, Zap, Medal, Loader2, Search } from "lucide-react";
@@ -58,8 +58,17 @@ const LeaderboardPage = () => {
   const localSchoolValid = localSchool && localSchool !== "skipped" ? localSchool : null;
   const userSchool = myProfileSchool ?? localSchoolValid ?? null;
 
-  const userCity = userSchool ? schools.find(s => s.id === userSchool)?.city : null;
-  const citySchoolIds = userCity ? schools.filter(s => s.city === userCity).map(s => s.id) : [];
+  const userSchoolObj = userSchool ? schools.find(s => s.id === userSchool) : null;
+  const userCity = userSchoolObj?.city ?? null;
+  const userInBucharest = userSchoolObj ? isBucharestSchool(userSchoolObj) : false;
+  const cityLabel = userInBucharest ? "București" : userCity;
+  const citySchoolIds = userCity
+    ? (userInBucharest
+        ? schools.filter(s => isBucharestSchool(s))
+        : schools.filter(s => s.city === userCity)
+      ).map(s => s.id)
+    : [];
+
 
   const filteredSchools = useMemo(() => {
     if (!schoolSearch.trim()) return [];
@@ -354,10 +363,13 @@ const LeaderboardPage = () => {
         {(tab === "school" || tab === "city") && userSchool && (
           <div className="flex items-center justify-between rounded-xl border border-border bg-card px-4 py-2.5 mb-4">
             <div className="min-w-0 flex-1">
-              <p className="text-xs text-muted-foreground">Liceul tău</p>
-              <p className="text-sm font-medium text-foreground truncate">
-                {schools.find(s => s.id === userSchool)?.name}
+              <p className="text-xs text-muted-foreground">
+                {tab === "city" ? `Clasament ${cityLabel}` : "Liceul tău"}
               </p>
+              <p className="text-sm font-medium text-foreground truncate">
+                {userSchoolObj?.name}
+              </p>
+
             </div>
             {!changingSchool ? (
               <button
