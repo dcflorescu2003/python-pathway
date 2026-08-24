@@ -15,6 +15,8 @@ import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import CodeEditor from "@/components/CodeEditor";
 import RichContent from "@/components/RichContent";
+import { shuffleOrderIds } from "@/lib/orderShuffle";
+
 import LoadingScreen from "@/components/states/LoadingScreen";
 import {
   DndContext,
