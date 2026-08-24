@@ -241,7 +241,39 @@ const LeaderboardPage = () => {
 
 
   const userInTop15 = user ? top15.some(e => e.user_id === user.id) : false;
-  const showUserBelow = !!userRankData && !userInTop15;
+  const isTeacherAccount = !!userRankData?.is_teacher;
+  const showUserBelow = !!userRankData && !userInTop15 && !isTeacherAccount;
+
+  const renderTeacherCard = (entry: LeaderboardEntry) => {
+    const level = getLevelFromXP(entry.xp, xpPerLevel);
+    const tier = getLevelInfo(level);
+    return (
+      <div className="flex items-center gap-3 rounded-xl border border-dashed border-primary/50 bg-primary/5 p-3">
+        <img
+          src={tier.image}
+          alt={tier.name}
+          title={tier.name}
+          className="h-8 w-8 shrink-0 rounded-full object-cover bg-card border border-border"
+        />
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-bold text-primary">Tu</p>
+          <div className="flex items-center gap-3 mt-0.5">
+            <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
+              <Zap className="h-3 w-3 text-xp" />
+              {entry.xp} XP
+            </span>
+            <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
+              <Flame className="h-3 w-3 text-warning" />
+              {entry.streak}d
+            </span>
+          </div>
+          <p className="text-[10px] text-muted-foreground mt-1">
+            Nu intri în clasament (cont de profesor)
+          </p>
+        </div>
+      </div>
+    );
+  };
 
   const renderRow = (entry: LeaderboardEntry, idx: number, animDelay: number) => {
     const isUser = entry.user_id === user?.id;
