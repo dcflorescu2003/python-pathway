@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useClassMembers } from "@/hooks/useTeacher";
@@ -11,10 +11,14 @@ import {
 } from "recharts";
 import {
   TrendingUp, TrendingDown, Users, Target, AlertTriangle, CheckCircle, Award,
-  Download, FileText, FileSpreadsheet,
+  Download, FileText, FileSpreadsheet, Loader2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { resolveLessonTitle } from "@/lib/lessonTitles";
+import { useReportDeps } from "@/hooks/useStudentReport";
+import { fetchStudentReport } from "@/lib/studentReportData";
+import { buildStudentSectionHtml, openPrintDocument, BASE_REPORT_CSS, STUDENT_SECTION_CSS } from "@/lib/studentReportHtml";
+
 
 interface Props {
   classId: string;
@@ -478,6 +482,40 @@ const ClassAnalytics = ({ classId, className: clsName }: Props) => {
   const totalLessonsCompleted = completedLessons.length;
   const activeStudents = studentStats.filter((s) => s.lessonsCompleted > 0).length;
 
+  const [buildingFull, setBuildingFull] = useState(false);
+  const reportDeps = useReportDeps(classId);
+
+
+  const handleFullReport = async () => {
+    setBuildingFull(true);
+    try {
+      const sections: string[] = [];
+      for (const m of members) {
+        const profile = m.profile ?? { user_id: m.student_id };
+        const data = await fetchStudentReport(
+          { ...profile, user_id: m.student_id },
+          reportDeps
+        );
+        sections.push(buildStudentSectionHtml(data, sections.length > 0));
+      }
+      const header = `
+        <h1>Raport complet — ${clsName}</h1>
+        <p class="meta">${members.length} elevi · media clasei ${classAvg}% · ${totalLessonsCompleted} lecții finalizate · generat ${new Date().toLocaleDateString("ro-RO")}</p>
+      `;
+      const ok = openPrintDocument(
+        `Raport complet - ${clsName}`,
+        header + sections.join(""),
+        BASE_REPORT_CSS + STUDENT_SECTION_CSS
+      );
+      if (!ok) toast.error("Permite pop-up-urile pentru a genera raportul.");
+      else toast.success("Raport complet generat 📄");
+    } catch (e: any) {
+      toast.error(e?.message || "Nu s-a putut genera raportul.");
+    } finally {
+      setBuildingFull(false);
+    }
+  };
+
   if (members.length === 0) {
     return (
       <p className="text-sm text-muted-foreground text-center py-8">
@@ -489,7 +527,7 @@ const ClassAnalytics = ({ classId, className: clsName }: Props) => {
   return (
     <div className="space-y-5">
       {/* Export buttons */}
-      <div className="flex gap-2 justify-end">
+      <div className="flex flex-wrap gap-2 justify-end">
         <Button
           size="sm"
           variant="outline"
@@ -506,7 +544,22 @@ const ClassAnalytics = ({ classId, className: clsName }: Props) => {
         >
           <FileText className="h-3.5 w-3.5" /> Export PDF
         </Button>
+        <Button
+          size="sm"
+          variant="outline"
+          className="gap-1.5"
+          disabled={buildingFull}
+          onClick={handleFullReport}
+        >
+          {buildingFull ? (
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          ) : (
+            <FileText className="h-3.5 w-3.5" />
+          )}
+          Raport complet (fișe elevi)
+        </Button>
       </div>
+
 
       {/* Summary cards */}
       <div className="grid grid-cols-2 gap-3">

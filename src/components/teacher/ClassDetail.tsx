@@ -13,6 +13,8 @@ import ChallengeAssigner from "./ChallengeAssigner";
 import ClassAnalytics from "./ClassAnalytics";
 import TestResults from "./TestResults";
 import StudentCompetencyView from "./StudentCompetencyView";
+import StudentReport from "./StudentReport";
+
 import { ArrowLeft, Copy, Trash2, Target, BookOpen, Code, Zap, Flame, CheckCircle, XCircle, ChevronDown, ChevronRight, BarChart3, FileText, Clock, Users } from "lucide-react";
 import { toast } from "sonner";
 import { sortByDisplayName } from "@/lib/sortStudents";
@@ -37,6 +39,7 @@ const ClassDetail = ({ classId, className: clsName, joinCode, onBack }: ClassDet
   const [viewingResultsTestId, setViewingResultsTestId] = useState<string | null>(null);
   const [viewingResultsTitle, setViewingResultsTitle] = useState<string>("");
   const [expandedStudentId, setExpandedStudentId] = useState<string | null>(null);
+  const [reportStudentId, setReportStudentId] = useState<string | null>(null);
 
   const [studentsOpen, setStudentsOpen] = useState(false);
   const [testsOpen, setTestsOpen] = useState(false);
@@ -122,6 +125,19 @@ const ClassDetail = ({ classId, className: clsName, joinCode, onBack }: ClassDet
     return completionMap[key]?.[studentId] || null;
   };
 
+  // If viewing a student's full report, render it full-screen
+  if (reportStudentId) {
+    const member = members.find((m) => m.student_id === reportStudentId);
+    return (
+      <StudentReport
+        classId={classId}
+        className={clsName}
+        profile={member?.profile ?? { user_id: reportStudentId }}
+        onBack={() => setReportStudentId(null)}
+      />
+    );
+  }
+
   // If viewing test results, render TestResults full-screen
   if (viewingResultsTestId) {
     return (
@@ -133,6 +149,7 @@ const ClassDetail = ({ classId, className: clsName, joinCode, onBack }: ClassDet
       />
     );
   }
+
 
   return (
     <div className="space-y-4">
@@ -199,13 +216,22 @@ const ClassDetail = ({ classId, className: clsName, joinCode, onBack }: ClassDet
                           </div>
                         </button>
                         {isOpen && (
-                          <div className="px-3 pb-3">
+                          <div className="px-3 pb-3 space-y-2">
                             <StudentCompetencyView
                               studentId={m.student_id}
                               studentName={m.profile?.display_name || undefined}
                             />
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="w-full gap-1 text-xs"
+                              onClick={() => setReportStudentId(m.student_id)}
+                            >
+                              <BarChart3 className="h-3.5 w-3.5" /> Fișa completă a elevului
+                            </Button>
                           </div>
                         )}
+
                       </Card>
                     );
                   })}
