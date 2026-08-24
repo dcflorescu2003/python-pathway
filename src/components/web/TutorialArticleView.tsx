@@ -50,9 +50,6 @@ const TutorialArticleView = ({ articles, basePath, audience }: Props) => {
       <Helmet>
         <title>{article.title} | PyRo</title>
         <meta name="description" content={article.excerpt} />
-        <meta property="og:title" content={`${article.title} | PyRo`} />
-        <meta property="og:description" content={article.excerpt} />
-        <meta property="og:type" content="article" />
         <script type="application/ld+json">
           {JSON.stringify({
             "@context": "https://schema.org",
