@@ -25,6 +25,17 @@
       }
     </script>
     <meta property="og:url" content="https://pyroskill.info/" />
+    <script>
+      // Self-referencing canonical / og:url for every route (no SSR on this stack).
+      (function () {
+        var path = window.location.pathname.replace(/\/+$/, "") || "/";
+        var url = "https://pyroskill.info" + path;
+        var link = document.querySelector('link[rel="canonical"]');
+        if (link) link.setAttribute("href", url);
+        var og = document.querySelector('meta[property="og:url"]');
+        if (og) og.setAttribute("content", url);
+      })();
+    </script>
 
 
     
