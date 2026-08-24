@@ -46,10 +46,10 @@ const AboutPage = () => {
         <title>PyRo — Învață Python pas cu pas, pentru elevi și profesori</title>
         <meta
           name="description"
-          content="PyRo este platforma educațională care învață Python prin lecții interactive. Curriculum aliniat cu clasa a IX-a, editor de cod în browser, unelte complete pentru profesori."
+          content="PyRo: învață Python prin lecții interactive, cu curriculum pentru clasa a IX-a, editor de cod și unelte pentru profesori."
         />
         <meta property="og:title" content="PyRo — Învață Python pas cu pas" />
-        <meta property="og:description" content="Platformă educațională Python pentru elevi și profesori. Lecții, teste, AI grading și date statistice." />
+        <meta property="og:description" content="PyRo: învață Python prin lecții interactive, cu curriculum pentru clasa a IX-a, editor de cod și unelte pentru profesori." />
         <meta property="og:type" content="website" />
         <script type="application/ld+json">
           {JSON.stringify({
