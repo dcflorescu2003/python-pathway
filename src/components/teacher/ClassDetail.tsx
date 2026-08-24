@@ -125,6 +125,19 @@ const ClassDetail = ({ classId, className: clsName, joinCode, onBack }: ClassDet
     return completionMap[key]?.[studentId] || null;
   };
 
+  // If viewing a student's full report, render it full-screen
+  if (reportStudentId) {
+    const member = members.find((m) => m.student_id === reportStudentId);
+    return (
+      <StudentReport
+        classId={classId}
+        className={clsName}
+        profile={member?.profile ?? { user_id: reportStudentId }}
+        onBack={() => setReportStudentId(null)}
+      />
+    );
+  }
+
   // If viewing test results, render TestResults full-screen
   if (viewingResultsTestId) {
     return (
@@ -136,6 +149,7 @@ const ClassDetail = ({ classId, className: clsName, joinCode, onBack }: ClassDet
       />
     );
   }
+
 
   return (
     <div className="space-y-4">
