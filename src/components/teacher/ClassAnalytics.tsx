@@ -17,7 +17,7 @@ import { toast } from "sonner";
 import { resolveLessonTitle } from "@/lib/lessonTitles";
 import { useReportDeps } from "@/hooks/useStudentReport";
 import { fetchStudentReport } from "@/lib/studentReportData";
-import { buildStudentSectionHtml, openPrintDocument, esc, BASE_REPORT_CSS, STUDENT_SECTION_CSS } from "@/lib/studentReportHtml";
+import { buildStudentSectionHtml, openPrintDocument, BASE_REPORT_CSS, STUDENT_SECTION_CSS } from "@/lib/studentReportHtml";
 
 
 interface Props {
