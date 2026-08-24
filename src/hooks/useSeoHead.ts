@@ -1,7 +1,14 @@
 import { useEffect } from "react";
 
-const SITE_URL = "https://pyroskill.info";
+const RAW_SITE_URL = "https://pyroskill.info";
+const SITE_URL = RAW_SITE_URL.replace("//www.", "//");
 const MARK = "data-pyro-seo";
+
+/** Strip any www. from a canonical URL to keep the apex domain as the primary. */
+function normalizeCanonical(url: string): string {
+  return url.replace(/^https:\/\/www\./i, "https://");
+}
+
 
 interface SeoOptions {
   title?: string;
@@ -75,7 +82,7 @@ export function useSeoHead({
       });
       setAttr(robots, "content", "noindex, follow");
     } else if (canonicalPath) {
-      const url = `${SITE_URL}${canonicalPath}`;
+      const url = normalizeCanonical(`${SITE_URL}${canonicalPath}`);
 
       const link = ensure('link[rel="canonical"]', () => {
         const l = document.createElement("link");
@@ -91,6 +98,7 @@ export function useSeoHead({
       });
       setAttr(ogUrl, "content", url);
     }
+
 
     // Social preview tags stay route-specific even when no canonical is set,
     // so shared links never fall back to the generic index.html copy.
