@@ -482,6 +482,10 @@ const ClassAnalytics = ({ classId, className: clsName }: Props) => {
   const totalLessonsCompleted = completedLessons.length;
   const activeStudents = studentStats.filter((s) => s.lessonsCompleted > 0).length;
 
+  const [buildingFull, setBuildingFull] = useState(false);
+  const reportDeps = useReportDeps(classId);
+
+
   const handleFullReport = async () => {
     setBuildingFull(true);
     try {
