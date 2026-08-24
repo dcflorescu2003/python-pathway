@@ -106,19 +106,27 @@ Deno.serve(async (req) => {
     if (emailMatchedIds && emailMatchedIds.length > 0) {
       // Fetch profiles for matched ids OR name match
       const s = `%${search}%`;
-      const { data, error, count } = await admin
+      let eq = admin
         .from("profiles")
-        .select("user_id, display_name, first_name, last_name, nickname, is_premium, is_teacher, teacher_status, premium_manual, premium_manual_until, created_at", { count: "exact" })
+        .select(PROFILE_COLS, { count: "exact" })
         .or(
           `user_id.in.(${emailMatchedIds.join(",")}),display_name.ilike.${s},first_name.ilike.${s},last_name.ilike.${s},nickname.ilike.${s}`
-        )
-        .order("created_at", { ascending: false })
-        .range(offset, offset + limit - 1);
+        );
+      if (isInactiveFilter) {
+        eq = eq.or(`last_activity_date.is.null,last_activity_date.lt.${inactiveCutoffStr}`);
+      }
+      const { data, error, count } = await (isInactiveFilter
+        ? eq.order("last_activity_date", { ascending: true, nullsFirst: true })
+        : eq.order("created_at", { ascending: false })
+      ).range(offset, offset + limit - 1);
       if (error) throw error;
       profiles = data || [];
       total = count || 0;
     } else {
-      const { data, error, count } = await pq.order("created_at", { ascending: false }).range(offset, offset + limit - 1);
+      const ordered = isInactiveFilter
+        ? pq.order("last_activity_date", { ascending: true, nullsFirst: true })
+        : pq.order("created_at", { ascending: false });
+      const { data, error, count } = await ordered.range(offset, offset + limit - 1);
       if (error) throw error;
       profiles = data || [];
       total = count || 0;
