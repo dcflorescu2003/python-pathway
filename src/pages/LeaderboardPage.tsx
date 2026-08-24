@@ -182,11 +182,16 @@ const LeaderboardPage = () => {
     queryFn: async () => {
       const { data: profile } = await supabase
         .from("public_profiles" as any)
-        .select("user_id, display_name, nickname, xp, streak, avatar_url, school_id")
+        .select("user_id, display_name, nickname, xp, streak, avatar_url, school_id, is_teacher")
         .eq("user_id", user!.id)
-        .single();
+        .maybeSingle();
       if (!profile) return null;
       const myProfile = (profile as unknown) as LeaderboardEntry;
+
+      // Profesorii nu sunt luați în calcul: le arătăm doar propriul XP, fără loc.
+      if (myProfile.is_teacher) {
+        return { ...myProfile, rank: null } as LeaderboardEntry & { rank: number | null };
+      }
 
       // Guard: don't compute a rank on school/city tabs when the user's DB
       // school doesn't match the active filter — otherwise we'd show a phantom
@@ -198,6 +203,7 @@ const LeaderboardPage = () => {
       let countQuery = supabase
         .from("public_profiles" as any)
         .select("user_id", { count: "exact", head: true })
+        .eq("is_teacher", false)
         .gt("xp", myProfile.xp);
 
       if (tab === "class" && classData) {
@@ -209,7 +215,7 @@ const LeaderboardPage = () => {
       }
 
       const { count } = await countQuery;
-      return { ...myProfile, rank: (count || 0) + 1 } as LeaderboardEntry & { rank: number };
+      return { ...myProfile, rank: (count || 0) + 1 } as LeaderboardEntry & { rank: number | null };
     },
   });
 
