@@ -27,6 +27,7 @@ interface LeaderboardEntry {
   streak: number;
   avatar_url: string | null;
   school_id: string | null;
+  is_teacher?: boolean | null;
 }
 
 const LeaderboardPage = () => {
@@ -146,9 +147,11 @@ const LeaderboardPage = () => {
     refetchOnWindowFocus: true,
     refetchOnMount: "always",
     queryFn: async () => {
+      // Conturile de profesor nu participă la clasamente.
       let query = supabase
         .from("public_profiles" as any)
-        .select("user_id, display_name, nickname, xp, streak, avatar_url, school_id")
+        .select("user_id, display_name, nickname, xp, streak, avatar_url, school_id, is_teacher")
+        .eq("is_teacher", false)
         .order("xp", { ascending: false });
 
       if (tab === "class" && classData) {
@@ -179,11 +182,16 @@ const LeaderboardPage = () => {
     queryFn: async () => {
       const { data: profile } = await supabase
         .from("public_profiles" as any)
-        .select("user_id, display_name, nickname, xp, streak, avatar_url, school_id")
+        .select("user_id, display_name, nickname, xp, streak, avatar_url, school_id, is_teacher")
         .eq("user_id", user!.id)
-        .single();
+        .maybeSingle();
       if (!profile) return null;
       const myProfile = (profile as unknown) as LeaderboardEntry;
+
+      // Profesorii nu sunt luați în calcul: le arătăm doar propriul XP, fără loc.
+      if (myProfile.is_teacher) {
+        return { ...myProfile, rank: null } as LeaderboardEntry & { rank: number | null };
+      }
 
       // Guard: don't compute a rank on school/city tabs when the user's DB
       // school doesn't match the active filter — otherwise we'd show a phantom
@@ -195,6 +203,7 @@ const LeaderboardPage = () => {
       let countQuery = supabase
         .from("public_profiles" as any)
         .select("user_id", { count: "exact", head: true })
+        .eq("is_teacher", false)
         .gt("xp", myProfile.xp);
 
       if (tab === "class" && classData) {
@@ -206,7 +215,7 @@ const LeaderboardPage = () => {
       }
 
       const { count } = await countQuery;
-      return { ...myProfile, rank: (count || 0) + 1 } as LeaderboardEntry & { rank: number };
+      return { ...myProfile, rank: (count || 0) + 1 } as LeaderboardEntry & { rank: number | null };
     },
   });
 
@@ -232,7 +241,39 @@ const LeaderboardPage = () => {
 
 
   const userInTop15 = user ? top15.some(e => e.user_id === user.id) : false;
-  const showUserBelow = !!userRankData && !userInTop15;
+  const isTeacherAccount = !!userRankData?.is_teacher;
+  const showUserBelow = !!userRankData && !userInTop15 && !isTeacherAccount;
+
+  const renderTeacherCard = (entry: LeaderboardEntry) => {
+    const level = getLevelFromXP(entry.xp, xpPerLevel);
+    const tier = getLevelInfo(level);
+    return (
+      <div className="flex items-center gap-3 rounded-xl border border-dashed border-primary/50 bg-primary/5 p-3">
+        <img
+          src={tier.image}
+          alt={tier.name}
+          title={tier.name}
+          className="h-8 w-8 shrink-0 rounded-full object-cover bg-card border border-border"
+        />
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-bold text-primary">Tu</p>
+          <div className="flex items-center gap-3 mt-0.5">
+            <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
+              <Zap className="h-3 w-3 text-xp" />
+              {entry.xp} XP
+            </span>
+            <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
+              <Flame className="h-3 w-3 text-warning" />
+              {entry.streak}d
+            </span>
+          </div>
+          <p className="text-[10px] text-muted-foreground mt-1">
+            Nu intri în clasament (cont de profesor)
+          </p>
+        </div>
+      </div>
+    );
+  };
 
   const renderRow = (entry: LeaderboardEntry, idx: number, animDelay: number) => {
     const isUser = entry.user_id === user?.id;
@@ -434,13 +475,17 @@ const LeaderboardPage = () => {
           <div className="space-y-2">
             {top15.map((entry, idx) => renderRow(entry, idx, idx))}
 
-            {showUserBelow && (
+            {showUserBelow && userRankData.rank !== null && (
               <>
                 <div className="flex items-center justify-center py-2 gap-2">
                   <span className="text-muted-foreground text-lg tracking-[0.3em]">• • •</span>
                 </div>
                 {renderRow(userRankData, userRankData.rank - 1, 16)}
               </>
+            )}
+
+            {isTeacherAccount && userRankData && (
+              <div className="pt-2">{renderTeacherCard(userRankData)}</div>
             )}
 
             {top15.length === 0 && (
