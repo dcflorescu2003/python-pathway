@@ -27,6 +27,7 @@ interface LeaderboardEntry {
   streak: number;
   avatar_url: string | null;
   school_id: string | null;
+  is_teacher?: boolean | null;
 }
 
 const LeaderboardPage = () => {
