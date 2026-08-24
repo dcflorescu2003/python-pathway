@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useClassMembers } from "@/hooks/useTeacher";
@@ -11,10 +11,14 @@ import {
 } from "recharts";
 import {
   TrendingUp, TrendingDown, Users, Target, AlertTriangle, CheckCircle, Award,
-  Download, FileText, FileSpreadsheet,
+  Download, FileText, FileSpreadsheet, Loader2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { resolveLessonTitle } from "@/lib/lessonTitles";
+import { useReportDeps } from "@/hooks/useStudentReport";
+import { fetchStudentReport } from "@/lib/studentReportData";
+import { buildStudentSectionHtml, openPrintDocument, esc, BASE_REPORT_CSS, STUDENT_SECTION_CSS } from "@/lib/studentReportHtml";
+
 
 interface Props {
   classId: string;
