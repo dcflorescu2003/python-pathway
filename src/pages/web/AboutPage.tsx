@@ -39,7 +39,12 @@ const teacherFeatures = [
 ];
 
 const AboutPage = () => {
-  useSeoHead({ canonicalPath: "/about" });
+  useSeoHead({
+    canonicalPath: "/about",
+    ogTitle: "PyRo — Învață Python pas cu pas",
+    ogDescription: "Lecții interactive de Python pentru elevi de liceu și unelte de evaluare pentru profesori.",
+    ogType: "website",
+  });
   return (
     <WebLayout>
       <Helmet>
