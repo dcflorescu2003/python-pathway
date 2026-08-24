@@ -22,7 +22,16 @@ interface SeoOptions {
  * Existing head tags are updated in place (never duplicated) and restored on unmount,
  * so this never produces conflicting canonical signals.
  */
-export function useSeoHead({ title, description, canonicalPath, noindex }: SeoOptions) {
+export function useSeoHead({
+  title,
+  description,
+  canonicalPath,
+  noindex,
+  ogTitle,
+  ogDescription,
+  ogImage,
+  ogType,
+}: SeoOptions) {
   useEffect(() => {
     const restore: Array<() => void> = [];
 
