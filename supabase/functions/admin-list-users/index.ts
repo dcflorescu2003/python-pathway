@@ -199,6 +199,7 @@ Deno.serve(async (req) => {
         play_expiry: play?.expiry_time || null,
         coupon_until: coupon?.premium_until || null,
         coupon_type: coupon?.coupon_type || null,
+        last_activity_date: p.last_activity_date || null,
       };
     });
 
