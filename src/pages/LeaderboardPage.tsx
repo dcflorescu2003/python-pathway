@@ -475,13 +475,17 @@ const LeaderboardPage = () => {
           <div className="space-y-2">
             {top15.map((entry, idx) => renderRow(entry, idx, idx))}
 
-            {showUserBelow && (
+            {showUserBelow && userRankData.rank !== null && (
               <>
                 <div className="flex items-center justify-center py-2 gap-2">
                   <span className="text-muted-foreground text-lg tracking-[0.3em]">• • •</span>
                 </div>
                 {renderRow(userRankData, userRankData.rank - 1, 16)}
               </>
+            )}
+
+            {isTeacherAccount && userRankData && (
+              <div className="pt-2">{renderTeacherCard(userRankData)}</div>
             )}
 
             {top15.length === 0 && (
