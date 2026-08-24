@@ -90,22 +90,45 @@ export function useSeoHead({
         return m;
       });
       setAttr(ogUrl, "content", url);
+    }
 
-      if (title) {
-        const ogTitle = document.head.querySelector('meta[property="og:title"]');
-        if (ogTitle) setAttr(ogTitle, "content", title);
-      }
+    // Social preview tags stay route-specific even when no canonical is set,
+    // so shared links never fall back to the generic index.html copy.
+    const setMeta = (selector: string, attr: "property" | "name", key: string, value: string) => {
+      const el = ensure(selector, () => {
+        const m = document.createElement("meta");
+        m.setAttribute(attr, key);
+        return m;
+      });
+      setAttr(el, "content", value);
+    };
 
-      if (description) {
-        const ogDesc = document.head.querySelector('meta[property="og:description"]');
-        if (ogDesc) setAttr(ogDesc, "content", description);
-      }
+    const socialTitle = ogTitle ?? title;
+    const socialDescription = ogDescription ?? description;
+
+    if (socialTitle) {
+      setMeta('meta[property="og:title"]', "property", "og:title", socialTitle);
+      setMeta('meta[name="twitter:title"]', "name", "twitter:title", socialTitle);
+    }
+
+    if (socialDescription) {
+      setMeta('meta[property="og:description"]', "property", "og:description", socialDescription);
+      setMeta('meta[name="twitter:description"]', "name", "twitter:description", socialDescription);
+    }
+
+    if (ogType) {
+      setMeta('meta[property="og:type"]', "property", "og:type", ogType);
+    }
+
+    if (ogImage) {
+      setMeta('meta[property="og:image"]', "property", "og:image", ogImage);
+      setMeta('meta[name="twitter:image"]', "name", "twitter:image", ogImage);
     }
 
     return () => {
       restore.reverse().forEach((fn) => fn());
     };
-  }, [title, description, canonicalPath, noindex]);
+  }, [title, description, canonicalPath, noindex, ogTitle, ogDescription, ogImage, ogType]);
 }
 
 export default useSeoHead;
