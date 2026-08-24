@@ -489,7 +489,7 @@ const ClassAnalytics = ({ classId, className: clsName }: Props) => {
   return (
     <div className="space-y-5">
       {/* Export buttons */}
-      <div className="flex gap-2 justify-end">
+      <div className="flex flex-wrap gap-2 justify-end">
         <Button
           size="sm"
           variant="outline"
@@ -506,7 +506,22 @@ const ClassAnalytics = ({ classId, className: clsName }: Props) => {
         >
           <FileText className="h-3.5 w-3.5" /> Export PDF
         </Button>
+        <Button
+          size="sm"
+          variant="outline"
+          className="gap-1.5"
+          disabled={buildingFull}
+          onClick={handleFullReport}
+        >
+          {buildingFull ? (
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          ) : (
+            <FileText className="h-3.5 w-3.5" />
+          )}
+          Raport complet (fișe elevi)
+        </Button>
       </div>
+
 
       {/* Summary cards */}
       <div className="grid grid-cols-2 gap-3">
