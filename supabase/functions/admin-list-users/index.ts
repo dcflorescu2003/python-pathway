@@ -53,14 +53,24 @@ Deno.serve(async (req) => {
     const limit = Math.min(Math.max(parseInt(body.limit) || 50, 1), 200);
     const offset = Math.max(parseInt(body.offset) || 0, 0);
 
+    const PROFILE_COLS = "user_id, display_name, first_name, last_name, nickname, is_premium, is_teacher, teacher_status, premium_manual, premium_manual_until, created_at, last_activity_date";
+
+    const inactiveCutoff = new Date();
+    inactiveCutoff.setDate(inactiveCutoff.getDate() - 14);
+    const inactiveCutoffStr = inactiveCutoff.toISOString().split("T")[0];
+    const isInactiveFilter = filter === "inactive14";
+
     // Fetch profiles with optional name search
     let pq = admin
       .from("profiles")
-      .select("user_id, display_name, first_name, last_name, nickname, is_premium, is_teacher, teacher_status, premium_manual, premium_manual_until, created_at", { count: "exact" });
+      .select(PROFILE_COLS, { count: "exact" });
 
     if (filter === "premium") pq = pq.eq("is_premium", true);
     if (filter === "free") pq = pq.eq("is_premium", false);
     if (filter === "teacher") pq = pq.eq("is_teacher", true);
+    if (isInactiveFilter) {
+      pq = pq.or(`last_activity_date.is.null,last_activity_date.lt.${inactiveCutoffStr}`);
+    }
 
     if (search) {
       const s = `%${search}%`;
