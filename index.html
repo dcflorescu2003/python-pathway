@@ -23,6 +23,9 @@
       if (window.location.hostname.startsWith("www.")) {
         window.location.replace(window.location.href.replace("//www.", "//"));
       }
+    </script>
+    <meta property="og:url" content="https://pyroskill.info/" />
+    <script>
       // Self-referencing canonical / og:url for every route (no SSR on this stack).
       (function () {
         var path = window.location.pathname.replace(/\/+$/, "") || "/";
@@ -33,7 +36,6 @@
         if (og) og.setAttribute("content", url);
       })();
     </script>
-    <meta property="og:url" content="https://pyroskill.info/" />
 
 
     
