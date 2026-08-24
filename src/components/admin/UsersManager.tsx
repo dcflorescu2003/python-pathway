@@ -215,6 +215,22 @@ const UsersManager = () => {
                     </div>
                   </TableCell>
                   <TableCell>{renderSourceBadge(u)}</TableCell>
+                  <TableCell className="whitespace-nowrap">
+                    <div className="flex flex-col">
+                      <span className="text-xs text-muted-foreground font-mono">
+                        {u.last_activity_date || "niciodată"}
+                      </span>
+                      {(() => {
+                        const d = daysSince(u.last_activity_date);
+                        if (d === null) return null;
+                        return (
+                          <span className={`text-xs ${d >= 14 ? "text-destructive" : "text-muted-foreground"}`}>
+                            {d === 0 ? "azi" : `${d} zile`}
+                          </span>
+                        );
+                      })()}
+                    </div>
+                  </TableCell>
                   <TableCell className="text-right space-x-2 whitespace-nowrap">
                     <Button
                       size="sm"
