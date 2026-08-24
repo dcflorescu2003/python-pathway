@@ -186,6 +186,7 @@ const UsersManager = () => {
                 <TableHead>Email</TableHead>
                 <TableHead>Tip cont</TableHead>
                 <TableHead>Sursă</TableHead>
+                <TableHead>Ultima activitate</TableHead>
                 <TableHead className="text-right">Acțiune</TableHead>
               </TableRow>
             </TableHeader>
