@@ -147,9 +147,11 @@ const LeaderboardPage = () => {
     refetchOnWindowFocus: true,
     refetchOnMount: "always",
     queryFn: async () => {
+      // Conturile de profesor nu participă la clasamente.
       let query = supabase
         .from("public_profiles" as any)
-        .select("user_id, display_name, nickname, xp, streak, avatar_url, school_id")
+        .select("user_id, display_name, nickname, xp, streak, avatar_url, school_id, is_teacher")
+        .eq("is_teacher", false)
         .order("xp", { ascending: false });
 
       if (tab === "class" && classData) {
