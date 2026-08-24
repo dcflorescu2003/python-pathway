@@ -33,7 +33,17 @@ interface AdminUser {
   play_expiry: string | null;
   coupon_until: string | null;
   coupon_type: string | null;
+  last_activity_date: string | null;
 }
+
+const daysSince = (date: string | null) => {
+  if (!date) return null;
+  const d = new Date(`${date}T00:00:00Z`);
+  if (isNaN(d.getTime())) return null;
+  const today = new Date();
+  const todayUtc = Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate());
+  return Math.max(0, Math.round((todayUtc - d.getTime()) / 86400000));
+};
 
 const PAGE_SIZE = 50;
 
