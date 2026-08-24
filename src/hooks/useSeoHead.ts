@@ -82,7 +82,7 @@ export function useSeoHead({
       });
       setAttr(robots, "content", "noindex, follow");
     } else if (canonicalPath) {
-      const url = `${SITE_URL}${canonicalPath}`;
+      const url = normalizeCanonical(`${SITE_URL}${canonicalPath}`);
 
       const link = ensure('link[rel="canonical"]', () => {
         const l = document.createElement("link");
@@ -98,6 +98,7 @@ export function useSeoHead({
       });
       setAttr(ogUrl, "content", url);
     }
+
 
     // Social preview tags stay route-specific even when no canonical is set,
     // so shared links never fall back to the generic index.html copy.
