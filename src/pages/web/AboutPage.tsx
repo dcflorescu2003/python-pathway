@@ -39,7 +39,12 @@ const teacherFeatures = [
 ];
 
 const AboutPage = () => {
-  useSeoHead({ canonicalPath: "/about" });
+  useSeoHead({
+    canonicalPath: "/about",
+    ogTitle: "PyRo — Învață Python pas cu pas",
+    ogDescription: "Lecții interactive de Python pentru elevi de liceu și unelte de evaluare pentru profesori.",
+    ogType: "website",
+  });
   return (
     <WebLayout>
       <Helmet>
@@ -48,9 +53,6 @@ const AboutPage = () => {
           name="description"
           content="PyRo: învață Python prin lecții interactive, cu curriculum pentru clasa a IX-a, editor de cod și unelte pentru profesori."
         />
-        <meta property="og:title" content="PyRo — Învață Python pas cu pas" />
-        <meta property="og:description" content="PyRo: învață Python prin lecții interactive, cu curriculum pentru clasa a IX-a, editor de cod și unelte pentru profesori." />
-        <meta property="og:type" content="website" />
         <script type="application/ld+json">
           {JSON.stringify({
             "@context": "https://schema.org",

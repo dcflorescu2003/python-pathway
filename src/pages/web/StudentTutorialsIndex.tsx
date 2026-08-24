@@ -6,7 +6,13 @@ import { studentTutorials } from "@/data/tutorials/students";
 import { useSeoHead } from "@/hooks/useSeoHead";
 
 const StudentTutorialsIndex = () => {
-  useSeoHead({ canonicalPath: "/tutoriale/elevi" });
+  useSeoHead({
+    canonicalPath: "/tutoriale/elevi",
+    ogTitle: "Tutoriale pentru elevi | PyRo",
+    ogDescription: "Ghiduri pas-cu-pas pentru elevi: cont, lecții, vieți, streak, probleme și provocări în PyRo.",
+    ogType: "website",
+    ogImage: "https://pyroskill.info/og-tutorial.jpg",
+  });
   return (
     <WebLayout>
       <Helmet>
@@ -15,9 +21,6 @@ const StudentTutorialsIndex = () => {
           name="description"
           content="Ghiduri pas-cu-pas pentru elevi: cum îți creezi cont, cum funcționează lecțiile, vieți, streak, probleme și provocări."
         />
-        <meta property="og:title" content="Tutoriale pentru elevi | PyRo" />
-        <meta property="og:description" content="Învață cum să folosești PyRo eficient ca elev." />
-        <meta property="og:type" content="website" />
       </Helmet>
 
       <section className="border-b border-border">

@@ -18,7 +18,13 @@ const TutorialArticleView = ({ articles, basePath, audience }: Props) => {
   const prev = currentIndex > 0 ? articles[currentIndex - 1] : null;
   const next = currentIndex >= 0 && currentIndex < articles.length - 1 ? articles[currentIndex + 1] : null;
 
-  useSeoHead({ canonicalPath: article ? `${basePath}/${article.slug}` : undefined });
+  useSeoHead({
+    canonicalPath: article ? `${basePath}/${article.slug}` : undefined,
+    ogTitle: article ? `${article.title} | PyRo` : undefined,
+    ogDescription: article?.excerpt,
+    ogType: article ? "article" : undefined,
+    ogImage: article ? "https://pyroskill.info/og-tutorial.jpg" : undefined,
+  });
 
   const handleNavClick = () => window.scrollTo({ top: 0, behavior: "auto" });
 
@@ -44,9 +50,6 @@ const TutorialArticleView = ({ articles, basePath, audience }: Props) => {
       <Helmet>
         <title>{article.title} | PyRo</title>
         <meta name="description" content={article.excerpt} />
-        <meta property="og:title" content={`${article.title} | PyRo`} />
-        <meta property="og:description" content={article.excerpt} />
-        <meta property="og:type" content="article" />
         <script type="application/ld+json">
           {JSON.stringify({
             "@context": "https://schema.org",
