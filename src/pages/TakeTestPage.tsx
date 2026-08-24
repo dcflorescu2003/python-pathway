@@ -15,6 +15,8 @@ import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import CodeEditor from "@/components/CodeEditor";
 import RichContent from "@/components/RichContent";
+import { shuffleOrderIds } from "@/lib/orderShuffle";
+
 import LoadingScreen from "@/components/states/LoadingScreen";
 import {
   DndContext,
@@ -1484,13 +1486,32 @@ const SortableOrderItem = ({ id, lineText, idx, total, onMoveUp, onMoveDown }: {
 // Test-specific Order renderer with drag-and-drop + arrow fallback
 const TestOrderRenderer = ({ exercise, answer, onAnswer }: { exercise: any; answer: any; onAnswer: (d: any) => void }) => {
   const lines = (exercise.lines || []) as { id: string; text: string }[];
-  const ordered: string[] = answer?.order || lines.map((l) => l.id);
+  const sourceIds = lines.map((l) => l.id);
+
+  // Defensive shuffle: never show the lines in the order they arrived (which may
+  // be the correct one). Seeded so it stays stable across re-renders.
+  const shuffledIds = useMemo(
+    () => shuffleOrderIds(sourceIds, `${exercise.id ?? ""}|${sourceIds.join(",")}`),
+    [exercise.id, sourceIds.join(",")]
+  );
+
+  const ordered: string[] = answer?.order || shuffledIds;
+
+  // Persist the initial shuffled arrangement as the draft answer, so the order
+  // survives navigation between questions and draft sync.
+  useEffect(() => {
+    if (!answer?.order && shuffledIds.length > 0) {
+      onAnswer({ order: shuffledIds });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shuffledIds.join(","), answer?.order]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
     useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 5 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   );
+
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
