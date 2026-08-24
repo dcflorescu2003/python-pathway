@@ -4,4 +4,4 @@
  * minimă (clienți vechi retrimit istoric local și umflau XP-ul).
  * Se sincronizează manual cu android/app/build.gradle și MARKETING_VERSION (iOS).
  */
-export const APP_VERSION = "1.118";
+export const APP_VERSION = "1.119";
