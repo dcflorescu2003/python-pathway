@@ -53,14 +53,24 @@ Deno.serve(async (req) => {
     const limit = Math.min(Math.max(parseInt(body.limit) || 50, 1), 200);
     const offset = Math.max(parseInt(body.offset) || 0, 0);
 
+    const PROFILE_COLS = "user_id, display_name, first_name, last_name, nickname, is_premium, is_teacher, teacher_status, premium_manual, premium_manual_until, created_at, last_activity_date";
+
+    const inactiveCutoff = new Date();
+    inactiveCutoff.setDate(inactiveCutoff.getDate() - 14);
+    const inactiveCutoffStr = inactiveCutoff.toISOString().split("T")[0];
+    const isInactiveFilter = filter === "inactive14";
+
     // Fetch profiles with optional name search
     let pq = admin
       .from("profiles")
-      .select("user_id, display_name, first_name, last_name, nickname, is_premium, is_teacher, teacher_status, premium_manual, premium_manual_until, created_at", { count: "exact" });
+      .select(PROFILE_COLS, { count: "exact" });
 
     if (filter === "premium") pq = pq.eq("is_premium", true);
     if (filter === "free") pq = pq.eq("is_premium", false);
     if (filter === "teacher") pq = pq.eq("is_teacher", true);
+    if (isInactiveFilter) {
+      pq = pq.or(`last_activity_date.is.null,last_activity_date.lt.${inactiveCutoffStr}`);
+    }
 
     if (search) {
       const s = `%${search}%`;
@@ -96,19 +106,27 @@ Deno.serve(async (req) => {
     if (emailMatchedIds && emailMatchedIds.length > 0) {
       // Fetch profiles for matched ids OR name match
       const s = `%${search}%`;
-      const { data, error, count } = await admin
+      let eq = admin
         .from("profiles")
-        .select("user_id, display_name, first_name, last_name, nickname, is_premium, is_teacher, teacher_status, premium_manual, premium_manual_until, created_at", { count: "exact" })
+        .select(PROFILE_COLS, { count: "exact" })
         .or(
           `user_id.in.(${emailMatchedIds.join(",")}),display_name.ilike.${s},first_name.ilike.${s},last_name.ilike.${s},nickname.ilike.${s}`
-        )
-        .order("created_at", { ascending: false })
-        .range(offset, offset + limit - 1);
+        );
+      if (isInactiveFilter) {
+        eq = eq.or(`last_activity_date.is.null,last_activity_date.lt.${inactiveCutoffStr}`);
+      }
+      const { data, error, count } = await (isInactiveFilter
+        ? eq.order("last_activity_date", { ascending: true, nullsFirst: true })
+        : eq.order("created_at", { ascending: false })
+      ).range(offset, offset + limit - 1);
       if (error) throw error;
       profiles = data || [];
       total = count || 0;
     } else {
-      const { data, error, count } = await pq.order("created_at", { ascending: false }).range(offset, offset + limit - 1);
+      const ordered = isInactiveFilter
+        ? pq.order("last_activity_date", { ascending: true, nullsFirst: true })
+        : pq.order("created_at", { ascending: false });
+      const { data, error, count } = await ordered.range(offset, offset + limit - 1);
       if (error) throw error;
       profiles = data || [];
       total = count || 0;
@@ -181,6 +199,7 @@ Deno.serve(async (req) => {
         play_expiry: play?.expiry_time || null,
         coupon_until: coupon?.premium_until || null,
         coupon_type: coupon?.coupon_type || null,
+        last_activity_date: p.last_activity_date || null,
       };
     });
 

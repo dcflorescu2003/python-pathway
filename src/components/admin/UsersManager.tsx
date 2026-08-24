@@ -33,7 +33,17 @@ interface AdminUser {
   play_expiry: string | null;
   coupon_until: string | null;
   coupon_type: string | null;
+  last_activity_date: string | null;
 }
+
+const daysSince = (date: string | null) => {
+  if (!date) return null;
+  const d = new Date(`${date}T00:00:00Z`);
+  if (isNaN(d.getTime())) return null;
+  const today = new Date();
+  const todayUtc = Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate());
+  return Math.max(0, Math.round((todayUtc - d.getTime()) / 86400000));
+};
 
 const PAGE_SIZE = 50;
 
@@ -151,6 +161,7 @@ const UsersManager = () => {
               <SelectItem value="paid">Plătit</SelectItem>
               <SelectItem value="coupon">Cupon</SelectItem>
               <SelectItem value="teacher">Profesori</SelectItem>
+              <SelectItem value="inactive14">Inactivi 14+ zile</SelectItem>
             </SelectContent>
           </Select>
           <Button variant="outline" size="icon" onClick={() => refetch()} disabled={isFetching}>
@@ -175,6 +186,7 @@ const UsersManager = () => {
                 <TableHead>Email</TableHead>
                 <TableHead>Tip cont</TableHead>
                 <TableHead>Sursă</TableHead>
+                <TableHead>Ultima activitate</TableHead>
                 <TableHead className="text-right">Acțiune</TableHead>
               </TableRow>
             </TableHeader>
@@ -203,6 +215,22 @@ const UsersManager = () => {
                     </div>
                   </TableCell>
                   <TableCell>{renderSourceBadge(u)}</TableCell>
+                  <TableCell className="whitespace-nowrap">
+                    <div className="flex flex-col">
+                      <span className="text-xs text-muted-foreground font-mono">
+                        {u.last_activity_date || "niciodată"}
+                      </span>
+                      {(() => {
+                        const d = daysSince(u.last_activity_date);
+                        if (d === null) return null;
+                        return (
+                          <span className={`text-xs ${d >= 14 ? "text-destructive" : "text-muted-foreground"}`}>
+                            {d === 0 ? "azi" : `${d} zile`}
+                          </span>
+                        );
+                      })()}
+                    </div>
+                  </TableCell>
                   <TableCell className="text-right space-x-2 whitespace-nowrap">
                     <Button
                       size="sm"
@@ -255,7 +283,7 @@ const UsersManager = () => {
               ))}
               {!isLoading && users.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center text-sm text-muted-foreground py-8">
+                  <TableCell colSpan={6} className="text-center text-sm text-muted-foreground py-8">
                     Niciun utilizator găsit.
                   </TableCell>
                 </TableRow>
