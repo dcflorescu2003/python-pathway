@@ -9,6 +9,12 @@ interface SeoOptions {
   /** Absolute path, e.g. "/support". Ignored when noindex is true. */
   canonicalPath?: string;
   noindex?: boolean;
+  /** Overrides for social previews; falls back to title/description. */
+  ogTitle?: string;
+  ogDescription?: string;
+  /** Absolute https URL. */
+  ogImage?: string;
+  ogType?: string;
 }
 
 /**
