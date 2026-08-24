@@ -202,13 +202,22 @@ const ClassDetail = ({ classId, className: clsName, joinCode, onBack }: ClassDet
                           </div>
                         </button>
                         {isOpen && (
-                          <div className="px-3 pb-3">
+                          <div className="px-3 pb-3 space-y-2">
                             <StudentCompetencyView
                               studentId={m.student_id}
                               studentName={m.profile?.display_name || undefined}
                             />
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="w-full gap-1 text-xs"
+                              onClick={() => setReportStudentId(m.student_id)}
+                            >
+                              <BarChart3 className="h-3.5 w-3.5" /> Fișa completă a elevului
+                            </Button>
                           </div>
                         )}
+
                       </Card>
                     );
                   })}
