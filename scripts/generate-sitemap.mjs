@@ -2,31 +2,20 @@
 // Minimal, spec-strict output: only <loc>. Google ignores <changefreq>/<priority>,
 // and we have no authoritative per-page modification date, so <lastmod> is omitted.
 
-import { writeFileSync } from "fs";
+import { readFileSync, writeFileSync } from "fs";
 import { resolve } from "path";
 
 const BASE_URL = "https://pyroskill.info";
 
-const studentSlugs = [
-  "creeaza-cont",
-  "lectii-xp-nivele",
-  "vieti-streak",
-  "rezolva-problema",
-  "alatura-te-clasei",
-  "test-sau-provocare",
-  "premium-elev",
-];
+// Slugs are read from the tutorial data files so the sitemap stays in sync
+// automatically when articles are added, renamed, or removed.
+function readSlugs(file) {
+  const source = readFileSync(resolve(file), "utf8");
+  return [...source.matchAll(/slug:\s*"([^"]+)"/g)].map((m) => m[1]);
+}
 
-const teacherSlugs = [
-  "profesor-verificat",
-  "creeaza-clasa",
-  "construieste-test",
-  "trimite-provocare",
-  "notare-ai",
-  "analitice-rapoarte",
-  "profil-competente",
-  "premium-profesor",
-];
+const studentSlugs = readSlugs("src/data/tutorials/students.ts");
+const teacherSlugs = readSlugs("src/data/tutorials/teachers.ts");
 
 const paths = [
   "/",
