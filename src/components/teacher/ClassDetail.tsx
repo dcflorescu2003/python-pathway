@@ -39,6 +39,7 @@ const ClassDetail = ({ classId, className: clsName, joinCode, onBack }: ClassDet
   const [viewingResultsTestId, setViewingResultsTestId] = useState<string | null>(null);
   const [viewingResultsTitle, setViewingResultsTitle] = useState<string>("");
   const [expandedStudentId, setExpandedStudentId] = useState<string | null>(null);
+  const [reportStudentId, setReportStudentId] = useState<string | null>(null);
 
   const [studentsOpen, setStudentsOpen] = useState(false);
   const [testsOpen, setTestsOpen] = useState(false);
