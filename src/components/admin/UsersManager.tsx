@@ -161,6 +161,7 @@ const UsersManager = () => {
               <SelectItem value="paid">Plătit</SelectItem>
               <SelectItem value="coupon">Cupon</SelectItem>
               <SelectItem value="teacher">Profesori</SelectItem>
+              <SelectItem value="inactive14">Inactivi 14+ zile</SelectItem>
             </SelectContent>
           </Select>
           <Button variant="outline" size="icon" onClick={() => refetch()} disabled={isFetching}>
