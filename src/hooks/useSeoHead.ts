@@ -1,7 +1,14 @@
 import { useEffect } from "react";
 
-const SITE_URL = "https://pyroskill.info";
+const RAW_SITE_URL = "https://pyroskill.info";
+const SITE_URL = RAW_SITE_URL.replace("//www.", "//");
 const MARK = "data-pyro-seo";
+
+/** Strip any www. from a canonical URL to keep the apex domain as the primary. */
+function normalizeCanonical(url: string): string {
+  return url.replace(/^https:\/\/www\./i, "https://");
+}
+
 
 interface SeoOptions {
   title?: string;
