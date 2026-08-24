@@ -482,6 +482,36 @@ const ClassAnalytics = ({ classId, className: clsName }: Props) => {
   const totalLessonsCompleted = completedLessons.length;
   const activeStudents = studentStats.filter((s) => s.lessonsCompleted > 0).length;
 
+  const handleFullReport = async () => {
+    setBuildingFull(true);
+    try {
+      const sections: string[] = [];
+      for (const m of members) {
+        const profile = m.profile ?? { user_id: m.student_id };
+        const data = await fetchStudentReport(
+          { ...profile, user_id: m.student_id },
+          reportDeps
+        );
+        sections.push(buildStudentSectionHtml(data, sections.length > 0));
+      }
+      const header = `
+        <h1>Raport complet — ${clsName}</h1>
+        <p class="meta">${members.length} elevi · media clasei ${classAvg}% · ${totalLessonsCompleted} lecții finalizate · generat ${new Date().toLocaleDateString("ro-RO")}</p>
+      `;
+      const ok = openPrintDocument(
+        `Raport complet - ${clsName}`,
+        header + sections.join(""),
+        BASE_REPORT_CSS + STUDENT_SECTION_CSS
+      );
+      if (!ok) toast.error("Permite pop-up-urile pentru a genera raportul.");
+      else toast.success("Raport complet generat 📄");
+    } catch (e: any) {
+      toast.error(e?.message || "Nu s-a putut genera raportul.");
+    } finally {
+      setBuildingFull(false);
+    }
+  };
+
   if (members.length === 0) {
     return (
       <p className="text-sm text-muted-foreground text-center py-8">
