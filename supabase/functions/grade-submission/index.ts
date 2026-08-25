@@ -967,7 +967,9 @@ Răspunde DOAR cu JSON: {"results":[{"id":"<ID>","criterii":{"intrare":<n>,"algo
     const content = data.choices?.[0]?.message?.content || "";
 
     // Parse JSON object ({"results":[...]}) with array fallback
-    let parsed: { id: string; score: number; feedback: string }[] | null = null;
+    let parsed:
+      | { id: string; score: number; feedback: string; criterii?: Record<string, unknown> }[]
+      | null = null;
     try {
       const objMatch = content.match(/\{[\s\S]*\}/);
       if (objMatch) {
@@ -989,10 +991,25 @@ Răspunde DOAR cu JSON: {"results":[{"id":"<ID>","criterii":{"intrare":<n>,"algo
       const answerIds = blockToAnswerIds.get(blockId);
       if (!answerIds) continue;
       const maxPoints = blockMaxPoints.get(blockId) ?? 0;
-      const score = Math.min(Math.max(0, Math.round(Number(r.score) || 0)), maxPoints);
+
+      // Preferăm suma criteriilor (punctaj parțial detaliat); dacă lipsesc,
+      // folosim câmpul "score" ca înainte.
+      const crit = r?.criterii as Record<string, unknown> | undefined;
+      let raw = Number(r?.score);
+      if (crit && typeof crit === "object") {
+        const sum = ["intrare", "algoritm", "cazuri", "afisare", "sintaxa"]
+          .map((k) => Number(crit[k]))
+          .filter((n) => Number.isFinite(n) && n > 0)
+          .reduce((a, b) => a + b, 0);
+        if (sum > 0) raw = sum;
+      }
+      if (!Number.isFinite(raw)) raw = 0;
+
+      const score = Math.min(Math.max(0, roundHalf(raw)), maxPoints);
       const feedback = r.feedback || "Evaluat de AI";
       for (const answerId of answerIds) out.push({ answerId, score, feedback });
     }
+
 
     return out.length > 0 ? out : null;
   } catch (e) {
