@@ -357,24 +357,24 @@ const ClassAnalytics = ({ classId, className: clsName }: Props) => {
           icon={Users}
           value={`${kpis.activeStudents}/${kpis.totalStudents}`}
           label="Elevi activi"
-          hint={`${kpis.active7d} activi în 7 zile`}
+          hint={`${kpis.active7d} în 7 zile`}
         />
         <KpiCard
           icon={kpis.classAvg !== null && kpis.classAvg >= 70 ? TrendingUp : TrendingDown}
           value={kpis.classAvg !== null ? `${kpis.classAvg}%` : "-"}
           label="Medie clasă"
-          hint="doar elevii cu activitate"
+          hint="doar elevi activi"
         />
         <KpiCard
           icon={BookOpen}
           value={kpis.lessons}
-          label="Lecții finalizate"
-          hint={`${kpis.lessons7d} în ultimele 7 zile`}
+          label="Lecții"
+          hint={`${kpis.lessons7d} în 7 zile`}
         />
         <KpiCard
           icon={Code2}
           value={kpis.problems}
-          label="Probleme rezolvate"
+          label="Probleme"
           hint={`${kpis.reviews} recapitulări`}
         />
         <KpiCard
@@ -383,29 +383,30 @@ const ClassAnalytics = ({ classId, className: clsName }: Props) => {
           label="Teste predate"
           hint={
             kpis.submissionRate !== null
-              ? `${kpis.submissionRate}% din ${kpis.expectedSubmissions} posibile`
-              : "niciun test asignat"
+              ? `${kpis.submissionRate}% din ${kpis.expectedSubmissions}`
+              : "fără teste"
           }
         />
         <KpiCard
           icon={AlertTriangle}
           value={kpis.atRisk}
           label="Elevi cu risc"
-          hint="inactivi 14+ zile sau medie sub 60%"
+          hint="inactivi 14+ zile"
           tone={kpis.atRisk > 0 ? "danger" : undefined}
         />
         <KpiCard
           icon={Activity}
           value={`${chapterProgress.length ? Math.round(chapterProgress.reduce((s, c) => s + c.coverage, 0) / chapterProgress.length) : 0}%`}
-          label="Parcurgere curriculum"
-          hint="medie pe toate capitolele"
+          label="Parcurgere"
+          hint="medie capitole"
         />
         <KpiCard
           icon={GraduationCap}
           value={weakCompetencies.length ? `${Math.round(weakCompetencies[0].mastery * 100)}%` : "-"}
-          label="Cea mai slabă competență"
+          label="Competență slabă"
           hint={weakCompetencies.length ? weakCompetencies[0].specificCode : "fără date"}
         />
+
       </div>
 
       {kpis.archived > 0 && (
