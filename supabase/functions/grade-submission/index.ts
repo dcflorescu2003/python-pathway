@@ -922,7 +922,19 @@ ${answers}`;
 
 ${itemDescriptions}
 
-Răspunde DOAR cu JSON: {"results":[{"id":"<ID>","score":<number>,"feedback":"<max 200 caractere, română>"}]} — un obiect pentru fiecare din cele ${blockCount} ID-uri, exact ID-urile date, scor între 0 și punctajul maxim al ID-ului.`;
+BAREM pentru codurile de programare — acordă punctaj PARȚIAL, nu doar 0 sau maxim. Pentru fiecare cod calculează procente din punctajul maxim al ID-ului (M):
+- intrare (0.20*M): datele de intrare sunt citite corect și variabilele necesare sunt declarate/inițializate corect;
+- algoritm (0.35*M): structurile de control și formulele (bucle, condiții, calcule) sunt corecte, chiar dacă rezultatul final e greșit; punctează parțial logica corectă;
+- cazuri (0.25*M): prelucrarea corectă a cazurilor din enunț, inclusiv cazuri limită;
+- afisare (0.15*M): rezultatul este afișat în formatul cerut (print, mesaj, ordine);
+- sintaxa (0.05*M): codul nu are erori de sintaxă și ar rula.
+Poți acorda fracțiuni dintr-un criteriu dacă e îndeplinit parțial. score = suma criteriilor (0..M). Un program greșit dar cu elemente corecte NU primește 0.
+Pentru răspunsurile deschise (non-cod) completează doar "score" și pune criteriile pe 0.
+
+Feedback-ul spune scurt ce a luat și ce a pierdut (ex: "Variabile OK, buclă corectă; lipsește cazul listei goale; afișare fără formatul cerut").
+
+Răspunde DOAR cu JSON: {"results":[{"id":"<ID>","criterii":{"intrare":<n>,"algoritm":<n>,"cazuri":<n>,"afisare":<n>,"sintaxa":<n>},"score":<number>,"feedback":"<max 200 caractere, română>"}]} — un obiect pentru fiecare din cele ${blockCount} ID-uri, exact ID-urile date, scor între 0 și punctajul maxim al ID-ului.`;
+
 
     const model = onlyShortOpenAnswers ? "google/gemini-2.5-flash-lite" : "google/gemini-2.5-flash";
     console.log(
