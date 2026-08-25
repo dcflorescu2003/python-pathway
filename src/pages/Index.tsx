@@ -296,6 +296,7 @@ const Index = (): JSX.Element => {
           <TeacherVerificationTipCard
             key="tip-teacher-verify"
             onDismiss={dismissTeacherVerifyTip}
+            details={teacherVerifyDetails}
           />
         )}
         {!showTeacherVerifyTip && tipType === "lessons" && (
