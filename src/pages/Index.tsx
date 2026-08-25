@@ -101,7 +101,7 @@ const Index = (): JSX.Element => {
   const [comebackDays, setComebackDays] = useState(0);
 
   const { type: tipType, markShown: markTipShown, dismiss: dismissTip } = useMotivationalTip();
-  const { show: showTeacherVerifyTip, dismiss: dismissTeacherVerifyTip } = useTeacherVerificationTip();
+  const { show: showTeacherVerifyTip, dismiss: dismissTeacherVerifyTip, details: teacherVerifyDetails } = useTeacherVerificationTip();
   useEffect(() => {
     if (tipType) markTipShown(tipType);
   }, [tipType, markTipShown]);
@@ -296,6 +296,7 @@ const Index = (): JSX.Element => {
           <TeacherVerificationTipCard
             key="tip-teacher-verify"
             onDismiss={dismissTeacherVerifyTip}
+            details={teacherVerifyDetails}
           />
         )}
         {!showTeacherVerifyTip && tipType === "lessons" && (
