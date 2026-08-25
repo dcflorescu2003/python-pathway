@@ -15,6 +15,7 @@ import {
 import { toast } from "sonner";
 import VerificationChat from "@/components/teacher/VerificationChat";
 import DocumentAttachmentLink from "@/components/teacher/DocumentAttachmentLink";
+import { normalizeExternalUrl } from "@/lib/normalizeUrl";
 
 // ─── Requests Tab ───
 const RequestsTab = () => {
