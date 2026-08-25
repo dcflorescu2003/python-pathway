@@ -6,54 +6,47 @@ import { useChapters } from "@/hooks/useChapters";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import {
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+} from "@/components/ui/table";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell,
+  ComposedChart, Line, CartesianGrid, Legend,
 } from "recharts";
 import {
   TrendingUp, TrendingDown, Users, Target, AlertTriangle, CheckCircle, Award,
-  Download, FileText, FileSpreadsheet, Loader2,
+  FileText, FileSpreadsheet, Loader2, BookOpen, Code2, Activity, GraduationCap,
+  ArrowUpDown,
 } from "lucide-react";
 import { toast } from "sonner";
-import { resolveLessonTitle } from "@/lib/lessonTitles";
 import { useReportDeps } from "@/hooks/useStudentReport";
-import { fetchStudentReport } from "@/lib/studentReportData";
+import { fetchStudentReport, type CompetencyRow } from "@/lib/studentReportData";
 import { buildStudentSectionHtml, openPrintDocument, BASE_REPORT_CSS, STUDENT_SECTION_CSS } from "@/lib/studentReportHtml";
-
+import { masteryLevelLabel } from "@/lib/studentInsights";
+import {
+  buildStudentRows, computeKpis, buildScoreDistribution, buildWeakLessons,
+  buildChapterProgress, buildTrend, buildTestStats, buildItemDifficulty,
+  aggregateClassCompetencies,
+  type ClassAnalyticsInput, type StudentRow,
+} from "@/lib/classAnalytics";
+import { buildClassReportHtml, buildClassCsv } from "@/lib/classReportHtml";
 
 interface Props {
   classId: string;
   className: string;
 }
 
-const COLORS = [
-  "hsl(var(--primary))",
-  "hsl(var(--destructive))",
-  "hsl(var(--warning, 45 93% 47%))",
-  "hsl(var(--muted-foreground))",
-];
-
-// ─── Export Helpers ───
-
-function escapeCSV(val: string | number | null | undefined): string {
-  const s = String(val ?? "");
-  if (s.includes(",") || s.includes('"') || s.includes("\n")) {
-    return `"${s.replace(/"/g, '""')}"`;
-  }
-  return s;
-}
-
-function esc(val: unknown): string {
-  return String(val ?? "")
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
-}
+const BUCKET_FILL: Record<string, string> = {
+  bad: "hsl(var(--destructive))",
+  mid: "hsl(var(--warning, 45 93% 47%))",
+  ok: "hsl(var(--primary))",
+  good: "hsl(142 76% 36%)",
+};
 
 function downloadFile(content: string, filename: string, type: string) {
-  const BOM = "\uFEFF";
-  const blob = new Blob([BOM + content], { type: `${type};charset=utf-8` });
+  const blob = new Blob(["\uFEFF" + content], { type: `${type};charset=utf-8` });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
@@ -62,202 +55,41 @@ function downloadFile(content: string, filename: string, type: string) {
   URL.revokeObjectURL(url);
 }
 
-interface StudentStat {
-  name: string;
-  lessonsCompleted: number;
-  avgScore: number;
-  avgTestScore: number | null;
-  xp: number;
-  streak: number;
-}
+const fmtDate = (d: string | null) => (d ? new Date(d).toLocaleDateString("ro-RO") : "-");
 
-function exportCSV(className: string, studentStats: StudentStat[], classAvg: number, totalLessons: number, weakestLessons: any[], testPerformance: any[]) {
-  const lines: string[] = [];
-  const date = new Date().toLocaleDateString("ro-RO");
-  
-  lines.push(`Raport clasă: ${className}`);
-  lines.push(`Data: ${date}`);
-  lines.push(`Medie clasă: ${classAvg}%`);
-  lines.push(`Total lecții completate: ${totalLessons}`);
-  lines.push("");
-  
-  // Student table
-  lines.push("Elev,Lecții completate,Medie lecții (%),Medie teste (%),XP,Streak");
-  studentStats.forEach((s) => {
-    lines.push([
-      escapeCSV(s.name),
-      s.lessonsCompleted,
-      s.avgScore,
-      s.avgTestScore ?? "-",
-      s.xp,
-      s.streak,
-    ].join(","));
-  });
-  
-  if (weakestLessons.length > 0) {
-    lines.push("");
-    lines.push("Lecții problematice (medie < 80%)");
-    lines.push("Lecție,Medie (%),Încercări");
-    weakestLessons.forEach((l) => {
-      lines.push([escapeCSV(l.name), l.avgScore, l.attempts].join(","));
-    });
-  }
-  
-  if (testPerformance.length > 0) {
-    lines.push("");
-    lines.push("Performanță teste");
-    lines.push("Test,Medie (%),Submisiuni");
-    testPerformance.forEach((t) => {
-      lines.push([escapeCSV(t.name), t.avg, t.count].join(","));
-    });
-  }
-  
-  downloadFile(lines.join("\n"), `raport_${className.replace(/\s+/g, "_")}_${date}.csv`, "text/csv");
-  toast.success("CSV descărcat! 📊");
-}
+type SortKey = keyof Pick<
+  StudentRow,
+  "name" | "lessons" | "reviews" | "problems" | "avgLessonScore" | "avgTestScore" | "testsSubmitted" | "lastActivity" | "streak" | "xp"
+>;
 
-function exportPDF(className: string, studentStats: StudentStat[], classAvg: number, totalLessons: number, totalTests: number, weakestLessons: any[], testPerformance: any[], frequentErrors: any[]) {
-  const date = new Date().toLocaleDateString("ro-RO");
-  
-  // Build HTML content for PDF
-  const html = `
-<!DOCTYPE html>
-<html>
-<head>
-<meta charset="utf-8">
-<title>Raport ${esc(className)}</title>
-<style>
-  @page { size: A4; margin: 20mm; }
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { font-family: Arial, Helvetica, sans-serif; color: #1a1a1a; font-size: 12px; line-height: 1.5; }
-  .header { text-align: center; margin-bottom: 24px; padding-bottom: 16px; border-bottom: 2px solid #6d28d9; }
-  .header h1 { font-size: 22px; color: #6d28d9; margin-bottom: 4px; }
-  .header p { color: #666; font-size: 11px; }
-  .kpis { display: flex; gap: 12px; margin-bottom: 20px; }
-  .kpi { flex: 1; background: #f8f5ff; border-radius: 8px; padding: 12px; text-align: center; border: 1px solid #e9e0f7; }
-  .kpi .value { font-size: 24px; font-weight: bold; color: #6d28d9; }
-  .kpi .label { font-size: 10px; color: #666; }
-  .section { margin-bottom: 20px; }
-  .section h2 { font-size: 14px; color: #1a1a1a; margin-bottom: 8px; padding-bottom: 4px; border-bottom: 1px solid #e5e7eb; }
-  table { width: 100%; border-collapse: collapse; font-size: 11px; }
-  th { background: #f3f0ff; color: #6d28d9; text-align: left; padding: 6px 8px; font-weight: 600; }
-  td { padding: 5px 8px; border-bottom: 1px solid #f0f0f0; }
-  tr:nth-child(even) td { background: #fafafa; }
-  .badge { display: inline-block; padding: 1px 6px; border-radius: 4px; font-size: 10px; font-weight: 600; }
-  .badge-good { background: #dcfce7; color: #166534; }
-  .badge-mid { background: #fef3c7; color: #92400e; }
-  .badge-bad { background: #fee2e2; color: #991b1b; }
-  .footer { margin-top: 30px; text-align: center; font-size: 9px; color: #999; border-top: 1px solid #e5e7eb; padding-top: 8px; }
-</style>
-</head>
-<body>
-  <div class="header">
-    <h1>📊 Raport clasă: ${esc(className)}</h1>
-    <p>Generat pe ${esc(date)} • Python Pathway</p>
-  </div>
-  
-  <div class="kpis">
-    <div class="kpi">
-      <div class="value">${studentStats.filter(s => s.lessonsCompleted > 0).length}/${studentStats.length}</div>
-      <div class="label">Elevi activi</div>
-    </div>
-    <div class="kpi">
-      <div class="value">${classAvg}%</div>
-      <div class="label">Medie clasă</div>
-    </div>
-    <div class="kpi">
-      <div class="value">${totalLessons}</div>
-      <div class="label">Lecții completate</div>
-    </div>
-    <div class="kpi">
-      <div class="value">${totalTests}</div>
-      <div class="label">Teste trimise</div>
-    </div>
-  </div>
-  
-  <div class="section">
-    <h2>🏆 Clasament elevi</h2>
-    <table>
-      <thead>
-        <tr><th>#</th><th>Elev</th><th>Lecții</th><th>Medie lecții</th><th>Medie teste</th><th>XP</th><th>Streak</th></tr>
-      </thead>
-      <tbody>
-        ${studentStats.map((s, i) => {
-          const badgeClass = s.avgScore >= 80 ? "badge-good" : s.avgScore >= 50 ? "badge-mid" : "badge-bad";
-          return `<tr>
-            <td>${i + 1}</td>
-            <td>${esc(s.name)}</td>
-            <td>${s.lessonsCompleted}</td>
-            <td><span class="badge ${badgeClass}">${s.avgScore}%</span></td>
-            <td>${s.avgTestScore !== null ? `${s.avgTestScore}%` : "-"}</td>
-            <td>${s.xp}</td>
-            <td>${s.streak} 🔥</td>
-          </tr>`;
-        }).join("")}
-      </tbody>
-    </table>
-  </div>
-  
-  ${weakestLessons.length > 0 ? `
-  <div class="section">
-    <h2>⚠️ Lecții problematice (medie &lt; 80%)</h2>
-    <table>
-      <thead><tr><th>Lecție</th><th>Medie</th><th>Încercări</th></tr></thead>
-      <tbody>
-        ${weakestLessons.map(l => `<tr><td>${esc(l.name)}</td><td><span class="badge badge-bad">${Number(l.avgScore)}%</span></td><td>${Number(l.attempts)}</td></tr>`).join("")}
-      </tbody>
-    </table>
-  </div>` : ""}
-  
-  ${testPerformance.length > 0 ? `
-  <div class="section">
-    <h2>📝 Performanță teste</h2>
-    <table>
-      <thead><tr><th>Test</th><th>Medie</th><th>Submisiuni</th></tr></thead>
-      <tbody>
-        ${testPerformance.map(t => {
-          const bc = t.avg >= 80 ? "badge-good" : t.avg >= 50 ? "badge-mid" : "badge-bad";
-          return `<tr><td>${esc(t.name)}</td><td><span class="badge ${bc}">${Number(t.avg)}%</span></td><td>${Number(t.count)}</td></tr>`;
-        }).join("")}
-      </tbody>
-    </table>
-  </div>` : ""}
-  
-  ${frequentErrors.length > 0 ? `
-  <div class="section">
-    <h2>❌ Erori frecvente în teste</h2>
-    <table>
-      <thead><tr><th>Întrebare</th><th>Rată eroare</th><th>Total răspunsuri</th></tr></thead>
-      <tbody>
-        ${frequentErrors.map(e => `<tr><td>${esc(e.question)}</td><td><span class="badge badge-bad">${Number(e.errorRate)}%</span></td><td>${Number(e.total)}</td></tr>`).join("")}
-      </tbody>
-    </table>
-  </div>` : ""}
-  
-  <div class="footer">
-    Raport generat automat de Python Pathway • ${esc(date)}
-  </div>
-</body>
-</html>`;
-
-  // Open print dialog for PDF
-  const win = window.open("", "_blank");
-  if (!win) {
-    toast.error("Permite pop-up-urile pentru a descărca PDF-ul.");
-    return;
-  }
-  win.document.write(html);
-  win.document.close();
-  setTimeout(() => {
-    win.print();
-  }, 500);
-  toast.success("PDF pregătit pentru descărcare! 📄");
-}
+const KpiCard = ({ icon: Icon, value, label, hint, tone }: {
+  icon: any; value: string | number; label: string; hint?: string; tone?: "danger" | "warn";
+}) => (
+  <Card>
+    <CardContent className="p-3 flex items-center gap-3">
+      <div className={`h-9 w-9 rounded-full flex items-center justify-center flex-shrink-0 ${
+        tone === "danger" ? "bg-destructive/10" : "bg-primary/10"
+      }`}>
+        <Icon className={`h-4 w-4 ${tone === "danger" ? "text-destructive" : "text-primary"}`} />
+      </div>
+      <div className="min-w-0">
+        <p className="text-lg font-bold text-foreground leading-tight">{value}</p>
+        <p className="text-[10px] text-muted-foreground">{label}</p>
+        {hint && <p className="text-[10px] text-muted-foreground/70 truncate">{hint}</p>}
+      </div>
+    </CardContent>
+  </Card>
+);
 
 const ClassAnalytics = ({ classId, className: clsName }: Props) => {
   const { data: members = [] } = useClassMembers(classId);
   const { data: chapters = [] } = useChapters();
   const studentIds = useMemo(() => members.map((m) => m.student_id), [members]);
+
+  const [sinceJoin, setSinceJoin] = useState(true);
+  const [sortKey, setSortKey] = useState<SortKey>("avgLessonScore");
+  const [sortAsc, setSortAsc] = useState(false);
+  const [buildingFull, setBuildingFull] = useState(false);
 
   const { data: manualLessonTitles = {} } = useQuery({
     queryKey: ["manual-lesson-titles"],
@@ -286,12 +118,14 @@ const ClassAnalytics = ({ classId, className: clsName }: Props) => {
   const { data: testData } = useQuery({
     queryKey: ["analytics-tests", classId],
     queryFn: async () => {
+      const empty = { submissions: [] as any[], answers: [] as any[], sourceTitles: {} as Record<string, string>, assignmentsCount: 0 };
       const { data: assignments } = await supabase
         .from("test_assignments")
         .select("id, test_id, tests(title)")
         .eq("class_id", classId);
-      if (!assignments || assignments.length === 0) return { submissions: [], answers: [], sourceTitles: {} as Record<string, string> };
+      if (!assignments || assignments.length === 0) return empty;
 
+      const assignmentsCount = assignments.length;
       const assignmentIds = assignments.map((a) => a.id);
       const { data: submissions } = await supabase
         .from("test_submissions")
@@ -299,7 +133,7 @@ const ClassAnalytics = ({ classId, className: clsName }: Props) => {
         .in("assignment_id", assignmentIds)
         .not("submitted_at", "is", null);
 
-      if (!submissions || submissions.length === 0) return { submissions: [], answers: [], sourceTitles: {} as Record<string, string> };
+      if (!submissions || submissions.length === 0) return { ...empty, assignmentsCount };
 
       const submissionIds = submissions.map((s) => s.id);
       const { data: answers } = await supabase
@@ -307,7 +141,6 @@ const ClassAnalytics = ({ classId, className: clsName }: Props) => {
         .select("*, test_items(source_type, source_id, custom_data)")
         .in("submission_id", submissionIds);
 
-      // Resolve real titles for items coming from lessons (exercise / eval_exercise) and problems
       const exerciseIds = new Set<string>();
       const problemIds = new Set<string>();
       (answers || []).forEach((a: any) => {
@@ -324,7 +157,7 @@ const ClassAnalytics = ({ classId, className: clsName }: Props) => {
           supabase.from("exercises").select("id, question, statement").in("id", ids),
           supabase.rpc("get_eval_exercises_for_teacher", { p_ids: ids }),
         ]);
-        [...(exData || []), ...(evalData || [])].forEach((e: any) => {
+        [...(exData || []), ...((evalData as any[]) || [])].forEach((e: any) => {
           const txt = (e.question || e.statement || "").trim();
           if (txt) sourceTitles[e.id] = txt;
         });
@@ -346,6 +179,7 @@ const ClassAnalytics = ({ classId, className: clsName }: Props) => {
         })),
         answers: answers || [],
         sourceTitles,
+        assignmentsCount,
       };
     },
     enabled: studentIds.length > 0,
@@ -354,154 +188,108 @@ const ClassAnalytics = ({ classId, className: clsName }: Props) => {
   const submissions = testData?.submissions || [];
   const answers = testData?.answers || [];
   const sourceTitles = testData?.sourceTitles || {};
+  const assignmentsCount = testData?.assignmentsCount || 0;
 
-  // Build a map of lesson_id -> exercise count for score normalization
-  const exerciseCountMap = useMemo(() => {
-    const map: Record<string, number> = {};
-    for (const ch of chapters) {
-      for (const lesson of ch.lessons) {
-        map[lesson.id] = lesson.exercises.length;
+  // Class-level competency profile: one RPC per student, cached together.
+  const { data: classCompetencies = [] } = useQuery({
+    queryKey: ["class-competencies", classId, studentIds],
+    enabled: studentIds.length > 0,
+    staleTime: 2 * 60 * 1000,
+    queryFn: async () => {
+      const results = await Promise.all(
+        studentIds.map(async (id) => {
+          const { data } = await (supabase as any).rpc("get_student_competency_profile", {
+            p_user_id: id,
+            p_mode: "blended",
+          });
+          return ((data ?? []) as CompetencyRow[]).map((c) => ({
+            ...c,
+            mastery: c.mastery === null ? null : Number(c.mastery),
+          }));
+        })
+      );
+      return aggregateClassCompetencies(results);
+    },
+  });
+
+  const input: ClassAnalyticsInput = useMemo(
+    () => ({
+      members: members as any,
+      completions: completedLessons as any,
+      submissions: submissions as any,
+      chapters,
+      assignmentsCount,
+      sinceJoin,
+    }),
+    [members, completedLessons, submissions, chapters, assignmentsCount, sinceJoin]
+  );
+
+  const studentRows = useMemo(() => buildStudentRows(input), [input]);
+  const kpis = useMemo(() => computeKpis(input, studentRows), [input, studentRows]);
+  const scoreDistribution = useMemo(() => buildScoreDistribution(input), [input]);
+  const weakLessons = useMemo(() => buildWeakLessons(input, manualLessonTitles), [input, manualLessonTitles]);
+  const chapterProgress = useMemo(() => buildChapterProgress(input), [input]);
+  const trend = useMemo(() => buildTrend(input, 30), [input]);
+  const testStats = useMemo(() => buildTestStats(input), [input]);
+  const itemDifficulty = useMemo(() => buildItemDifficulty(answers, sourceTitles), [answers, sourceTitles]);
+  const weakCompetencies = useMemo(() => classCompetencies.slice(0, 8), [classCompetencies]);
+
+  const sortedRows = useMemo(() => {
+    const rows = [...studentRows];
+    rows.sort((a, b) => {
+      const va = a[sortKey];
+      const vb = b[sortKey];
+      if (typeof va === "string" || typeof vb === "string") {
+        return String(va ?? "").localeCompare(String(vb ?? ""));
       }
-    }
-    return map;
-  }, [chapters]);
+      return (Number(va ?? -1) - Number(vb ?? -1));
+    });
+    return sortAsc ? rows : rows.reverse();
+  }, [studentRows, sortKey, sortAsc]);
 
-  // Scores are stored directly as percentages (0-100) for both lessons and problems.
-  const normalizeScore = (_lessonId: string, rawScore: number): number => {
-    return Math.min(100, Math.max(0, rawScore));
+  const toggleSort = (key: SortKey) => {
+    if (key === sortKey) setSortAsc((v) => !v);
+    else {
+      setSortKey(key);
+      setSortAsc(key === "name");
+    }
   };
 
-  const studentStats = useMemo(() => {
-    return members.map((m) => {
-      const lessons = completedLessons.filter((cl) => cl.user_id === m.student_id);
-      const avgScore = lessons.length > 0
-        ? Math.round(lessons.reduce((s, l) => s + normalizeScore(l.lesson_id, l.score), 0) / lessons.length)
-        : 0;
-      const testSubs = submissions.filter((s: any) => s.student_id === m.student_id);
-      const avgTestScore = testSubs.length > 0
-        ? Math.round(
-            testSubs.reduce((s: number, t: any) => s + (t.max_score > 0 ? (t.total_score / t.max_score) * 100 : 0), 0) / testSubs.length
-          )
-        : null;
-      return {
-        name: m.profile?.display_name || "Elev",
-        lessonsCompleted: lessons.length,
-        avgScore,
-        avgTestScore,
-        xp: m.profile?.xp || 0,
-        streak: m.profile?.streak || 0,
-      };
-    }).sort((a, b) => b.avgScore - a.avgScore);
-  }, [members, completedLessons, submissions, exerciseCountMap]);
-
-  const scoreDistribution = useMemo(() => {
-    const buckets = [
-      { range: "0-49%", count: 0, fill: "hsl(var(--destructive))" },
-      { range: "50-69%", count: 0, fill: "hsl(var(--warning, 45 93% 47%))" },
-      { range: "70-89%", count: 0, fill: "hsl(var(--primary))" },
-      { range: "90-100%", count: 0, fill: "hsl(142 76% 36%)" },
-    ];
-    completedLessons.forEach((cl) => {
-      const pct = normalizeScore(cl.lesson_id, cl.score);
-      if (pct < 50) buckets[0].count++;
-      else if (pct < 70) buckets[1].count++;
-      else if (pct < 90) buckets[2].count++;
-      else buckets[3].count++;
-    });
-    return buckets;
-  }, [completedLessons, exerciseCountMap]);
-
-  const weakestLessons = useMemo(() => {
-    const lessonScores: Record<string, { total: number; count: number; id: string }> = {};
-    completedLessons.forEach((cl) => {
-      if (!lessonScores[cl.lesson_id]) {
-        lessonScores[cl.lesson_id] = { total: 0, count: 0, id: cl.lesson_id };
-      }
-      lessonScores[cl.lesson_id].total += normalizeScore(cl.lesson_id, cl.score);
-      lessonScores[cl.lesson_id].count++;
-    });
-
-    return Object.values(lessonScores)
-      .map((ls) => {
-        const avg = Math.round(ls.total / ls.count);
-        const name = resolveLessonTitle(ls.id, chapters, manualLessonTitles);
-        return { name, avgScore: avg, attempts: ls.count, id: ls.id };
-      })
-      .filter((l) => l.avgScore < 80)
-      .sort((a, b) => a.avgScore - b.avgScore)
-      .slice(0, 8);
-  }, [completedLessons, chapters, manualLessonTitles]);
-
-  const testPerformance = useMemo(() => {
-    const testMap: Record<string, { title: string; scores: number[] }> = {};
-    submissions.forEach((s: any) => {
-      if (!testMap[s.test_title]) testMap[s.test_title] = { title: s.test_title, scores: [] };
-      if (s.max_score > 0) testMap[s.test_title].scores.push((s.total_score / s.max_score) * 100);
-    });
-    return Object.values(testMap).map((t) => ({
-      name: t.title.length > 15 ? t.title.slice(0, 15) + "…" : t.title,
-      avg: Math.round(t.scores.reduce((s, v) => s + v, 0) / t.scores.length),
-      count: t.scores.length,
-    }));
-  }, [submissions]);
-
-  const frequentErrors = useMemo(() => {
-    const errorMap: Record<string, { question: string; wrongCount: number; totalCount: number }> = {};
-    answers.forEach((a: any) => {
-      const item = a.test_items;
-      if (!item) return;
-      const key = item.source_id || a.test_item_id;
-
-      let question = "";
-      if (item.source_type === "custom" && item.custom_data?.question) {
-        question = item.custom_data.question;
-      } else if (item.source_id && sourceTitles[item.source_id]) {
-        question = sourceTitles[item.source_id];
-      } else {
-        question = "Item șters";
-      }
-
-      if (!errorMap[key]) errorMap[key] = { question, wrongCount: 0, totalCount: 0 };
-      errorMap[key].totalCount++;
-      if (Number(a.score) < Number(a.max_points)) errorMap[key].wrongCount++;
-    });
-    return Object.values(errorMap)
-      .filter((e) => e.wrongCount > 0)
-      .map((e) => ({
-        question: e.question.length > 60 ? e.question.slice(0, 60) + "…" : e.question,
-        errorRate: Math.round((e.wrongCount / e.totalCount) * 100),
-        total: e.totalCount,
-      }))
-      .sort((a, b) => b.errorRate - a.errorRate)
-      .slice(0, 6);
-  }, [answers, sourceTitles]);
-
-  const classAvg = studentStats.length > 0
-    ? Math.round(studentStats.reduce((s, st) => s + st.avgScore, 0) / studentStats.length)
-    : 0;
-  const totalLessonsCompleted = completedLessons.length;
-  const activeStudents = studentStats.filter((s) => s.lessonsCompleted > 0).length;
-
-  const [buildingFull, setBuildingFull] = useState(false);
   const reportDeps = useReportDeps(classId);
 
+  const handleCsv = () => {
+    const date = new Date().toLocaleDateString("ro-RO");
+    downloadFile(
+      buildClassCsv({ className: clsName, kpis, rows: studentRows, weakLessons, testStats, chapterProgress, itemDifficulty, competencies: weakCompetencies }),
+      `raport_${clsName.replace(/\s+/g, "_")}_${date}.csv`,
+      "text/csv"
+    );
+    toast.success("CSV descărcat! 📊");
+  };
+
+  const handlePdf = () => {
+    const ok = openPrintDocument(
+      `Raport ${clsName}`,
+      buildClassReportHtml({ className: clsName, kpis, rows: studentRows, weakLessons, testStats, chapterProgress, itemDifficulty, competencies: weakCompetencies }),
+      BASE_REPORT_CSS + STUDENT_SECTION_CSS
+    );
+    if (!ok) toast.error("Permite pop-up-urile pentru a descărca PDF-ul.");
+    else toast.success("PDF pregătit pentru descărcare! 📄");
+  };
 
   const handleFullReport = async () => {
     setBuildingFull(true);
     try {
       const sections: string[] = [];
       for (const m of members) {
-        const profile = m.profile ?? { user_id: m.student_id };
-        const data = await fetchStudentReport(
-          { ...profile, user_id: m.student_id },
-          reportDeps
-        );
-        sections.push(buildStudentSectionHtml(data, sections.length > 0));
+        const profile = (m as any).profile ?? { user_id: m.student_id };
+        const data = await fetchStudentReport({ ...profile, user_id: m.student_id }, reportDeps);
+        sections.push(buildStudentSectionHtml(data, true));
       }
-      const header = `
-        <h1>Raport complet — ${clsName}</h1>
-        <p class="meta">${members.length} elevi · media clasei ${classAvg}% · ${totalLessonsCompleted} lecții finalizate · generat ${new Date().toLocaleDateString("ro-RO")}</p>
-      `;
+      const header = buildClassReportHtml({
+        className: clsName, kpis, rows: studentRows, weakLessons, testStats,
+        chapterProgress, itemDifficulty, competencies: weakCompetencies,
+      });
       const ok = openPrintDocument(
         `Raport complet - ${clsName}`,
         header + sections.join(""),
@@ -524,120 +312,218 @@ const ClassAnalytics = ({ classId, className: clsName }: Props) => {
     );
   }
 
+  const SortHead = ({ k, children, align = "right" }: { k: SortKey; children: React.ReactNode; align?: "left" | "right" }) => (
+    <TableHead
+      className={`cursor-pointer select-none whitespace-nowrap ${align === "right" ? "text-right" : ""}`}
+      onClick={() => toggleSort(k)}
+    >
+      <span className="inline-flex items-center gap-1">
+        {children}
+        <ArrowUpDown className={`h-3 w-3 ${sortKey === k ? "text-primary" : "opacity-30"}`} />
+      </span>
+    </TableHead>
+  );
+
   return (
     <div className="space-y-5">
-      {/* Export buttons */}
-      <div className="flex flex-wrap gap-2 justify-end">
-        <Button
-          size="sm"
-          variant="outline"
-          className="gap-1.5"
-          onClick={() => exportCSV(clsName, studentStats, classAvg, totalLessonsCompleted, weakestLessons, testPerformance)}
-        >
-          <FileSpreadsheet className="h-3.5 w-3.5" /> Export CSV
-        </Button>
-        <Button
-          size="sm"
-          variant="outline"
-          className="gap-1.5"
-          onClick={() => exportPDF(clsName, studentStats, classAvg, totalLessonsCompleted, submissions.length, weakestLessons, testPerformance, frequentErrors)}
-        >
-          <FileText className="h-3.5 w-3.5" /> Export PDF
-        </Button>
-        <Button
-          size="sm"
-          variant="outline"
-          className="gap-1.5"
-          disabled={buildingFull}
-          onClick={handleFullReport}
-        >
-          {buildingFull ? (
-            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-          ) : (
-            <FileText className="h-3.5 w-3.5" />
-          )}
-          Raport complet (fișe elevi)
-        </Button>
+      {/* Controls */}
+      <div className="flex flex-wrap gap-2 items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Switch id="since-join" checked={sinceJoin} onCheckedChange={setSinceJoin} />
+          <Label htmlFor="since-join" className="text-xs text-muted-foreground">
+            Doar activitatea din clasă
+          </Label>
+        </div>
+        <div className="flex flex-wrap gap-2 justify-end">
+          <Button size="sm" variant="outline" className="gap-1.5" onClick={handleCsv}>
+            <FileSpreadsheet className="h-3.5 w-3.5" /> Export CSV
+          </Button>
+          <Button size="sm" variant="outline" className="gap-1.5" onClick={handlePdf}>
+            <FileText className="h-3.5 w-3.5" /> Export PDF
+          </Button>
+          <Button size="sm" variant="outline" className="gap-1.5" disabled={buildingFull} onClick={handleFullReport}>
+            {buildingFull ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileText className="h-3.5 w-3.5" />}
+            Raport complet (fișe elevi)
+          </Button>
+        </div>
       </div>
 
-
-      {/* Summary cards */}
-      <div className="grid grid-cols-2 gap-3">
-        <Card>
-          <CardContent className="p-3 flex items-center gap-3">
-            <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center">
-              <Users className="h-4 w-4 text-primary" />
-            </div>
-            <div>
-              <p className="text-lg font-bold text-foreground">{activeStudents}/{members.length}</p>
-              <p className="text-[10px] text-muted-foreground">Elevi activi</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-3 flex items-center gap-3">
-            <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center">
-              {classAvg >= 70 ? (
-                <TrendingUp className="h-4 w-4 text-primary" />
-              ) : (
-                <TrendingDown className="h-4 w-4 text-destructive" />
-              )}
-            </div>
-            <div>
-              <p className="text-lg font-bold text-foreground">{classAvg}%</p>
-              <p className="text-[10px] text-muted-foreground">Medie clasă</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-3 flex items-center gap-3">
-            <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center">
-              <Target className="h-4 w-4 text-primary" />
-            </div>
-            <div>
-              <p className="text-lg font-bold text-foreground">{totalLessonsCompleted}</p>
-              <p className="text-[10px] text-muted-foreground">Lecții completate</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-3 flex items-center gap-3">
-            <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center">
-              <Award className="h-4 w-4 text-primary" />
-            </div>
-            <div>
-              <p className="text-lg font-bold text-foreground">{submissions.length}</p>
-              <p className="text-[10px] text-muted-foreground">Teste trimise</p>
-            </div>
-          </CardContent>
-        </Card>
+      {/* KPIs */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <KpiCard
+          icon={Users}
+          value={`${kpis.activeStudents}/${kpis.totalStudents}`}
+          label="Elevi activi"
+          hint={`${kpis.active7d} activi în 7 zile`}
+        />
+        <KpiCard
+          icon={kpis.classAvg !== null && kpis.classAvg >= 70 ? TrendingUp : TrendingDown}
+          value={kpis.classAvg !== null ? `${kpis.classAvg}%` : "-"}
+          label="Medie clasă"
+          hint="doar elevii cu activitate"
+        />
+        <KpiCard
+          icon={BookOpen}
+          value={kpis.lessons}
+          label="Lecții finalizate"
+          hint={`${kpis.lessons7d} în ultimele 7 zile`}
+        />
+        <KpiCard
+          icon={Code2}
+          value={kpis.problems}
+          label="Probleme rezolvate"
+          hint={`${kpis.reviews} recapitulări`}
+        />
+        <KpiCard
+          icon={Award}
+          value={kpis.submittedCount}
+          label="Teste predate"
+          hint={
+            kpis.submissionRate !== null
+              ? `${kpis.submissionRate}% din ${kpis.expectedSubmissions} posibile`
+              : "niciun test asignat"
+          }
+        />
+        <KpiCard
+          icon={AlertTriangle}
+          value={kpis.atRisk}
+          label="Elevi cu risc"
+          hint="inactivi 14+ zile sau medie sub 60%"
+          tone={kpis.atRisk > 0 ? "danger" : undefined}
+        />
+        <KpiCard
+          icon={Activity}
+          value={`${chapterProgress.length ? Math.round(chapterProgress.reduce((s, c) => s + c.coverage, 0) / chapterProgress.length) : 0}%`}
+          label="Parcurgere curriculum"
+          hint="medie pe toate capitolele"
+        />
+        <KpiCard
+          icon={GraduationCap}
+          value={weakCompetencies.length ? `${Math.round(weakCompetencies[0].mastery * 100)}%` : "-"}
+          label="Cea mai slabă competență"
+          hint={weakCompetencies.length ? weakCompetencies[0].specificCode : "fără date"}
+        />
       </div>
 
-      {/* Student ranking */}
+      {kpis.archived > 0 && (
+        <p className="text-[11px] text-muted-foreground">
+          {kpis.archived} finalizări provin din lecții eliminate din curriculum (arhivate) și nu sunt
+          incluse în analizele pe lecții și capitole.
+        </p>
+      )}
+
+      {/* Student table */}
       <Card>
         <CardContent className="p-4">
           <h3 className="text-sm font-bold text-foreground mb-3 flex items-center gap-2">
             <Award className="h-4 w-4 text-primary" />
-            Clasament elevi
+            Situația elevilor
           </h3>
-          <div className="space-y-2">
-            {studentStats.map((s, i) => (
-              <div key={i} className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-bold text-muted-foreground w-5">{i + 1}.</span>
-                  <span className="text-sm text-foreground">{s.name}</span>
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <SortHead k="name" align="left">Elev</SortHead>
+                  <SortHead k="lessons">Lecții</SortHead>
+                  <SortHead k="reviews">Recap.</SortHead>
+                  <SortHead k="problems">Probleme</SortHead>
+                  <SortHead k="avgLessonScore">Medie lecții</SortHead>
+                  <SortHead k="avgTestScore">Medie teste</SortHead>
+                  <SortHead k="testsSubmitted">Teste</SortHead>
+                  <SortHead k="lastActivity">Ultima activ.</SortHead>
+                  <SortHead k="streak">Streak</SortHead>
+                  <SortHead k="xp">XP</SortHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {sortedRows.map((s) => (
+                  <TableRow key={s.studentId} className={s.atRisk ? "bg-destructive/5" : undefined}>
+                    <TableCell className="text-sm">
+                      <div className="flex flex-col">
+                        <span className="text-foreground">{s.name}</span>
+                        {s.atRisk && (
+                          <span className="text-[10px] text-destructive">{s.riskReasons.join(" · ")}</span>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-right font-mono text-sm">{s.lessons}</TableCell>
+                    <TableCell className="text-right font-mono text-sm">{s.reviews}</TableCell>
+                    <TableCell className="text-right font-mono text-sm">{s.problems}</TableCell>
+                    <TableCell className="text-right">
+                      {s.avgLessonScore === null ? (
+                        <span className="text-xs text-muted-foreground">-</span>
+                      ) : (
+                        <Badge
+                          variant={s.avgLessonScore >= 80 ? "default" : s.avgLessonScore >= 50 ? "secondary" : "destructive"}
+                          className="text-xs"
+                        >
+                          {s.avgLessonScore}%
+                        </Badge>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right font-mono text-sm">
+                      {s.avgTestScore !== null ? `${s.avgTestScore}%` : "-"}
+                    </TableCell>
+                    <TableCell className="text-right font-mono text-sm">
+                      {s.testsSubmitted}{assignmentsCount > 0 ? `/${assignmentsCount}` : ""}
+                    </TableCell>
+                    <TableCell className="text-right text-xs text-muted-foreground whitespace-nowrap">
+                      {fmtDate(s.lastActivity)}
+                    </TableCell>
+                    <TableCell className="text-right font-mono text-sm">{s.streak}</TableCell>
+                    <TableCell className="text-right font-mono text-sm">{s.xp}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Trend */}
+      <Card>
+        <CardContent className="p-4">
+          <h3 className="text-sm font-bold text-foreground mb-3 flex items-center gap-2">
+            <Activity className="h-4 w-4 text-primary" />
+            Evoluția clasei (30 de zile)
+          </h3>
+          <ResponsiveContainer width="100%" height={200}>
+            <ComposedChart data={trend}>
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+              <XAxis dataKey="label" tick={{ fontSize: 9, fill: "hsl(var(--muted-foreground))" }} interval="preserveStartEnd" />
+              <YAxis tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} allowDecimals={false} />
+              <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8 }} />
+              <Legend wrapperStyle={{ fontSize: 11 }} />
+              <Bar dataKey="lessons" name="Lecții" fill="hsl(var(--primary))" radius={[3, 3, 0, 0]} />
+              <Bar dataKey="problems" name="Probleme" fill="hsl(var(--accent))" radius={[3, 3, 0, 0]} />
+              <Line type="monotone" dataKey="activeUsers" name="Elevi activi" stroke="hsl(var(--primary))" strokeWidth={2} dot={false} />
+            </ComposedChart>
+          </ResponsiveContainer>
+        </CardContent>
+      </Card>
+
+      {/* Chapter progress */}
+      <Card>
+        <CardContent className="p-4">
+          <h3 className="text-sm font-bold text-foreground mb-3 flex items-center gap-2">
+            <BookOpen className="h-4 w-4 text-primary" />
+            Progres pe capitole
+          </h3>
+          <div className="space-y-3">
+            {chapterProgress.map((c) => (
+              <div key={c.chapterId}>
+                <div className="flex items-center justify-between mb-1 gap-2">
+                  <span className="text-xs text-foreground truncate">{c.title}</span>
+                  <span className="text-[10px] text-muted-foreground whitespace-nowrap">
+                    {c.coverage}% parcurs · {c.studentsStarted}/{kpis.totalStudents} elevi
+                    {c.avgScore !== null && ` · medie ${c.avgScore}%`}
+                  </span>
                 </div>
-                <div className="flex items-center gap-3 text-xs">
-                  <span className="text-muted-foreground">{s.lessonsCompleted} lecții</span>
-                  <Badge
-                    variant={s.avgScore >= 80 ? "default" : s.avgScore >= 50 ? "secondary" : "destructive"}
-                    className="text-xs"
-                  >
-                    {s.avgScore}%
-                  </Badge>
-                  {s.avgTestScore !== null && (
-                    <span className="text-muted-foreground">Test: {s.avgTestScore}%</span>
-                  )}
+                <div className="h-2 rounded-full bg-muted overflow-hidden">
+                  <div
+                    className="h-full rounded-full bg-primary transition-all"
+                    style={{ width: `${c.coverage}%` }}
+                  />
                 </div>
               </div>
             ))}
@@ -645,13 +531,48 @@ const ClassAnalytics = ({ classId, className: clsName }: Props) => {
         </CardContent>
       </Card>
 
-      {/* Score distribution chart */}
-      {completedLessons.length > 0 && (
+      {/* Class competencies */}
+      {weakCompetencies.length > 0 && (
+        <Card>
+          <CardContent className="p-4">
+            <h3 className="text-sm font-bold text-foreground mb-3 flex items-center gap-2">
+              <GraduationCap className="h-4 w-4 text-primary" />
+              Competențe de consolidat (nivel clasă)
+            </h3>
+            <div className="space-y-2">
+              {weakCompetencies.map((c) => {
+                const pct = Math.round(c.mastery * 100);
+                return (
+                  <div key={c.specificId} className="flex items-center justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="text-xs text-foreground truncate">
+                        {c.specificCode} · {c.specificTitle}
+                      </p>
+                      <p className="text-[10px] text-muted-foreground truncate">
+                        {c.generalCode} {c.generalTitle} · {c.evaluatedStudents} elevi evaluați
+                      </p>
+                    </div>
+                    <Badge
+                      variant={pct >= 85 ? "default" : pct >= 60 ? "secondary" : "destructive"}
+                      className="text-xs flex-shrink-0"
+                    >
+                      {masteryLevelLabel(c.mastery)} · {pct}%
+                    </Badge>
+                  </div>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Score distribution */}
+      {scoreDistribution.some((b) => b.count > 0) && (
         <Card>
           <CardContent className="p-4">
             <h3 className="text-sm font-bold text-foreground mb-3 flex items-center gap-2">
               <CheckCircle className="h-4 w-4 text-primary" />
-              Distribuția scorurilor
+              Distribuția scorurilor la lecții
             </h3>
             <ResponsiveContainer width="100%" height={180}>
               <BarChart data={scoreDistribution}>
@@ -663,7 +584,7 @@ const ClassAnalytics = ({ classId, className: clsName }: Props) => {
                 />
                 <Bar dataKey="count" radius={[4, 4, 0, 0]}>
                   {scoreDistribution.map((entry, idx) => (
-                    <Cell key={idx} fill={entry.fill} />
+                    <Cell key={idx} fill={BUCKET_FILL[entry.tone]} />
                   ))}
                 </Bar>
               </BarChart>
@@ -673,19 +594,21 @@ const ClassAnalytics = ({ classId, className: clsName }: Props) => {
       )}
 
       {/* Weakest lessons */}
-      {weakestLessons.length > 0 && (
+      {weakLessons.length > 0 && (
         <Card>
           <CardContent className="p-4">
             <h3 className="text-sm font-bold text-foreground mb-3 flex items-center gap-2">
               <AlertTriangle className="h-4 w-4 text-warning" />
-              Lecții cu cele mai multe greșeli
+              Lecții de reluat (medie sub 80%)
             </h3>
             <div className="space-y-2">
-              {weakestLessons.map((l, i) => (
-                <div key={i} className="flex items-center justify-between">
-                  <span className="text-xs text-foreground truncate max-w-[60%]">{l.name}</span>
+              {weakLessons.map((l) => (
+                <div key={l.id} className="flex items-center justify-between gap-2">
+                  <span className="text-xs text-foreground truncate max-w-[55%]">{l.name}</span>
                   <div className="flex items-center gap-2">
-                    <span className="text-xs text-muted-foreground">{l.attempts} încercări</span>
+                    <span className="text-[10px] text-muted-foreground whitespace-nowrap">
+                      {l.students} elevi · {l.attempts} încercări
+                    </span>
                     <Badge variant="destructive" className="text-xs">{l.avgScore}%</Badge>
                   </div>
                 </div>
@@ -696,7 +619,7 @@ const ClassAnalytics = ({ classId, className: clsName }: Props) => {
       )}
 
       {/* Test performance */}
-      {testPerformance.length > 0 && (
+      {testStats.length > 0 && (
         <Card>
           <CardContent className="p-4">
             <h3 className="text-sm font-bold text-foreground mb-3 flex items-center gap-2">
@@ -704,8 +627,8 @@ const ClassAnalytics = ({ classId, className: clsName }: Props) => {
               Performanță teste
             </h3>
             <ResponsiveContainer width="100%" height={180}>
-              <BarChart data={testPerformance}>
-                <XAxis dataKey="name" tick={{ fontSize: 10 }} />
+              <BarChart data={testStats}>
+                <XAxis dataKey="shortTitle" tick={{ fontSize: 10 }} />
                 <YAxis tick={{ fontSize: 11 }} domain={[0, 100]} />
                 <Tooltip
                   contentStyle={{ fontSize: 12, borderRadius: 8 }}
@@ -714,24 +637,61 @@ const ClassAnalytics = ({ classId, className: clsName }: Props) => {
                 <Bar dataKey="avg" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
+            <div className="overflow-x-auto mt-3">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Test</TableHead>
+                    <TableHead className="text-right">Medie</TableHead>
+                    <TableHead className="text-right">Mediană</TableHead>
+                    <TableHead className="text-right">Min–Max</TableHead>
+                    <TableHead className="text-right">Sub 50%</TableHead>
+                    <TableHead className="text-right">Predate</TableHead>
+                    <TableHead className="text-right">Lipsă</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {testStats.map((t) => (
+                    <TableRow key={t.title}>
+                      <TableCell className="text-xs">{t.title}</TableCell>
+                      <TableCell className="text-right font-mono text-sm">{t.avg}%</TableCell>
+                      <TableCell className="text-right font-mono text-sm">{t.median}%</TableCell>
+                      <TableCell className="text-right font-mono text-sm">{t.min}–{t.max}%</TableCell>
+                      <TableCell className="text-right font-mono text-sm">{t.below50}</TableCell>
+                      <TableCell className="text-right font-mono text-sm">{t.count}</TableCell>
+                      <TableCell className="text-right font-mono text-sm">{t.missing}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
           </CardContent>
         </Card>
       )}
 
-      {/* Frequent errors from tests */}
-      {frequentErrors.length > 0 && (
+      {/* Item difficulty */}
+      {itemDifficulty.length > 0 && (
         <Card>
           <CardContent className="p-4">
             <h3 className="text-sm font-bold text-foreground mb-3 flex items-center gap-2">
               <AlertTriangle className="h-4 w-4 text-destructive" />
-              Erori frecvente în teste
+              Itemi cu cel mai mic punctaj
             </h3>
             <div className="space-y-2">
-              {frequentErrors.map((e, i) => (
-                <div key={i} className="flex items-center justify-between gap-2">
-                  <span className="text-xs text-foreground truncate max-w-[65%]">{e.question}</span>
-                  <Badge variant="destructive" className="text-xs flex-shrink-0">
-                    {e.errorRate}% greșit ({e.total})
+              {itemDifficulty.map((e) => (
+                <div key={e.key} className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="text-xs text-foreground truncate">{e.question}</p>
+                    <p className="text-[10px] text-muted-foreground">
+                      {e.zeroCount} × 0p · {e.partialCount} × parțial · {e.fullCount} × complet
+                      {" "}({e.total} răspunsuri)
+                    </p>
+                  </div>
+                  <Badge
+                    variant={e.avgPercent >= 60 ? "secondary" : "destructive"}
+                    className="text-xs flex-shrink-0"
+                  >
+                    {e.avgPercent}% din punctaj
                   </Badge>
                 </div>
               ))}
