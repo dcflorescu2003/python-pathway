@@ -66,20 +66,23 @@ const KpiCard = ({ icon: Icon, value, label, hint, tone }: {
   icon: any; value: string | number; label: string; hint?: string; tone?: "danger" | "warn";
 }) => (
   <Card>
-    <CardContent className="p-3 flex items-center gap-3">
-      <div className={`h-9 w-9 rounded-full flex items-center justify-center flex-shrink-0 ${
-        tone === "danger" ? "bg-destructive/10" : "bg-primary/10"
-      }`}>
-        <Icon className={`h-4 w-4 ${tone === "danger" ? "text-destructive" : "text-primary"}`} />
+    <CardContent className="p-3 space-y-1.5">
+      <div className="flex items-center gap-2">
+        <div className={`h-7 w-7 rounded-full flex items-center justify-center flex-shrink-0 ${
+          tone === "danger" ? "bg-destructive/10" : "bg-primary/10"
+        }`}>
+          <Icon className={`h-3.5 w-3.5 ${tone === "danger" ? "text-destructive" : "text-primary"}`} />
+        </div>
+        <p className="text-xl font-bold text-foreground leading-none font-mono">{value}</p>
       </div>
-      <div className="min-w-0">
-        <p className="text-lg font-bold text-foreground leading-tight">{value}</p>
-        <p className="text-[10px] text-muted-foreground">{label}</p>
-        {hint && <p className="text-[10px] text-muted-foreground/70 truncate">{hint}</p>}
+      <div>
+        <p className="text-xs font-medium text-foreground leading-snug">{label}</p>
+        {hint && <p className="text-[11px] text-muted-foreground leading-snug">{hint}</p>}
       </div>
     </CardContent>
   </Card>
 );
+
 
 const ClassAnalytics = ({ classId, className: clsName }: Props) => {
   const { data: members = [] } = useClassMembers(classId);
