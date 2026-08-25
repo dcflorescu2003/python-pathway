@@ -1,4 +1,4 @@
-# Blindarea notificărilor Apple (apple_jws_chain)
+# Blindarea notificărilor Apple (apple_jws_chain) — implementare programată pentru octombrie 2026
 
 ## Cât de probabil / cât de greu (răspuns scurt)
 
