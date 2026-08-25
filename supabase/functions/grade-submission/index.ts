@@ -780,6 +780,10 @@ function gradeExercise(exercise: any, answerData: any, maxPoints: number): numbe
   return 0;
 }
 
+function roundHalf(n: number): number {
+  return Math.round(n * 2) / 2;
+}
+
 function gradeProblemBasic(
   problem: { test_cases: any; solution: string },
   studentCode: string,
@@ -787,24 +791,30 @@ function gradeProblemBasic(
 ): { score: number; feedback: string } {
   if (!studentCode.trim()) return { score: 0, feedback: "Cod gol" };
 
+  // Criterii detectabile static, aliniate cu baremul folosit de AI.
+  const hasInput = /input\s*\(|=\s*[^=]/.test(studentCode); // citire / declarare variabile
+  const hasLoop = /\bfor\b|\bwhile\b/.test(studentCode);
+  const hasCondition = /\bif\b/.test(studentCode);
   const hasFunction = /def\s+\w+/.test(studentCode);
-  const hasReturn = /return\s/.test(studentCode);
-  const hasLoop = /for\s|while\s/.test(studentCode);
-  const hasCondition = /if\s/.test(studentCode);
+  const hasReturn = /\breturn\b/.test(studentCode);
   const hasPrint = /print\s*\(/.test(studentCode);
 
-  let structureScore = 0;
-  if (hasFunction || hasPrint) structureScore += 0.2;
-  if (hasReturn || hasPrint) structureScore += 0.1;
-  if (hasLoop) structureScore += 0.1;
-  if (hasCondition) structureScore += 0.1;
+  const parts: string[] = [];
+  let ratio = 0;
+  if (hasInput) { ratio += 0.2; parts.push("variabile/citire date"); }
+  if (hasLoop || hasCondition || hasFunction || hasReturn) {
+    ratio += 0.2;
+    parts.push("structuri de control");
+  }
+  if (hasPrint) { ratio += 0.1; parts.push("afișare rezultat"); }
 
-  const score = Math.round(Math.min(structureScore, 0.5) * maxPoints);
+  const score = roundHalf(Math.min(ratio, 0.5) * maxPoints);
   return {
     score,
-    feedback: `Punctaj structural: ${score}/${maxPoints}. Evaluarea completă necesită AI review.`,
+    feedback: `Punctaj parțial structural (${parts.join(", ") || "elemente minime"}): ${score}/${maxPoints}. Necesită verificare manuală.`,
   };
 }
+
 
 async function batchAIReview(
   items: { answerId: string; studentCode: string; solution: string; testCases: any; maxPoints: number; problemTitle: string; aiType: string; studentText?: string; questionText?: string }[]
@@ -912,7 +922,19 @@ ${answers}`;
 
 ${itemDescriptions}
 
-Răspunde DOAR cu JSON: {"results":[{"id":"<ID>","score":<number>,"feedback":"<max 200 caractere, română>"}]} — un obiect pentru fiecare din cele ${blockCount} ID-uri, exact ID-urile date, scor între 0 și punctajul maxim al ID-ului.`;
+BAREM pentru codurile de programare — acordă punctaj PARȚIAL, nu doar 0 sau maxim. Pentru fiecare cod calculează procente din punctajul maxim al ID-ului (M):
+- intrare (0.20*M): datele de intrare sunt citite corect și variabilele necesare sunt declarate/inițializate corect;
+- algoritm (0.35*M): structurile de control și formulele (bucle, condiții, calcule) sunt corecte, chiar dacă rezultatul final e greșit; punctează parțial logica corectă;
+- cazuri (0.25*M): prelucrarea corectă a cazurilor din enunț, inclusiv cazuri limită;
+- afisare (0.15*M): rezultatul este afișat în formatul cerut (print, mesaj, ordine);
+- sintaxa (0.05*M): codul nu are erori de sintaxă și ar rula.
+Poți acorda fracțiuni dintr-un criteriu dacă e îndeplinit parțial. score = suma criteriilor (0..M). Un program greșit dar cu elemente corecte NU primește 0.
+Pentru răspunsurile deschise (non-cod) completează doar "score" și pune criteriile pe 0.
+
+Feedback-ul spune scurt ce a luat și ce a pierdut (ex: "Variabile OK, buclă corectă; lipsește cazul listei goale; afișare fără formatul cerut").
+
+Răspunde DOAR cu JSON: {"results":[{"id":"<ID>","criterii":{"intrare":<n>,"algoritm":<n>,"cazuri":<n>,"afisare":<n>,"sintaxa":<n>},"score":<number>,"feedback":"<max 200 caractere, română>"}]} — un obiect pentru fiecare din cele ${blockCount} ID-uri, exact ID-urile date, scor între 0 și punctajul maxim al ID-ului.`;
+
 
     const model = onlyShortOpenAnswers ? "google/gemini-2.5-flash-lite" : "google/gemini-2.5-flash";
     console.log(
@@ -945,7 +967,9 @@ Răspunde DOAR cu JSON: {"results":[{"id":"<ID>","score":<number>,"feedback":"<m
     const content = data.choices?.[0]?.message?.content || "";
 
     // Parse JSON object ({"results":[...]}) with array fallback
-    let parsed: { id: string; score: number; feedback: string }[] | null = null;
+    let parsed:
+      | { id: string; score: number; feedback: string; criterii?: Record<string, unknown> }[]
+      | null = null;
     try {
       const objMatch = content.match(/\{[\s\S]*\}/);
       if (objMatch) {
@@ -967,10 +991,25 @@ Răspunde DOAR cu JSON: {"results":[{"id":"<ID>","score":<number>,"feedback":"<m
       const answerIds = blockToAnswerIds.get(blockId);
       if (!answerIds) continue;
       const maxPoints = blockMaxPoints.get(blockId) ?? 0;
-      const score = Math.min(Math.max(0, Math.round(Number(r.score) || 0)), maxPoints);
+
+      // Preferăm suma criteriilor (punctaj parțial detaliat); dacă lipsesc,
+      // folosim câmpul "score" ca înainte.
+      const crit = r?.criterii as Record<string, unknown> | undefined;
+      let raw = Number(r?.score);
+      if (crit && typeof crit === "object") {
+        const sum = ["intrare", "algoritm", "cazuri", "afisare", "sintaxa"]
+          .map((k) => Number(crit[k]))
+          .filter((n) => Number.isFinite(n) && n > 0)
+          .reduce((a, b) => a + b, 0);
+        if (sum > 0) raw = sum;
+      }
+      if (!Number.isFinite(raw)) raw = 0;
+
+      const score = Math.min(Math.max(0, roundHalf(raw)), maxPoints);
       const feedback = r.feedback || "Evaluat de AI";
       for (const answerId of answerIds) out.push({ answerId, score, feedback });
     }
+
 
     return out.length > 0 ? out : null;
   } catch (e) {
