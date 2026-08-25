@@ -5,6 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { normalizeExternalUrl } from "@/lib/normalizeUrl";
 import {
   KeyRound,
   Link2,
@@ -125,7 +126,12 @@ const TeacherVerificationForm = ({ onSuccess, onCancel }: Props) => {
         data = { ...data, code: referralCode.trim().toUpperCase() };
       } else if (selected === "public_link") {
         if (!publicLink.trim()) { toast.error("Introdu un link."); return; }
-        data = { ...data, link: publicLink.trim(), note: linkNote.trim() };
+        const normalized = normalizeExternalUrl(publicLink);
+        if (!normalized) {
+          toast.error("Introdu un link valid (ex: https://liceul.ro/cadre-didactice).");
+          return;
+        }
+        data = { ...data, link: normalized, note: linkNote.trim() };
       } else if (selected === "document") {
         if (!docFile) { toast.error("Selectează un document."); return; }
         const path = `${user.id}/${Date.now()}-${docFile.name}`;

@@ -15,6 +15,7 @@ import {
 import { toast } from "sonner";
 import VerificationChat from "@/components/teacher/VerificationChat";
 import DocumentAttachmentLink from "@/components/teacher/DocumentAttachmentLink";
+import { normalizeExternalUrl } from "@/lib/normalizeUrl";
 
 // ─── Requests Tab ───
 const RequestsTab = () => {
@@ -125,15 +126,21 @@ const RequestsTab = () => {
 
               {/* Show data based on method */}
               {r.method === "public_link" && r.data?.link && (
-                <a
-                  href={r.data.link}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-xs text-primary flex items-center gap-1 hover:underline"
-                >
-                  <ExternalLink className="h-3 w-3" />
-                  {r.data.link}
-                </a>
+                normalizeExternalUrl(r.data.link) ? (
+                  <a
+                    href={normalizeExternalUrl(r.data.link)!}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs text-primary flex items-center gap-1 hover:underline break-all"
+                  >
+                    <ExternalLink className="h-3 w-3 shrink-0" />
+                    {r.data.link}
+                  </a>
+                ) : (
+                  <p className="text-xs text-muted-foreground break-all">
+                    {r.data.link} — nu este un link valid
+                  </p>
+                )
               )}
               {r.method === "public_link" && r.data?.note && (
                 <p className="text-xs text-muted-foreground">{r.data.note}</p>
