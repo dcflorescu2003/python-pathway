@@ -1,20 +1,22 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { motion } from "framer-motion";
-import { GraduationCap, X, ArrowRight } from "lucide-react";
+import { GraduationCap, X, ArrowRight, Clock, AlertTriangle, MessageSquare, RefreshCw } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import type { TeacherVerificationDetails } from "@/hooks/useTeacherVerificationTip";
 
 interface Props {
   onDismiss: () => void;
   durationMs?: number;
+  details?: TeacherVerificationDetails | null;
 }
 
-const steps = [
+const defaultSteps = [
   "Deschide Cont → secțiunea Profesor",
   "Alege o metodă de validare (email de școală, adeverință, cod coleg)",
   "Trimite dovada — răspundem rapid în chatul de verificare",
 ];
 
-const TeacherVerificationTipCard = ({ onDismiss, durationMs = 8000 }: Props) => {
+const TeacherVerificationTipCard = ({ onDismiss, durationMs = 8000, details }: Props) => {
   const [progress, setProgress] = useState(0);
   const navigate = useNavigate();
 
@@ -37,6 +39,55 @@ const TeacherVerificationTipCard = ({ onDismiss, durationMs = 8000 }: Props) => 
       clearTimeout(t);
     };
   }, [onDismiss, durationMs]);
+
+  const config = useMemo(() => {
+    const status = details?.requestStatus ?? (details?.profileStatus === "unverified" ? "unverified" : null);
+
+    switch (status) {
+      case "pending":
+        return {
+          icon: Clock,
+          title: "Cererea ta este în așteptare ⏳",
+          reason: `Ai trimis o cerere prin ${details?.method || "document"}. Administratorul o revizuiește și vei fi notificat când este aprobată.`,
+          steps: [
+            "Răspunde în chat dacă ți se cer informații suplimentare.",
+            "Așteaptă notificarea de aprobare.",
+          ],
+          cta: "Vezi conversația",
+          ctaIcon: MessageSquare,
+          action: () => navigate("/auth?tab=profile"),
+        };
+      case "rejected":
+        return {
+          icon: AlertTriangle,
+          title: "Cererea a fost respinsă ⚠️",
+          reason: details?.adminNotes?.trim()
+            ? details.adminNotes.trim()
+            : "Cererea ta nu a putut fi verificată. Verifică datele trimise și încearcă din nou.",
+          steps: [
+            "Corectează problema indicată mai sus.",
+            "Retrimite o nouă cerere din pagina de cont.",
+          ],
+          cta: "Retrimite cererea",
+          ctaIcon: RefreshCw,
+          action: () => navigate("/auth?tab=profile"),
+        };
+      case "unverified":
+      default:
+        return {
+          icon: GraduationCap,
+          title: "Verifică-ți contul de profesor 🎓",
+          reason: "Nu ai trimis încă o cerere de verificare. Finalizează procesul pentru a debloca toate funcțiile pentru profesori.",
+          steps: defaultSteps,
+          cta: "Verifică acum",
+          ctaIcon: ArrowRight,
+          action: () => navigate("/auth?tab=profile"),
+        };
+    }
+  }, [details, navigate]);
+
+  const Icon = config.icon;
+  const CtaIcon = config.ctaIcon;
 
   return (
     <motion.div
@@ -65,15 +116,18 @@ const TeacherVerificationTipCard = ({ onDismiss, durationMs = 8000 }: Props) => 
             animate={{ scale: [1, 1.1, 1] }}
             transition={{ duration: 1.6, repeat: Infinity, ease: "easeInOut" }}
           >
-            <GraduationCap className="h-7 w-7" />
+            <Icon className="h-7 w-7" />
           </motion.div>
           <div className="flex-1 min-w-0">
             <p className="text-white font-bold text-sm leading-tight mb-1 drop-shadow">
-              Verifică-ți contul de profesor 🎓
+              {config.title}
+            </p>
+            <p className="text-white/90 text-xs leading-snug mb-2">
+              {config.reason}
             </p>
             <ul className="space-y-1 mb-3">
-              {steps.map((s, i) => (
-                <li key={s} className="text-white/90 text-xs leading-snug flex gap-2">
+              {config.steps.map((s, i) => (
+                <li key={i} className="text-white/90 text-xs leading-snug flex gap-2">
                   <span className="font-bold">{i + 1}.</span>
                   <span>{s}</span>
                 </li>
@@ -82,11 +136,11 @@ const TeacherVerificationTipCard = ({ onDismiss, durationMs = 8000 }: Props) => 
             <button
               onClick={() => {
                 onDismiss();
-                navigate("/auth?tab=profile");
+                config.action();
               }}
               className="inline-flex items-center gap-1.5 rounded-lg bg-white/20 hover:bg-white/30 text-white text-xs font-semibold px-3 py-2 transition-colors"
             >
-              Verifică acum <ArrowRight className="h-3.5 w-3.5" />
+              {config.cta} <CtaIcon className="h-3.5 w-3.5" />
             </button>
           </div>
         </div>
