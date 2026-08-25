@@ -66,20 +66,23 @@ const KpiCard = ({ icon: Icon, value, label, hint, tone }: {
   icon: any; value: string | number; label: string; hint?: string; tone?: "danger" | "warn";
 }) => (
   <Card>
-    <CardContent className="p-3 flex items-center gap-3">
-      <div className={`h-9 w-9 rounded-full flex items-center justify-center flex-shrink-0 ${
-        tone === "danger" ? "bg-destructive/10" : "bg-primary/10"
-      }`}>
-        <Icon className={`h-4 w-4 ${tone === "danger" ? "text-destructive" : "text-primary"}`} />
+    <CardContent className="p-3 space-y-1.5">
+      <div className="flex items-center gap-2">
+        <div className={`h-7 w-7 rounded-full flex items-center justify-center flex-shrink-0 ${
+          tone === "danger" ? "bg-destructive/10" : "bg-primary/10"
+        }`}>
+          <Icon className={`h-3.5 w-3.5 ${tone === "danger" ? "text-destructive" : "text-primary"}`} />
+        </div>
+        <p className="text-xl font-bold text-foreground leading-none font-mono">{value}</p>
       </div>
-      <div className="min-w-0">
-        <p className="text-lg font-bold text-foreground leading-tight">{value}</p>
-        <p className="text-[10px] text-muted-foreground">{label}</p>
-        {hint && <p className="text-[10px] text-muted-foreground/70 truncate">{hint}</p>}
+      <div>
+        <p className="text-xs font-medium text-foreground leading-snug">{label}</p>
+        {hint && <p className="text-[11px] text-muted-foreground leading-snug">{hint}</p>}
       </div>
     </CardContent>
   </Card>
 );
+
 
 const ClassAnalytics = ({ classId, className: clsName }: Props) => {
   const { data: members = [] } = useClassMembers(classId);
@@ -354,24 +357,24 @@ const ClassAnalytics = ({ classId, className: clsName }: Props) => {
           icon={Users}
           value={`${kpis.activeStudents}/${kpis.totalStudents}`}
           label="Elevi activi"
-          hint={`${kpis.active7d} activi în 7 zile`}
+          hint={`${kpis.active7d} în 7 zile`}
         />
         <KpiCard
           icon={kpis.classAvg !== null && kpis.classAvg >= 70 ? TrendingUp : TrendingDown}
           value={kpis.classAvg !== null ? `${kpis.classAvg}%` : "-"}
           label="Medie clasă"
-          hint="doar elevii cu activitate"
+          hint="doar elevi activi"
         />
         <KpiCard
           icon={BookOpen}
           value={kpis.lessons}
-          label="Lecții finalizate"
-          hint={`${kpis.lessons7d} în ultimele 7 zile`}
+          label="Lecții"
+          hint={`${kpis.lessons7d} în 7 zile`}
         />
         <KpiCard
           icon={Code2}
           value={kpis.problems}
-          label="Probleme rezolvate"
+          label="Probleme"
           hint={`${kpis.reviews} recapitulări`}
         />
         <KpiCard
@@ -380,29 +383,30 @@ const ClassAnalytics = ({ classId, className: clsName }: Props) => {
           label="Teste predate"
           hint={
             kpis.submissionRate !== null
-              ? `${kpis.submissionRate}% din ${kpis.expectedSubmissions} posibile`
-              : "niciun test asignat"
+              ? `${kpis.submissionRate}% din ${kpis.expectedSubmissions}`
+              : "fără teste"
           }
         />
         <KpiCard
           icon={AlertTriangle}
           value={kpis.atRisk}
           label="Elevi cu risc"
-          hint="inactivi 14+ zile sau medie sub 60%"
+          hint="inactivi 14+ zile"
           tone={kpis.atRisk > 0 ? "danger" : undefined}
         />
         <KpiCard
           icon={Activity}
           value={`${chapterProgress.length ? Math.round(chapterProgress.reduce((s, c) => s + c.coverage, 0) / chapterProgress.length) : 0}%`}
-          label="Parcurgere curriculum"
-          hint="medie pe toate capitolele"
+          label="Parcurgere"
+          hint="medie capitole"
         />
         <KpiCard
           icon={GraduationCap}
           value={weakCompetencies.length ? `${Math.round(weakCompetencies[0].mastery * 100)}%` : "-"}
-          label="Cea mai slabă competență"
+          label="Competență slabă"
           hint={weakCompetencies.length ? weakCompetencies[0].specificCode : "fără date"}
         />
+
       </div>
 
       {kpis.archived > 0 && (
