@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import VerificationChat from "@/components/teacher/VerificationChat";
+import DocumentAttachmentLink from "@/components/teacher/DocumentAttachmentLink";
 
 // ─── Requests Tab ───
 const RequestsTab = () => {
@@ -137,10 +138,11 @@ const RequestsTab = () => {
               {r.method === "public_link" && r.data?.note && (
                 <p className="text-xs text-muted-foreground">{r.data.note}</p>
               )}
-              {r.method === "document" && r.data?.file_name && (
-                <p className="text-xs text-muted-foreground">
-                  📎 {r.data.file_name}
-                </p>
+              {r.method === "document" && (r.data?.document_path || r.data?.file_name) && (
+                <DocumentAttachmentLink
+                  path={r.data?.document_path}
+                  fileName={r.data?.file_name}
+                />
               )}
               {r.method === "invite_code" && r.data?.code && (
                 <p className="text-xs text-muted-foreground">Cod folosit: {r.data.code}</p>

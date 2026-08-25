@@ -5,8 +5,9 @@ import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Send, Upload, CheckCircle, AlertTriangle, FileText, Loader2 } from "lucide-react";
+import { Send, Upload, CheckCircle, AlertTriangle, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import DocumentAttachmentLink from "@/components/teacher/DocumentAttachmentLink";
 
 interface Props {
   requestId: string;
@@ -120,10 +121,9 @@ const VerificationChat = ({ requestId, adminNotes, isAdmin = false, teacherUserI
                 </p>
                 {msg.message && <p className="text-muted-foreground">{msg.message}</p>}
                 {msg.attachment_url && (
-                  <p className="text-primary flex items-center gap-1 mt-1">
-                    <FileText className="h-3 w-3" />
-                    Document atașat
-                  </p>
+                  <div className="mt-1">
+                    <DocumentAttachmentLink path={msg.attachment_url} />
+                  </div>
                 )}
                 <p className="text-[10px] text-muted-foreground mt-1">
                   {new Date(msg.created_at).toLocaleString("ro-RO")}
