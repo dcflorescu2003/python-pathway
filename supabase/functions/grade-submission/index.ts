@@ -780,6 +780,10 @@ function gradeExercise(exercise: any, answerData: any, maxPoints: number): numbe
   return 0;
 }
 
+function roundHalf(n: number): number {
+  return Math.round(n * 2) / 2;
+}
+
 function gradeProblemBasic(
   problem: { test_cases: any; solution: string },
   studentCode: string,
@@ -787,24 +791,30 @@ function gradeProblemBasic(
 ): { score: number; feedback: string } {
   if (!studentCode.trim()) return { score: 0, feedback: "Cod gol" };
 
+  // Criterii detectabile static, aliniate cu baremul folosit de AI.
+  const hasInput = /input\s*\(|=\s*[^=]/.test(studentCode); // citire / declarare variabile
+  const hasLoop = /\bfor\b|\bwhile\b/.test(studentCode);
+  const hasCondition = /\bif\b/.test(studentCode);
   const hasFunction = /def\s+\w+/.test(studentCode);
-  const hasReturn = /return\s/.test(studentCode);
-  const hasLoop = /for\s|while\s/.test(studentCode);
-  const hasCondition = /if\s/.test(studentCode);
+  const hasReturn = /\breturn\b/.test(studentCode);
   const hasPrint = /print\s*\(/.test(studentCode);
 
-  let structureScore = 0;
-  if (hasFunction || hasPrint) structureScore += 0.2;
-  if (hasReturn || hasPrint) structureScore += 0.1;
-  if (hasLoop) structureScore += 0.1;
-  if (hasCondition) structureScore += 0.1;
+  const parts: string[] = [];
+  let ratio = 0;
+  if (hasInput) { ratio += 0.2; parts.push("variabile/citire date"); }
+  if (hasLoop || hasCondition || hasFunction || hasReturn) {
+    ratio += 0.2;
+    parts.push("structuri de control");
+  }
+  if (hasPrint) { ratio += 0.1; parts.push("afișare rezultat"); }
 
-  const score = Math.round(Math.min(structureScore, 0.5) * maxPoints);
+  const score = roundHalf(Math.min(ratio, 0.5) * maxPoints);
   return {
     score,
-    feedback: `Punctaj structural: ${score}/${maxPoints}. Evaluarea completă necesită AI review.`,
+    feedback: `Punctaj parțial structural (${parts.join(", ") || "elemente minime"}): ${score}/${maxPoints}. Necesită verificare manuală.`,
   };
 }
+
 
 async function batchAIReview(
   items: { answerId: string; studentCode: string; solution: string; testCases: any; maxPoints: number; problemTitle: string; aiType: string; studentText?: string; questionText?: string }[]
