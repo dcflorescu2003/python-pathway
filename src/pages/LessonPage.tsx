@@ -101,6 +101,8 @@ const LessonPage = () => {
     setIsFinished(true);
     if (didPass) {
       const xpEarned = Math.max(1, lesson.xpReward - wrongCount);
+      const previous = progress.completedLessons[lesson.id];
+      previousBestRef.current = previous?.completed ? (previous.score ?? 0) : null;
       completeLesson(lesson.id, xpEarned, percent);
       try { sessionStorage.setItem("pyro-tip-trigger", "1"); } catch {}
     }
