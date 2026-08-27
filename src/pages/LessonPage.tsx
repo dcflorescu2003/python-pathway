@@ -280,8 +280,18 @@ const LessonPage = () => {
           <div className="text-5xl mb-4">🎉</div>
           <h2 className="text-xl font-bold text-foreground mb-2">Lecție completă!</h2>
           <p className="text-sm text-muted-foreground mb-4">Ai răspuns corect la {correctCount}/{total} exerciții</p>
-          <div className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-4 py-2 text-primary font-bold mb-2">+{xpEarned} XP</div>
-          {wrongCount > 0 ? (
+          {awardedXp > 0 ? (
+            <div className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-4 py-2 text-primary font-bold mb-2">+{awardedXp} XP</div>
+          ) : (
+            <div className="inline-flex items-center gap-2 rounded-full bg-muted px-4 py-2 text-muted-foreground font-bold mb-2">0 XP</div>
+          )}
+          {awardedXp === 0 && isRedo ? (
+            <p className="text-xs text-muted-foreground mb-6">
+              Ai deja scorul maxim la această lecție ({Math.max(previousBest ?? 0, percent)}%), așa că reluarea nu mai acordă XP. Progresul rămâne salvat.
+            </p>
+          ) : isRedo && awardedXp > 0 ? (
+            <p className="text-xs text-muted-foreground mb-6">Bonus de {awardedXp} XP pentru scor îmbunătățit la reluare.</p>
+          ) : wrongCount > 0 ? (
             <p className="text-xs text-muted-foreground mb-6">−1 XP pentru fiecare greșeală ({wrongCount} {wrongCount === 1 ? "greșeală" : "greșeli"})</p>
           ) : (
             <div className="mb-6" />
