@@ -999,6 +999,7 @@ const TestBuilder = ({ onBack, editTestId, teacherStatus }: TestBuilderProps) =>
                   ))}
                 </SelectContent>
               </Select>
+              {!selectedProblemChapterId && <ChapterSelectPrompt label="Selectează un capitol pentru a vedea problemele publice." count={problemChapters.length} />}
               {filteredProblems.map((prob) => (
                 <div key={prob.id}>
                   <div className="flex items-center gap-1">
