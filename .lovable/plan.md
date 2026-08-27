@@ -1,19 +1,44 @@
-# Documentul din cererea de verificare nu se deschide
+# Modificare limite teste salvate pentru profesori
 
-## Ce am verificat
-- Cererea din captură (Groza Sorin) are calea salvată corect: `f8a57307-.../1787748840205-parinte_profesor_GCR.pdf`, iar fișierul există fizic în bucketul `teacher-documents`.
-- Politicile de storage permit adminului să citească toate documentele („Admins can view all teacher documents”), deci nu e o problemă de permisiuni.
-- Componenta `DocumentAttachmentLink` cere linkul semnat **după** click (`await createSignedUrl`) și abia apoi apelează `window.open`.
+## Obiectiv
+Reducem plafonul de teste salvate pentru toate cele 3 tier-uri de conturi de profesor și actualizăm toate textele afișate utilizatorilor care fac referire la vechile valori.
 
-Concluzie probabilă (neconfirmată în browser): pentru că `window.open` se execută după un `await`, browserul nu îl mai consideră inițiat de utilizator și blochează tab-ul nou (comportament tipic de popup blocker; la fel se întâmplă în WebView-ul aplicației native). De aceea clickul pare „mort”, fără eroare.
+## Noile limite
 
-## Ce se schimbă
-1. **Deschidere fiabilă**: linkul semnat se cere la afișarea cardului (nu la click), astfel încât elementul devine un `<a href>` real — clickul deschide direct documentul, fără blocare. Linkul se reînnoiește automat când expiră (durată mărită la 5 minute).
-2. **Rezervă imediată pentru cazuri blocate**: dacă deschiderea într-un tab nou tot eșuează, documentul se afișează într-un dialog în aplicație (PDF în `<iframe>`, imaginile ca `<img>`), plus butoanele „Descarcă” și „Copiază linkul”.
-3. **Erori explicite**: dacă generarea linkului eșuează (fișier lipsă, sesiune expirată, lipsă drepturi), se afișează mesajul concret în loc de niciun feedback.
-4. Aceleași îmbunătățiri se aplică automat și în conversația de verificare, care folosește aceeași componentă.
+| Tier | Limită veche | Limită nouă |
+|------|-------------|-------------|
+| Profesor neverificat | 50 | **20** |
+| Profesor verificat | 100 | **40** |
+| Profesor AI | 150 | **60** |
 
-## Detalii tehnice
-- Fișier modificat: `src/components/teacher/DocumentAttachmentLink.tsx` (pre-fetch signed URL în `useEffect`, randare ca `<a target="_blank" rel="noopener noreferrer">`, dialog de previzualizare cu shadcn `Dialog`).
-- Fără migrații, fără schimbări de politici RLS sau de storage.
-- Verificare finală: deschidere reală a cererii din Admin > Profesori > Cereri pentru documentul PDF existent.
+## Modificări necesare
+
+### 1. Sursa adevărului — constante
+- Fișier: `src/lib/teacherLimits.ts`
+- Acțiune: schimbă valorile din `TEACHER_TEST_LIMITS` în `{ unverified: 20, verified: 40, ai: 60 }`.
+- Restul logicii (`getTeacherTestLimit`, `TEACHER_TIER_LABEL`) rămâne neschimbată.
+
+### 2. Texte hardcodate care trebuie actualizate
+
+#### `src/components/teacher/TestLimitReachedDialog.tsx`
+- Textele actuale menționează explicit „100 teste” / „150 teste”.
+- Le înlocuim cu texte dinamice sau cu noile valori:
+  - Pentru tier `unverified`: „Verifică-ți contul pentru 40 teste sau upgrade la Profesor AI pentru 60 teste.”
+  - Pentru tier `verified`: „Treci la Profesor AI pentru 60 teste salvate, sau șterge teste vechi.”
+  - Pentru tier `ai`: mesajul de limită maximă rămâne generic, fără cifre hardcodate.
+
+#### `src/components/TeacherPremiumDialog.tsx`
+- Linia 126: „Până la 150 teste salvate (față de 100 verificat / 50 neverificat)” devine „Până la 60 teste salvate (față de 40 verificat / 20 neverificat)”.
+
+#### `src/data/tutorials/teachers.ts`
+- Linia 82: „Limita de teste salvate depinde de plan: 50 (Free), 100 (Premium), 150 (AI Teacher).” devine „20 (Free), 40 (Premium), 60 (AI Teacher).”
+- Liniile 188-190: actualizează enumerarea planurilor cu noile limite.
+- Linia 192 (alt text imagine): actualizează „150 teste salvate” → „60 teste salvate”.
+
+### 3. Locuri care NU necesită modificări
+- `src/components/teacher/TestManager.tsx` și `src/components/teacher/TestBuilder.tsx` citesc deja `testLimit` dinamic din `getTeacherTestLimit`, deci counterele și logica de blocare se vor adapta automat.
+- Toast-urile din `TestManager.tsx` folosesc variabila `testLimit`, nu valori hardcodate.
+
+## Verificare
+- Rulez `tsgo` / `bunx tsc --noEmit` pentru a mă asigura că nu există erori de tip.
+- Verific în preview că dialogul de limită atinsă afișează noile cifre.
