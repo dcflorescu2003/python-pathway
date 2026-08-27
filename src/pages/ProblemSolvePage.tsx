@@ -108,8 +108,11 @@ const ProblemSolvePage = () => {
 
       if (passed === total && total > 0) {
         if (solved) {
-          toast.success("Toate cerințele sunt îndeplinite! ✅");
+          toast.success("Toate cerințele sunt îndeplinite! ✅", {
+            description: "Ai rezolvat deja această problemă, așa că nu primești XP suplimentar.",
+          });
         } else {
+          recordActivity();
           completeLesson(`problem-${problem.id}`, problem.xpReward, 100);
           toast.success(`Felicitări! Ai câștigat ${problem.xpReward} XP! 🎉`);
         }
