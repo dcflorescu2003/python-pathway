@@ -50,7 +50,7 @@ const LessonPage = () => {
   const { lessonId } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { progress, completeLesson, loseLife, setLivesFromReward, recordActivity, markLessonStarted, streakJustIncreased, newStreakCount, dismissStreakCelebration } = useProgress();
+  const { progress, completeLesson, loseLife, setLivesFromReward, recordActivity, markLessonStarted, streakJustIncreased, newStreakCount, dismissStreakCelebration, lastAward } = useProgress();
   const activityRecordedRef = useRef(false);
   const lessonStartedRef = useRef(false);
   const competencyResultsRef = useRef<CompetencyItemResult[]>([]);
