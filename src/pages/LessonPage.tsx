@@ -54,6 +54,8 @@ const LessonPage = () => {
   const activityRecordedRef = useRef(false);
   const lessonStartedRef = useRef(false);
   const competencyResultsRef = useRef<CompetencyItemResult[]>([]);
+  // Scorul salvat înainte de reluare (null = prima finalizare).
+  const previousBestRef = useRef<number | null>(null);
   const { data: chapters, isLoading } = useChapters();
 
   const lesson = chapters?.flatMap((c) => c.lessons).find((l) => l.id === lessonId);
