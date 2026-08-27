@@ -973,7 +973,7 @@ export function useProgress() {
   }, [user, flushAwardQueue]);
 
 
-  return { progress, completeLesson, revealSolution, loseLife, resetLives, setLivesFromReward, setPremium, recordActivity, unlockLessonViaSkip, markLessonStarted, streakJustIncreased, newStreakCount, dismissStreakCelebration, resyncFromCloud, pendingAwards, flushAwardQueue };
+  return { progress, completeLesson, revealSolution, loseLife, resetLives, setLivesFromReward, setPremium, recordActivity, unlockLessonViaSkip, markLessonStarted, streakJustIncreased, newStreakCount, dismissStreakCelebration, resyncFromCloud, pendingAwards, flushAwardQueue, lastAward };
 }
 
 function mergeProgress(a: UserProgress, b: UserProgress): UserProgress {
