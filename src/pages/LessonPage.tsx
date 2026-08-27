@@ -112,7 +112,7 @@ const LessonPage = () => {
       recordCompetencyScores(user.id, competencyResultsRef.current);
       competencyResultsRef.current = [];
     }
-  }, [lesson, correctCount, wrongCount, completeLesson, user]);
+  }, [lesson, correctCount, wrongCount, completeLesson, user, progress.completedLessons]);
 
   const handleAnswer = useCallback(
     (isCorrect: boolean) => {
