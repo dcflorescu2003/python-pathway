@@ -50,10 +50,12 @@ const LessonPage = () => {
   const { lessonId } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { progress, completeLesson, loseLife, setLivesFromReward, recordActivity, markLessonStarted, streakJustIncreased, newStreakCount, dismissStreakCelebration } = useProgress();
+  const { progress, completeLesson, loseLife, setLivesFromReward, recordActivity, markLessonStarted, streakJustIncreased, newStreakCount, dismissStreakCelebration, lastAward } = useProgress();
   const activityRecordedRef = useRef(false);
   const lessonStartedRef = useRef(false);
   const competencyResultsRef = useRef<CompetencyItemResult[]>([]);
+  // Scorul salvat înainte de reluare (null = prima finalizare).
+  const previousBestRef = useRef<number | null>(null);
   const { data: chapters, isLoading } = useChapters();
 
   const lesson = chapters?.flatMap((c) => c.lessons).find((l) => l.id === lessonId);
@@ -101,6 +103,8 @@ const LessonPage = () => {
     setIsFinished(true);
     if (didPass) {
       const xpEarned = Math.max(1, lesson.xpReward - wrongCount);
+      const previous = progress.completedLessons[lesson.id];
+      previousBestRef.current = previous?.completed ? (previous.score ?? 0) : null;
       completeLesson(lesson.id, xpEarned, percent);
       try { sessionStorage.setItem("pyro-tip-trigger", "1"); } catch {}
     }
@@ -108,7 +112,7 @@ const LessonPage = () => {
       recordCompetencyScores(user.id, competencyResultsRef.current);
       competencyResultsRef.current = [];
     }
-  }, [lesson, correctCount, wrongCount, completeLesson, user]);
+  }, [lesson, correctCount, wrongCount, completeLesson, user, progress.completedLessons]);
 
   const handleAnswer = useCallback(
     (isCorrect: boolean) => {
@@ -215,6 +219,15 @@ const LessonPage = () => {
     const percent = total === 0 ? 100 : Math.round((correctCount / total) * 100);
     const xpEarned = Math.max(1, lesson.xpReward - wrongCount);
     const canRestart = progress.hasUnlimitedLives || progress.lives > 0;
+    // XP-ul real confirmat de server (dacă a sosit deja răspunsul).
+    const serverAward = lastAward && lastAward.itemId === lesson.id ? lastAward : null;
+    const previousBest = previousBestRef.current;
+    const isRedo = serverAward ? !serverAward.firstTime : previousBest !== null;
+    const awardedXp = serverAward
+      ? serverAward.awardedXp
+      : isRedo
+        ? (percent > (previousBest ?? 0) ? 3 : 0)
+        : xpEarned;
 
     if (!passed) {
       return (
@@ -267,8 +280,18 @@ const LessonPage = () => {
           <div className="text-5xl mb-4">🎉</div>
           <h2 className="text-xl font-bold text-foreground mb-2">Lecție completă!</h2>
           <p className="text-sm text-muted-foreground mb-4">Ai răspuns corect la {correctCount}/{total} exerciții</p>
-          <div className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-4 py-2 text-primary font-bold mb-2">+{xpEarned} XP</div>
-          {wrongCount > 0 ? (
+          {awardedXp > 0 ? (
+            <div className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-4 py-2 text-primary font-bold mb-2">+{awardedXp} XP</div>
+          ) : (
+            <div className="inline-flex items-center gap-2 rounded-full bg-muted px-4 py-2 text-muted-foreground font-bold mb-2">0 XP</div>
+          )}
+          {awardedXp === 0 && isRedo ? (
+            <p className="text-xs text-muted-foreground mb-6">
+              Ai deja scorul maxim la această lecție ({Math.max(previousBest ?? 0, percent)}%), așa că reluarea nu mai acordă XP. Progresul rămâne salvat.
+            </p>
+          ) : isRedo && awardedXp > 0 ? (
+            <p className="text-xs text-muted-foreground mb-6">Bonus de {awardedXp} XP pentru scor îmbunătățit la reluare.</p>
+          ) : wrongCount > 0 ? (
             <p className="text-xs text-muted-foreground mb-6">−1 XP pentru fiecare greșeală ({wrongCount} {wrongCount === 1 ? "greșeală" : "greșeli"})</p>
           ) : (
             <div className="mb-6" />

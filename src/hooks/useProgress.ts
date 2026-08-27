@@ -244,6 +244,13 @@ export function useProgress() {
   const [newStreakCount, setNewStreakCount] = useState(0);
   // Câte acordări de XP așteaptă încă trimiterea către server.
   const [pendingAwards, setPendingAwards] = useState(0);
+  // Ultima acordare confirmată de server (XP real, nu estimarea optimistă).
+  const [lastAward, setLastAward] = useState<{
+    itemId: string;
+    awardedXp: number;
+    firstTime: boolean;
+    score: number;
+  } | null>(null);
   const prevUserId = useRef<string | null>(null);
   const flushingRef = useRef(false);
 
@@ -526,6 +533,12 @@ export function useProgress() {
         saveLocalProgress(newProgress, user?.id);
         return newProgress;
       });
+      setLastAward({
+        itemId: lessonId,
+        awardedXp: Number(result.awarded_xp ?? 0),
+        firstTime: !!result.first_time,
+        score: Number(result.score ?? 0),
+      });
       if (result.streak_increased) {
         setStreakJustIncreased(true);
         setNewStreakCount(result.streak ?? 0);
@@ -646,6 +659,7 @@ export function useProgress() {
   const completeLesson = useCallback(
     async (lessonId: string, xpEarned: number, score: number) => {
       let optimisticAwarded = 0;
+      setLastAward(null);
       // Actualizare optimistă locală (XP-ul final este calculat pe server)
       setProgress((prev) => {
         const previousEntry = prev.completedLessons[lessonId];
@@ -959,7 +973,7 @@ export function useProgress() {
   }, [user, flushAwardQueue]);
 
 
-  return { progress, completeLesson, revealSolution, loseLife, resetLives, setLivesFromReward, setPremium, recordActivity, unlockLessonViaSkip, markLessonStarted, streakJustIncreased, newStreakCount, dismissStreakCelebration, resyncFromCloud, pendingAwards, flushAwardQueue };
+  return { progress, completeLesson, revealSolution, loseLife, resetLives, setLivesFromReward, setPremium, recordActivity, unlockLessonViaSkip, markLessonStarted, streakJustIncreased, newStreakCount, dismissStreakCelebration, resyncFromCloud, pendingAwards, flushAwardQueue, lastAward };
 }
 
 function mergeProgress(a: UserProgress, b: UserProgress): UserProgress {

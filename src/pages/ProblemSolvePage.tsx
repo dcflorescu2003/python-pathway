@@ -26,7 +26,7 @@ const ProblemSolvePage = () => {
   const { data, isLoading: problemsLoading, refetch: refetchProblems } = useProblems();
   const problem = data?.problems.find((p) => p.id === problemId);
   const { loading, running, runCode, runStaticChecks } = usePyodide();
-  const { progress, completeLesson, revealSolution, streakJustIncreased, newStreakCount, dismissStreakCelebration } = useProgress();
+  const { progress, completeLesson, revealSolution, recordActivity, streakJustIncreased, newStreakCount, dismissStreakCelebration } = useProgress();
   const { subscribed, checkSubscription } = useSubscription();
   const { user } = useAuth();
   const [code, setCode] = useState("");
@@ -108,8 +108,11 @@ const ProblemSolvePage = () => {
 
       if (passed === total && total > 0) {
         if (solved) {
-          toast.success("Toate cerințele sunt îndeplinite! ✅");
+          toast.success("Toate cerințele sunt îndeplinite! ✅", {
+            description: "Ai rezolvat deja această problemă, așa că nu primești XP suplimentar.",
+          });
         } else {
+          recordActivity();
           completeLesson(`problem-${problem.id}`, problem.xpReward, 100);
           toast.success(`Felicitări! Ai câștigat ${problem.xpReward} XP! 🎉`);
         }
@@ -134,8 +137,11 @@ const ProblemSolvePage = () => {
 
     if (passed === total) {
       if (solved) {
-        toast.success("Toate testele au trecut! ✅");
+        toast.success("Toate testele au trecut! ✅", {
+          description: "Ai rezolvat deja această problemă, așa că nu primești XP suplimentar.",
+        });
       } else {
+        recordActivity();
         completeLesson(`problem-${problem.id}`, problem.xpReward, 100);
         toast.success(`Felicitări! Ai câștigat ${problem.xpReward} XP! 🎉`);
       }
