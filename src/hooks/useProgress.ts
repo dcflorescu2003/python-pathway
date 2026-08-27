@@ -659,6 +659,7 @@ export function useProgress() {
   const completeLesson = useCallback(
     async (lessonId: string, xpEarned: number, score: number) => {
       let optimisticAwarded = 0;
+      setLastAward(null);
       // Actualizare optimistă locală (XP-ul final este calculat pe server)
       setProgress((prev) => {
         const previousEntry = prev.completedLessons[lessonId];
