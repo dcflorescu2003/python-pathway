@@ -42,6 +42,16 @@ interface CustomOption {
   text: string;
 }
 
+const ChapterSelectPrompt = ({ label, count }: { label: string; count: number }) => (
+  <div className="rounded-lg border border-warning/30 bg-warning/10 p-3 flex items-start gap-2.5">
+    <AlertCircle className="h-4 w-4 text-warning shrink-0 mt-0.5" />
+    <div>
+      <p className="text-xs font-medium text-warning">{label}</p>
+      <p className="text-[11px] text-warning/80">{count} {count === 1 ? "capitol disponibil" : "capitole disponibile"}</p>
+    </div>
+  </div>
+);
+
 const TestBuilder = ({ onBack, editTestId, teacherStatus }: TestBuilderProps) => {
   const { data: chapters = [] } = useChapters();
   const { data: problemsData } = useProblems();
