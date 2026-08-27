@@ -244,6 +244,13 @@ export function useProgress() {
   const [newStreakCount, setNewStreakCount] = useState(0);
   // Câte acordări de XP așteaptă încă trimiterea către server.
   const [pendingAwards, setPendingAwards] = useState(0);
+  // Ultima acordare confirmată de server (XP real, nu estimarea optimistă).
+  const [lastAward, setLastAward] = useState<{
+    itemId: string;
+    awardedXp: number;
+    firstTime: boolean;
+    score: number;
+  } | null>(null);
   const prevUserId = useRef<string | null>(null);
   const flushingRef = useRef(false);
 
