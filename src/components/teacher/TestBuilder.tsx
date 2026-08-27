@@ -862,7 +862,7 @@ const TestBuilder = ({ onBack, editTestId, teacherStatus }: TestBuilderProps) =>
                   ))}
                 </SelectContent>
               </Select>
-              {!selectedBankExChapterId && <p className="text-[11px] text-muted-foreground italic">Alege un capitol pentru a vedea exercițiile.</p>}
+              {!selectedBankExChapterId && <ChapterSelectPrompt label="Selectează un capitol pentru a vedea exercițiile." count={evalChapters.length} />}
               {selectedBankExChapterId && bankExercises.length === 0 && <p className="text-[11px] text-muted-foreground italic">Niciun exercițiu în acest capitol.</p>}
               {bankExercises.map((ex) => (
                 <div key={ex.id}>
