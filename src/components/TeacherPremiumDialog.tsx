@@ -123,7 +123,7 @@ const TeacherPremiumDialog = ({ open, onOpenChange }: TeacherPremiumDialogProps)
                 <div className="space-y-2">
                   <div className="flex items-start gap-2">
                     <FileText className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
-                    <p className="text-xs text-foreground/70">Până la <span className="font-semibold text-foreground">150 teste salvate</span> (față de 100 verificat / 50 neverificat), max. 4 itemi AI/test</p>
+                    <p className="text-xs text-foreground/70">Până la <span className="font-semibold text-foreground">60 teste salvate</span> (față de 40 verificat / 20 neverificat), max. 4 itemi AI/test</p>
                   </div>
                   <div className="flex items-start gap-2">
                     <Brain className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
