@@ -137,8 +137,11 @@ const ProblemSolvePage = () => {
 
     if (passed === total) {
       if (solved) {
-        toast.success("Toate testele au trecut! ✅");
+        toast.success("Toate testele au trecut! ✅", {
+          description: "Ai rezolvat deja această problemă, așa că nu primești XP suplimentar.",
+        });
       } else {
+        recordActivity();
         completeLesson(`problem-${problem.id}`, problem.xpReward, 100);
         toast.success(`Felicitări! Ai câștigat ${problem.xpReward} XP! 🎉`);
       }
