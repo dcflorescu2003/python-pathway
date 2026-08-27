@@ -15,7 +15,7 @@ import { useSubscription } from "@/hooks/useSubscription";
 import { usePredefinedTests, usePredefinedTestItems } from "@/hooks/usePredefinedTests";
 import { useEvalChapters, useAllEvalExercises, useAllEvalLessons } from "@/hooks/useEvalBank";
 import { useTestChapters } from "@/hooks/useTestChapters";
-import { ArrowLeft, Plus, Trash2, BookOpen, Code, GripVertical, PenLine, FileCheck, Copy, ChevronDown, ChevronRight, Eye, AlertTriangle, Sparkles, Library, Globe } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, BookOpen, Code, GripVertical, PenLine, FileCheck, Copy, ChevronDown, ChevronRight, Eye, AlertTriangle, Sparkles, Library, Globe, AlertCircle } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { getTeacherTestLimit, TEACHER_TIER_LABEL } from "@/lib/teacherLimits";
@@ -41,6 +41,16 @@ interface CustomOption {
   id: string;
   text: string;
 }
+
+const ChapterSelectPrompt = ({ label, count }: { label: string; count: number }) => (
+  <div className="rounded-lg border border-warning/30 bg-warning/10 p-3 flex items-start gap-2.5">
+    <AlertCircle className="h-4 w-4 text-warning shrink-0 mt-0.5" />
+    <div>
+      <p className="text-xs font-medium text-warning">{label}</p>
+      <p className="text-[11px] text-warning/80">{count} {count === 1 ? "capitol disponibil" : "capitole disponibile"}</p>
+    </div>
+  </div>
+);
 
 const TestBuilder = ({ onBack, editTestId, teacherStatus }: TestBuilderProps) => {
   const { data: chapters = [] } = useChapters();
@@ -808,7 +818,7 @@ const TestBuilder = ({ onBack, editTestId, teacherStatus }: TestBuilderProps) =>
                     </SelectContent>
                   </Select>
                   {!selectedBankTestChapterId ? (
-                    <p className="text-xs text-muted-foreground italic">Alege un capitol pentru a vedea testele predefinite.</p>
+                    <ChapterSelectPrompt label="Selectează un capitol pentru a vedea testele predefinite." count={testChapters.length} />
                   ) : (() => {
                     const filtered = predefinedTests.filter((t: any) => {
                       if (selectedBankTestChapterId === "__none__") return !t.chapter_id;
@@ -852,7 +862,7 @@ const TestBuilder = ({ onBack, editTestId, teacherStatus }: TestBuilderProps) =>
                   ))}
                 </SelectContent>
               </Select>
-              {!selectedBankExChapterId && <p className="text-[11px] text-muted-foreground italic">Alege un capitol pentru a vedea exercițiile.</p>}
+              {!selectedBankExChapterId && <ChapterSelectPrompt label="Selectează un capitol pentru a vedea exercițiile." count={evalChapters.length} />}
               {selectedBankExChapterId && bankExercises.length === 0 && <p className="text-[11px] text-muted-foreground italic">Niciun exercițiu în acest capitol.</p>}
               {bankExercises.map((ex) => (
                 <div key={ex.id}>
@@ -889,7 +899,7 @@ const TestBuilder = ({ onBack, editTestId, teacherStatus }: TestBuilderProps) =>
                   ))}
                 </SelectContent>
               </Select>
-              {!selectedBankProbChapterId && <p className="text-[11px] text-muted-foreground italic">Alege un capitol pentru a vedea problemele.</p>}
+              {!selectedBankProbChapterId && <ChapterSelectPrompt label="Selectează un capitol pentru a vedea problemele." count={evalChapters.length} />}
               {selectedBankProbChapterId && bankProblems.length === 0 && <p className="text-[11px] text-muted-foreground italic">Nicio problemă în acest capitol.</p>}
               {bankProblems.map((prob) => (
                 <div key={prob.id}>
@@ -939,6 +949,7 @@ const TestBuilder = ({ onBack, editTestId, teacherStatus }: TestBuilderProps) =>
                   ))}
                 </SelectContent>
               </Select>
+              {!selectedChapterId && <ChapterSelectPrompt label="Selectează un capitol pentru a vedea lecțiile publice." count={chapters.length} />}
               {selectedChapter?.lessons.map((lesson) => (
                 <Collapsible key={lesson.id} open={expandedLessons.has(lesson.id)} onOpenChange={() => toggleLesson(lesson.id)}>
                   <CollapsibleTrigger className="w-full flex items-center gap-2 px-2 py-2 rounded-lg hover:bg-muted/50 transition-colors">
@@ -988,6 +999,7 @@ const TestBuilder = ({ onBack, editTestId, teacherStatus }: TestBuilderProps) =>
                   ))}
                 </SelectContent>
               </Select>
+              {!selectedProblemChapterId && <ChapterSelectPrompt label="Selectează un capitol pentru a vedea problemele publice." count={problemChapters.length} />}
               {filteredProblems.map((prob) => (
                 <div key={prob.id}>
                   <div className="flex items-center gap-1">
