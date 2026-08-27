@@ -533,6 +533,12 @@ export function useProgress() {
         saveLocalProgress(newProgress, user?.id);
         return newProgress;
       });
+      setLastAward({
+        itemId: lessonId,
+        awardedXp: Number(result.awarded_xp ?? 0),
+        firstTime: !!result.first_time,
+        score: Number(result.score ?? 0),
+      });
       if (result.streak_increased) {
         setStreakJustIncreased(true);
         setNewStreakCount(result.streak ?? 0);
