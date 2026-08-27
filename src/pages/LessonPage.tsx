@@ -219,6 +219,15 @@ const LessonPage = () => {
     const percent = total === 0 ? 100 : Math.round((correctCount / total) * 100);
     const xpEarned = Math.max(1, lesson.xpReward - wrongCount);
     const canRestart = progress.hasUnlimitedLives || progress.lives > 0;
+    // XP-ul real confirmat de server (dacă a sosit deja răspunsul).
+    const serverAward = lastAward && lastAward.itemId === lesson.id ? lastAward : null;
+    const previousBest = previousBestRef.current;
+    const isRedo = serverAward ? !serverAward.firstTime : previousBest !== null;
+    const awardedXp = serverAward
+      ? serverAward.awardedXp
+      : isRedo
+        ? (percent > (previousBest ?? 0) ? 3 : 0)
+        : xpEarned;
 
     if (!passed) {
       return (
