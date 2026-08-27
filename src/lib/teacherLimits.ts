@@ -1,7 +1,7 @@
 export const TEACHER_TEST_LIMITS = {
-  unverified: 50,
-  verified: 100,
-  ai: 150,
+  unverified: 20,
+  verified: 40,
+  ai: 60,
 } as const;
 
 export type TeacherTier = "unverified" | "verified" | "ai";

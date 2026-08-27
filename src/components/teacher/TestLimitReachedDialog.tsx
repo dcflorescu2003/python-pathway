@@ -14,9 +14,9 @@ interface Props {
 const TestLimitReachedDialog = ({ open, onOpenChange, tier, limit, onUpgrade }: Props) => {
   const description =
     tier === "unverified"
-      ? `Ai atins limita de ${limit} teste salvate pentru ${TEACHER_TIER_LABEL[tier]}. Verifică-ți contul pentru 100 teste sau upgrade la Profesor AI pentru 150 teste. Alternativ, șterge teste vechi.`
+      ? `Ai atins limita de ${limit} teste salvate pentru ${TEACHER_TIER_LABEL[tier]}. Verifică-ți contul pentru 40 teste sau upgrade la Profesor AI pentru 60 teste. Alternativ, șterge teste vechi.`
       : tier === "verified"
-      ? `Ai atins limita de ${limit} teste salvate pentru ${TEACHER_TIER_LABEL[tier]}. Treci la Profesor AI pentru 150 teste salvate, sau șterge teste vechi.`
+      ? `Ai atins limita de ${limit} teste salvate pentru ${TEACHER_TIER_LABEL[tier]}. Treci la Profesor AI pentru 60 teste salvate, sau șterge teste vechi.`
       : `Ai atins limita maximă de ${limit} teste salvate. Șterge teste vechi pentru a face loc altora noi.`;
 
   return (
