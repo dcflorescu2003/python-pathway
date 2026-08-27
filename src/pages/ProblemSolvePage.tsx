@@ -26,7 +26,7 @@ const ProblemSolvePage = () => {
   const { data, isLoading: problemsLoading, refetch: refetchProblems } = useProblems();
   const problem = data?.problems.find((p) => p.id === problemId);
   const { loading, running, runCode, runStaticChecks } = usePyodide();
-  const { progress, completeLesson, revealSolution, streakJustIncreased, newStreakCount, dismissStreakCelebration } = useProgress();
+  const { progress, completeLesson, revealSolution, recordActivity, streakJustIncreased, newStreakCount, dismissStreakCelebration } = useProgress();
   const { subscribed, checkSubscription } = useSubscription();
   const { user } = useAuth();
   const [code, setCode] = useState("");
