@@ -949,6 +949,7 @@ const TestBuilder = ({ onBack, editTestId, teacherStatus }: TestBuilderProps) =>
                   ))}
                 </SelectContent>
               </Select>
+              {!selectedChapterId && <ChapterSelectPrompt label="Selectează un capitol pentru a vedea lecțiile publice." count={chapters.length} />}
               {selectedChapter?.lessons.map((lesson) => (
                 <Collapsible key={lesson.id} open={expandedLessons.has(lesson.id)} onOpenChange={() => toggleLesson(lesson.id)}>
                   <CollapsibleTrigger className="w-full flex items-center gap-2 px-2 py-2 rounded-lg hover:bg-muted/50 transition-colors">
