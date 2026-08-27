@@ -818,7 +818,7 @@ const TestBuilder = ({ onBack, editTestId, teacherStatus }: TestBuilderProps) =>
                     </SelectContent>
                   </Select>
                   {!selectedBankTestChapterId ? (
-                    <p className="text-xs text-muted-foreground italic">Alege un capitol pentru a vedea testele predefinite.</p>
+                    <ChapterSelectPrompt label="Selectează un capitol pentru a vedea testele predefinite." count={testChapters.length} />
                   ) : (() => {
                     const filtered = predefinedTests.filter((t: any) => {
                       if (selectedBankTestChapterId === "__none__") return !t.chapter_id;
