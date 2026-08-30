@@ -1513,6 +1513,7 @@ export const schools: School[] = [
   { id: "lic1506", name: "Liceul „Nicolae Steinhardt”", city: "București, Sector 5" },
   { id: "lic1507", name: "Liceul „Profesia”", city: "București, Sector 3" },
   { id: "lic1508", name: "Liceul „Româno-Finlandez”", city: "București, Sector 6" },
+  { id: "lic1509", name: "Școala Aletheea", city: "București, Sector 1" },
 ];
 
 const SCHOOL_STORAGE_KEY = "pyro-school";
