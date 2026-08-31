@@ -1,4 +1,4 @@
-# Optimizare Play Store — varianta fără risc
+# Optimizare Play Store — amânată pentru 15-20 octombrie
 
 Google Play raportează "Optimizarea aplicației: Scăzută" pentru că în `android/app/build.gradle`, blocul `release` are `minifyEnabled false`, deci R8 nu rulează deloc (de aici și obscurizarea de 1%).
 
