@@ -1,31 +1,37 @@
-# Optimizare aplicație pentru Google Play
+# Optimizare Play Store — varianta fără risc
 
-Google Play raportează "Optimizarea aplicației: Scăzută" și "Procentul de obscurizare: 1%" pentru că build-ul Android livrează codul neminificat: în `android/app/build.gradle`, blocul `release` are `minifyEnabled false`, iar `proguard-rules.pro` nu conține nicio regulă (doar comentarii). Fără R8, codul nu e nici micșorat, nici obfuscat.
+Google Play raportează "Optimizarea aplicației: Scăzută" pentru că în `android/app/build.gradle`, blocul `release` are `minifyEnabled false`, deci R8 nu rulează deloc (de aici și obscurizarea de 1%).
 
-## Ce schimbăm
+Activarea completă a R8 ar da scorul maxim, dar poate rupe pluginuri care folosesc reflecție (Play Billing, AdMob, Social Login, Cordova Purchase). Planul de mai jos evită complet acest risc: nu atinge codul aplicației, doar metadatele de build.
 
-1. **Activăm R8 pe build-ul de release**
-   - `minifyEnabled true` și `shrinkResources true` în `buildTypes.release`.
-   - Păstrăm `proguard-android-optimize.txt` ca bază.
+## Ce facem (zero risc funcțional)
 
-2. **Adăugăm reguli keep în `proguard-rules.pro`** ca aplicația să nu se strice după obfuscare:
-   - Capacitor: clasele de plugin și metodele adnotate `@CapacitorPlugin` / `@PluginMethod` (reflecție la runtime).
-   - Cordova (`cordova-plugin-purchase`) și interfețele JavaScript expuse către WebView (`@JavascriptInterface`).
-   - Google Play Billing (`com.android.billingclient`).
-   - AdMob / Google Mobile Ads și Firebase Messaging.
-   - Sign in with Apple / Google Social Login plugin.
-   - Păstrăm adnotări, semnături generice și `SourceFile,LineNumberTable` + `-renamesourcefileattribute` ca stack-trace-urile din Play Console să rămână citibile.
+1. **Simboluri native de debug complete**
+   În `android/app/build.gradle`, în `defaultConfig`, adăugăm:
+   ```
+   ndk { debugSymbolLevel 'FULL' }
+   ```
+   Efect: Play Console primește simbolurile pentru bibliotecile native și poate dezofusca crash-urile (Android Vitals devine util). Nu schimbă nimic din cod, doar ce se încarcă alături de AAB.
 
-3. **Simboluri de debug native** — activăm `ndk { debugSymbolLevel 'FULL' }` (sau `androidResources`/`bundle` echivalent) ca Play să poată dezofusca crash-urile native.
+2. **Reguli ProGuard pregătite din timp, fără a activa R8**
+   Completăm `android/app/proguard-rules.pro` cu regulile keep pentru Capacitor, Cordova Purchase, Play Billing, AdMob, Firebase Messaging și Social Login, plus păstrarea `SourceFile,LineNumberTable`.
+   Cât timp `minifyEnabled` rămâne `false`, aceste reguli sunt inerte — nu produc niciun efect asupra build-ului actual. Sunt doar pregătite pentru momentul în care vei vrea să activezi R8 și să testezi pe un build de release.
 
-4. **Verificare** — reamintim pașii: `git pull`, `npm install`, `npm run build`, `npx cap sync android`, apoi un build de release local și testare pe device pentru: login Google/Apple, cumpărare abonament (Play Billing), reclame recompensate, notificări push, Pyodide.
+3. **Confirmăm formatul de livrare**
+   Verificăm că build-ul de release iese ca **Android App Bundle (AAB)**, nu APK — Play generează atunci pachete per-device (splits pe ABI, densitate, limbă), ceea ce reduce dimensiunea descărcată fără nicio schimbare de cod.
 
-## Riscuri
+## Ce NU facem acum
 
-R8 poate rupe funcționalități bazate pe reflecție dacă lipsesc reguli keep. De aceea regulile de mai sus sunt incluse din start, iar testarea pe un build de release (nu debug) înainte de publicare este obligatorie — mai ales fluxurile de plată și autentificare.
+- Nu activăm `minifyEnabled` / `shrinkResources`.
+- Nu obfuscăm codul (procentul de obscurizare va rămâne mic — asta e acceptat).
+- Nu modificăm nimic în codul web, în backend sau în pluginuri.
+
+## Pas următor opțional (când ai timp de testat)
+
+Când vrei scorul complet, activăm `minifyEnabled true` + `shrinkResources true` (regulile keep sunt deja scrise) și testăm pe un build de release: login Google/Apple, abonamente Play Billing, reclame recompensate, notificări push, Pyodide.
 
 ## Note tehnice
 
-- Fișiere modificate: `android/app/build.gradle`, `android/app/proguard-rules.pro`.
-- Nicio modificare în codul web sau în backend.
-- `versionCode`/`versionName` rămân neschimbate; bump-ul se face separat înainte de upload.
+- Fișiere modificate: `android/app/build.gradle` (o linie `ndk`), `android/app/proguard-rules.pro` (reguli inerte).
+- După merge: `git pull`, `npm install`, `npm run build`, `npx cap sync android`, apoi build AAB.
+- `versionCode`/`versionName` rămân neschimbate; bump separat înainte de upload.
