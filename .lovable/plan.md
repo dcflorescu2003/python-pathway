@@ -2,9 +2,11 @@
 
 Google Play raportează "Optimizarea aplicației: Scăzută" pentru că în `android/app/build.gradle`, blocul `release` are `minifyEnabled false`, deci R8 nu rulează deloc (de aici și obscurizarea de 1%).
 
-Activarea completă a R8 ar da scorul maxim, dar poate rupe pluginuri care folosesc reflecție (Play Billing, AdMob, Social Login, Cordova Purchase). Planul de mai jos evită complet acest risc: nu atinge codul aplicației, doar metadatele de build.
+Activarea completă a R8 ar crește scorul, dar implică risc funcțional (pluginuri cu reflecție: Play Billing, AdMob, Social Login, Cordova Purchase). Am convenit să amânăm activarea R8 pentru **15-20 octombrie**, când vom avea timp să testăm un build de release pe toate fluxurile critice.
 
-## Ce facem (zero risc funcțional)
+Până atunci facem doar pregătire fără risc.
+
+## Ce facem acum (zero risc funcțional)
 
 1. **Simboluri native de debug complete**
    În `android/app/build.gradle`, în `defaultConfig`, adăugăm:
@@ -15,7 +17,7 @@ Activarea completă a R8 ar da scorul maxim, dar poate rupe pluginuri care folos
 
 2. **Reguli ProGuard pregătite din timp, fără a activa R8**
    Completăm `android/app/proguard-rules.pro` cu regulile keep pentru Capacitor, Cordova Purchase, Play Billing, AdMob, Firebase Messaging și Social Login, plus păstrarea `SourceFile,LineNumberTable`.
-   Cât timp `minifyEnabled` rămâne `false`, aceste reguli sunt inerte — nu produc niciun efect asupra build-ului actual. Sunt doar pregătite pentru momentul în care vei vrea să activezi R8 și să testezi pe un build de release.
+   Cât timp `minifyEnabled` rămâne `false`, aceste reguli sunt inerte — nu produc niciun efect asupra build-ului actual. Sunt doar pregătite pentru momentul în care activăm R8.
 
 3. **Confirmăm formatul de livrare**
    Verificăm că build-ul de release iese ca **Android App Bundle (AAB)**, nu APK — Play generează atunci pachete per-device (splits pe ABI, densitate, limbă), ceea ce reduce dimensiunea descărcată fără nicio schimbare de cod.
@@ -23,12 +25,13 @@ Activarea completă a R8 ar da scorul maxim, dar poate rupe pluginuri care folos
 ## Ce NU facem acum
 
 - Nu activăm `minifyEnabled` / `shrinkResources`.
-- Nu obfuscăm codul (procentul de obscurizare va rămâne mic — asta e acceptat).
+- Nu obfuscăm codul (procentul de obscurizare va rămâne mic — asta e acceptat până în octombrie).
 - Nu modificăm nimic în codul web, în backend sau în pluginuri.
 
-## Pas următor opțional (când ai timp de testat)
+## Pas următor — 15-20 octombrie
 
-Când vrei scorul complet, activăm `minifyEnabled true` + `shrinkResources true` (regulile keep sunt deja scrise) și testăm pe un build de release: login Google/Apple, abonamente Play Billing, reclame recompensate, notificări push, Pyodide.
+Activăm `minifyEnabled true` + `shrinkResources true` (regulile keep sunt deja scrise) și testăm pe un build de release: login Google/Apple, abonamente Play Billing, reclame recompensate, notificări push, Pyodide.
+
 
 ## Note tehnice
 
