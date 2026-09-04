@@ -18,6 +18,7 @@ import StreakCelebrationDialog from "@/components/StreakCelebrationDialog";
 import RichContent from "@/components/RichContent";
 import WatchAdForLivesButton from "@/components/WatchAdForLivesButton";
 import PremiumDialog from "@/components/PremiumDialog";
+import AppDownloadCTA from "@/components/web/AppDownloadCTA";
 import { Capacitor } from "@capacitor/core";
 import { useAuth } from "@/hooks/useAuth";
 import { recordCompetencyScores, type CompetencyItemResult } from "@/lib/competencyTracking";

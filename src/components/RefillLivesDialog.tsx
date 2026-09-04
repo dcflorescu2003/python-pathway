@@ -1,6 +1,7 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Heart, Clock } from "lucide-react";
 import WatchAdForLivesButton from "./WatchAdForLivesButton";
+import AppDownloadCTA from "./web/AppDownloadCTA";
 import { Capacitor } from "@capacitor/core";
 
 interface RefillLivesDialogProps {
