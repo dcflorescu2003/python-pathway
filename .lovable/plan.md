@@ -1,25 +1,23 @@
-# Jurnal de conturi șterse
+# Verificare expirare componente push notifications (APNS)
 
-## Situația actuală (verificată)
+## Context
+Aplicația folosește `@capacitor/push-notifications` pe iOS. Pe device se înregistrează direct cu APNS, iar trimiterea de la server trece prin Firebase Cloud Messaging (prezent în `ios/App/App/GoogleService-Info.plist`). FCM are nevoie de o metodă de autentificare APNS configurată în Firebase Console.
 
-- 83 de conturi au avut activitate într-o singură zi în ultimele 30 de zile (din 106 conturi cu activitate).
-- Nu putem spune câte conturi au fost șterse: ștergerea elimină definitiv toate rândurile, iar în baza de date nu există nicio urmă (334 conturi, 0 profiluri orfane, 0 conturi marcate ca șterse).
+## Ce expiră și ce nu
 
-## Ce propun
+| Componentă | Expiră? | Detalii |
+|------------|---------|---------|
+| APNs Auth Key (.p8) | **Nu** | Cheia rămâne valabilă până e revocată manual în Apple Developer Portal. |
+| Token JWT generat din cheia .p8 | **Da, la 60 min** | FCM/ serverul regenerază automat tokenul. |
+| APNs Certificate | **Da, anual** | Trebuie reînnoit în Apple Developer Portal și re-uploadat în Firebase Console. |
+| APNS device token | **Nu fix** | Poate fi invalidat la reinstall, logout sau dezactivare push, dar nu are dată de expirare. |
 
-Un jurnal minimal de ștergeri, fără date personale, ca de acum înainte să putem raporta câte conturi se șterg și de ce fel erau.
+## Ce propun să verificăm
 
-Se va înregistra, la fiecare ștergere:
-- data și ora ștergerii
-- dacă era cont de profesor
-- dacă era Premium
-- data creării contului (ca să vedem cât a durat)
-- inițiatorul: utilizator sau admin
+1. **Confirmăm metoda APNS din Firebase Console**: cheie .p8 sau certificat.
+2. **Verificăm validitatea**: dacă e certificat, vedem data de expirare; dacă e .p8, confirmăm că nu e revocată.
+3. **Documentăm pașii de reînnoire** într-un fișier intern pentru a evita întreruperi viitoare.
 
-Nu se salvează email, nume sau alte date personale.
-
-## Detalii tehnice
-
-- Migrare: tabel `public.account_deletions` (`id`, `deleted_at`, `account_created_at`, `was_teacher`, `was_premium`, `initiated_by`), cu `GRANT` doar pentru `service_role` și `SELECT` pentru admini prin politică RLS bazată pe `has_role(auth.uid(), 'admin')`.
-- `supabase/functions/delete-account/index.ts`: înainte de ștergerea profilului, citește `is_teacher`, `is_premium`, `created_at` și inserează un rând în `account_deletions` cu clientul service role.
-- Opțional (recomandat): în pagina de statistici din Admin, un card „Conturi șterse” pe intervalul selectat, alimentat din același tabel.
+## Rezultat așteptat
+- Clarificare pentru utilizator despre ce trebuie monitorizat.
+- Eventual reminder calendaristic dacă se folosește certificat cu expirare anuală.
