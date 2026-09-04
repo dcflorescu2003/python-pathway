@@ -18,6 +18,7 @@ import StreakCelebrationDialog from "@/components/StreakCelebrationDialog";
 import RichContent from "@/components/RichContent";
 import WatchAdForLivesButton from "@/components/WatchAdForLivesButton";
 import PremiumDialog from "@/components/PremiumDialog";
+import AppDownloadCTA from "@/components/web/AppDownloadCTA";
 import { Capacitor } from "@capacitor/core";
 import { useAuth } from "@/hooks/useAuth";
 import { recordCompetencyScores, type CompetencyItemResult } from "@/lib/competencyTracking";
@@ -200,9 +201,17 @@ const LessonPage = () => {
                 }}
               />
             ) : (
-              <Button className="w-full touch-target" onClick={() => setShowPremium(true)}>
-                Activează Premium
-              </Button>
+              <div className="space-y-3">
+                <Button className="w-full touch-target" onClick={() => setShowPremium(true)}>
+                  Activează Premium
+                </Button>
+                <div className="space-y-3 rounded-lg border border-border bg-muted/30 p-3">
+                  <p className="text-xs text-muted-foreground">
+                    Sau instalează aplicația mobilă pentru a reîncărca inimile gratuit urmărind o reclamă.
+                  </p>
+                  <AppDownloadCTA showWebButton={false} className="justify-center" />
+                </div>
+              </div>
             )}
           </div>
           <Button variant="outline" className="w-full touch-target" onClick={() => navigate(`/chapter/${chapter.id}`)}>
