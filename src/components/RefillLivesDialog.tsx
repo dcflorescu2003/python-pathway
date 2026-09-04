@@ -55,9 +55,12 @@ const RefillLivesDialog = ({ open, onOpenChange, lives, isPremium, onLivesGrante
           </div>
 
           {!isNative && (
-            <p className="text-center text-xs text-muted-foreground">
-              Vizionarea reclamelor pentru inimi este disponibilă doar în aplicația mobilă.
-            </p>
+            <div className="space-y-3 rounded-lg border border-border bg-muted/30 p-3">
+              <p className="text-center text-xs text-muted-foreground">
+                Poți reîncărca inimile gratuit în aplicația mobilă urmărind o reclamă. Instalează PyRo din Google Play sau App Store.
+              </p>
+              <AppDownloadCTA showWebButton={false} className="justify-center" />
+            </div>
           )}
         </div>
       </DialogContent>
