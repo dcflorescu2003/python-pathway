@@ -13,7 +13,7 @@ import {
 import {
   ResponsiveContainer, ComposedChart, Line, Bar, XAxis, YAxis, Tooltip, CartesianGrid, Legend,
 } from "recharts";
-import { RefreshCw, Users, Crown, GraduationCap, BookOpen, Code2, ClipboardList, Flame, Smartphone } from "lucide-react";
+import { RefreshCw, Users, Crown, GraduationCap, BookOpen, Code2, ClipboardList, Flame, Smartphone, School } from "lucide-react";
 
 interface StatsData {
   days: number;
