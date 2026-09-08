@@ -5,4 +5,4 @@
 // 3. Setează ADSENSE_CLIENT_ID (ca-pub-...) și H5_GAMES_ADS_ENABLED = true.
 // Cheia de client este publicabilă — nu e secret.
 export const H5_GAMES_ADS_ENABLED = false;
-export const ADSENSE_CLIENT_ID = "";
+export const ADSENSE_CLIENT_ID = "ca-pub-8441862030200888";
