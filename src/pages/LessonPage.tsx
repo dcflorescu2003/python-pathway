@@ -17,6 +17,7 @@ import LoadingScreen from "@/components/states/LoadingScreen";
 import StreakCelebrationDialog from "@/components/StreakCelebrationDialog";
 import RichContent from "@/components/RichContent";
 import WatchAdForLivesButton from "@/components/WatchAdForLivesButton";
+import WebWatchAdForLivesButton from "@/components/web/WebWatchAdForLivesButton";
 import PremiumDialog from "@/components/PremiumDialog";
 import AppDownloadCTA from "@/components/web/AppDownloadCTA";
 import { Capacitor } from "@capacitor/core";
@@ -202,6 +203,12 @@ const LessonPage = () => {
               />
             ) : (
               <div className="space-y-3">
+                <WebWatchAdForLivesButton
+                  isPremium={progress.hasUnlimitedLives}
+                  onLivesGranted={(newLives, livesUpdatedAt) => {
+                    setLivesFromReward(newLives, livesUpdatedAt);
+                  }}
+                />
                 <Button className="w-full touch-target" onClick={() => setShowPremium(true)}>
                   Activează Premium
                 </Button>
@@ -263,12 +270,18 @@ const LessonPage = () => {
                     />
                   </>
                 ) : (
-                  <>
-                    <p className="text-sm text-muted-foreground mb-3">Nu mai ai inimi. Așteaptă 30 de minute pentru reîncărcare automată sau treci pe Premium pentru inimi nelimitate.</p>
+                  <div className="space-y-3">
+                    <WebWatchAdForLivesButton
+                      isPremium={progress.hasUnlimitedLives}
+                      onLivesGranted={(newLives, livesUpdatedAt) => {
+                        setLivesFromReward(newLives, livesUpdatedAt);
+                      }}
+                    />
+                    <p className="text-sm text-muted-foreground">Nu mai ai inimi. Așteaptă 30 de minute pentru reîncărcare automată sau treci pe Premium pentru inimi nelimitate.</p>
                     <Button className="w-full touch-target" onClick={() => setShowPremium(true)}>
                       Activează Premium
                     </Button>
-                  </>
+                  </div>
                 )}
               </div>
             )}
