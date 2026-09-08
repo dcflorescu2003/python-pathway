@@ -1,6 +1,7 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Heart, Clock } from "lucide-react";
 import WatchAdForLivesButton from "./WatchAdForLivesButton";
+import WebWatchAdForLivesButton from "./web/WebWatchAdForLivesButton";
 import AppDownloadCTA from "./web/AppDownloadCTA";
 import { Capacitor } from "@capacitor/core";
 
@@ -55,11 +56,20 @@ const RefillLivesDialog = ({ open, onOpenChange, lives, isPremium, onLivesGrante
           </div>
 
           {!isNative && (
-            <div className="space-y-3 rounded-lg border border-border bg-muted/30 p-3">
-              <p className="text-center text-xs text-muted-foreground">
-                Poți reîncărca inimile gratuit în aplicația mobilă urmărind o reclamă. Instalează PyRo din Google Play sau App Store.
-              </p>
-              <AppDownloadCTA showWebButton={false} className="justify-center" />
+            <div className="space-y-3">
+              <WebWatchAdForLivesButton
+                isPremium={isPremium}
+                onLivesGranted={(newLives, livesUpdatedAt) => {
+                  onLivesGranted(newLives, livesUpdatedAt);
+                  onOpenChange(false);
+                }}
+              />
+              <div className="space-y-3 rounded-lg border border-border bg-muted/30 p-3">
+                <p className="text-center text-xs text-muted-foreground">
+                  Poți reîncărca inimile gratuit în aplicația mobilă urmărind o reclamă. Instalează PyRo din Google Play sau App Store.
+                </p>
+                <AppDownloadCTA showWebButton={false} className="justify-center" />
+              </div>
             </div>
           )}
         </div>
