@@ -13,7 +13,7 @@ import {
 import {
   ResponsiveContainer, ComposedChart, Line, Bar, XAxis, YAxis, Tooltip, CartesianGrid, Legend,
 } from "recharts";
-import { RefreshCw, Users, Crown, GraduationCap, BookOpen, Code2, ClipboardList, Flame } from "lucide-react";
+import { RefreshCw, Users, Crown, GraduationCap, BookOpen, Code2, ClipboardList, Flame, Smartphone } from "lucide-react";
 
 interface StatsData {
   days: number;
@@ -27,6 +27,7 @@ interface StatsData {
     avg_score_period: number;
   };
   submissions: { total: number; period: number; submitted_period: number };
+  store_subscriptions: { android_active: number; ios_active: number; android_total: number; ios_total: number };
   daily: { day: string; lessons: number; problems: number; active_users: number }[];
   top_lessons: { id: string; title: string; count: number; avg_score: number }[];
   top_problems: { id: string; title: string; count: number }[];
@@ -144,6 +145,11 @@ const StatsDashboard = () => {
             <StatCard
               icon={Crown} label="Premium" value={s!.premium_users}
               hint={`${((s!.premium_users / Math.max(s!.total_users, 1)) * 100).toFixed(1)}% din total`}
+            />
+            <StatCard
+              icon={Smartphone} label="Abonamente magazine"
+              value={data.store_subscriptions.android_active + data.store_subscriptions.ios_active}
+              hint={`${data.store_subscriptions.android_active} Google Play · ${data.store_subscriptions.ios_active} App Store (total istoric: ${data.store_subscriptions.android_total + data.store_subscriptions.ios_total})`}
             />
             <StatCard
               icon={GraduationCap} label="Profesori" value={s!.teachers}
