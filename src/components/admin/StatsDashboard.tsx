@@ -13,12 +13,13 @@ import {
 import {
   ResponsiveContainer, ComposedChart, Line, Bar, XAxis, YAxis, Tooltip, CartesianGrid, Legend,
 } from "recharts";
-import { RefreshCw, Users, Crown, GraduationCap, BookOpen, Code2, ClipboardList, Flame, Smartphone } from "lucide-react";
+import { RefreshCw, Users, Crown, GraduationCap, BookOpen, Code2, ClipboardList, Flame, Smartphone, School } from "lucide-react";
 
 interface StatsData {
   days: number;
   summary: {
     total_users: number; premium_users: number; teachers: number; verified_teachers: number;
+    total_classes: number; total_enrolled_students: number;
     active_today: number; active_7d: number; active_30d: number; active_period: number; new_users_period: number;
   };
   activity: {
@@ -154,6 +155,14 @@ const StatsDashboard = () => {
             <StatCard
               icon={GraduationCap} label="Profesori" value={s!.teachers}
               hint={`${s!.verified_teachers} verificați`}
+            />
+            <StatCard
+              icon={School} label="Clase create" value={s!.total_classes}
+              hint="total în platformă"
+            />
+            <StatCard
+              icon={Users} label="Elevi înscriși" value={s!.total_enrolled_students}
+              hint="elevi în cel puțin o clasă"
             />
             <StatCard
               icon={BookOpen} label="Lecții finalizate" value={a!.lessons_period}
