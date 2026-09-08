@@ -33,12 +33,13 @@
                 <data android:scheme="pyro" android:host="auth" />
             </intent-filter>
 
-            <!-- HTTPS deep link fallback (no autoVerify) -->
-            <intent-filter>
+            <!-- HTTPS deep links (verified via assetlinks.json) -->
+            <intent-filter android:autoVerify="true">
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="https" android:host="pyroskill.info" />
+                <data android:scheme="https" android:host="www.pyroskill.info" />
             </intent-filter>
 
         </activity>
