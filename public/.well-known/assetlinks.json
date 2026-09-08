@@ -1,11 +1,15 @@
 [
   {
-    "relation": ["delegate_permission/common.handle_all_urls"],
+    "relation": [
+      "delegate_permission/common.handle_all_urls",
+      "delegate_permission/common.get_login_creds"
+    ],
     "target": {
       "namespace": "android_app",
       "package_name": "ro.pythonpathway.app",
       "sha256_cert_fingerprints": [
-        "4B:68:B7:43:83:28:22:75:8E:5C:C4:E8:65:36:C6:AC:05:7A:3A:94:6B:17:D3:80:58:A6:07:D4:47:22:24:9B"
+        "4B:68:B7:43:83:28:22:75:8E:5C:C4:E8:65:36:C6:AC:05:7A:3A:94:6B:17:D3:80:58:A6:07:D4:47:22:24:9B",
+        "E1:2D:22:DF:D2:78:0A:EC:F0:1A:E7:FB:B6:6C:1F:3F:1B:15:94:FE:07:C0:B3:36:E9:E9:D3:3F:81:E1"
       ]
     }
   }
