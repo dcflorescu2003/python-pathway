@@ -157,6 +157,14 @@ const StatsDashboard = () => {
               hint={`${s!.verified_teachers} verificați`}
             />
             <StatCard
+              icon={School} label="Clase create" value={s!.total_classes}
+              hint="total în platformă"
+            />
+            <StatCard
+              icon={Users} label="Elevi înscriși" value={s!.total_enrolled_students}
+              hint="elevi în cel puțin o clasă"
+            />
+            <StatCard
               icon={BookOpen} label="Lecții finalizate" value={a!.lessons_period}
               hint={`${a!.lessons_today} azi · ${a!.lessons_7d} în 7 zile`}
             />
