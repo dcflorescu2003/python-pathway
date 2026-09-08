@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "ro.pythonpathway.app",
+      "sha256_cert_fingerprints": [
+        "4B:68:B7:43:83:28:22:75:8E:5C:C4:E8:65:36:C6:AC:05:7A:3A:94:6B:17:D3:80:58:A6:07:D4:47:22:24:9B"
+      ]
+    }
+  }
+]
