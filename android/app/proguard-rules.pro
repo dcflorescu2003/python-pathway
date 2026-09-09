@@ -1,21 +1,35 @@
-# Add project specific ProGuard rules here.
-# You can control the set of applied configuration files using the
-# proguardFiles setting in build.gradle.
-#
-# For more details, see
-#   http://developer.android.com/guide/developing/tools/proguard.html
+# ProGuard / R8 rules for the PyRo Android app.
+# R8 (minifyEnabled true) obfuscates and shrinks the release build.
 
-# If your project uses WebView with JS, uncomment the following
-# and specify the fully qualified class name to the JavaScript interface
-# class:
-#-keepclassmembers class fqcn.of.javascript.interface.for.webview {
-#   public *;
-#}
+# Keep line numbers for readable crash reports, hide original file names.
+-keepattributes SourceFile,LineNumberTable
+-renamesourcefileattribute SourceFile
 
-# Uncomment this to preserve the line number information for
-# debugging stack traces.
-#-keepattributes SourceFile,LineNumberTable
+# --- Capacitor core & plugins (loaded via reflection / annotations) ---
+-keep class com.getcapacitor.** { *; }
+-keep @com.getcapacitor.annotation.CapacitorPlugin class * { *; }
+-keep class * extends com.getcapacitor.Plugin { *; }
+-keepclassmembers class * extends com.getcapacitor.Plugin {
+    @com.getcapacitor.PluginMethod public <methods>;
+}
+-keep class ro.pythonpathway.** { *; }
 
-# If you keep the line number information, uncomment this to
-# hide the original source file name.
-#-renamesourcefileattribute SourceFile
+# Cordova plugins bridged through Capacitor
+-keep class org.apache.cordova.** { *; }
+
+# JavaScript interfaces exposed to the WebView
+-keepclassmembers class * {
+    @android.webkit.JavascriptInterface <methods>;
+}
+
+# --- Google Play Billing ---
+-keep class com.android.billingclient.** { *; }
+
+# --- Firebase / Google Play Services (push notifications, AdMob) ---
+-keep class com.google.firebase.** { *; }
+-keep class com.google.android.gms.** { *; }
+-dontwarn com.google.android.gms.**
+-dontwarn com.google.firebase.**
+
+# --- Misc: annotations & generics used through reflection ---
+-keepattributes *Annotation*, Signature, InnerClasses, EnclosingMethod
