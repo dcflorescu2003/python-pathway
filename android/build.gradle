@@ -22,6 +22,14 @@ allprojects {
         google()
         mavenCentral()
     }
+    // @capgo/capacitor-social-login pinuiește androidbrowserhelper 2.5.0, care
+    // folosește API-uri învechite (setStatusBarColor etc.) semnalate de Play Console.
+    // Forțăm 2.7.3, unde acestea au fost eliminate.
+    configurations.all {
+        resolutionStrategy {
+            force 'com.google.androidbrowserhelper:androidbrowserhelper:2.7.3'
+        }
+    }
 }
 
 // Fix for AGP 9 / Gradle 9: some Capacitor plugins (e.g. @capacitor-community/admob)
