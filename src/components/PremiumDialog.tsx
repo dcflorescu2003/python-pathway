@@ -161,7 +161,10 @@ const PremiumDialog = ({ open, onOpenChange }: PremiumDialogProps) => {
                       {iosPrices?.student_monthly?.priceString || "Preț App Store"}
                     </p>
                   ) : (
-                    <p className="text-2xl font-bold text-foreground">14,99 <span className="text-sm font-normal">RON</span></p>
+                    <p className="text-2xl font-bold text-foreground">
+                      {isAndroidNative ? "17,99" : "14,99"}{" "}
+                      <span className="text-sm font-normal">RON</span>
+                    </p>
                   )}
                   <p className="text-xs text-foreground/50">/lună</p>
                   {checkoutLoading === STUDENT_MONTHLY_PRICE && (
@@ -180,6 +183,8 @@ const PremiumDialog = ({ open, onOpenChange }: PremiumDialogProps) => {
                   <strong className="text-foreground">PyRo Elev Premium</strong> — abonament cu reînnoire automată, durată 1 lună
                   {isIOSNative
                     ? `, preț ${iosPrices?.student_monthly?.priceString || "afișat în App Store"}/lună.`
+                    : isAndroidNative
+                    ? ", 17,99 RON/lună."
                     : ", 14,99 RON/lună."}
                 </p>
                 <p className="text-[10px] text-foreground/60 leading-relaxed">
