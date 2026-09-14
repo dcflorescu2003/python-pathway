@@ -39,4 +39,6 @@ Recomandare: un singur build de release care conține ambii pași. Modificările
 ## Ce NU se face acum
 
 - Nicio modificare de cod — doar build, testare și eventual rollback.
-- Nu se atinge `MainActivity.java`, regulile R8 / `proguard-rules.pro`, versiunea aplicației (1.122 deja pregătită).
+- Nu se atinge `MainActivity.java`, regulile R8 / `proguard-rules.pro`, versiunea aplicației (1.122 deja pregătită).  
+  
+Hai sa implementam si pasul 2 si sa facem uun bump de versiune. Voi incarca pe testare interna varianta aceasta.
