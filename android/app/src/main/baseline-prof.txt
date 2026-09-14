@@ -1,0 +1,61 @@
+# Baseline Profile for PyRo (Android)
+#
+# Human-readable ART profile rules. AGP compiles this into
+# `assets/dexopt/baseline.prof` inside the AAB/APK, so ART can
+# AOT-compile these startup code paths instead of interpreting them.
+#
+# Rules that do not match any class/method are silently ignored,
+# so this file cannot break the build or the app at runtime.
+#
+# Syntax:
+#   HSPLclass;->method()V   H = hot, S = startup, P = post-startup
+#   Lclass;                 include the whole class
+
+# --- App entry point ---
+HSPLro/pythonpathway/app/MainActivity;-><init>()V
+HSPLro/pythonpathway/app/MainActivity;->onCreate(Landroid/os/Bundle;)V
+Lro/pythonpathway/app/MainActivity;
+
+# --- Capacitor bridge & WebView bootstrap ---
+HSPLcom/getcapacitor/BridgeActivity;-><init>()V
+HSPLcom/getcapacitor/BridgeActivity;->onCreate(Landroid/os/Bundle;)V
+HSPLcom/getcapacitor/BridgeActivity;->load()V
+HSPLcom/getcapacitor/BridgeActivity;->init(Landroid/os/Bundle;)V
+Lcom/getcapacitor/BridgeActivity;
+Lcom/getcapacitor/Bridge;
+Lcom/getcapacitor/Bridge$Builder;
+Lcom/getcapacitor/BridgeWebViewClient;
+Lcom/getcapacitor/BridgeWebChromeClient;
+Lcom/getcapacitor/CapConfig;
+Lcom/getcapacitor/PluginManager;
+Lcom/getcapacitor/PluginHandle;
+Lcom/getcapacitor/Plugin;
+Lcom/getcapacitor/PluginCall;
+Lcom/getcapacitor/JSObject;
+Lcom/getcapacitor/JSExport;
+Lcom/getcapacitor/MessageHandler;
+Lcom/getcapacitor/WebViewLocalServer;
+Lcom/getcapacitor/Logger;
+
+# --- Splash screen (visible during the whole cold start) ---
+Lcom/capacitorjs/plugins/splashscreen/SplashScreen;
+Lcom/capacitorjs/plugins/splashscreen/SplashScreenPlugin;
+Lcom/capacitorjs/plugins/splashscreen/SplashScreenSettings;
+Landroidx/core/splashscreen/SplashScreen;
+Landroidx/core/splashscreen/SplashScreen$Impl;
+
+# --- Preferences (Supabase session is restored from here at boot) ---
+Lcom/capacitorjs/plugins/preferences/Preferences;
+Lcom/capacitorjs/plugins/preferences/PreferencesPlugin;
+
+# --- AndroidX / edge-to-edge insets used in onCreate ---
+HSPLandroidx/core/view/WindowCompat;->setDecorFitsSystemWindows(Landroid/view/Window;Z)V
+HSPLandroidx/core/view/ViewCompat;->setOnApplyWindowInsetsListener(Landroid/view/View;Landroidx/core/view/OnApplyWindowInsetsListener;)V
+Landroidx/core/view/WindowCompat;
+Landroidx/core/view/WindowInsetsCompat;
+Landroidx/core/view/WindowInsetsControllerCompat;
+Landroidx/core/graphics/Insets;
+Landroidx/appcompat/app/AppCompatActivity;
+Landroidx/appcompat/app/AppCompatDelegate;
+Landroidx/activity/ComponentActivity;
+Landroidx/fragment/app/FragmentActivity;
