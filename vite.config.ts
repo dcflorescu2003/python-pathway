@@ -76,4 +76,16 @@ export default defineConfig(({ mode }) => ({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        // Librăriile grele (grafice, export PDF) intră în pachete separate,
+        // încărcate doar când se deschide pagina care le folosește.
+        manualChunks: {
+          charts: ["recharts"],
+          pdf: ["jspdf"],
+        },
+      },
+    },
+  },
 }));
