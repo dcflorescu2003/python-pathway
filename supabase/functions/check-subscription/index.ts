@@ -149,13 +149,16 @@ serve(async (req) => {
     // Premium acordat manual din panoul de admin
     const { data: manualProfile } = await supabaseClient
       .from("profiles")
-      .select("premium_manual, premium_manual_until")
+      .select("premium_manual, premium_manual_until, teacher_status")
       .eq("user_id", userId)
       .maybeSingle();
 
     const manualActive = !!manualProfile?.premium_manual &&
       (!manualProfile.premium_manual_until || new Date(manualProfile.premium_manual_until) > now);
     if (manualActive) logStep("Active manual admin premium", { until: manualProfile?.premium_manual_until });
+
+    // Premium manual acordat unui profesor verificat = tier „Profesor AI”.
+    const manualTeacherTier = manualActive && manualProfile?.teacher_status === "verified";
 
     const isPremium = stripeActive || couponActive || playActive || manualActive;
 
@@ -186,14 +189,18 @@ serve(async (req) => {
     const nativeSource = playPlatform === "ios" ? "ios_iap" : "play_billing";
     const source = playActive ? nativeSource : stripeActive ? "stripe" : couponActive ? "coupon" : manualActive ? "admin" : null;
     const finalProductId = playActive ? playProductId : productId;
-    const finalEnd = playActive ? playEnd : (subscriptionEnd || couponEnd);
+    const finalEnd = playActive
+      ? playEnd
+      : (subscriptionEnd || couponEnd ||
+        (manualActive ? (manualProfile?.premium_manual_until ?? null) : null));
+    const finalCouponType = source === "admin" && manualTeacherTier ? "teacher" : couponType;
 
     return new Response(JSON.stringify({
       subscribed: isPremium,
       subscription_end: finalEnd,
       source,
       coupon_expired: couponExpired && !stripeActive && !playActive && !manualActive,
-      coupon_type: couponType,
+      coupon_type: finalCouponType,
       coupon_days_remaining: couponDaysRemaining,
       product_id: finalProductId,
     }), {

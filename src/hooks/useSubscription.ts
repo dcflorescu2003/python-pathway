@@ -140,7 +140,9 @@ export function useSubscription() {
 
   const isTeacherPremium = state.productId
     ? TEACHER_PRODUCT_IDS.includes(state.productId)
-    : (state.source === "coupon" && state.couponType === "teacher" && state.subscribed);
+    : ((state.source === "coupon" || state.source === "admin") &&
+        state.couponType === "teacher" &&
+        state.subscribed);
   const isStudentPremium = state.subscribed && !isTeacherPremium;
 
   const checkSubscription = useCallback(async (force = false) => {
