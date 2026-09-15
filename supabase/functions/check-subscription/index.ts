@@ -189,7 +189,11 @@ serve(async (req) => {
     const nativeSource = playPlatform === "ios" ? "ios_iap" : "play_billing";
     const source = playActive ? nativeSource : stripeActive ? "stripe" : couponActive ? "coupon" : manualActive ? "admin" : null;
     const finalProductId = playActive ? playProductId : productId;
-    const finalEnd = playActive ? playEnd : (subscriptionEnd || couponEnd);
+    const finalEnd = playActive
+      ? playEnd
+      : (subscriptionEnd || couponEnd ||
+        (manualActive ? (manualProfile?.premium_manual_until ?? null) : null));
+    const finalCouponType = source === "admin" && manualTeacherTier ? "teacher" : couponType;
 
     return new Response(JSON.stringify({
       subscribed: isPremium,
