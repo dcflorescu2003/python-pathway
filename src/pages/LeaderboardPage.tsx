@@ -96,7 +96,8 @@ const LeaderboardPage = () => {
     toast.success("Liceu selectat!");
   }, [user, queryClient]);
 
-  // Query: Active class membership + classmates
+  // Query: Active class membership (RLS lets a student see only their own row,
+  // so the classmate list comes from the SECURITY DEFINER RPC below).
   const { data: classData } = useQuery({
     queryKey: ["leaderboard-class", user?.id],
     enabled: !!user,
@@ -111,38 +112,73 @@ const LeaderboardPage = () => {
 
       if (!membership) return null;
 
-      const [{ data: classInfoRows }, { data: members }] = await Promise.all([
-        supabase.rpc("get_class_basic_info", { p_class_id: membership.class_id }),
-        supabase.from("class_members").select("student_id").eq("class_id", membership.class_id),
-      ]);
+      const { data: classInfoRows } = await supabase.rpc("get_class_basic_info", {
+        p_class_id: membership.class_id,
+      });
       const classInfo = classInfoRows?.[0] ?? null;
 
       return {
-        classId: membership.class_id,
+        classId: membership.class_id as string,
         className: classInfo?.name ?? "Clasa ta",
-        memberIds: (members || []).map(m => m.student_id),
       };
     },
   });
 
-  const isClassMember = !!classData;
+  // Query: clasele proprii ale profesorului (pentru topul clasei).
+  const { data: teacherClasses } = useQuery({
+    queryKey: ["leaderboard-teacher-classes", user?.id],
+    enabled: !!user,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("teacher_classes")
+        .select("id, name")
+        .eq("teacher_id", user!.id)
+        .order("created_at", { ascending: true });
+      return (data ?? []) as { id: string; name: string }[];
+    },
+  });
 
-  // Default to "class" tab if member of a class (only on first load)
+  const [selectedTeacherClass, setSelectedTeacherClass] = useState<string | null>(null);
+  const teacherClassList = teacherClasses ?? [];
+  const isTeacherClassView = !classData && teacherClassList.length > 0;
+  const activeClassId =
+    classData?.classId ?? selectedTeacherClass ?? teacherClassList[0]?.id ?? null;
+  const activeClassName =
+    classData?.className ?? teacherClassList.find(c => c.id === activeClassId)?.name ?? null;
+  const hasClassTab = !!classData || isTeacherClassView;
+
+  // Default to "class" tab if the user has one (only on first load)
   useEffect(() => {
-    if (tabInitialized || classData === undefined) return;
-    if (isClassMember) setTab("class");
+    if (tabInitialized || classData === undefined || teacherClasses === undefined) return;
+    if (hasClassTab) setTab("class");
     setTabInitialized(true);
-  }, [classData, isClassMember, tabInitialized]);
+  }, [classData, teacherClasses, hasClassTab, tabInitialized]);
 
   // Tabul "oraș" este valid doar dacă liceul din profil există în catalogul local
   // (build-uri mobile mai vechi pot avea alt catalog) — altfel am afișa un
   // clasament greșit (fără filtru = național).
   const cityUnavailable = tab === "city" && (!userSchool || citySchoolIds.length === 0);
 
-  // Query 1: Top 15 filtered by tab
+  // Query: topul clasei (elevi + profesorul clasei), via RPC.
+  const { data: classRows = [], isLoading: classLoading } = useQuery({
+    queryKey: ["leaderboard-class-rows", activeClassId],
+    enabled: tab === "class" && !!activeClassId,
+    staleTime: 15_000,
+    refetchOnWindowFocus: true,
+    refetchOnMount: "always",
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("get_class_leaderboard", {
+        p_class_id: activeClassId!,
+      });
+      if (error) throw error;
+      return ((data ?? []) as unknown) as LeaderboardEntry[];
+    },
+  });
+
+  // Query 1: Top 15 filtered by tab (fără tabul "clasă")
   const { data: top15 = [], isLoading } = useQuery({
-    queryKey: ["leaderboard-top", tab, userSchool, classData?.classId],
-    enabled: (tab !== "class" || !!classData) && !cityUnavailable,
+    queryKey: ["leaderboard-top", tab, userSchool],
+    enabled: tab !== "class" && !cityUnavailable,
     staleTime: 15_000,
     refetchOnWindowFocus: true,
     refetchOnMount: "always",
@@ -152,13 +188,8 @@ const LeaderboardPage = () => {
         .from("public_profiles" as any)
         .select("user_id, display_name, nickname, xp, streak, avatar_url, school_id, is_teacher")
         .eq("is_teacher", false)
-        .order("xp", { ascending: false });
-
-      if (tab === "class" && classData) {
-        query = query.in("user_id", classData.memberIds);
-      } else {
-        query = query.limit(15);
-      }
+        .order("xp", { ascending: false })
+        .limit(15);
 
       if (tab === "school" && userSchool) {
         query = query.eq("school_id", userSchool);
@@ -174,8 +205,8 @@ const LeaderboardPage = () => {
 
   // Query 2: Current user's profile + rank
   const { data: userRankData } = useQuery({
-    queryKey: ["leaderboard-user-rank", tab, userSchool, classData?.classId, user?.id],
-    enabled: !!user && (tab !== "class" || !!classData) && !cityUnavailable,
+    queryKey: ["leaderboard-user-rank", tab, userSchool, activeClassId, user?.id],
+    enabled: !!user && (tab !== "class" || !!activeClassId) && !cityUnavailable,
     staleTime: 15_000,
     refetchOnWindowFocus: true,
     refetchOnMount: "always",
@@ -193,6 +224,11 @@ const LeaderboardPage = () => {
         return { ...myProfile, rank: null } as LeaderboardEntry & { rank: number | null };
       }
 
+      // Pe tabul "clasă" locul se calculează din lista completă returnată de RPC.
+      if (tab === "class") {
+        return { ...myProfile, rank: null } as LeaderboardEntry & { rank: number | null };
+      }
+
       // Guard: don't compute a rank on school/city tabs when the user's DB
       // school doesn't match the active filter — otherwise we'd show a phantom
       // rank in a school the user doesn't actually belong to.
@@ -206,9 +242,7 @@ const LeaderboardPage = () => {
         .eq("is_teacher", false)
         .gt("xp", myProfile.xp);
 
-      if (tab === "class" && classData) {
-        countQuery = countQuery.in("user_id", classData.memberIds);
-      } else if (tab === "school" && userSchool) {
+      if (tab === "school" && userSchool) {
         countQuery = countQuery.eq("school_id", userSchool);
       } else if (tab === "city" && citySchoolIds.length > 0) {
         countQuery = countQuery.in("school_id", citySchoolIds);
@@ -231,6 +265,7 @@ const LeaderboardPage = () => {
         const handle = await App.addListener("appStateChange", ({ isActive }) => {
           if (!isActive) return;
           queryClient.invalidateQueries({ queryKey: ["leaderboard-top"] });
+          queryClient.invalidateQueries({ queryKey: ["leaderboard-class-rows"] });
           queryClient.invalidateQueries({ queryKey: ["leaderboard-user-rank"] });
         });
         remove = () => { void handle.remove(); };
@@ -239,10 +274,27 @@ const LeaderboardPage = () => {
     return () => remove?.();
   }, [queryClient]);
 
-
-  const userInTop15 = user ? top15.some(e => e.user_id === user.id) : false;
+  const entries = tab === "class" ? classRows : top15;
+  const listLoading = tab === "class" ? classLoading : isLoading;
   const isTeacherAccount = !!userRankData?.is_teacher;
-  const showUserBelow = !!userRankData && !userInTop15 && !isTeacherAccount;
+
+  const classRankEntry = useMemo(() => {
+    if (tab !== "class" || !user) return null;
+    const idx = classRows.findIndex(e => e.user_id === user.id);
+    return idx >= 0
+      ? ({ ...classRows[idx], rank: idx + 1 } as LeaderboardEntry & { rank: number })
+      : null;
+  }, [tab, classRows, user]);
+
+  const rankEntry =
+    tab === "class"
+      ? classRankEntry
+      : userRankData && userRankData.rank !== null
+        ? (userRankData as LeaderboardEntry & { rank: number })
+        : null;
+
+  const userInTop15 = user ? entries.some(e => e.user_id === user.id) : false;
+  const showUserBelow = !!rankEntry && !userInTop15 && !isTeacherAccount;
 
   const renderTeacherCard = (entry: LeaderboardEntry) => {
     const level = getLevelFromXP(entry.xp, xpPerLevel);
@@ -345,7 +397,7 @@ const LeaderboardPage = () => {
           <h1 className="text-lg font-bold text-foreground">Clasament</h1>
         </div>
         <div className="flex px-4 pb-2 gap-2">
-          {isClassMember && (
+          {hasClassTab && (
             <button onClick={() => setTab("class")} className={tabBtnClass(tab === "class")}>
               👥 Clasă
             </button>
@@ -363,10 +415,29 @@ const LeaderboardPage = () => {
       </header>
 
       <main className="px-4 py-4">
-        {tab === "class" && classData && (
+        {tab === "class" && activeClassName && (
           <div className="rounded-xl border border-border bg-card px-4 py-2.5 mb-4">
-            <p className="text-xs text-muted-foreground">Clasa ta</p>
-            <p className="text-sm font-medium text-foreground truncate">{classData.className}</p>
+            <p className="text-xs text-muted-foreground">
+              {isTeacherClassView ? "Topul clasei" : "Clasa ta"}
+            </p>
+            <p className="text-sm font-medium text-foreground truncate">{activeClassName}</p>
+            {isTeacherClassView && teacherClassList.length > 1 && (
+              <div className="flex flex-wrap gap-2 mt-2">
+                {teacherClassList.map(c => (
+                  <button
+                    key={c.id}
+                    onClick={() => setSelectedTeacherClass(c.id)}
+                    className={`rounded-lg px-3 py-1.5 text-xs font-bold transition-all ${
+                      c.id === activeClassId
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-secondary text-muted-foreground"
+                    }`}
+                  >
+                    {c.name}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
@@ -466,21 +537,21 @@ const LeaderboardPage = () => {
           </div>
         )}
 
-        {isLoading ? (
+        {listLoading ? (
 
           <div className="flex justify-center py-12">
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
           </div>
         ) : (
           <div className="space-y-2">
-            {top15.map((entry, idx) => renderRow(entry, idx, idx))}
+            {entries.map((entry, idx) => renderRow(entry, idx, idx))}
 
-            {showUserBelow && userRankData.rank !== null && (
+            {showUserBelow && rankEntry && (
               <>
                 <div className="flex items-center justify-center py-2 gap-2">
                   <span className="text-muted-foreground text-lg tracking-[0.3em]">• • •</span>
                 </div>
-                {renderRow(userRankData, userRankData.rank - 1, 16)}
+                {renderRow(rankEntry, rankEntry.rank - 1, 16)}
               </>
             )}
 
@@ -488,9 +559,9 @@ const LeaderboardPage = () => {
               <div className="pt-2">{renderTeacherCard(userRankData)}</div>
             )}
 
-            {top15.length === 0 && (
+            {entries.length === 0 && (
               <div className="text-center py-8 text-muted-foreground text-sm">
-                Niciun utilizator încă.
+                {tab === "class" ? "Niciun elev în clasă încă." : "Niciun utilizator încă."}
               </div>
             )}
           </div>

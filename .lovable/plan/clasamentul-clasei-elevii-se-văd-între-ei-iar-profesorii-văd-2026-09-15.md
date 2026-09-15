@@ -29,3 +29,5 @@ Frontend, `src/pages/LeaderboardPage.tsx`:
 - Topul pentru tabul „Clasă" (elev și profesor) vine din RPC, deci `top15`/rangul nu mai depind de `public_profiles` pe acest tab; rangul propriu al elevului se calculează din poziția în lista returnată.
 - Selector de clasă pentru profesor: butoane/`Select` cu numele clasei, folosind stilurile și tokenii existenți; se afișează doar când profesorul are mai mult de o clasă.
 - Cardul „profesor" existent rămâne, iar linia „Tu" nu se randează pentru conturile de profesor.
+
+&nbsp;
