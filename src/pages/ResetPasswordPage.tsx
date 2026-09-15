@@ -57,6 +57,18 @@ const ResetPasswordPage = () => {
     if (error) {
       toast.error(error.message);
     } else {
+      // Marchează contul ca având parolă reală (aceeași stare ca la setarea din Profil).
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user?.id) {
+          await supabase
+            .from("profiles")
+            .update({ has_real_password: true })
+            .eq("user_id", user.id);
+        }
+      } catch {
+        /* nu blocăm mesajul de succes */
+      }
       setSuccess(true);
       toast.success("Parola a fost schimbată!");
       setTimeout(() => navigate("/"), 2000);
