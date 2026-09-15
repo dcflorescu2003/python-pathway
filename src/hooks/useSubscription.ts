@@ -192,8 +192,10 @@ export function useSubscription() {
       })();
     }
     const interval = setInterval(() => {
-      void checkSubscription(true);
-    }, 60_000);
+      if (document.visibilityState === "visible") {
+        void checkSubscription(true);
+      }
+    }, 300_000);
     return () => clearInterval(interval);
   }, [user, checkSubscription]);
 

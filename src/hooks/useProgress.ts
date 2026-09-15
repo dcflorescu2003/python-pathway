@@ -261,6 +261,7 @@ export function useProgress() {
 
   useEffect(() => {
     const interval = setInterval(() => {
+      if (document.visibilityState !== "visible") return;
       setProgress((prev) => {
         const updated = regenerateLives(prev);
         if (updated.lives !== prev.lives) {
@@ -275,7 +276,7 @@ export function useProgress() {
         }
         return updated;
       });
-    }, Capacitor.isNativePlatform() ? 60_000 : 5_000);
+    }, Capacitor.isNativePlatform() ? 60_000 : 15_000);
 
     return () => clearInterval(interval);
   }, [user]);
