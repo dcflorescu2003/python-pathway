@@ -261,6 +261,7 @@ export function useProgress() {
 
   useEffect(() => {
     const interval = setInterval(() => {
+      if (document.visibilityState !== "visible") return;
       setProgress((prev) => {
         const updated = regenerateLives(prev);
         if (updated.lives !== prev.lives) {

@@ -30,7 +30,9 @@ export const useNotifications = () => {
       if (error) throw error;
       return (data ?? []) as Notification[];
     },
-    refetchInterval: 30000,
+    // Polling de rezervă (canalul realtime de mai sus livră instant); oprit în fundal.
+    refetchInterval: 60000,
+    refetchIntervalInBackground: false,
   });
 
   // Real-time updates: any new notification for this user invalidates the cache instantly.
