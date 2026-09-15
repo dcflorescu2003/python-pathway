@@ -329,7 +329,12 @@ const LeaderboardPage = () => {
 
   const renderRow = (entry: LeaderboardEntry, idx: number, animDelay: number) => {
     const isUser = entry.user_id === user?.id;
-    const displayName = entry.nickname || entry.display_name || "Anonim";
+    // Pe tabul Clasă: elevii văd doar nickname-uri, profesorii văd numele din catalog
+    const displayName = tab === "class"
+      ? (isTeacherAccount
+          ? (entry.display_name || entry.nickname || "Anonim")
+          : (entry.nickname || "Anonim"))
+      : (entry.nickname || entry.display_name || "Anonim");
     const level = getLevelFromXP(entry.xp, xpPerLevel);
     const tier = getLevelInfo(level);
     return (
