@@ -397,7 +397,7 @@ const LeaderboardPage = () => {
           <h1 className="text-lg font-bold text-foreground">Clasament</h1>
         </div>
         <div className="flex px-4 pb-2 gap-2">
-          {isClassMember && (
+          {hasClassTab && (
             <button onClick={() => setTab("class")} className={tabBtnClass(tab === "class")}>
               👥 Clasă
             </button>
