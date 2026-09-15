@@ -13,13 +13,9 @@ import { toast } from "sonner";
 
 type Step = "email" | "code" | "password_only";
 
-// Only iOS users can encounter Apple Hide-My-Email, so we limit this card
-// to the iOS native runtime to avoid clutter on web/Android.
-const isIOS = Capacitor.getPlatform() === "ios";
-
 const RealEmailSetupCard = () => {
   const { user } = useAuth();
-  const { isPrivateRelay, hasPassword, email, refresh: refreshAuth, loading } = useAuthMethods();
+  const { isPrivateRelay, hasPassword, hasApple, email, refresh: refreshAuth, loading } = useAuthMethods();
   const { hasVerifiedRealEmail, refresh: refreshReminder } = useRealEmailReminder();
 
   const [step, setStep] = useState<Step>("email");
