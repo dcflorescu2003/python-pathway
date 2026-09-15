@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Capacitor } from "@capacitor/core";
+
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,13 +13,9 @@ import { toast } from "sonner";
 
 type Step = "email" | "code" | "password_only";
 
-// Only iOS users can encounter Apple Hide-My-Email, so we limit this card
-// to the iOS native runtime to avoid clutter on web/Android.
-const isIOS = Capacitor.getPlatform() === "ios";
-
 const RealEmailSetupCard = () => {
   const { user } = useAuth();
-  const { isPrivateRelay, hasPassword, email, refresh: refreshAuth, loading } = useAuthMethods();
+  const { isPrivateRelay, hasPassword, hasApple, email, refresh: refreshAuth, loading } = useAuthMethods();
   const { hasVerifiedRealEmail, refresh: refreshReminder } = useRealEmailReminder();
 
   const [step, setStep] = useState<Step>("email");
@@ -29,18 +25,21 @@ const RealEmailSetupCard = () => {
   const [confirm, setConfirm] = useState("");
   const [busy, setBusy] = useState(false);
 
-  // Edge case: legacy user already has verified real email but no password → just password
+  // Real email already in place (verified through our flow, or simply not a
+  // private-relay address) but no password yet → only the password step.
+  const emailIsReal = !isPrivateRelay || hasVerifiedRealEmail;
+  const needsPasswordOnly = emailIsReal && !hasPassword;
+
   useEffect(() => {
     if (loading) return;
-    if (hasVerifiedRealEmail && !hasPassword) setStep("password_only");
+    if (needsPasswordOnly) setStep("password_only");
     else if (!hasVerifiedRealEmail) setStep("email");
-  }, [loading, hasVerifiedRealEmail, hasPassword]);
+  }, [loading, needsPasswordOnly, hasVerifiedRealEmail]);
 
-  if (!isIOS) return null;
   if (loading) return null;
-  if (!isPrivateRelay && !(hasVerifiedRealEmail && !hasPassword)) return null;
+  if (!isPrivateRelay && !(hasApple && !hasPassword)) return null;
 
-  if (hasVerifiedRealEmail && hasPassword) {
+  if (emailIsReal && hasPassword) {
     return (
       <Card className="border-green-500/30 bg-green-500/5">
         <CardContent className="p-4 flex items-center gap-3">
