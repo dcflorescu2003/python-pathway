@@ -200,7 +200,7 @@ serve(async (req) => {
       subscription_end: finalEnd,
       source,
       coupon_expired: couponExpired && !stripeActive && !playActive && !manualActive,
-      coupon_type: couponType,
+      coupon_type: finalCouponType,
       coupon_days_remaining: couponDaysRemaining,
       product_id: finalProductId,
     }), {
