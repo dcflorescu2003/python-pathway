@@ -275,7 +275,7 @@ export function useProgress() {
         }
         return updated;
       });
-    }, 60_000);
+    }, Capacitor.isNativePlatform() ? 60_000 : 5_000);
 
     return () => clearInterval(interval);
   }, [user]);
