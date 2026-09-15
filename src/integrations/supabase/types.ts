@@ -1918,6 +1918,18 @@ export type Database = {
           name: string
         }[]
       }
+      get_class_leaderboard: {
+        Args: { p_class_id: string }
+        Returns: {
+          avatar_url: string
+          display_name: string
+          nickname: string
+          school_id: string
+          streak: number
+          user_id: string
+          xp: number
+        }[]
+      }
       get_eval_exercise_for_student: {
         Args: { p_id: string }
         Returns: {
