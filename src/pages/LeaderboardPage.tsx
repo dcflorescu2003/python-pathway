@@ -537,21 +537,21 @@ const LeaderboardPage = () => {
           </div>
         )}
 
-        {isLoading ? (
+        {listLoading ? (
 
           <div className="flex justify-center py-12">
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
           </div>
         ) : (
           <div className="space-y-2">
-            {top15.map((entry, idx) => renderRow(entry, idx, idx))}
+            {entries.map((entry, idx) => renderRow(entry, idx, idx))}
 
-            {showUserBelow && userRankData.rank !== null && (
+            {showUserBelow && rankEntry && (
               <>
                 <div className="flex items-center justify-center py-2 gap-2">
                   <span className="text-muted-foreground text-lg tracking-[0.3em]">• • •</span>
                 </div>
-                {renderRow(userRankData, userRankData.rank - 1, 16)}
+                {renderRow(rankEntry, rankEntry.rank - 1, 16)}
               </>
             )}
 
@@ -559,9 +559,9 @@ const LeaderboardPage = () => {
               <div className="pt-2">{renderTeacherCard(userRankData)}</div>
             )}
 
-            {top15.length === 0 && (
+            {entries.length === 0 && (
               <div className="text-center py-8 text-muted-foreground text-sm">
-                Niciun utilizator încă.
+                {tab === "class" ? "Niciun elev în clasă încă." : "Niciun utilizator încă."}
               </div>
             )}
           </div>
