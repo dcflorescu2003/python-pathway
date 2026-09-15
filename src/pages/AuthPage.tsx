@@ -429,19 +429,41 @@ const AccountView = () => {
       <Dialog open={showAppleGateDialog} onOpenChange={setShowAppleGateDialog}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Finalizează contul înainte să te alături</DialogTitle>
-            <DialogDescription className="space-y-2 pt-2">
-              <span className="block">
-                Te-ai logat cu Apple. Pentru a te înscrie într-o clasă ai nevoie de:
+            <DialogTitle>Mai ai un pas înainte să intri în clasă</DialogTitle>
+            <DialogDescription className="space-y-3 pt-2">
+              <span className="block text-sm">
+                Te-ai logat cu Apple. Ca să te poți înscrie într-o clasă, contul are nevoie de{" "}
+                {isPrivateRelay && !hasPassword
+                  ? "o adresă de email reală și o parolă"
+                  : isPrivateRelay
+                    ? "o adresă de email reală"
+                    : "o parolă"}
+                . Durează un minut:
               </span>
-              <ul className="list-disc pl-5 space-y-1 text-sm">
+              <ol className="list-decimal pl-5 space-y-1 text-sm">
+                <li>Apasă butonul <strong>Mergi la Profil</strong> de mai jos.</li>
+                <li>Sus, în cartonașul galben <strong>„Finalizează contul"</strong>:</li>
                 {isPrivateRelay && (
-                  <li>o adresă de <strong>email reală</strong> (nu @privaterelay.appleid.com)</li>
+                  <>
+                    <li className="list-none pl-0">
+                      • scrie adresa ta reală de email (ex. numele@gmail.com) și apasă{" "}
+                      <strong>Trimite cod</strong>;
+                    </li>
+                    <li className="list-none pl-0">
+                      • deschide emailul, ia codul de 6 cifre și scrie-l în aplicație;
+                    </li>
+                  </>
                 )}
-                {!hasPassword && <li>o <strong>parolă</strong> pentru login pe web</li>}
-              </ul>
-              <span className="block pt-2 text-sm">
-                Așa îți poți recupera contul dacă pierzi accesul la Apple ID și te poți loga și de pe PC.
+                {!hasPassword && (
+                  <li className="list-none pl-0">
+                    • alege o parolă (minim 8 caractere), repet-o și apasă <strong>Finalizează</strong>.
+                  </li>
+                )}
+                <li>Revino la tabul <strong>Clasa mea</strong> și introdu din nou codul clasei.</li>
+              </ol>
+              <span className="block text-sm">
+                Așa îți poți recupera contul dacă pierzi accesul la Apple ID și te poți loga și de pe
+                calculator.
               </span>
             </DialogDescription>
           </DialogHeader>
