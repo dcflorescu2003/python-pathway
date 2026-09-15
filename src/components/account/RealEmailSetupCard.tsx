@@ -25,18 +25,21 @@ const RealEmailSetupCard = () => {
   const [confirm, setConfirm] = useState("");
   const [busy, setBusy] = useState(false);
 
-  // Edge case: legacy user already has verified real email but no password → just password
+  // Real email already in place (verified through our flow, or simply not a
+  // private-relay address) but no password yet → only the password step.
+  const emailIsReal = !isPrivateRelay || hasVerifiedRealEmail;
+  const needsPasswordOnly = emailIsReal && !hasPassword;
+
   useEffect(() => {
     if (loading) return;
-    if (hasVerifiedRealEmail && !hasPassword) setStep("password_only");
+    if (needsPasswordOnly) setStep("password_only");
     else if (!hasVerifiedRealEmail) setStep("email");
-  }, [loading, hasVerifiedRealEmail, hasPassword]);
+  }, [loading, needsPasswordOnly, hasVerifiedRealEmail]);
 
-  if (!isIOS) return null;
   if (loading) return null;
-  if (!isPrivateRelay && !(hasVerifiedRealEmail && !hasPassword)) return null;
+  if (!isPrivateRelay && !(hasApple && !hasPassword)) return null;
 
-  if (hasVerifiedRealEmail && hasPassword) {
+  if (emailIsReal && hasPassword) {
     return (
       <Card className="border-green-500/30 bg-green-500/5">
         <CardContent className="p-4 flex items-center gap-3">
