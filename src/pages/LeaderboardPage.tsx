@@ -415,10 +415,29 @@ const LeaderboardPage = () => {
       </header>
 
       <main className="px-4 py-4">
-        {tab === "class" && classData && (
+        {tab === "class" && activeClassName && (
           <div className="rounded-xl border border-border bg-card px-4 py-2.5 mb-4">
-            <p className="text-xs text-muted-foreground">Clasa ta</p>
-            <p className="text-sm font-medium text-foreground truncate">{classData.className}</p>
+            <p className="text-xs text-muted-foreground">
+              {isTeacherClassView ? "Topul clasei" : "Clasa ta"}
+            </p>
+            <p className="text-sm font-medium text-foreground truncate">{activeClassName}</p>
+            {isTeacherClassView && teacherClassList.length > 1 && (
+              <div className="flex flex-wrap gap-2 mt-2">
+                {teacherClassList.map(c => (
+                  <button
+                    key={c.id}
+                    onClick={() => setSelectedTeacherClass(c.id)}
+                    className={`rounded-lg px-3 py-1.5 text-xs font-bold transition-all ${
+                      c.id === activeClassId
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-secondary text-muted-foreground"
+                    }`}
+                  >
+                    {c.name}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
