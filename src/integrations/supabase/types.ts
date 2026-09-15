@@ -1892,6 +1892,7 @@ export type Database = {
         Args: { payload: Json; queue_name: string }
         Returns: number
       }
+      expire_manual_premium: { Args: never; Returns: number }
       find_class_by_join_code: {
         Args: { p_code: string }
         Returns: {
