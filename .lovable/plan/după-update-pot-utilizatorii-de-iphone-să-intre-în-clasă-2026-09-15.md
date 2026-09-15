@@ -30,4 +30,8 @@ Corectăm marcajul pentru conturile care au deja parolă reală, ca aplicația s
 
 ## Ce nu se atinge
 
-Regula pentru adresele ascunse Apple (rămân obligatorii email real + parolă), fluxul OTP, dialogul zilnic de reamintire, versiunea aplicației.
+Regula pentru adresele ascunse Apple (rămân obligatorii email real + parolă), fluxul OTP, dialogul zilnic de reamintire, versiunea aplicației.  
+  
+Vreau ca in cazul in care inscriere la clasa e blocata, sa ii apara clar userului ce are de facut si sa verificam ca este si posibil
+
+&nbsp;
