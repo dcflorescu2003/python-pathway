@@ -477,7 +477,7 @@ const AccountView = () => {
                 setActiveTab("profile");
               }}
             >
-              Mergi la Cont
+              Mergi la Profil
             </Button>
           </div>
         </DialogContent>
