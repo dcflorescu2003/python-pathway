@@ -31,6 +31,15 @@ const TeacherTutorialsIndex = () => {
             Ghiduri scurte pentru clase, teste, notare cu AI și analitice. De la verificare cont la
             export PDF.
           </p>
+          <p className="mt-4 max-w-3xl text-muted-foreground">
+            Aceste ghiduri parcurg întregul flux al unui profesor în PyRo: verificarea contului de
+            profesor, crearea primei clase și distribuirea codului de înrolare către elevi,
+            construirea testelor — din banca de exerciții predefinite sau cu propriile itemi —
+            corectarea automată, inclusiv evaluarea cu AI a programelor scrise de elevi, urmărirea
+            statisticilor pe clasă și exportul rapoartelor în CSV sau PDF. Fiecare articol include
+            capturi de ecran și explicații pas cu pas, astfel încât să puteți configura totul într-o
+            singură oră de pregătire.
+          </p>
         </div>
       </section>
 
