@@ -67,7 +67,7 @@ const chapters = [
   },
   {
     title: "4. Condiții: if, elif, else",
-    text: "Programele tale încep să „gândească": execută cod diferit în funcție de situație, de la verificarea unei note până la meniuri interactive.",
+    text: "Programele tale încep să „gândească”: execută cod diferit în funcție de situație, de la verificarea unei note până la meniuri interactive.",
   },
   {
     title: "5. Bucle: for și while",
@@ -94,7 +94,7 @@ const faqs = [
   },
   {
     q: "Cum intru în clasa profesorului meu?",
-    a: "Profesorul îți dă un cod de înrolare format din 6 caractere. Îl introduci în aplicație, la secțiunea „Clasa mea", și de acolo primești teste și provocări direct în contul tău.",
+    a: "Profesorul îți dă un cod de înrolare format din 6 caractere. Îl introduci în aplicație, la secțiunea „Clasa mea” și de acolo primești teste și provocări direct în contul tău.",
   },
   {
     q: "Ce sunt inimile și streak-ul?",
