@@ -31,6 +31,14 @@ const StudentTutorialsIndex = () => {
             Ghiduri scurte care te ajută să profiți la maxim de aplicație: cont, progres, probleme,
             provocări și mult mai mult.
           </p>
+          <p className="mt-4 max-w-3xl text-muted-foreground">
+            Fiecare tutorial durează câteva minute și te duce pas cu pas, cu capturi de ecran reale
+            din aplicație, de la crearea contului până la funcțiile avansate: cum funcționează
+            inimile și streak-ul, cum câștigi XP și urci în nivel, cum rezolvi probleme de cod în
+            editorul din browser, cum intri în clasa profesorului tău și ce îți oferă abonamentul
+            Premium. Dacă abia ai descoperit PyRo, îți recomandăm să începi cu primul ghid din
+            listă și să-i parcurgi în ordine.
+          </p>
         </div>
       </section>
 

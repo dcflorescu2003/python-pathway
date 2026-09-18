@@ -121,6 +121,32 @@ print(salut("PyRo"))
         </div>
       </section>
 
+      {/* Povestea proiectului */}
+      <section className="border-b border-border bg-card/30">
+        <div className="mx-auto max-w-3xl px-4 py-16">
+          <h2 className="text-3xl font-bold tracking-tight md:text-4xl">De ce am construit PyRo</h2>
+          <p className="mt-4 text-muted-foreground">
+            PyRo a pornit dintr-o observație simplă: elevii de liceu învață informatică mai ușor
+            atunci când exersează zilnic, în doze mici, cu feedback imediat — exact cum învață o
+            limbă străină în aplicațiile de tip Duolingo. Manualele și temele clasice rar oferă
+            acest ritm, iar mulți elevi ajung la prima evaluare fără să fi scris vreodată un
+            program complet de unii singuri.
+          </p>
+          <p className="mt-3 text-muted-foreground">
+            De aceea, fiecare lecție din PyRo se termină cu exerciții practice, fiecare răspuns
+            primește verdict pe loc, iar progresul este vizibil prin XP, nivele și clasamente.
+            Curriculum-ul urmărește programa de informatică pentru clasa a IX-a, capitol cu
+            capitol, astfel încât ce învață elevii în aplicație se potrivește direct cu ce fac
+            la clasă.
+          </p>
+          <p className="mt-3 text-muted-foreground">
+            Pentru profesori, PyRo închide cercul: clase virtuale, teste corectate automat
+            (inclusiv cod liber evaluat cu AI) și statistici clare per elev — mai puțin timp
+            pierdut cu corectatul, mai mult timp pentru predat.
+          </p>
+        </div>
+      </section>
+
       {/* Facilități elevi */}
       <section className="border-b border-border bg-card/30">
         <div className="mx-auto max-w-6xl px-4 py-16">
