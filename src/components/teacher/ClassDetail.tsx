@@ -68,7 +68,7 @@ const ClassDetail = ({ classId, className: clsName, joinCode, onBack }: ClassDet
       if (studentIds.length === 0) return [];
       const { data } = await supabase
         .from("completed_lessons")
-        .select("user_id, lesson_id, score")
+        .select("user_id, lesson_id, score, solution_revealed_at")
         .in("user_id", studentIds);
       return data || [];
     },
@@ -103,10 +103,13 @@ const ClassDetail = ({ classId, className: clsName, joinCode, onBack }: ClassDet
   };
 
   const completionMap = useMemo(() => {
-    const map: Record<string, Record<string, { score: number }>> = {};
+    const map: Record<string, Record<string, { score: number; solutionRevealedAt: string | null }>> = {};
     for (const cl of allCompletedLessons) {
       if (!map[cl.lesson_id]) map[cl.lesson_id] = {};
-      map[cl.lesson_id][cl.user_id] = { score: cl.score };
+      map[cl.lesson_id][cl.user_id] = {
+        score: cl.score,
+        solutionRevealedAt: (cl as any).solution_revealed_at ?? null,
+      };
     }
     return map;
   }, [allCompletedLessons]);
