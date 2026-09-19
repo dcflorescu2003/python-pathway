@@ -1,17 +1,19 @@
 import { useLocation, useNavigate } from "react-router-dom";
 import { Home, Trophy, Code, UserCircle } from "lucide-react";
 import { motion } from "framer-motion";
-
-const tabs = [
-  { path: "/", icon: Home, label: "Acasă" },
-  { path: "/problems", icon: Code, label: "Probleme" },
-  { path: "/leaderboard", icon: Trophy, label: "Clasament" },
-  { path: "/auth", icon: UserCircle, label: "Cont" },
-];
+import { useIsTeacher } from "@/hooks/useIsTeacher";
 
 const BottomNav = () => {
   const location = useLocation();
   const navigate = useNavigate();
+  const { isTeacher } = useIsTeacher();
+
+  const tabs = [
+    { path: "/", icon: Home, label: "Acasă" },
+    { path: "/problems", icon: Code, label: "Probleme" },
+    { path: "/leaderboard", icon: Trophy, label: "Clasament" },
+    { path: "/auth", icon: UserCircle, label: isTeacher ? "Prof" : "Cont" },
+  ];
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-card/95 backdrop-blur-md pb-[var(--sab)]">
