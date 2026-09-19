@@ -1212,6 +1212,7 @@ const ExerciseRenderer = ({ exercise, answer, onAnswer }: { exercise: any; answe
           placeholder="Scrie răspunsul tău..."
           value={answer?.text || ""}
           onChange={(val) => onAnswer({ text: val })}
+          autocomplete={false}
         />
       </div>
     </div>
@@ -1603,6 +1604,7 @@ const ProblemRenderer = ({ problem, answer, onAnswer, allowRunTests }: { problem
           placeholder="Scrie codul Python aici..."
           value={answer?.code || ""}
           onChange={(val) => onAnswer({ code: val })}
+          autocomplete={false}
         />
       </div>
 
