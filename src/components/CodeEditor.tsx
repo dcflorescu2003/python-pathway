@@ -103,8 +103,10 @@ const CodeEditor = ({ value, onChange, disabled = false, placeholder }: CodeEdit
           syntaxHighlighting(pythonHighlighting),
           editorTheme,
           editorPlaceholder(placeholder || "# Scrie codul tău Python aici..."),
-          editable.current.of(EditorView.editable.of(!disabled)),
-          EditorState.readOnly.of(disabled),
+          editable.current.of([
+            EditorView.editable.of(!disabled),
+            EditorState.readOnly.of(disabled),
+          ]),
           EditorView.contentAttributes.of({
             spellcheck: "false",
             autocapitalize: "off",
