@@ -230,6 +230,16 @@ const CodeEditor = ({
     });
   }, [disabled]);
 
+  useEffect(() => {
+    const view = viewRef.current;
+    if (!view) return;
+    view.dispatch({
+      effects: autocompleteCompartment.current.reconfigure(
+        autocomplete ? autocompletion() : []
+      ),
+    });
+  }, [autocomplete]);
+
   return (
     <div
       data-code-editor
@@ -242,6 +252,22 @@ const CodeEditor = ({
           <div className="h-3 w-3 rounded-full bg-primary/60" />
         </div>
         <span className="font-mono text-xs text-muted-foreground">main.py</span>
+        {onToggleAutocomplete && (
+          <button
+            type="button"
+            onClick={() => onToggleAutocomplete(!autocomplete)}
+            aria-pressed={autocomplete}
+            title={autocomplete ? "Oprește sugestiile de cod" : "Pornește sugestiile de cod"}
+            className={`ml-auto flex min-h-[40px] items-center gap-1.5 rounded-md px-2 font-mono text-xs transition-colors ${
+              autocomplete
+                ? "text-accent hover:bg-accent/10"
+                : "text-muted-foreground/60 hover:bg-secondary"
+            }`}
+          >
+            <Sparkles className="h-3.5 w-3.5" />
+            Sugestii {autocomplete ? "on" : "off"}
+          </button>
+        )}
       </div>
       <div ref={hostRef} className="min-h-[200px] max-h-[55vh] overflow-auto" />
     </div>
