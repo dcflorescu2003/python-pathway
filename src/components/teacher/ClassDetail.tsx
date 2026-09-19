@@ -380,7 +380,8 @@ const ClassDetail = ({ classId, className: clsName, joinCode, onBack }: ClassDet
                                 const completed = status !== null;
                                 const displayScore = completed ? getDisplayPercent(ch.item_type, ch.item_id, status.score) : 0;
                                 const hasMistakes = completed && displayScore < 100;
-                                const mistakePoints = completed ? Math.max(0, 100 - displayScore) : 0;
+                                 const mistakePoints = completed ? Math.max(0, 100 - displayScore) : 0;
+                                 const revealedAt = status?.solutionRevealedAt ?? null;
 
                                 return (
                                   <div
@@ -406,6 +407,14 @@ const ClassDetail = ({ classId, className: clsName, joinCode, onBack }: ClassDet
                                       <span className="text-foreground text-xs font-medium">
                                         {m.profile?.display_name || "Elev"}
                                       </span>
+                                      {revealedAt && (
+                                        <span
+                                          className="flex items-center gap-1 rounded-full bg-accent/15 px-1.5 py-0.5 text-[10px] font-medium text-accent-foreground"
+                                          title={`Elevul a deschis rezolvarea pe ${new Date(revealedAt).toLocaleDateString("ro-RO")}`}
+                                        >
+                                          <Eye className="h-3 w-3" /> A văzut rezolvarea
+                                        </span>
+                                      )}
                                     </div>
                                     <div className="text-xs">
                                       {completed ? (
