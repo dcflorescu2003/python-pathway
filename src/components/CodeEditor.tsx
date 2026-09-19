@@ -1,5 +1,7 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { basicSetup } from "codemirror";
+import { autocompletion } from "@codemirror/autocomplete";
+import { Sparkles } from "lucide-react";
 import { python } from "@codemirror/lang-python";
 import { indentUnit } from "@codemirror/language";
 import { Compartment, EditorState } from "@codemirror/state";
@@ -13,11 +15,36 @@ import { HighlightStyle, syntaxHighlighting } from "@codemirror/language";
 import { tags } from "@lezer/highlight";
 import { indentationMarkers } from "@replit/codemirror-indentation-markers";
 
+const AUTOCOMPLETE_STORAGE_KEY = "pyro_code_autocomplete";
+
+/** Shared preference for code autocomplete in problem pages (persisted). */
+export function useAutocompletePreference(): [boolean, (on: boolean) => void] {
+  const [on, setOn] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem(AUTOCOMPLETE_STORAGE_KEY) !== "off";
+    } catch {
+      return true;
+    }
+  });
+  const set = useCallback((value: boolean) => {
+    setOn(value);
+    try {
+      localStorage.setItem(AUTOCOMPLETE_STORAGE_KEY, value ? "on" : "off");
+    } catch {
+      /* ignore */
+    }
+  }, []);
+  return [on, set];
+}
+
 interface CodeEditorProps {
   value: string;
   onChange: (value: string) => void;
   disabled?: boolean;
   placeholder?: string;
+  autocomplete?: boolean;
+  /** When provided, a small toggle button is shown in the editor header. */
+  onToggleAutocomplete?: (on: boolean) => void;
 }
 
 const pythonHighlighting = HighlightStyle.define([
