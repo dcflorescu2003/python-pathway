@@ -15,7 +15,7 @@ import TestResults from "./TestResults";
 import StudentCompetencyView from "./StudentCompetencyView";
 import StudentReport from "./StudentReport";
 
-import { ArrowLeft, Copy, Trash2, Target, BookOpen, Code, Zap, Flame, CheckCircle, XCircle, ChevronDown, ChevronRight, BarChart3, FileText, Clock, Users } from "lucide-react";
+import { ArrowLeft, Copy, Trash2, Target, BookOpen, Code, Zap, Flame, CheckCircle, XCircle, ChevronDown, ChevronRight, BarChart3, FileText, Clock, Users, Eye } from "lucide-react";
 import { toast } from "sonner";
 import { sortByDisplayName } from "@/lib/sortStudents";
 
@@ -68,7 +68,7 @@ const ClassDetail = ({ classId, className: clsName, joinCode, onBack }: ClassDet
       if (studentIds.length === 0) return [];
       const { data } = await supabase
         .from("completed_lessons")
-        .select("user_id, lesson_id, score")
+        .select("user_id, lesson_id, score, solution_revealed_at")
         .in("user_id", studentIds);
       return data || [];
     },
@@ -103,10 +103,13 @@ const ClassDetail = ({ classId, className: clsName, joinCode, onBack }: ClassDet
   };
 
   const completionMap = useMemo(() => {
-    const map: Record<string, Record<string, { score: number }>> = {};
+    const map: Record<string, Record<string, { score: number; solutionRevealedAt: string | null }>> = {};
     for (const cl of allCompletedLessons) {
       if (!map[cl.lesson_id]) map[cl.lesson_id] = {};
-      map[cl.lesson_id][cl.user_id] = { score: cl.score };
+      map[cl.lesson_id][cl.user_id] = {
+        score: cl.score,
+        solutionRevealedAt: (cl as any).solution_revealed_at ?? null,
+      };
     }
     return map;
   }, [allCompletedLessons]);
@@ -328,6 +331,9 @@ const ClassDetail = ({ classId, className: clsName, joinCode, onBack }: ClassDet
                     const completedCount = sortedMembers.filter(
                       (m) => getStudentStatus(ch.item_type, ch.item_id, m.student_id) !== null
                     ).length;
+                    const revealedCount = sortedMembers.filter(
+                      (m) => !!getStudentStatus(ch.item_type, ch.item_id, m.student_id)?.solutionRevealedAt
+                    ).length;
 
                     return (
                       <Card key={ch.id}>
@@ -348,6 +354,7 @@ const ClassDetail = ({ classId, className: clsName, joinCode, onBack }: ClassDet
                                 </p>
                                 <p className="text-[10px] text-muted-foreground">
                                   {new Date(ch.created_at).toLocaleDateString("ro-RO")} · {completedCount}/{members.length} completat
+                                  {revealedCount > 0 && ` · ${revealedCount} cu rezolvarea văzută`}
                                 </p>
                               </div>
                             </div>
@@ -373,7 +380,8 @@ const ClassDetail = ({ classId, className: clsName, joinCode, onBack }: ClassDet
                                 const completed = status !== null;
                                 const displayScore = completed ? getDisplayPercent(ch.item_type, ch.item_id, status.score) : 0;
                                 const hasMistakes = completed && displayScore < 100;
-                                const mistakePoints = completed ? Math.max(0, 100 - displayScore) : 0;
+                                 const mistakePoints = completed ? Math.max(0, 100 - displayScore) : 0;
+                                 const revealedAt = status?.solutionRevealedAt ?? null;
 
                                 return (
                                   <div
@@ -399,6 +407,14 @@ const ClassDetail = ({ classId, className: clsName, joinCode, onBack }: ClassDet
                                       <span className="text-foreground text-xs font-medium">
                                         {m.profile?.display_name || "Elev"}
                                       </span>
+                                      {revealedAt && (
+                                        <span
+                                          className="flex items-center gap-1 rounded-full bg-accent/15 px-1.5 py-0.5 text-[10px] font-medium text-accent-foreground"
+                                          title={`Elevul a deschis rezolvarea pe ${new Date(revealedAt).toLocaleDateString("ro-RO")}`}
+                                        >
+                                          <Eye className="h-3 w-3" /> A văzut rezolvarea
+                                        </span>
+                                      )}
                                     </div>
                                     <div className="text-xs">
                                       {completed ? (
