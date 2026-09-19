@@ -103,11 +103,19 @@ const editorTheme = EditorView.theme({
   "&.cm-editor.cm-readonly": { opacity: "0.65" },
 });
 
-const CodeEditor = ({ value, onChange, disabled = false, placeholder }: CodeEditorProps) => {
+const CodeEditor = ({
+  value,
+  onChange,
+  disabled = false,
+  placeholder,
+  autocomplete = true,
+  onToggleAutocomplete,
+}: CodeEditorProps) => {
   const hostRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
   const onChangeRef = useRef(onChange);
   const editable = useRef(new Compartment());
+  const autocompleteCompartment = useRef(new Compartment());
 
   useEffect(() => {
     onChangeRef.current = onChange;
