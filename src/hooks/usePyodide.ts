@@ -50,6 +50,42 @@ export interface StaticCheckResult {
 
 const normalize = (s: string) => (s ?? "").replace(/\r\n/g, "\n").replace(/\s+$/g, "");
 
+const FALLBACK_EXECUTION_ERROR = "Eroare la rularea codului. Verifică instrucțiunile și încearcă din nou.";
+
+/**
+ * Keep only diagnostics that point to the student's virtual main.py file.
+ * Pyodide prefixes Python exceptions with its own JavaScript/Python frames;
+ * those implementation details are noisy and should never reach students.
+ */
+export function formatStudentPythonError(error: unknown): string {
+  const raw = error instanceof Error ? error.message : String(error ?? "");
+  if (!raw.trim()) return FALLBACK_EXECUTION_ERROR;
+  if (raw.includes("Timeout: codul a depășit 10 secunde")) {
+    return "Timeout: codul a depășit 10 secunde";
+  }
+
+  const normalized = raw.replace(/\r\n/g, "\n");
+  const studentFrames = [...normalized.matchAll(/File ["']main\.py["'], line (\d+)/g)];
+  const lineNumber = studentFrames.at(-1)?.[1];
+
+  const exceptionLines = normalized
+    .split("\n")
+    .map((line) => line.trim().replace(/^PythonError:\s*/, ""))
+    .filter(Boolean);
+  const exception = [...exceptionLines]
+    .reverse()
+    .find((line) => /^[A-Za-z_][\w.]*(?:Error|Exception|Interrupt):(?:\s|$)/.test(line));
+
+  if (!exception) return FALLBACK_EXECUTION_ERROR;
+
+  const safeException = exception
+    .replace(/(?:\.?\.?\/|\/)[^\s:"']*(?:pyodide|python\d*\.\d*)[^\s:"']*/gi, "motorul Python")
+    .trim();
+  if (!safeException) return FALLBACK_EXECUTION_ERROR;
+
+  return lineNumber ? `Linia ${lineNumber}: ${safeException}` : safeException;
+}
+
 export function usePyodide() {
   const [loading, setLoading] = useState(false);
   const [running, setRunning] = useState(false);
@@ -123,7 +159,10 @@ __builtins__.input = _mock_input
 sys.stdout = _stdout_capture
 `);
 
-                pyodide.runPython(code);
+                // Give student code its own virtual filename so traceback line
+                // numbers map exactly to the editor instead of Pyodide's <exec>.
+                pyodide.globals.set("_student_code", code);
+                pyodide.runPython('exec(compile(_student_code, "main.py", "exec"), {"__name__": "__main__"})');
 
                 const output = pyodide.runPython("_stdout_capture.getvalue()").trim();
                 pyodide.runPython("sys.stdout = sys.__stdout__");
@@ -171,7 +210,7 @@ sys.stdout = _stdout_capture
               expectedOutput: tc.expectedOutput ?? "",
               actualOutput: "",
               passed: false,
-              error: err.message || "Eroare necunoscută",
+               error: formatStudentPythonError(err),
               hidden: tc.hidden,
             });
           } finally {
