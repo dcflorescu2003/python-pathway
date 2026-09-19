@@ -3,7 +3,7 @@ import { Play, Loader2, CheckCircle2, XCircle, Lightbulb, BookOpen } from "lucid
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import CodeEditor from "@/components/CodeEditor";
+import CodeEditor, { useAutocompletePreference } from "@/components/CodeEditor";
 import RichContent from "@/components/RichContent";
 import { usePyodide, type TestResult } from "@/hooks/usePyodide";
 import { toast } from "sonner";
@@ -34,6 +34,7 @@ const ProblemExercise = ({ exercise, onAnswer, feedback }: ProblemExerciseProps)
   const [results, setResults] = useState<TestResult[] | null>(null);
   const [showHint, setShowHint] = useState(false);
   const [showSolution, setShowSolution] = useState(false);
+  const [autocompleteOn, setAutocompleteOn] = useAutocompletePreference();
 
   const testCases = exercise.testCases || [];
 
@@ -95,7 +96,13 @@ const ProblemExercise = ({ exercise, onAnswer, feedback }: ProblemExerciseProps)
         </Card>
       )}
 
-      <CodeEditor value={code} onChange={setCode} disabled={running || feedback !== null} />
+      <CodeEditor
+        value={code}
+        onChange={setCode}
+        disabled={running || feedback !== null}
+        autocomplete={autocompleteOn}
+        onToggleAutocomplete={setAutocompleteOn}
+      />
 
       {!feedback && (
         <Button onClick={handleRun} disabled={running || loading} className="w-full gap-2" size="lg">

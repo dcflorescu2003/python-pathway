@@ -1,23 +1,72 @@
-import { useEffect, useRef } from "react";
-import { basicSetup } from "codemirror";
+import { useEffect, useRef, useState, useCallback } from "react";
+import {
+  autocompletion,
+  completionKeymap,
+  closeBrackets,
+  closeBracketsKeymap,
+} from "@codemirror/autocomplete";
+import { Sparkles } from "lucide-react";
 import { python } from "@codemirror/lang-python";
-import { indentUnit } from "@codemirror/language";
+import {
+  indentUnit,
+  defaultHighlightStyle,
+  syntaxHighlighting as syntaxHighlightingFacet,
+  indentOnInput,
+  bracketMatching,
+  foldGutter,
+  foldKeymap,
+} from "@codemirror/language";
 import { Compartment, EditorState } from "@codemirror/state";
 import {
   EditorView,
   keymap,
   placeholder as editorPlaceholder,
+  highlightSpecialChars,
+  drawSelection,
+  highlightActiveLine,
+  highlightActiveLineGutter,
+  dropCursor,
+  rectangularSelection,
+  crosshairCursor,
+  lineNumbers,
 } from "@codemirror/view";
-import { defaultKeymap, indentWithTab } from "@codemirror/commands";
+import { defaultKeymap, indentWithTab, history, historyKeymap } from "@codemirror/commands";
+import { searchKeymap, highlightSelectionMatches } from "@codemirror/search";
+import { lintKeymap } from "@codemirror/lint";
 import { HighlightStyle, syntaxHighlighting } from "@codemirror/language";
 import { tags } from "@lezer/highlight";
 import { indentationMarkers } from "@replit/codemirror-indentation-markers";
+
+const AUTOCOMPLETE_STORAGE_KEY = "pyro_code_autocomplete";
+
+/** Shared preference for code autocomplete in problem pages (persisted). */
+export function useAutocompletePreference(): [boolean, (on: boolean) => void] {
+  const [on, setOn] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem(AUTOCOMPLETE_STORAGE_KEY) !== "off";
+    } catch {
+      return true;
+    }
+  });
+  const set = useCallback((value: boolean) => {
+    setOn(value);
+    try {
+      localStorage.setItem(AUTOCOMPLETE_STORAGE_KEY, value ? "on" : "off");
+    } catch {
+      /* ignore */
+    }
+  }, []);
+  return [on, set];
+}
 
 interface CodeEditorProps {
   value: string;
   onChange: (value: string) => void;
   disabled?: boolean;
   placeholder?: string;
+  autocomplete?: boolean;
+  /** When provided, a small toggle button is shown in the editor header. */
+  onToggleAutocomplete?: (on: boolean) => void;
 }
 
 const pythonHighlighting = HighlightStyle.define([
@@ -76,11 +125,19 @@ const editorTheme = EditorView.theme({
   "&.cm-editor.cm-readonly": { opacity: "0.65" },
 });
 
-const CodeEditor = ({ value, onChange, disabled = false, placeholder }: CodeEditorProps) => {
+const CodeEditor = ({
+  value,
+  onChange,
+  disabled = false,
+  placeholder,
+  autocomplete = true,
+  onToggleAutocomplete,
+}: CodeEditorProps) => {
   const hostRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
   const onChangeRef = useRef(onChange);
   const editable = useRef(new Compartment());
+  const autocompleteCompartment = useRef(new Compartment());
 
   useEffect(() => {
     onChangeRef.current = onChange;
@@ -95,7 +152,31 @@ const CodeEditor = ({ value, onChange, disabled = false, placeholder }: CodeEdit
       state: EditorState.create({
         doc: value,
         extensions: [
-          basicSetup,
+          lineNumbers(),
+          highlightActiveLineGutter(),
+          highlightSpecialChars(),
+          history(),
+          foldGutter(),
+          drawSelection(),
+          dropCursor(),
+          EditorState.allowMultipleSelections.of(true),
+          indentOnInput(),
+          syntaxHighlightingFacet(defaultHighlightStyle, { fallback: true }),
+          bracketMatching(),
+          closeBrackets(),
+          rectangularSelection(),
+          crosshairCursor(),
+          highlightActiveLine(),
+          highlightSelectionMatches(),
+          keymap.of([
+            ...closeBracketsKeymap,
+            ...searchKeymap,
+            ...historyKeymap,
+            ...foldKeymap,
+            ...completionKeymap,
+            ...lintKeymap,
+          ]),
+          autocompleteCompartment.current.of(autocomplete ? autocompletion() : []),
           python(),
           indentUnit.of("    "),
           keymap.of([indentWithTab, ...defaultKeymap]),
@@ -149,6 +230,16 @@ const CodeEditor = ({ value, onChange, disabled = false, placeholder }: CodeEdit
     });
   }, [disabled]);
 
+  useEffect(() => {
+    const view = viewRef.current;
+    if (!view) return;
+    view.dispatch({
+      effects: autocompleteCompartment.current.reconfigure(
+        autocomplete ? autocompletion() : []
+      ),
+    });
+  }, [autocomplete]);
+
   return (
     <div
       data-code-editor
@@ -161,6 +252,22 @@ const CodeEditor = ({ value, onChange, disabled = false, placeholder }: CodeEdit
           <div className="h-3 w-3 rounded-full bg-primary/60" />
         </div>
         <span className="font-mono text-xs text-muted-foreground">main.py</span>
+        {onToggleAutocomplete && (
+          <button
+            type="button"
+            onClick={() => onToggleAutocomplete(!autocomplete)}
+            aria-pressed={autocomplete}
+            title={autocomplete ? "Oprește sugestiile de cod" : "Pornește sugestiile de cod"}
+            className={`ml-auto flex min-h-[40px] items-center gap-1.5 rounded-md px-2 font-mono text-xs transition-colors ${
+              autocomplete
+                ? "text-accent hover:bg-accent/10"
+                : "text-muted-foreground/60 hover:bg-secondary"
+            }`}
+          >
+            <Sparkles className="h-3.5 w-3.5" />
+            Sugestii {autocomplete ? "on" : "off"}
+          </button>
+        )}
       </div>
       <div ref={hostRef} className="min-h-[200px] max-h-[55vh] overflow-auto" />
     </div>
