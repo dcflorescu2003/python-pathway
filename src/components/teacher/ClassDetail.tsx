@@ -15,7 +15,7 @@ import TestResults from "./TestResults";
 import StudentCompetencyView from "./StudentCompetencyView";
 import StudentReport from "./StudentReport";
 
-import { ArrowLeft, Copy, Trash2, Target, BookOpen, Code, Zap, Flame, CheckCircle, XCircle, ChevronDown, ChevronRight, BarChart3, FileText, Clock, Users } from "lucide-react";
+import { ArrowLeft, Copy, Trash2, Target, BookOpen, Code, Zap, Flame, CheckCircle, XCircle, ChevronDown, ChevronRight, BarChart3, FileText, Clock, Users, Eye } from "lucide-react";
 import { toast } from "sonner";
 import { sortByDisplayName } from "@/lib/sortStudents";
 
