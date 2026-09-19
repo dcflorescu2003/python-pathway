@@ -29,7 +29,7 @@ const PrivacyPolicyPage = () => {
       </header>
 
       <main className="px-6 py-6 max-w-2xl mx-auto prose prose-sm prose-invert">
-        <p className="text-xs text-muted-foreground mb-6">Ultima actualizare: 23 martie 2026</p>
+        <p className="text-xs text-muted-foreground mb-6">Ultima actualizare: 19 septembrie 2026</p>
 
         <h2 className="text-base font-bold text-foreground mt-6 mb-2">1. Introducere</h2>
         <p className="text-sm text-muted-foreground leading-relaxed">
@@ -79,9 +79,24 @@ const PrivacyPolicyPage = () => {
           <li><strong className="text-foreground">Opoziție:</strong> vă puteți opune prelucrării datelor</li>
         </ul>
 
-        <h2 className="text-base font-bold text-foreground mt-6 mb-2">8. Cookie-uri</h2>
+        <h2 className="text-base font-bold text-foreground mt-6 mb-2">8. Cookie-uri și reclame</h2>
         <p className="text-sm text-muted-foreground leading-relaxed">
-          Folosim doar cookie-uri esențiale pentru autentificare și funcționarea aplicației. Nu folosim cookie-uri de tracking sau publicitate.
+          Folosim stocare locală esențială pentru autentificare și funcționarea aplicației (de exemplu, sesiunea de login și progresul). Acestea sunt strict necesare și nu cer consimțământ.
+        </p>
+        <p className="text-sm text-muted-foreground leading-relaxed mt-2">
+          Pe site-ul web, doar dacă vă dați acordul prin bannerul de consimțământ, Google AdSense poate folosi cookie-uri și tehnologii similare pentru a afișa reclame, inclusiv reclame personalizate, care susțin varianta gratuită a aplicației. Google poate prelucra date conform{" "}
+          <a
+            href="https://policies.google.com/technologies/partner-sites"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-primary underline underline-offset-2"
+          >
+            politicii Google privind site-urile partenere
+          </a>
+          . Fără acordul dumneavoastră, scriptul AdSense nu se încarcă deloc.
+        </p>
+        <p className="text-sm text-muted-foreground leading-relaxed mt-2">
+          Vă puteți modifica oricând alegerea din butonul „Setări cookie-uri" din subsolul site-ului. Dacă retrageți consimțământul după ce l-ați acordat, reclamele deja încărcate rămân până la reîmprospătarea paginii, dar nu se mai încarcă altele noi.
         </p>
 
         <h2 className="text-base font-bold text-foreground mt-6 mb-2">9. Minori</h2>
