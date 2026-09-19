@@ -15,6 +15,7 @@ import MobileLayout from "@/components/layout/MobileLayout";
 import LoadingScreen from "@/components/states/LoadingScreen";
 import SplashScreen from "@/components/states/SplashScreen";
 import { PushNotificationsProvider } from "@/hooks/usePushNotifications";
+import CookieConsentBanner from "@/components/web/CookieConsentBanner";
 
 // Mic component intern: marchează app-ul ca "ready" când auth a terminat de inițializat,
 // astfel încât watchdog-ul de pornire să nu mai declanșeze un reload de siguranță.
@@ -111,6 +112,7 @@ const AppRoutes = () => {
     <>
       {isMainPage ? <MobileLayout>{content}</MobileLayout> : content}
       <RealEmailReminderDialog />
+      <CookieConsentBanner />
     </>
   );
 };

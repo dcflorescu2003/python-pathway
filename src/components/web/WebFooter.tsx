@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import PyroLogo from "@/components/brand/PyroLogo";
+import { openCookieSettings } from "@/lib/cookieConsent";
 
 const WebFooter = () => {
   return (
@@ -36,6 +37,11 @@ const WebFooter = () => {
             <li><Link to="/terms-of-use" className="hover:text-foreground">Termeni de utilizare</Link></li>
             <li><Link to="/support" className="hover:text-foreground">Suport</Link></li>
             <li><Link to="/delete-account" className="hover:text-foreground">Șterge cont</Link></li>
+            <li>
+              <button type="button" onClick={openCookieSettings} className="hover:text-foreground">
+                Setări cookie-uri
+              </button>
+            </li>
           </ul>
         </div>
       </div>
