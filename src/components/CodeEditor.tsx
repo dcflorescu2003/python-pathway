@@ -1,16 +1,38 @@
 import { useEffect, useRef, useState, useCallback } from "react";
-import { basicSetup } from "codemirror";
-import { autocompletion } from "@codemirror/autocomplete";
+import {
+  autocompletion,
+  completionKeymap,
+  closeBrackets,
+  closeBracketsKeymap,
+} from "@codemirror/autocomplete";
 import { Sparkles } from "lucide-react";
 import { python } from "@codemirror/lang-python";
-import { indentUnit } from "@codemirror/language";
+import {
+  indentUnit,
+  defaultHighlightStyle,
+  syntaxHighlighting as syntaxHighlightingFacet,
+  indentOnInput,
+  bracketMatching,
+  foldGutter,
+  foldKeymap,
+} from "@codemirror/language";
 import { Compartment, EditorState } from "@codemirror/state";
 import {
   EditorView,
   keymap,
   placeholder as editorPlaceholder,
+  highlightSpecialChars,
+  drawSelection,
+  highlightActiveLine,
+  highlightActiveLineGutter,
+  dropCursor,
+  rectangularSelection,
+  crosshairCursor,
+  lineNumbers,
 } from "@codemirror/view";
-import { defaultKeymap, indentWithTab } from "@codemirror/commands";
+import { defaultKeymap, indentWithTab, history, historyKeymap } from "@codemirror/commands";
+import { searchKeymap, highlightSelectionMatches } from "@codemirror/search";
+import { lintKeymap } from "@codemirror/lint";
 import { HighlightStyle, syntaxHighlighting } from "@codemirror/language";
 import { tags } from "@lezer/highlight";
 import { indentationMarkers } from "@replit/codemirror-indentation-markers";
