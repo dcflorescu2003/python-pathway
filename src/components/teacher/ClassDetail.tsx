@@ -331,6 +331,9 @@ const ClassDetail = ({ classId, className: clsName, joinCode, onBack }: ClassDet
                     const completedCount = sortedMembers.filter(
                       (m) => getStudentStatus(ch.item_type, ch.item_id, m.student_id) !== null
                     ).length;
+                    const revealedCount = sortedMembers.filter(
+                      (m) => !!getStudentStatus(ch.item_type, ch.item_id, m.student_id)?.solutionRevealedAt
+                    ).length;
 
                     return (
                       <Card key={ch.id}>
@@ -351,6 +354,7 @@ const ClassDetail = ({ classId, className: clsName, joinCode, onBack }: ClassDet
                                 </p>
                                 <p className="text-[10px] text-muted-foreground">
                                   {new Date(ch.created_at).toLocaleDateString("ro-RO")} · {completedCount}/{members.length} completat
+                                  {revealedCount > 0 && ` · ${revealedCount} cu rezolvarea văzută`}
                                 </p>
                               </div>
                             </div>
