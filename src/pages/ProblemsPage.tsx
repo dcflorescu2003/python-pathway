@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Code, ChevronRight, ArrowLeft, Lock, Search } from "lucide-react";
@@ -9,6 +9,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { useProblems } from "@/hooks/useProblems";
 import { useProgress } from "@/hooks/useProgress";
+import { useAuth } from "@/hooks/useAuth";
 import { useSubscription } from "@/hooks/useSubscription";
 import PremiumDialog from "@/components/PremiumDialog";
 import LoadingScreen from "@/components/states/LoadingScreen";
@@ -35,7 +36,30 @@ const ProblemsPage = () => {
   const [showPremium, setShowPremium] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [difficultyFilter, setDifficultyFilter] = useState<Difficulty | "all">("all");
+  const { user } = useAuth();
+  const hideSolvedKey = user?.id ? `pyro_hide_solved_${user.id}` : null;
   const [hideSolved, setHideSolved] = useState(true);
+
+  // Restaurează preferința (namespaced per cont) când utilizatorul e cunoscut.
+  useEffect(() => {
+    if (!hideSolvedKey) return;
+    try {
+      const stored = localStorage.getItem(hideSolvedKey);
+      if (stored !== null) setHideSolved(stored === "true");
+    } catch {
+      /* ignore */
+    }
+  }, [hideSolvedKey]);
+
+  const handleHideSolvedChange = (value: boolean) => {
+    setHideSolved(value);
+    if (!hideSolvedKey) return;
+    try {
+      localStorage.setItem(hideSolvedKey, String(value));
+    } catch {
+      /* ignore */
+    }
+  };
 
   if (isLoading || !data) return <LoadingScreen />;
 
@@ -144,7 +168,7 @@ const ProblemsPage = () => {
             </div>
             <div className="flex items-center gap-2">
               <Label htmlFor="hide-solved" className="text-xs text-muted-foreground cursor-pointer">Ascunde rezolvate</Label>
-              <Switch id="hide-solved" checked={hideSolved} onCheckedChange={setHideSolved} />
+              <Switch id="hide-solved" checked={hideSolved} onCheckedChange={handleHideSolvedChange} />
             </div>
           </div>
         )}
