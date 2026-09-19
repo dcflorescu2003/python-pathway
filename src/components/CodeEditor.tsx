@@ -130,7 +130,8 @@ const CodeEditor = ({
       state: EditorState.create({
         doc: value,
         extensions: [
-          basicSetup,
+          basicSetup({ autocompletion: false }),
+          autocompleteCompartment.current.of(autocomplete ? autocompletion() : []),
           python(),
           indentUnit.of("    "),
           keymap.of([indentWithTab, ...defaultKeymap]),
