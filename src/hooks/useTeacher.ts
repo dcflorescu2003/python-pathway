@@ -114,6 +114,20 @@ export function useCreateClass() {
   });
 }
 
+export function useRenameClass() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ classId, name }: { classId: string; name: string }) => {
+      const { error } = await supabase
+        .from("teacher_classes")
+        .update({ name })
+        .eq("id", classId);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["teacher-classes"] }),
+  });
+}
+
 export function useDeleteClass() {
   const qc = useQueryClient();
   return useMutation({
