@@ -161,7 +161,13 @@ const ProblemExercise = ({ exercise, onAnswer, feedback }: ProblemExerciseProps)
                 <Card className="border-accent/30 bg-accent/5">
                   <CardContent className="p-4">
                     <p className="text-xs text-muted-foreground mb-2 font-medium">O posibilă rezolvare:</p>
-                    <pre className="bg-muted/50 p-3 rounded-lg font-mono text-sm overflow-x-auto text-foreground whitespace-pre-wrap">
+                    <pre
+                      className="bg-muted/50 p-3 rounded-lg font-mono text-sm overflow-x-auto text-foreground whitespace-pre-wrap select-none"
+                      style={{ userSelect: "none", WebkitUserSelect: "none", WebkitTouchCallout: "none" }}
+                      onCopy={(e) => e.preventDefault()}
+                      onCut={(e) => e.preventDefault()}
+                      onContextMenu={(e) => e.preventDefault()}
+                    >
                       <code>{exercise.solution}</code>
                     </pre>
                   </CardContent>

@@ -284,7 +284,13 @@ const ProblemSolvePage = () => {
                       {loadingSolution ? (
                         <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
                       ) : (
-                        <pre className="bg-muted/50 p-3 rounded-lg font-mono text-sm overflow-x-auto text-foreground whitespace-pre-wrap"><code>{solutionText || ""}</code></pre>
+                        <pre
+                          className="bg-muted/50 p-3 rounded-lg font-mono text-sm overflow-x-auto text-foreground whitespace-pre-wrap select-none"
+                          style={{ userSelect: "none", WebkitUserSelect: "none", WebkitTouchCallout: "none" }}
+                          onCopy={(e) => e.preventDefault()}
+                          onCut={(e) => e.preventDefault()}
+                          onContextMenu={(e) => e.preventDefault()}
+                        ><code>{solutionText || ""}</code></pre>
                       )}
                     </CardContent>
                   </Card>
