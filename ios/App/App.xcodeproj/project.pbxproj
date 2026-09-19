@@ -327,7 +327,7 @@
 				CODE_SIGN_IDENTITY = "Apple Development";
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Distribution";
 				CODE_SIGN_STYLE = Manual;
-                CURRENT_PROJECT_VERSION = 227;
+                CURRENT_PROJECT_VERSION = 228;
 
 				DEVELOPMENT_TEAM = 6FAUMS27V7;
 				"DEVELOPMENT_TEAM[sdk=iphoneos*]" = 6FAUMS27V7;
@@ -338,7 +338,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-                MARKETING_VERSION = 1.227;
+                MARKETING_VERSION = 1.228;
                 PRODUCT_BUNDLE_IDENTIFIER = ro.pythonpathway.app;
                 PRODUCT_NAME = "$(TARGET_NAME)";
                 PROVISIONING_PROFILE_SPECIFIER = "";
@@ -358,7 +358,7 @@
 				CODE_SIGN_IDENTITY = "Apple Distribution";
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "Apple Distribution";
 				CODE_SIGN_STYLE = Manual;
-                CURRENT_PROJECT_VERSION = 227;
+                CURRENT_PROJECT_VERSION = 228;
 
                 DEVELOPMENT_TEAM = 6FAUMS27V7;
                 "DEVELOPMENT_TEAM[sdk=iphoneos*]" = 6FAUMS27V7;
@@ -369,7 +369,7 @@
                     "$(inherited)",
                     "@executable_path/Frameworks",
                 );
-                MARKETING_VERSION = 1.227;
+                MARKETING_VERSION = 1.228;
 				PRODUCT_BUNDLE_IDENTIFIER = ro.pythonpathway.app;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
