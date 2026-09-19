@@ -2,8 +2,8 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
-import { useTeacherClasses, useCreateClass, useDeleteClass } from "@/hooks/useTeacher";
-import { Plus, Trash2, Users, ChevronRight } from "lucide-react";
+import { useTeacherClasses, useCreateClass, useDeleteClass, useRenameClass } from "@/hooks/useTeacher";
+import { Plus, Trash2, Users, ChevronRight, Pencil, Check, X } from "lucide-react";
 import { toast } from "sonner";
 
 interface ClassManagerProps {
@@ -14,8 +14,33 @@ const ClassManager = ({ onSelectClass }: ClassManagerProps) => {
   const { data: classes = [], isLoading } = useTeacherClasses();
   const createClass = useCreateClass();
   const deleteClass = useDeleteClass();
+  const renameClass = useRenameClass();
   const [newName, setNewName] = useState("");
   const [showCreate, setShowCreate] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editName, setEditName] = useState("");
+
+  const startEdit = (e: React.MouseEvent, classId: string, currentName: string) => {
+    e.stopPropagation();
+    setEditingId(classId);
+    setEditName(currentName);
+  };
+
+  const handleRename = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const name = editName.trim();
+    if (name.length < 2) {
+      toast.error("Numele clasei trebuie să aibă minim 2 caractere.");
+      return;
+    }
+    try {
+      await renameClass.mutateAsync({ classId: editingId!, name });
+      toast.success("Nume actualizat.");
+      setEditingId(null);
+    } catch {
+      toast.error("Eroare la redenumirea clasei.");
+    }
+  };
 
   const handleCreate = async () => {
     if (!newName.trim()) return;
@@ -47,25 +72,70 @@ const ClassManager = ({ onSelectClass }: ClassManagerProps) => {
       {classes.map((cls) => (
         <Card
           key={cls.id}
-          className="cursor-pointer hover:border-primary/50 transition-colors"
-          onClick={() => onSelectClass(cls.id)}
+          className={editingId === cls.id ? "" : "cursor-pointer hover:border-primary/50 transition-colors"}
+          onClick={() => editingId !== cls.id && onSelectClass(cls.id)}
         >
-          <CardContent className="p-4 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Users className="h-5 w-5 text-primary" />
-              <div>
-                <p className="font-semibold text-foreground">{cls.name}</p>
-                <p className="text-xs text-muted-foreground">Cod: {cls.join_code}</p>
-              </div>
+          <CardContent className="p-4 flex items-center justify-between gap-2">
+            <div className="flex items-center gap-3 min-w-0 flex-1">
+              <Users className="h-5 w-5 text-primary flex-shrink-0" />
+              {editingId === cls.id ? (
+                <div className="flex-1 min-w-0" onClick={(e) => e.stopPropagation()}>
+                  <Input
+                    value={editName}
+                    onChange={(e) => setEditName(e.target.value)}
+                    className="h-9 text-sm"
+                    placeholder="Numele clasei"
+                    autoFocus
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">Cod: {cls.join_code}</p>
+                </div>
+              ) : (
+                <div className="min-w-0">
+                  <p className="font-semibold text-foreground truncate">{cls.name}</p>
+                  <p className="text-xs text-muted-foreground">Cod: {cls.join_code}</p>
+                </div>
+              )}
             </div>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={(e) => handleDelete(e, cls.id)}
-                className="p-1.5 rounded-md hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
-              >
-                <Trash2 className="h-4 w-4" />
-              </button>
-              <ChevronRight className="h-4 w-4 text-muted-foreground" />
+            <div className="flex items-center gap-2 flex-shrink-0">
+              {editingId === cls.id ? (
+                <>
+                  <button
+                    onClick={handleRename}
+                    disabled={renameClass.isPending || editName.trim().length < 2}
+                    className="p-1.5 rounded-md hover:bg-primary/10 text-primary disabled:opacity-40 transition-colors"
+                    aria-label="Salvează numele clasei"
+                  >
+                    <Check className="h-4 w-4" />
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setEditingId(null);
+                    }}
+                    className="p-1.5 rounded-md hover:bg-muted text-muted-foreground transition-colors"
+                    aria-label="Anulează"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    onClick={(e) => startEdit(e, cls.id, cls.name)}
+                    className="p-1.5 rounded-md hover:bg-primary/10 text-muted-foreground hover:text-primary transition-colors"
+                    aria-label="Redenumește clasa"
+                  >
+                    <Pencil className="h-4 w-4" />
+                  </button>
+                  <button
+                    onClick={(e) => handleDelete(e, cls.id)}
+                    className="p-1.5 rounded-md hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                </>
+              )}
             </div>
           </CardContent>
         </Card>
