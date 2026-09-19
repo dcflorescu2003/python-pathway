@@ -2,8 +2,8 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
-import { useTeacherClasses, useCreateClass, useDeleteClass } from "@/hooks/useTeacher";
-import { Plus, Trash2, Users, ChevronRight } from "lucide-react";
+import { useTeacherClasses, useCreateClass, useDeleteClass, useRenameClass } from "@/hooks/useTeacher";
+import { Plus, Trash2, Users, ChevronRight, Pencil, Check, X } from "lucide-react";
 import { toast } from "sonner";
 
 interface ClassManagerProps {
@@ -14,8 +14,33 @@ const ClassManager = ({ onSelectClass }: ClassManagerProps) => {
   const { data: classes = [], isLoading } = useTeacherClasses();
   const createClass = useCreateClass();
   const deleteClass = useDeleteClass();
+  const renameClass = useRenameClass();
   const [newName, setNewName] = useState("");
   const [showCreate, setShowCreate] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editName, setEditName] = useState("");
+
+  const startEdit = (e: React.MouseEvent, classId: string, currentName: string) => {
+    e.stopPropagation();
+    setEditingId(classId);
+    setEditName(currentName);
+  };
+
+  const handleRename = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const name = editName.trim();
+    if (name.length < 2) {
+      toast.error("Numele clasei trebuie să aibă minim 2 caractere.");
+      return;
+    }
+    try {
+      await renameClass.mutateAsync({ classId: editingId!, name });
+      toast.success("Nume actualizat.");
+      setEditingId(null);
+    } catch {
+      toast.error("Eroare la redenumirea clasei.");
+    }
+  };
 
   const handleCreate = async () => {
     if (!newName.trim()) return;
