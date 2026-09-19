@@ -5,7 +5,7 @@ import { ArrowLeft, Play, Loader2, CheckCircle2, XCircle, Lightbulb, BookOpen, F
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import CodeEditor from "@/components/CodeEditor";
+import CodeEditor, { useAutocompletePreference } from "@/components/CodeEditor";
 import RichContent from "@/components/RichContent";
 import { useProblems } from "@/hooks/useProblems";
 import { usePyodide, type TestResult, type StaticCheckResult } from "@/hooks/usePyodide";
@@ -36,6 +36,7 @@ const ProblemSolvePage = () => {
   const [showSolution, setShowSolution] = useState(false);
   const [solutionText, setSolutionText] = useState<string | null>(null);
   const [loadingSolution, setLoadingSolution] = useState(false);
+  const [autocompleteOn, setAutocompleteOn] = useAutocompletePreference();
   const premiumRetryDone = useRef(false);
 
   const fetchSolution = useCallback(async () => {
@@ -201,7 +202,13 @@ const ProblemSolvePage = () => {
           </Card>
         )}
 
-        <CodeEditor value={code} onChange={setCode} disabled={running} />
+        <CodeEditor
+          value={code}
+          onChange={setCode}
+          disabled={running}
+          autocomplete={autocompleteOn}
+          onToggleAutocomplete={setAutocompleteOn}
+        />
 
         <Button onClick={handleRun} disabled={running || (loading && !isStatic)} className="w-full gap-2" size="lg">
           {loading && !isStatic ? (<><Loader2 className="h-4 w-4 animate-spin" /> Se încarcă Python...</>) :
