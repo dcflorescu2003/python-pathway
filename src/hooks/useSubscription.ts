@@ -191,11 +191,14 @@ export function useSubscription() {
         }
       })();
     }
+    // Verificare de fond la 15 minute (doar cât fila e vizibilă) — redusă de la
+    // 5 minute pentru a scădea consumul Cloud. Reîmprospătarea la focus și după
+    // plată rămâne neschimbată, deci Premium-ul se activează la fel de repede.
     const interval = setInterval(() => {
       if (document.visibilityState === "visible") {
         void checkSubscription(true);
       }
-    }, 300_000);
+    }, 900_000);
     return () => clearInterval(interval);
   }, [user, checkSubscription]);
 
