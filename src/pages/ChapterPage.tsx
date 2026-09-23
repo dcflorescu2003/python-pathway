@@ -295,9 +295,12 @@ const ChapterPage = () => {
             const isCompleted = !!completedEntry;
             const isStarted = !isCompleted && !!progress.startedLessons?.[lesson.id];
             const score = completedEntry?.score ?? 0;
-            const previousDone = idx === 0 || progress.completedLessons[chapter.lessons[idx - 1].id]?.completed;
+            const isOptional = !!lesson.isOptional;
+            const previousDone = chapter.lessons
+              .slice(0, idx)
+              .every(p => p.isOptional || !!progress.completedLessons[p.id]?.completed);
             const skipUnlocked = !!progress.skipUnlockedLessons?.[lesson.id];
-            const isLocked = !previousDone && !skipUnlocked;
+            const isLocked = !previousDone && !skipUnlocked && !isOptional;
             const isCurrent = !isCompleted && !isLocked;
             const isPremiumLocked = false;
             const showSkipBadge = skipUnlocked && !isCompleted && !previousDone;
