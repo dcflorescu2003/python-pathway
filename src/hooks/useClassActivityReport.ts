@@ -100,9 +100,12 @@ export function useClassActivityReport() {
         const counts = dayKeys.map((k) =>
           studentsOfClass.reduce((sum, sid) => sum + (byStudent[sid]?.[k]?.count ?? 0), 0)
         );
-        const xpTotals = dayKeys.map((k) =>
-          studentsOfClass.reduce((sum, sid) => sum + (byStudent[sid]?.[k]?.xp ?? 0), 0)
-        );
+        const xpTotals: number[] = [];
+        let runningXp = 0;
+        dayKeys.forEach((k) => {
+          runningXp += studentsOfClass.reduce((sum, sid) => sum + (byStudent[sid]?.[k]?.xp ?? 0), 0);
+          xpTotals.push(runningXp);
+        });
         return { classId: cls.id, className: cls.name, counts, xpTotals };
       });
 
