@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { AlertTriangle, Pencil, Check, X, User } from "lucide-react";
 import ClassManager from "@/components/teacher/ClassManager";
 import ClassDetail from "@/components/teacher/ClassDetail";
+import ClassActivityReport from "@/components/teacher/ClassActivityReport";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -171,6 +172,8 @@ const TeacherClassesTab = ({ teacherStatus }: TeacherClassesTabProps) => {
       </Card>
 
       <ClassManager onSelectClass={setSelectedClassId} />
+
+      <ClassActivityReport />
     </div>
   );
 };
