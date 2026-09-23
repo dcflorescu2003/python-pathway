@@ -475,7 +475,7 @@ const ContentEditor = () => {
                             </div>
                           ) : (
                             <div className="flex items-center gap-2">
-                              <Button variant="outline" size="sm" className="flex-1" onClick={() => { setNewLessonChapter(chapter.id); setLessonForm({ title: "", description: "", xpReward: 20, isPremium: false }); }}>
+                              <Button variant="outline" size="sm" className="flex-1" onClick={() => { setNewLessonChapter(chapter.id); setLessonForm({ title: "", description: "", xpReward: 20, isPremium: false, isOptional: false }); }}>
                                 <Plus className="h-4 w-4 mr-1" /> Adaugă lecție
                               </Button>
                               <CsvLessonImporter mode="content" chapterId={chapter.id} existingLessonCount={chapter.lessons.length} onSuccess={invalidate} />
