@@ -63,7 +63,7 @@ const ClassActivityReport = () => {
         </div>
 
         <p className="text-xs text-muted-foreground">
-          Lecții și probleme finalizate, cu XP-ul obținut de elevii clasei.
+          Lecții și probleme finalizate, cu XP-ul cumulat al clasei până în ziua respectivă.
         </p>
       </CardContent>
     </Card>
