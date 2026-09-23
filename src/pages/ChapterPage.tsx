@@ -359,6 +359,11 @@ const ChapterPage = () => {
                 <div className="mt-2 mb-2 text-center max-w-[200px]">
                   <p className={`text-base font-bold flex items-center justify-center gap-1 ${isCompleted ? "text-muted-foreground" : "text-foreground"}`}>
                     {lesson.title}
+                    {isOptional && (
+                      <span className="inline-flex items-center rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-mono uppercase tracking-wider text-muted-foreground border border-border">
+                        Opțional
+                      </span>
+                    )}
                     {showSkipBadge && (
                       <span className="inline-flex items-center gap-0.5 rounded-full bg-yellow-500/15 border border-yellow-500/40 px-1.5 py-0.5 text-[10px] font-mono uppercase tracking-wider text-yellow-500">
                         <Zap className="h-2.5 w-2.5" /> Sărită
