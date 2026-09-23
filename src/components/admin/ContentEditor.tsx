@@ -81,7 +81,7 @@ const ContentEditor = () => {
   const [chapterForm, setChapterForm] = useState({ title: "", description: "", icon: "📘", color: "200 100% 50%" });
   const [newLessonChapter, setNewLessonChapter] = useState<string | null>(null);
   const [editingLesson, setEditingLesson] = useState<string | null>(null);
-  const [lessonForm, setLessonForm] = useState({ title: "", description: "", xpReward: 20, isPremium: false });
+  const [lessonForm, setLessonForm] = useState({ title: "", description: "", xpReward: 20, isPremium: false, isOptional: false });
   const [creatingChapter, setCreatingChapter] = useState(false);
 
   const sensors = useSensors(
