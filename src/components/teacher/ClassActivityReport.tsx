@@ -46,11 +46,14 @@ const ClassActivityReport = () => {
                   {row.counts.map((c, i) => (
                     <td
                       key={i}
-                      className={`text-center border border-border px-2 py-1.5 ${
+                      className={`text-center border border-border px-2 py-1.5 whitespace-nowrap ${
                         c === 0 ? "text-muted-foreground" : "text-foreground font-medium"
                       }`}
                     >
-                      {c}
+                      <span className="block">{c}</span>
+                      <span className="block mt-0.5 text-[10px] font-normal text-primary">
+                        {row.xpTotals[i]} XP
+                      </span>
                     </td>
                   ))}
                 </tr>
@@ -59,7 +62,9 @@ const ClassActivityReport = () => {
           </table>
         </div>
 
-        <p className="text-xs text-muted-foreground">Lecții și probleme finalizate de elevii clasei.</p>
+        <p className="text-xs text-muted-foreground">
+          Lecții și probleme finalizate, cu XP-ul obținut de elevii clasei.
+        </p>
       </CardContent>
     </Card>
   );
