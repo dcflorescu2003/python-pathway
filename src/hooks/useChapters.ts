@@ -37,6 +37,7 @@ export interface Lesson {
   exercises: Exercise[];
   xpReward: number;
   isPremium?: boolean;
+  isOptional?: boolean;
 }
 
 export interface Chapter {
@@ -189,6 +190,7 @@ async function fetchChapters(): Promise<Chapter[]> {
       description: l.description,
       xpReward: l.xp_reward,
       isPremium: l.is_premium,
+      isOptional: (l as any).is_optional ?? false,
       exercises: exercisesByLesson[l.id] || [],
     });
   }

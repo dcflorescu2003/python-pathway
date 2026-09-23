@@ -177,9 +177,11 @@ const ChapterPage = () => {
     for (let i = 0; i < chapter.lessons.length; i++) {
       const l = chapter.lessons[i];
       const done = !!progress.completedLessons[l.id]?.completed;
-      const prevDone = i === 0 || !!progress.completedLessons[chapter.lessons[i - 1].id]?.completed;
+      const prevDone = chapter.lessons
+        .slice(0, i)
+        .every(p => p.isOptional || !!progress.completedLessons[p.id]?.completed);
       const skipUnlocked = !!progress.skipUnlockedLessons?.[l.id];
-      if (!done && (prevDone || skipUnlocked)) return l.id;
+      if (!done && (prevDone || skipUnlocked || l.isOptional)) return l.id;
     }
     return null;
   }, [chapter, progress.completedLessons, progress.skipUnlockedLessons]);
