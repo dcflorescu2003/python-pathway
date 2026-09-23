@@ -177,9 +177,11 @@ const ChapterPage = () => {
     for (let i = 0; i < chapter.lessons.length; i++) {
       const l = chapter.lessons[i];
       const done = !!progress.completedLessons[l.id]?.completed;
-      const prevDone = i === 0 || !!progress.completedLessons[chapter.lessons[i - 1].id]?.completed;
+      const prevDone = chapter.lessons
+        .slice(0, i)
+        .every(p => p.isOptional || !!progress.completedLessons[p.id]?.completed);
       const skipUnlocked = !!progress.skipUnlockedLessons?.[l.id];
-      if (!done && (prevDone || skipUnlocked)) return l.id;
+      if (!done && (prevDone || skipUnlocked || l.isOptional)) return l.id;
     }
     return null;
   }, [chapter, progress.completedLessons, progress.skipUnlockedLessons]);
@@ -293,9 +295,12 @@ const ChapterPage = () => {
             const isCompleted = !!completedEntry;
             const isStarted = !isCompleted && !!progress.startedLessons?.[lesson.id];
             const score = completedEntry?.score ?? 0;
-            const previousDone = idx === 0 || progress.completedLessons[chapter.lessons[idx - 1].id]?.completed;
+            const isOptional = !!lesson.isOptional;
+            const previousDone = chapter.lessons
+              .slice(0, idx)
+              .every(p => p.isOptional || !!progress.completedLessons[p.id]?.completed);
             const skipUnlocked = !!progress.skipUnlockedLessons?.[lesson.id];
-            const isLocked = !previousDone && !skipUnlocked;
+            const isLocked = !previousDone && !skipUnlocked && !isOptional;
             const isCurrent = !isCompleted && !isLocked;
             const isPremiumLocked = false;
             const showSkipBadge = skipUnlocked && !isCompleted && !previousDone;
@@ -354,6 +359,11 @@ const ChapterPage = () => {
                 <div className="mt-2 mb-2 text-center max-w-[200px]">
                   <p className={`text-base font-bold flex items-center justify-center gap-1 ${isCompleted ? "text-muted-foreground" : "text-foreground"}`}>
                     {lesson.title}
+                    {isOptional && (
+                      <span className="inline-flex items-center rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-mono uppercase tracking-wider text-muted-foreground border border-border">
+                        Opțional
+                      </span>
+                    )}
                     {showSkipBadge && (
                       <span className="inline-flex items-center gap-0.5 rounded-full bg-yellow-500/15 border border-yellow-500/40 px-1.5 py-0.5 text-[10px] font-mono uppercase tracking-wider text-yellow-500">
                         <Zap className="h-2.5 w-2.5" /> Sărită

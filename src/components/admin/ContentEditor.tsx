@@ -81,7 +81,7 @@ const ContentEditor = () => {
   const [chapterForm, setChapterForm] = useState({ title: "", description: "", icon: "📘", color: "200 100% 50%" });
   const [newLessonChapter, setNewLessonChapter] = useState<string | null>(null);
   const [editingLesson, setEditingLesson] = useState<string | null>(null);
-  const [lessonForm, setLessonForm] = useState({ title: "", description: "", xpReward: 20, isPremium: false });
+  const [lessonForm, setLessonForm] = useState({ title: "", description: "", xpReward: 20, isPremium: false, isOptional: false });
   const [creatingChapter, setCreatingChapter] = useState(false);
 
   const sensors = useSensors(
@@ -193,12 +193,12 @@ const ContentEditor = () => {
   // --- Lesson CRUD ---
   const startEditLesson = (l: Lesson) => {
     setEditingLesson(l.id);
-    setLessonForm({ title: l.title, description: l.description, xpReward: l.xpReward, isPremium: l.isPremium || false });
+    setLessonForm({ title: l.title, description: l.description, xpReward: l.xpReward, isPremium: l.isPremium || false, isOptional: l.isOptional || false });
   };
 
   const saveLesson = async (id: string) => {
     const { error } = await supabase.from("lessons").update({
-      title: lessonForm.title, description: lessonForm.description, xp_reward: lessonForm.xpReward, is_premium: lessonForm.isPremium,
+      title: lessonForm.title, description: lessonForm.description, xp_reward: lessonForm.xpReward, is_premium: lessonForm.isPremium, is_optional: lessonForm.isOptional,
     }).eq("id", id);
     if (error) { toast.error(error.message); return; }
     toast.success("Lecție salvată!");
@@ -220,12 +220,12 @@ const ContentEditor = () => {
     const newId = `${chapterId}-l${Date.now()}`;
     const { error } = await supabase.from("lessons").insert({
       id: newId, chapter_id: chapterId, title: lessonForm.title.trim(), description: lessonForm.description.trim(),
-      xp_reward: lessonForm.xpReward, is_premium: lessonForm.isPremium, sort_order: sortOrder,
+      xp_reward: lessonForm.xpReward, is_premium: lessonForm.isPremium, is_optional: lessonForm.isOptional, sort_order: sortOrder,
     });
     if (error) { toast.error(error.message); return; }
     toast.success("Lecție creată!");
     setNewLessonChapter(null);
-    setLessonForm({ title: "", description: "", xpReward: 20, isPremium: false });
+    setLessonForm({ title: "", description: "", xpReward: 20, isPremium: false, isOptional: false });
     invalidate();
   };
 
@@ -367,7 +367,7 @@ const ContentEditor = () => {
                                                 </span>
                                               )}
                                             </div>
-                                            <p className="text-[10px] text-muted-foreground">{lesson.exercises.length} exerciții · {lesson.xpReward} XP{lesson.isPremium ? " · 💎" : ""}</p>
+                                            <p className="text-[10px] text-muted-foreground">{lesson.exercises.length} exerciții · {lesson.xpReward} XP{lesson.isPremium ? " · 💎" : ""}{lesson.isOptional ? " · ⏭ opțional" : ""}</p>
                                           </div>
                                         </button>
                                         <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => isLessonEditing ? setEditingLesson(null) : startEditLesson(lesson)}><Edit2 className="h-3.5 w-3.5" /></Button>
@@ -391,6 +391,10 @@ const ContentEditor = () => {
                                             <label className="flex items-center gap-1 text-xs text-muted-foreground ml-auto">
                                               <input type="checkbox" checked={lessonForm.isPremium} onChange={e => setLessonForm(f => ({ ...f, isPremium: e.target.checked }))} />
                                               Premium
+                                            </label>
+                                            <label className="flex items-center gap-1 text-xs text-muted-foreground">
+                                              <input type="checkbox" checked={lessonForm.isOptional} onChange={e => setLessonForm(f => ({ ...f, isOptional: e.target.checked }))} />
+                                              Opțională
                                             </label>
                                           </div>
                                           <div className="flex gap-2">
@@ -464,6 +468,10 @@ const ContentEditor = () => {
                             <div className="rounded-lg border border-primary/30 bg-primary/5 p-4 space-y-3">
                               <Input value={lessonForm.title} onChange={e => setLessonForm(f => ({ ...f, title: e.target.value }))} placeholder="Titlu lecție nouă..." />
                               <Input value={lessonForm.description} onChange={e => setLessonForm(f => ({ ...f, description: e.target.value }))} placeholder="Descriere scurtă..." />
+                              <label className="flex items-center gap-1 text-xs text-muted-foreground">
+                                <input type="checkbox" checked={lessonForm.isOptional} onChange={e => setLessonForm(f => ({ ...f, isOptional: e.target.checked }))} />
+                                Lecție opțională
+                              </label>
                               <div className="flex gap-2">
                                 <Button size="sm" onClick={() => createLesson(chapter.id)} className="flex-1">Creează</Button>
                                 <Button size="sm" variant="outline" onClick={() => setNewLessonChapter(null)} className="flex-1">Anulează</Button>
@@ -471,7 +479,7 @@ const ContentEditor = () => {
                             </div>
                           ) : (
                             <div className="flex items-center gap-2">
-                              <Button variant="outline" size="sm" className="flex-1" onClick={() => { setNewLessonChapter(chapter.id); setLessonForm({ title: "", description: "", xpReward: 20, isPremium: false }); }}>
+                              <Button variant="outline" size="sm" className="flex-1" onClick={() => { setNewLessonChapter(chapter.id); setLessonForm({ title: "", description: "", xpReward: 20, isPremium: false, isOptional: false }); }}>
                                 <Plus className="h-4 w-4 mr-1" /> Adaugă lecție
                               </Button>
                               <CsvLessonImporter mode="content" chapterId={chapter.id} existingLessonCount={chapter.lessons.length} onSuccess={invalidate} />

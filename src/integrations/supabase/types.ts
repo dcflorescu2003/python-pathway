@@ -650,6 +650,7 @@ export type Database = {
           chapter_id: string
           description: string
           id: string
+          is_optional: boolean
           is_premium: boolean
           sort_order: number
           title: string
@@ -659,6 +660,7 @@ export type Database = {
           chapter_id: string
           description: string
           id: string
+          is_optional?: boolean
           is_premium?: boolean
           sort_order?: number
           title: string
@@ -668,6 +670,7 @@ export type Database = {
           chapter_id?: string
           description?: string
           id?: string
+          is_optional?: boolean
           is_premium?: boolean
           sort_order?: number
           title?: string

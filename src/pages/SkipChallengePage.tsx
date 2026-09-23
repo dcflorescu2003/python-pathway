@@ -70,7 +70,10 @@ const SkipChallengePage = () => {
     if (targetIdx < 0) return { questions: [], lessonsToUnlock: [], targetLesson: null, chapterId: null };
     const target = ordered[targetIdx];
     const previous = ordered.slice(0, targetIdx);
-    const pool = previous.flatMap((l) => l.exercises).filter((ex) => ex.type !== "card" && ex.type !== "problem");
+    const pool = previous
+      .filter((l) => !l.isOptional)
+      .flatMap((l) => l.exercises)
+      .filter((ex) => ex.type !== "card" && ex.type !== "problem");
     let selected: Exercise[];
     if (pool.length >= TOTAL_QUESTIONS) {
       selected = shuffle(pool).slice(0, TOTAL_QUESTIONS);
@@ -88,6 +91,7 @@ const SkipChallengePage = () => {
     const toUnlock: string[] = [];
     for (let i = 0; i <= targetIdx; i++) {
       const l = ordered[i];
+      if (l.isOptional) continue;
       if (!progress.completedLessons[l.id]?.completed) toUnlock.push(l.id);
     }
     return { questions: selected, lessonsToUnlock: toUnlock, targetLesson: target, chapterId: target.chapterId };
