@@ -152,7 +152,7 @@ const TeacherPremiumDialog = ({ open, onOpenChange }: TeacherPremiumDialogProps)
                   className="relative w-full rounded-xl border-2 border-primary bg-card p-4 text-center hover:border-primary/80 transition-colors disabled:opacity-50"
                 >
                   <p className="text-xs text-foreground/60 mb-1">Lunar</p>
-                  <p className="text-2xl font-bold text-foreground">29 <span className="text-sm font-normal">RON</span></p>
+                  <p className="text-2xl font-bold text-foreground">{isAndroidNative ? "35,99" : "29"} <span className="text-sm font-normal">RON</span></p>
                   <p className="text-xs text-foreground/50">/lună</p>
                   {checkoutLoading === TEACHER_MONTHLY_PRICE && (
                     <Loader2 className="absolute top-2 right-2 h-4 w-4 animate-spin text-primary" />
