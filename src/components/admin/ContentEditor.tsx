@@ -468,6 +468,10 @@ const ContentEditor = () => {
                             <div className="rounded-lg border border-primary/30 bg-primary/5 p-4 space-y-3">
                               <Input value={lessonForm.title} onChange={e => setLessonForm(f => ({ ...f, title: e.target.value }))} placeholder="Titlu lecție nouă..." />
                               <Input value={lessonForm.description} onChange={e => setLessonForm(f => ({ ...f, description: e.target.value }))} placeholder="Descriere scurtă..." />
+                              <label className="flex items-center gap-1 text-xs text-muted-foreground">
+                                <input type="checkbox" checked={lessonForm.isOptional} onChange={e => setLessonForm(f => ({ ...f, isOptional: e.target.checked }))} />
+                                Lecție opțională
+                              </label>
                               <div className="flex gap-2">
                                 <Button size="sm" onClick={() => createLesson(chapter.id)} className="flex-1">Creează</Button>
                                 <Button size="sm" variant="outline" onClick={() => setNewLessonChapter(null)} className="flex-1">Anulează</Button>
