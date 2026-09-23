@@ -6,6 +6,7 @@ export interface ClassActivityRow {
   classId: string;
   className: string;
   counts: number[];
+  xpTotals: number[];
 }
 
 export interface ClassActivityReport {
@@ -44,19 +45,52 @@ export function useClassActivityReport() {
       const memberRows = (members ?? []) as { class_id: string; student_id: string }[];
       const studentIds = Array.from(new Set(memberRows.map((m) => m.student_id)));
 
-      const byStudent: Record<string, Record<string, number>> = {};
+      const byStudent: Record<string, Record<string, { count: number; xp: number }>> = {};
       if (studentIds.length) {
         const { data: completed } = await supabase
           .from("completed_lessons")
-          .select("user_id, completed_at")
+          .select("user_id, lesson_id, score, completed_at, solution_revealed_at")
           .in("user_id", studentIds)
           .gte("completed_at", from.toISOString());
 
-        ((completed ?? []) as { user_id: string; completed_at: string | null }[]).forEach((r) => {
+        const completedRows = (completed ?? []) as {
+          user_id: string;
+          lesson_id: string;
+          score: number;
+          completed_at: string | null;
+          solution_revealed_at: string | null;
+        }[];
+        const lessonIds = Array.from(
+          new Set(completedRows.filter((r) => !r.lesson_id.startsWith("problem-")).map((r) => r.lesson_id))
+        );
+        const problemIds = Array.from(
+          new Set(
+            completedRows
+              .filter((r) => r.lesson_id.startsWith("problem-"))
+              .map((r) => r.lesson_id.slice("problem-".length))
+          )
+        );
+
+        const [lessonRewardsResult, problemRewardsResult] = await Promise.all([
+          lessonIds.length
+            ? supabase.from("lessons").select("id, xp_reward").in("id", lessonIds)
+            : Promise.resolve({ data: [] as { id: string; xp_reward: number }[] }),
+          problemIds.length
+            ? supabase.from("problems").select("id, xp_reward").in("id", problemIds)
+            : Promise.resolve({ data: [] as { id: string; xp_reward: number }[] }),
+        ]);
+        const rewards = new Map<string, number>();
+        (lessonRewardsResult.data ?? []).forEach((item) => rewards.set(item.id, item.xp_reward));
+        (problemRewardsResult.data ?? []).forEach((item) => rewards.set(`problem-${item.id}`, item.xp_reward));
+
+        completedRows.forEach((r) => {
           if (!r.completed_at) return;
           const k = dayKey(new Date(r.completed_at));
           byStudent[r.user_id] = byStudent[r.user_id] || {};
-          byStudent[r.user_id][k] = (byStudent[r.user_id][k] ?? 0) + 1;
+          const current = byStudent[r.user_id][k] ?? { count: 0, xp: 0 };
+          current.count += 1;
+          current.xp += r.solution_revealed_at && r.score === 0 ? 1 : (rewards.get(r.lesson_id) ?? 0);
+          byStudent[r.user_id][k] = current;
         });
       }
 
@@ -64,9 +98,12 @@ export function useClassActivityReport() {
       const rows: ClassActivityRow[] = classes.map((cls) => {
         const studentsOfClass = memberRows.filter((m) => m.class_id === cls.id).map((m) => m.student_id);
         const counts = dayKeys.map((k) =>
-          studentsOfClass.reduce((sum, sid) => sum + (byStudent[sid]?.[k] ?? 0), 0)
+          studentsOfClass.reduce((sum, sid) => sum + (byStudent[sid]?.[k]?.count ?? 0), 0)
         );
-        return { classId: cls.id, className: cls.name, counts };
+        const xpTotals = dayKeys.map((k) =>
+          studentsOfClass.reduce((sum, sid) => sum + (byStudent[sid]?.[k]?.xp ?? 0), 0)
+        );
+        return { classId: cls.id, className: cls.name, counts, xpTotals };
       });
 
       return { days, rows };
