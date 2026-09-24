@@ -16,9 +16,18 @@ interface TeacherPremiumDialogProps {
 const TeacherPremiumDialog = ({ open, onOpenChange }: TeacherPremiumDialogProps) => {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const { isTeacherPremium, subscriptionEnd, loading, startCheckout, openPortal, isAndroidNative, isIOSNative, restorePurchases } = useSubscription();
+  const { isTeacherPremium, subscriptionEnd, loading, startCheckout, openPortal, isAndroidNative, isIOSNative, restorePurchases, iosPrices } = useSubscription();
   const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null);
   const [restoring, setRestoring] = useState(false);
+
+  // Preț afișat: 35,99 pe Android, prețul real din App Store pe iOS (fallback 37,99), 29 pe web
+  const teacherPrice = isAndroidNative
+    ? "35,99"
+    : isIOSNative
+    ? iosPrices?.teacher_monthly
+      ? iosPrices.teacher_monthly.price.toFixed(2).replace(".", ",")
+      : "37,99"
+    : "29";
 
   const handleRestore = async () => {
     setRestoring(true);
@@ -152,7 +161,7 @@ const TeacherPremiumDialog = ({ open, onOpenChange }: TeacherPremiumDialogProps)
                   className="relative w-full rounded-xl border-2 border-primary bg-card p-4 text-center hover:border-primary/80 transition-colors disabled:opacity-50"
                 >
                   <p className="text-xs text-foreground/60 mb-1">Lunar</p>
-                  <p className="text-2xl font-bold text-foreground">{isAndroidNative ? "35,99" : "29"} <span className="text-sm font-normal">RON</span></p>
+                  <p className="text-2xl font-bold text-foreground">{teacherPrice} <span className="text-sm font-normal">RON</span></p>
                   <p className="text-xs text-foreground/50">/lună</p>
                   {checkoutLoading === TEACHER_MONTHLY_PRICE && (
                     <Loader2 className="absolute top-2 right-2 h-4 w-4 animate-spin text-primary" />
@@ -167,7 +176,7 @@ const TeacherPremiumDialog = ({ open, onOpenChange }: TeacherPremiumDialogProps)
               {/* Required subscription disclosure (Apple Guideline 3.1.2) */}
               <div className="rounded-md border border-border/60 bg-muted/30 p-2.5 space-y-1">
                 <p className="text-[10px] text-foreground/70 leading-relaxed">
-                  <strong className="text-foreground">PyRo Profesor AI</strong> — abonament cu reînnoire automată, durată 1 lună, preț {isAndroidNative ? "35,99" : "29"} RON/lună (sau echivalentul afișat în App Store/Google Play).
+                  <strong className="text-foreground">PyRo Profesor AI</strong> — abonament cu reînnoire automată, durată 1 lună, preț {teacherPrice} RON/lună (sau echivalentul afișat în App Store/Google Play).
                 </p>
                 <p className="text-[10px] text-foreground/60 leading-relaxed">
                   Plata se face din contul Apple ID/Google la confirmare. Abonamentul se reînnoiește automat dacă nu îl anulezi cu cel puțin 24h înainte de finalul perioadei. Îl poți gestiona din setările contului tău.
