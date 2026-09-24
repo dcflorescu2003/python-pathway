@@ -176,7 +176,7 @@ const TeacherPremiumDialog = ({ open, onOpenChange }: TeacherPremiumDialogProps)
               {/* Required subscription disclosure (Apple Guideline 3.1.2) */}
               <div className="rounded-md border border-border/60 bg-muted/30 p-2.5 space-y-1">
                 <p className="text-[10px] text-foreground/70 leading-relaxed">
-                  <strong className="text-foreground">PyRo Profesor AI</strong> — abonament cu reînnoire automată, durată 1 lună, preț {isAndroidNative ? "35,99" : "29"} RON/lună (sau echivalentul afișat în App Store/Google Play).
+                  <strong className="text-foreground">PyRo Profesor AI</strong> — abonament cu reînnoire automată, durată 1 lună, preț {teacherPrice} RON/lună (sau echivalentul afișat în App Store/Google Play).
                 </p>
                 <p className="text-[10px] text-foreground/60 leading-relaxed">
                   Plata se face din contul Apple ID/Google la confirmare. Abonamentul se reînnoiește automat dacă nu îl anulezi cu cel puțin 24h înainte de finalul perioadei. Îl poți gestiona din setările contului tău.
