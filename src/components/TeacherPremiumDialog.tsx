@@ -16,9 +16,18 @@ interface TeacherPremiumDialogProps {
 const TeacherPremiumDialog = ({ open, onOpenChange }: TeacherPremiumDialogProps) => {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const { isTeacherPremium, subscriptionEnd, loading, startCheckout, openPortal, isAndroidNative, isIOSNative, restorePurchases } = useSubscription();
+  const { isTeacherPremium, subscriptionEnd, loading, startCheckout, openPortal, isAndroidNative, isIOSNative, restorePurchases, iosPrices } = useSubscription();
   const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null);
   const [restoring, setRestoring] = useState(false);
+
+  // Preț afișat: 35,99 pe Android, prețul real din App Store pe iOS (fallback 37,99), 29 pe web
+  const teacherPrice = isAndroidNative
+    ? "35,99"
+    : isIOSNative
+    ? iosPrices?.teacher_monthly
+      ? iosPrices.teacher_monthly.price.toFixed(2).replace(".", ",")
+      : "37,99"
+    : "29";
 
   const handleRestore = async () => {
     setRestoring(true);
