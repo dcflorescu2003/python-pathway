@@ -206,6 +206,21 @@ const LandingPage = () => {
             </div>
           ))}
         </div>
+        <div className="mt-8 rounded-xl border border-primary/30 bg-primary/5 p-5 sm:flex sm:items-center sm:justify-between sm:gap-6">
+          <div>
+            <h3 className="font-semibold">Începe gratuit cu prima lecție</h3>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Am publicat teoria completă a celor șase capitole în acces liber — o poți citi
+              chiar acum, fără cont și fără instalare.
+            </p>
+          </div>
+          <Button asChild className="mt-4 shrink-0 gap-2 sm:mt-0">
+            <Link to="/invata">
+              Citește lecțiile gratuite
+              <ArrowRight className="h-4 w-4" />
+            </Link>
+          </Button>
+        </div>
       </section>
 
       {/* Pentru elevi */}
