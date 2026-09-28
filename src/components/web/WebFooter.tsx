@@ -24,6 +24,7 @@ const WebFooter = () => {
           <h3 className="mb-3 text-sm font-semibold">Produs</h3>
           <ul className="space-y-2 text-sm text-muted-foreground">
             <li><Link to="/about" className="hover:text-foreground">Despre</Link></li>
+            <li><Link to="/invata" className="hover:text-foreground">Lecții gratuite</Link></li>
             <li><Link to="/tutoriale/elevi" className="hover:text-foreground">Tutoriale elevi</Link></li>
             <li><Link to="/tutoriale/profesori" className="hover:text-foreground">Tutoriale profesori</Link></li>
             <li><Link to="/auth" className="hover:text-foreground">Deschide aplicația</Link></li>

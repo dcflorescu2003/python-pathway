@@ -58,6 +58,8 @@ const StudentTutorialsIndex = lazy(() => import("./pages/web/StudentTutorialsInd
 const StudentTutorialDetail = lazy(() => import("./pages/web/StudentTutorialDetail"));
 const TeacherTutorialsIndex = lazy(() => import("./pages/web/TeacherTutorialsIndex"));
 const TeacherTutorialDetail = lazy(() => import("./pages/web/TeacherTutorialDetail"));
+const LearnIndexPage = lazy(() => import("./pages/web/LearnIndexPage"));
+const LearnChapterPage = lazy(() => import("./pages/web/LearnChapterPage"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 const queryClient = new QueryClient();
@@ -98,6 +100,8 @@ const AppRoutes = () => {
           <Route path="/skip-challenge/:lessonId" element={<SkipChallengePage />} />
           <Route path="/unsubscribe" element={<UnsubscribePage />} />
           <Route path="/about" element={<AboutPage />} />
+          <Route path="/invata" element={<LearnIndexPage />} />
+          <Route path="/invata/:slug" element={<LearnChapterPage />} />
           <Route path="/tutoriale/elevi" element={<StudentTutorialsIndex />} />
           <Route path="/tutoriale/elevi/:slug" element={<StudentTutorialDetail />} />
           <Route path="/tutoriale/profesori" element={<TeacherTutorialsIndex />} />

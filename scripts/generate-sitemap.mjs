@@ -16,10 +16,13 @@ function readSlugs(file) {
 
 const studentSlugs = readSlugs("src/data/tutorials/students.ts");
 const teacherSlugs = readSlugs("src/data/tutorials/teachers.ts");
+const learnSlugs = readSlugs("src/data/learnChapters.ts");
 
 const paths = [
   "/",
   "/about",
+  "/invata",
+  ...learnSlugs.map((slug) => `/invata/${slug}`),
   "/tutoriale/elevi",
   "/tutoriale/profesori",
   "/privacy-policy",
