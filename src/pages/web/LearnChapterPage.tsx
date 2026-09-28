@@ -43,9 +43,7 @@ const LearnChapterPage = () => {
   return (
     <WebLayout>
       <Helmet>
-        <title>
-          {chapter.title} — Lecție gratuită de Python (Capitolul {chapter.number}) | PyRo
-        </title>
+        <title>{`${chapter.title} — Lecție gratuită de Python (Capitolul ${chapter.number}) | PyRo`}</title>
         <meta name="description" content={chapter.description} />
       </Helmet>
 
