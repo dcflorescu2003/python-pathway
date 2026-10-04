@@ -8,10 +8,12 @@ import {
   FileText,
   BarChart3,
   ArrowRight,
+  ExternalLink,
 } from "lucide-react";
 import WebLayout from "@/components/web/WebLayout";
 import FeatureCard from "@/components/web/FeatureCard";
 import AppDownloadCTA from "@/components/web/AppDownloadCTA";
+import ManualCovers from "@/components/web/ManualCovers";
 import PyroLogo from "@/components/brand/PyroLogo";
 import { Button } from "@/components/ui/button";
 import { useSeoHead } from "@/hooks/useSeoHead";
@@ -220,6 +222,26 @@ const LandingPage = () => {
               <ArrowRight className="h-4 w-4" />
             </Link>
           </Button>
+        </div>
+      </section>
+
+      {/* Manualele */}
+      <section className="border-t border-border/60">
+        <div className="mx-auto grid max-w-5xl gap-10 px-4 py-14 md:grid-cols-2 md:items-center">
+          <div>
+            <h2 className="text-2xl font-semibold sm:text-3xl">Construit după manualele de clasa a IX-a</h2>
+            <p className="mt-3 max-w-2xl text-muted-foreground">
+              Lecțiile din PyRo urmăresc aceeași programă ca manualele de informatică pentru clasa a IX-a
+              publicate la Editura Litera, la care a contribuit Cosmin Florescu — profesor de informatică
+              și autorul aplicației. Manualele pot fi consultate gratuit, în format digital, pe site-ul editurii.
+            </p>
+            <Button asChild variant="outline" className="mt-5 gap-2">
+              <a href="https://edulit.ro/collections/informatica" target="_blank" rel="noopener noreferrer">
+                Manualele la Editura Litera <ExternalLink className="h-4 w-4" />
+              </a>
+            </Button>
+          </div>
+          <ManualCovers className="mx-auto w-full max-w-md" />
         </div>
       </section>
 
