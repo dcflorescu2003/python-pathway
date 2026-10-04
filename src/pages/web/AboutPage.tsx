@@ -13,6 +13,7 @@ import {
   GraduationCap,
   ArrowRight,
   Sparkles,
+  ExternalLink,
 } from "lucide-react";
 import WebLayout from "@/components/web/WebLayout";
 import FeatureCard from "@/components/web/FeatureCard";
@@ -42,7 +43,8 @@ const AboutPage = () => {
   useSeoHead({
     canonicalPath: "/about",
     ogTitle: "PyRo — Învață Python pas cu pas",
-    ogDescription: "Lecții interactive de Python pentru elevi de liceu și unelte de evaluare pentru profesori.",
+    ogDescription:
+      "Lecții interactive de Python pentru elevi de liceu și unelte de evaluare pentru profesori. Proiect construit de Cosmin Florescu, profesor de informatică și autor de manuale pentru clasa a IX-a.",
     ogType: "website",
   });
   return (
@@ -51,7 +53,7 @@ const AboutPage = () => {
         <title>PyRo — Învață Python pas cu pas, pentru elevi și profesori</title>
         <meta
           name="description"
-          content="PyRo: învață Python prin lecții interactive, cu curriculum pentru clasa a IX-a, editor de cod și unelte pentru profesori."
+          content="PyRo: învață Python prin lecții interactive, cu curriculum pentru clasa a IX-a, editor de cod și unelte pentru profesori. Proiect construit de Cosmin Florescu, profesor de informatică și autor de manuale pentru clasa a IX-a."
         />
         <script type="application/ld+json">
           {JSON.stringify({
