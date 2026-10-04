@@ -13,6 +13,7 @@ import {
   GraduationCap,
   ArrowRight,
   Sparkles,
+  ExternalLink,
 } from "lucide-react";
 import WebLayout from "@/components/web/WebLayout";
 import FeatureCard from "@/components/web/FeatureCard";
@@ -42,7 +43,8 @@ const AboutPage = () => {
   useSeoHead({
     canonicalPath: "/about",
     ogTitle: "PyRo — Învață Python pas cu pas",
-    ogDescription: "Lecții interactive de Python pentru elevi de liceu și unelte de evaluare pentru profesori.",
+    ogDescription:
+      "Lecții interactive de Python pentru elevi de liceu și unelte de evaluare pentru profesori. Proiect construit de Cosmin Florescu, profesor de informatică și autor de manuale pentru clasa a IX-a.",
     ogType: "website",
   });
   return (
@@ -51,7 +53,7 @@ const AboutPage = () => {
         <title>PyRo — Învață Python pas cu pas, pentru elevi și profesori</title>
         <meta
           name="description"
-          content="PyRo: învață Python prin lecții interactive, cu curriculum pentru clasa a IX-a, editor de cod și unelte pentru profesori."
+          content="PyRo: învață Python prin lecții interactive, cu curriculum pentru clasa a IX-a, editor de cod și unelte pentru profesori. Proiect construit de Cosmin Florescu, profesor de informatică și autor de manuale pentru clasa a IX-a."
         />
         <script type="application/ld+json">
           {JSON.stringify({
@@ -60,6 +62,17 @@ const AboutPage = () => {
             name: "PyRo",
             url: "https://pyroskill.info",
             description: "Platformă educațională pentru învățarea Python, dedicată elevilor de liceu și profesorilor de informatică.",
+            founder: {
+              "@type": "Person",
+              name: "Cosmin Florescu",
+              jobTitle: "Profesor de informatică",
+              worksFor: {
+                "@type": "EducationalOrganization",
+                name: "Colegiul Național „Cantemir Vodă”",
+                address: { "@type": "PostalAddress", addressLocality: "București", addressCountry: "RO" },
+              },
+              sameAs: "https://edulit.ro/collections/informatica",
+            },
           })}
         </script>
       </Helmet>
@@ -144,6 +157,29 @@ print(salut("PyRo"))
             (inclusiv cod liber evaluat cu AI) și statistici clare per elev — mai puțin timp
             pierdut cu corectatul, mai mult timp pentru predat.
           </p>
+        </div>
+      </section>
+
+      {/* Autorul */}
+      <section className="border-b border-border">
+        <div className="mx-auto max-w-3xl px-4 py-16">
+          <p className="mb-2 text-sm font-semibold uppercase tracking-wide text-primary">Autorul</p>
+          <h2 className="text-3xl font-bold tracking-tight md:text-4xl">Cine a construit PyRo</h2>
+          <p className="mt-4 text-muted-foreground">
+            Aplicația este construită de{" "}
+            <span className="font-semibold text-foreground">Cosmin Florescu</span>, profesor de informatică la{" "}
+            <span className="font-semibold text-foreground">Colegiul Național „Cantemir Vodă”</span> din București și
+            autor al manualelor de informatică pentru clasa a IX-a publicate la{" "}
+            <span className="font-semibold text-foreground">Editura Litera</span>.
+          </p>
+          <p className="mt-3 text-muted-foreground">
+            Manualele pot fi consultate gratuit, în format digital, pe site-ul editurii.
+          </p>
+          <Button asChild variant="outline" className="mt-6 gap-2">
+            <a href="https://edulit.ro/collections/informatica" target="_blank" rel="noopener noreferrer">
+              Manualele la Editura Litera <ExternalLink className="h-4 w-4" />
+            </a>
+          </Button>
         </div>
       </section>
 
