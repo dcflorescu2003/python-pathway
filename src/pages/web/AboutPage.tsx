@@ -18,6 +18,7 @@ import {
 import WebLayout from "@/components/web/WebLayout";
 import FeatureCard from "@/components/web/FeatureCard";
 import AppDownloadCTA from "@/components/web/AppDownloadCTA";
+import ManualCovers from "@/components/web/ManualCovers";
 import PyroLogo from "@/components/brand/PyroLogo";
 import { Button } from "@/components/ui/button";
 import { useSeoHead } from "@/hooks/useSeoHead";
