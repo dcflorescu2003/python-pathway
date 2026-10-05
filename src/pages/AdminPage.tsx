@@ -14,6 +14,7 @@ import EvalBankEditor from "@/components/admin/EvalBankEditor";
 import PredefinedTestEditor from "@/components/admin/PredefinedTestEditor";
 import UsersManager from "@/components/admin/UsersManager";
 import StatsDashboard from "@/components/admin/StatsDashboard";
+import AppVersionManager from "@/components/admin/AppVersionManager";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BookOpen, Ticket, Code2, Settings, FileText, GraduationCap, Database, ClipboardList, Users, BarChart3 } from "lucide-react";
@@ -132,6 +133,7 @@ const AdminPage = () => {
 
           <TabsContent value="settings">
             <div className="space-y-4">
+              <AppVersionManager />
               <AdminPushTester />
               <NewLessonNotifier currentUserEmail={user?.email || ""} />
               <AdminSettings currentUserEmail={user?.email || ""} />
