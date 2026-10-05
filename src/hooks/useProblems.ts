@@ -104,10 +104,9 @@ export function useProblems() {
     queryKey: ["problems", user?.id],
     queryFn: fetchProblems,
     enabled: !!user,
-    staleTime: 30 * 1000,
-    gcTime: 30 * 60 * 1000,
+    staleTime: 30 * 60 * 1000,
+    gcTime: 60 * 60 * 1000,
     retry: 2,
     refetchOnWindowFocus: true,
-    refetchOnMount: "always",
   });
 }
