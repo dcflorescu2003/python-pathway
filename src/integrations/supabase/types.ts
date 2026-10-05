@@ -32,6 +32,36 @@ export type Database = {
         }
         Relationships: []
       }
+      app_version_config: {
+        Row: {
+          is_active: boolean
+          latest_version: string
+          min_supported_version: string
+          platform: string
+          release_notes: string | null
+          store_url: string
+          updated_at: string
+        }
+        Insert: {
+          is_active?: boolean
+          latest_version?: string
+          min_supported_version?: string
+          platform: string
+          release_notes?: string | null
+          store_url?: string
+          updated_at?: string
+        }
+        Update: {
+          is_active?: boolean
+          latest_version?: string
+          min_supported_version?: string
+          platform?: string
+          release_notes?: string | null
+          store_url?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       challenges: {
         Row: {
           class_id: string

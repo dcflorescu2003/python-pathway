@@ -48,6 +48,7 @@ const DeleteAccountPage = lazy(() => import("./pages/DeleteAccountPage"));
 const SupportPage = lazy(() => import("./pages/SupportPage"));
 
 import RealEmailReminderDialog from "@/components/RealEmailReminderDialog";
+import AppUpdateDialog from "@/components/AppUpdateDialog";
 
 const ManualLessonPage = lazy(() => import("./pages/ManualLessonPage"));
 const TakeTestPage = lazy(() => import("./pages/TakeTestPage"));
@@ -116,6 +117,7 @@ const AppRoutes = () => {
     <>
       {isMainPage ? <MobileLayout>{content}</MobileLayout> : content}
       <RealEmailReminderDialog />
+      <AppUpdateDialog />
       <CookieConsentBanner />
     </>
   );
