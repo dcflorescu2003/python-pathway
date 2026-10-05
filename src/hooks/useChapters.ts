@@ -143,7 +143,7 @@ async function fetchChapters(): Promise<Chapter[]> {
   for (let from = 0; ; from += PAGE_SIZE) {
     const { data: page, error: exercisesError } = await supabase
       .from("exercises")
-      .select("*")
+      .select(EXERCISE_COLUMNS)
       .order("sort_order")
       .order("id")
       .range(from, from + PAGE_SIZE - 1);
