@@ -216,10 +216,9 @@ export function useChapters() {
     queryKey: ["chapters", user?.id ?? "anon"],
     queryFn: fetchChapters,
     enabled: !loading,
-    staleTime: 30 * 1000, // 30s — content updates from admin propagate quickly
-    gcTime: 30 * 60 * 1000,
+    staleTime: 30 * 60 * 1000, // 30 min — reduces DB egress; admin edits propagate within 30 min
+    gcTime: 60 * 60 * 1000,
     refetchOnWindowFocus: true,
-    refetchOnMount: "always",
   });
 }
 
