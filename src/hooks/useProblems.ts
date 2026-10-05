@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { withCatalogCache } from "@/lib/catalogCache";
 
 export interface TestCase {
   input?: string;
@@ -101,8 +102,9 @@ async function fetchProblems(): Promise<{ problems: Problem[]; problemChapters: 
 export function useProblems() {
   const { user } = useAuth();
   return useQuery({
-    queryKey: ["problems", user?.id],
-    queryFn: fetchProblems,
+    // Catalogul e același pentru toți — o singură cheie pe dispozitiv.
+    queryKey: ["problems"],
+    queryFn: () => withCatalogCache("problems", fetchProblems),
     enabled: !!user,
     staleTime: 30 * 60 * 1000,
     gcTime: 60 * 60 * 1000,

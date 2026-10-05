@@ -3,6 +3,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { chapters as localChapters } from "@/data/courses";
 import { Capacitor } from "@capacitor/core";
 import { useAuth } from "@/hooks/useAuth";
+import { withCatalogCache } from "@/lib/catalogCache";
+
+const EXERCISE_COLUMNS =
+  "id, lesson_id, type, question, options, correct_option_id, code_template, blanks, lines, statement, is_true, explanation, pairs, xp";
 
 export type ExerciseType = "quiz" | "fill" | "order" | "truefalse" | "match" | "card" | "problem";
 
@@ -61,6 +65,7 @@ const SUPPORTED_EXERCISE_TYPES: ExerciseType[] = [
 ];
 
 function getNativeFallbackChapters() {
+  lastWasFallback = true;
   // Keep the native safety-net aligned with the cloud catalog. courses.ts still
   // generates legacy `...f` Fixare duplicates in memory, but those IDs are not
   // real lesson rows and cannot be persisted as progress.
@@ -70,14 +75,6 @@ function getNativeFallbackChapters() {
   })) as Chapter[];
 }
 
-function handleNativeFallback<T>(isNativePlatform: boolean, error: T, message: string): Chapter[] {
-  if (!isNativePlatform) {
-    throw error;
-  }
-
-  console.error(message, error);
-  return getNativeFallbackChapters();
-}
 
 // Transform exercise from DB row to typed Exercise
 function mapExercise(row: any): Exercise {
@@ -146,7 +143,7 @@ async function fetchChapters(): Promise<Chapter[]> {
   for (let from = 0; ; from += PAGE_SIZE) {
     const { data: page, error: exercisesError } = await supabase
       .from("exercises")
-      .select("*")
+      .select(EXERCISE_COLUMNS)
       .order("sort_order")
       .order("id")
       .range(from, from + PAGE_SIZE - 1);
@@ -210,13 +207,28 @@ async function fetchChapters(): Promise<Chapter[]> {
   return result as Chapter[];
 }
 
+let lastWasFallback = false;
+
+async function fetchChaptersCached(): Promise<Chapter[]> {
+  return withCatalogCache(
+    "chapters",
+    async () => {
+      lastWasFallback = false;
+      const result = await fetchChapters();
+      return result;
+    },
+    (data) => !lastWasFallback && data.length > 0,
+  );
+}
+
 export function useChapters() {
-  const { user, loading } = useAuth();
+  const { loading } = useAuth();
   return useQuery({
-    queryKey: ["chapters", user?.id ?? "anon"],
-    queryFn: fetchChapters,
+    // Catalogul e același pentru toți utilizatorii — o singură cheie pe dispozitiv.
+    queryKey: ["chapters"],
+    queryFn: fetchChaptersCached,
     enabled: !loading,
-    staleTime: 30 * 60 * 1000, // 30 min — reduces DB egress; admin edits propagate within 30 min
+    staleTime: 30 * 60 * 1000, // la expirare verificăm doar versiunea (câțiva bytes)
     gcTime: 60 * 60 * 1000,
     refetchOnWindowFocus: true,
   });
