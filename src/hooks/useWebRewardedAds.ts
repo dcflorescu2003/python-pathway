@@ -1,45 +1,61 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Capacitor } from "@capacitor/core";
-import { ADSENSE_CLIENT_ID, H5_GAMES_ADS_ENABLED } from "@/lib/webAdsConfig";
+import { loadWebAdsConfig, type WebAdsConfig } from "@/lib/webAdsConfig";
 
+// AdinPlay rewarded video (doar web).
 declare global {
   interface Window {
-    adsbygoogle?: unknown[];
-    adBreak?: (config: Record<string, unknown>) => void;
-    adConfig?: (config: Record<string, unknown>) => void;
+    aiptag?: any;
+    aipPlayer?: any;
   }
 }
 
+type Pending = (granted: boolean) => void;
+let pending: Pending | null = null;
+let grantedFlag = false;
 let scriptPromise: Promise<boolean> | null = null;
 
-function loadAdsScript(): Promise<boolean> {
+function finish(val: boolean) {
+  const cb = pending;
+  pending = null;
+  cb?.(val);
+}
+
+function loadScript(cfg: WebAdsConfig): Promise<boolean> {
   if (scriptPromise) return scriptPromise;
   scriptPromise = new Promise((resolve) => {
     try {
-      const existing = document.querySelector('script[data-pyro-h5-games="1"]');
-      if (existing) {
-        resolve(true);
-        return;
-      }
-      const script = document.createElement("script");
-      script.src = `https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${ADSENSE_CLIENT_ID}`;
-      script.async = true;
-      script.crossOrigin = "anonymous";
-      script.dataset.pyroH5Games = "1";
-      script.onload = () => resolve(true);
-      script.onerror = () => {
+      const w = window as any;
+      w.aiptag = w.aiptag || { cmd: [] };
+      w.aiptag.cmd = w.aiptag.cmd || [];
+      w.aiptag.cmd.player = w.aiptag.cmd.player || [];
+      w.aiptag.cmp = { show: true, position: "centered", button: true, buttonText: "Setări confidențialitate", buttonPosition: "bottom-left" };
+      w.aiptag.cmd.player.push(() => {
+        w.aiptag.adplayer = new w.aipPlayer({
+          AIP_REWARDEDGRANTED: () => {
+            grantedFlag = true;
+          },
+          AIP_REWARDEDCOMPLETE: (state: string) => {
+            // state: "success" | "empty" | "blocked" | "closed" | ...
+            const ok = grantedFlag || state === "success";
+            grantedFlag = false;
+            finish(ok);
+          },
+          AIP_REMOVE: () => {},
+        });
+      });
+
+      const s = document.createElement("script");
+      s.src = `https://api.adinplay.com/libs/aiptag/pub/${encodeURIComponent(cfg.publisherId)}/${encodeURIComponent(cfg.siteId)}/tag.min.js`;
+      s.async = true;
+      s.onload = () => resolve(true);
+      s.onerror = () => {
         scriptPromise = null;
         resolve(false);
       };
-      document.head.appendChild(script);
-
-      // Coada oficială Ad Placement API
-      window.adsbygoogle = window.adsbygoogle || [];
-      window.adBreak = (o: Record<string, unknown>) => window.adsbygoogle!.push(o);
-      window.adConfig = (o: Record<string, unknown>) => window.adsbygoogle!.push(o);
-      window.adConfig({ preloadAdBreaks: "on", sound: "on" });
+      document.head.appendChild(s);
     } catch (err) {
-      console.error("H5 Games Ads script init failed:", err);
+      console.error("AdinPlay init failed", err);
       scriptPromise = null;
       resolve(false);
     }
@@ -49,79 +65,49 @@ function loadAdsScript(): Promise<boolean> {
 
 export function useWebRewardedAds() {
   const isNative = Capacitor.isNativePlatform();
-  const enabled = H5_GAMES_ADS_ENABLED && !!ADSENSE_CLIENT_ID && !isNative;
-  const [ready, setReady] = useState(false);
+  const [cfg, setCfg] = useState<WebAdsConfig | null>(null);
   const busyRef = useRef(false);
 
   useEffect(() => {
-    if (!enabled) return;
-    let cancelled = false;
-    loadAdsScript().then((ok) => {
-      if (!cancelled) setReady(ok);
-    });
+    if (isNative) return;
+    let c = false;
+    loadWebAdsConfig().then((v) => !c && setCfg(v));
     return () => {
-      cancelled = true;
+      c = true;
     };
-  }, [enabled]);
+  }, [isNative]);
 
-  /**
-   * Afișează o reclamă rewarded. Rezolvă true doar dacă utilizatorul
-   * a vizionat reclama complet (adViewed), false altfel.
-   */
+  const enabled = !isNative && !!cfg?.enabled && !!cfg.publisherId && !!cfg.siteId;
+
+  /** Rezolvă true doar dacă reclama a fost vizionată complet. */
   const showRewarded = useCallback(async (): Promise<boolean> => {
-    if (!enabled || busyRef.current) return false;
-    const loaded = ready || (await loadAdsScript());
-    if (!loaded || typeof window.adBreak !== "function") return false;
-
+    if (!enabled || !cfg || busyRef.current) return false;
     busyRef.current = true;
     try {
+      const loaded = await loadScript(cfg);
+      if (!loaded) return false;
+      const w = window as any;
       return await new Promise<boolean>((resolve) => {
-        let settled = false;
-        let viewed = false;
-        const settle = (val: boolean) => {
-          if (settled) return;
-          settled = true;
-          resolve(val);
-        };
-
-        // Timeout de siguranță: dacă nu sosește niciun eveniment terminal.
-        const timeout = setTimeout(() => settle(viewed), 5 * 60 * 1000);
-        const settleAndClear = (val: boolean) => {
+        const timeout = setTimeout(() => finish(false), 3 * 60 * 1000);
+        pending = (v) => {
           clearTimeout(timeout);
-          settle(val);
+          resolve(v);
         };
-
-        window.adBreak!({
-          type: "reward",
-          name: "refill-lives",
-          beforeReward: (showAdFn: () => void) => {
-            // Utilizatorul a apăsat deja butonul nostru opt-in — afișăm direct.
-            showAdFn();
-          },
-          adViewed: () => {
-            viewed = true;
-            settleAndClear(true);
-          },
-          adDismissed: () => {
-            // Așteptăm puțin în caz că adViewed sosește imediat după dismiss.
-            setTimeout(() => settleAndClear(viewed), 500);
-          },
-          adBreakDone: (info?: { breakStatus?: string }) => {
-            const status = info?.breakStatus;
-            if (status && status !== "viewed") {
-              // notReady / noFill / dismissed / frequencyCapped etc.
-              setTimeout(() => settleAndClear(viewed), 500);
-            }
-          },
+        grantedFlag = false;
+        w.aiptag.cmd.player.push(() => {
+          try {
+            if (w.aiptag.adplayer?.startRewardedAd) {
+              w.aiptag.adplayer.startRewardedAd({ preload: false, showLoading: true });
+            } else finish(false);
+          } catch {
+            finish(false);
+          }
         });
       });
-    } catch (err) {
-      console.error("H5 Games rewarded ad failed:", err);
-      return false;
     } finally {
       busyRef.current = false;
     }
-  }, [enabled, ready]);
+  }, [enabled, cfg]);
 
-  return { enabled, ready, showRewarded };
+  return { enabled, ready: enabled, showRewarded };
 }
