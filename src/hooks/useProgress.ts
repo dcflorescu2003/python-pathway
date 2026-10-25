@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { isWebAdsActive, loadWebAdsConfig } from "@/lib/webAdsConfig";
 import { Capacitor } from "@capacitor/core";
 import { APP_VERSION } from "@/lib/appVersion";
 import { useAuth } from "@/hooks/useAuth";
@@ -174,13 +175,15 @@ function computeNewStreak(currentStreak: number, lastActivityDate: string): numb
   return 1;
 }
 
+if (!Capacitor.isNativePlatform()) void loadWebAdsConfig();
+
 function regenerateLives(p: UserProgress): UserProgress {
   if (p.hasUnlimitedLives || p.lives >= MAX_LIVES) return p;
   // Only full refill, only when the user is at 0.
   if (p.lives !== 0) return p;
-  // TEMPORAR: pe web nu există așteptare — inimile se refac imediat.
-  // Pe nativ rămâne fereastra de 30 de minute (sau reclama rewarded).
-  const waitMs = Capacitor.isNativePlatform() ? FULL_REGEN_MS : 0;
+  // Pe web, așteptarea de 30 de minute revine doar când reclamele web sunt active
+  // (comutator Admin). Altfel inimile se refac imediat pe web.
+  const waitMs = Capacitor.isNativePlatform() || isWebAdsActive() ? FULL_REGEN_MS : 0;
   const now = Date.now();
   const lastUpdate = new Date(p.livesUpdatedAt).getTime();
   if (now - lastUpdate < waitMs) return p;

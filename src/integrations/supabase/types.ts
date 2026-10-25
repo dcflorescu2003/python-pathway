@@ -1826,6 +1826,30 @@ export type Database = {
         }
         Relationships: []
       }
+      web_ads_config: {
+        Row: {
+          enabled: boolean
+          id: number
+          publisher_id: string
+          site_id: string
+          updated_at: string
+        }
+        Insert: {
+          enabled?: boolean
+          id?: number
+          publisher_id?: string
+          site_id?: string
+          updated_at?: string
+        }
+        Update: {
+          enabled?: boolean
+          id?: number
+          publisher_id?: string
+          site_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       problems_public: {
