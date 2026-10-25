@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { isWebAdsActive, loadWebAdsConfig } from "@/lib/webAdsConfig";
 import { Capacitor } from "@capacitor/core";
 import { APP_VERSION } from "@/lib/appVersion";
 import { useAuth } from "@/hooks/useAuth";
@@ -173,6 +174,8 @@ function computeNewStreak(currentStreak: number, lastActivityDate: string): numb
   if (lastActivityDate === getYesterdayDate()) return currentStreak + 1;
   return 1;
 }
+
+if (!Capacitor.isNativePlatform()) void loadWebAdsConfig();
 
 function regenerateLives(p: UserProgress): UserProgress {
   if (p.hasUnlimitedLives || p.lives >= MAX_LIVES) return p;
