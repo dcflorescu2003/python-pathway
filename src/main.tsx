@@ -3,8 +3,6 @@ import { HelmetProvider } from "react-helmet-async";
 import { Capacitor } from "@capacitor/core";
 import { installNativeAuthPersistence } from "./integrations/supabase/native-persistence";
 import "./index.css";
-import { loadWebAdsConfig } from "./lib/webAdsConfig";
-void loadWebAdsConfig();
 
 async function bootstrap() {
   // On Capacitor (iOS/Android) we need to rehydrate the Supabase session from
