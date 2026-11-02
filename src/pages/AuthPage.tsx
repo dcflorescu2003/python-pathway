@@ -23,6 +23,11 @@ import TeacherTestsTab from "@/components/account/TeacherTestsTab";
 import LoadingScreen from "@/components/states/LoadingScreen";
 import { useSeoHead } from "@/hooks/useSeoHead";
 
+// Backend-ul poate semna că adresa e luată și printr-un mesaj de eroare
+// (când protecția anti-enumerare e oprită), nu doar prin răspunsul fără identities.
+const isAlreadyRegisteredError = (error: any) =>
+  /already registered|already exists|already been registered/i.test(String(error?.message ?? ""));
+
 const AccountView = () => {
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
@@ -502,6 +507,7 @@ const AuthPage = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [justSignedIn, setJustSignedIn] = useState(false);
+  const [emailTaken, setEmailTaken] = useState(false);
 
   // After a fresh sign-in via the form, redirect to Home.
   useEffect(() => {
@@ -530,6 +536,7 @@ const AuthPage = () => {
     if (!isLogin && !displayName.trim()) { toast.error("Introdu un nume de afișare."); return; }
 
     setLoading(true);
+    setEmailTaken(false);
     try {
       if (isLogin) {
         console.info("[auth] action=signInWithPassword", { email });
@@ -544,8 +551,11 @@ const AuthPage = () => {
         }
       } else {
         console.info("[auth] action=signUp", { email });
-        const { error } = await signUp(email, password, displayName);
-        if (error) { toast.error(error.message); }
+        const { error, existingAccount } = await signUp(email, password, displayName);
+        if (existingAccount || isAlreadyRegisteredError(error)) {
+          setEmailTaken(true);
+          toast.error("Adresa asta are deja un cont PyRo.");
+        } else if (error) { toast.error(error.message); }
         else { toast.success("Cont creat! Verifică-ți emailul pentru confirmare. 📬"); }
       }
     } finally {
@@ -645,7 +655,7 @@ const AuthPage = () => {
               )}
               <div className="relative">
                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} className="pl-10" />
+                <Input type="email" placeholder="Email" value={email} onChange={(e) => { setEmail(e.target.value); setEmailTaken(false); }} className="pl-10" />
               </div>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -654,6 +664,36 @@ const AuthPage = () => {
                   {showPassword ? <EyeOff className="h-4 w-4 text-muted-foreground" /> : <Eye className="h-4 w-4 text-muted-foreground" />}
                 </button>
               </div>
+              {emailTaken && (
+                <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 space-y-2">
+                  <p className="text-xs font-medium text-foreground">
+                    <span className="font-mono">{email.trim()}</span> are deja un cont PyRo.
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Nu am putut crea al doilea cont cu aceeași adresă, așa că nu vei primi niciun email de confirmare.
+                  </p>
+                  <div className="flex flex-col gap-2 pt-1">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="w-full h-9 text-xs"
+                      onClick={() => { setIsLogin(true); setEmailTaken(false); }}
+                    >
+                      Conectează-te cu acest cont
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="w-full h-9 text-xs"
+                      onClick={() => { setForgotEmail(email.trim()); setShowForgot(true); }}
+                    >
+                      Nu mai știu parola
+                    </Button>
+                  </div>
+                </div>
+              )}
               <Button type="submit" className="w-full" disabled={loading}>
                 {loading ? "Se procesează..." : isLogin ? "Conectează-te" : "Creează cont"}
               </Button>
@@ -666,7 +706,7 @@ const AuthPage = () => {
 
             <p className="text-center text-sm text-muted-foreground">
               {isLogin ? "Nu ai cont? " : "Ai deja cont? "}
-              <button onClick={() => setIsLogin(!isLogin)} className="text-primary font-medium hover:underline">
+              <button onClick={() => { setIsLogin(!isLogin); setEmailTaken(false); }} className="text-primary font-medium hover:underline">
                 {isLogin ? "Creează unul" : "Conectează-te"}
               </button>
             </p>
