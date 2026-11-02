@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, act } from "@testing-library/react";
+import { render, screen, act, fireEvent } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import type { User } from "@supabase/supabase-js";
 
@@ -9,6 +9,14 @@ import type { User } from "@supabase/supabase-js";
 const authState: { user: User | null; loading: boolean } = {
   user: null,
   loading: true,
+};
+// Stabile ca să poată fi configurate din teste (ex. signup cu email existent).
+const authMocks = {
+  signUp: vi.fn(),
+  signIn: vi.fn(),
+  signInWithGoogle: vi.fn(),
+  signInWithApple: vi.fn(),
+  signOut: vi.fn(),
 };
 const listeners = new Set<() => void>();
 const setAuth = (next: Partial<typeof authState>) => {
@@ -31,11 +39,11 @@ vi.mock("@/hooks/useAuth", () => {
       return {
         user: authState.user,
         loading: authState.loading,
-        signUp: vi.fn(),
-        signIn: vi.fn(),
-        signInWithGoogle: vi.fn(),
-        signInWithApple: vi.fn(),
-        signOut: vi.fn(),
+        signUp: authMocks.signUp,
+        signIn: authMocks.signIn,
+        signInWithGoogle: authMocks.signInWithGoogle,
+        signInWithApple: authMocks.signInWithApple,
+        signOut: authMocks.signOut,
         session: null,
       };
     },
