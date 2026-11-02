@@ -1,5 +1,4 @@
 import { isChallengeExpired, isLastDay, formatDueDate } from "@/lib/challengeDeadline";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
