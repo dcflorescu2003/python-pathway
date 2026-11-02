@@ -92,6 +92,7 @@ const ChallengeAssigner = ({ classId, existingChallengeIds, onClose }: Challenge
   const problemChapters = problemsData?.problemChapters ?? [];
   const allProblems = problemsData?.problems ?? [];
   const createChallenge = useCreateChallenge();
+  const [dueDate, setDueDate] = useState<string>("");
   const [selected, setSelected] = useState<{ type: string; id: string }[]>([]);
   const [expandedChapter, setExpandedChapter] = useState<string | null>(null);
   const [expandedLesson, setExpandedLesson] = useState<string | null>(null);
@@ -114,7 +115,7 @@ const ChallengeAssigner = ({ classId, existingChallengeIds, onClose }: Challenge
     if (selected.length === 0) return;
     try {
       await createChallenge.mutateAsync(
-        selected.map((s) => ({ class_id: classId, item_type: s.type, item_id: s.id }))
+        selected.map((s) => ({ class_id: classId, item_type: s.type, item_id: s.id, due_date: dueDate || null }))
       );
 
       try {
@@ -287,6 +288,12 @@ const ChallengeAssigner = ({ classId, existingChallengeIds, onClose }: Challenge
           })}
         </TabsContent>
       </Tabs>
+
+      <div className="flex flex-col gap-1">
+        <label htmlFor="challenge-due" className="text-xs font-medium text-muted-foreground">Termen limită (opțional)</label>
+        <input id="challenge-due" type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)}
+          className="h-12 rounded-md border border-input bg-background px-3 text-sm text-foreground" />
+      </div>
 
       <div className="flex gap-2">
         <Button variant="outline" onClick={onClose} className="flex-1">

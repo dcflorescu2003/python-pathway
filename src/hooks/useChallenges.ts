@@ -10,6 +10,7 @@ export interface ActiveChallenge {
   item_id: string;
   item_title: string;
   created_at: string;
+  due_date: string | null;
 }
 
 export function useChallenges() {
