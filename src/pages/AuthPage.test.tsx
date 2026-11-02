@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, act } from "@testing-library/react";
+import { render, screen, act, fireEvent } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import type { User } from "@supabase/supabase-js";
 
@@ -9,6 +9,14 @@ import type { User } from "@supabase/supabase-js";
 const authState: { user: User | null; loading: boolean } = {
   user: null,
   loading: true,
+};
+// Stabile ca să poată fi configurate din teste (ex. signup cu email existent).
+const authMocks = {
+  signUp: vi.fn(),
+  signIn: vi.fn(),
+  signInWithGoogle: vi.fn(),
+  signInWithApple: vi.fn(),
+  signOut: vi.fn(),
 };
 const listeners = new Set<() => void>();
 const setAuth = (next: Partial<typeof authState>) => {
@@ -31,11 +39,11 @@ vi.mock("@/hooks/useAuth", () => {
       return {
         user: authState.user,
         loading: authState.loading,
-        signUp: vi.fn(),
-        signIn: vi.fn(),
-        signInWithGoogle: vi.fn(),
-        signInWithApple: vi.fn(),
-        signOut: vi.fn(),
+        signUp: authMocks.signUp,
+        signIn: authMocks.signIn,
+        signInWithGoogle: authMocks.signInWithGoogle,
+        signInWithApple: authMocks.signInWithApple,
+        signOut: authMocks.signOut,
         session: null,
       };
     },
@@ -157,5 +165,43 @@ describe("AuthPage cold-start → Cont navigation", () => {
 
     // Now the login form is allowed to render.
     expect(screen.queryByTestId("account-profile-tab")).not.toBeInTheDocument();
+  });
+});
+
+describe("AuthPage signup cu adresă deja înregistrată", () => {
+  it("arată că adresa are deja cont și oferă ieșirea, în loc să promită email de confirmare", async () => {
+    authMocks.signUp.mockResolvedValue({ error: null, existingAccount: true });
+    authState.loading = false;
+    authState.user = null;
+    renderPage();
+
+    fireEvent.click(screen.getByText(/creează unul/i));
+    fireEvent.change(screen.getByPlaceholderText(/numele tău/i), { target: { value: "Elev Test" } });
+    fireEvent.change(screen.getByPlaceholderText("Email"), { target: { value: "elev@exemplu.ro" } });
+    fireEvent.change(screen.getByPlaceholderText(/parol/i), { target: { value: "Parola123!" } });
+    fireEvent.click(screen.getByRole("button", { name: /creează cont/i }));
+
+    const notice = await screen.findByText(/are deja un cont PyRo/i);
+    expect(notice).toBeInTheDocument();
+    expect(screen.getByText(/nu vei primi niciun email de confirmare/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /conectează-te cu acest cont/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /nu mai știu parola/i })).toBeInTheDocument();
+    // Nu afișăm success-ul fals de "verifică emailul".
+    expect(screen.queryByText(/verifică-ți emailul/i)).not.toBeInTheDocument();
+  });
+
+  it("arată același mesaj când backend-ul răspunde cu eroare 'already registered'", async () => {
+    authMocks.signUp.mockResolvedValue({ error: { message: "User already registered" } });
+    authState.loading = false;
+    authState.user = null;
+    renderPage();
+
+    fireEvent.click(screen.getByText(/creează unul/i));
+    fireEvent.change(screen.getByPlaceholderText(/numele tău/i), { target: { value: "Elev Test" } });
+    fireEvent.change(screen.getByPlaceholderText("Email"), { target: { value: "elev@exemplu.ro" } });
+    fireEvent.change(screen.getByPlaceholderText(/parol/i), { target: { value: "Parola123!" } });
+    fireEvent.click(screen.getByRole("button", { name: /creează cont/i }));
+
+    expect(await screen.findByText(/are deja un cont PyRo/i)).toBeInTheDocument();
   });
 });
