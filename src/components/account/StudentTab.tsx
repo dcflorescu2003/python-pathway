@@ -1,3 +1,5 @@
+import { isChallengeExpired, isLastDay, formatDueDate } from "@/lib/challengeDeadline";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
@@ -141,9 +143,11 @@ const StudentTab = ({ memberClassName, onLeaveClass }: StudentTabProps) => {
   };
 
   // Split challenges into active vs completed
-  const activeChallenges = challenges.filter((ch) => !completedLessonIds.has(getProgressKey(ch)));
+  const activeChallenges = challenges.filter((ch) => !completedLessonIds.has(getProgressKey(ch)) && !isChallengeExpired(ch.due_date));
 
-  const completedChallenges = challenges.filter((ch) => completedLessonIds.has(getProgressKey(ch)));
+  const completedChallenges = challenges.filter((ch) => completedLessonIds.has(getProgressKey(ch)) && !isChallengeExpired(ch.due_date));
+  const expiredChallenges = challenges.filter((ch) => isChallengeExpired(ch.due_date));
+  const [challengeHistoryOpen, setChallengeHistoryOpen] = useState(false);
 
   const handleLeave = async () => {
     if (!user) return;
@@ -412,6 +416,9 @@ const StudentTab = ({ memberClassName, onLeaveClass }: StudentTabProps) => {
                     <p className="text-sm font-medium text-foreground truncate">{ch.item_title}</p>
                     <p className="text-xs text-muted-foreground">
                       {ch.item_type === "lesson" ? "Lecție" : ch.item_type === "problem" ? "Problemă" : ch.item_type}
+                      {ch.due_date && (isLastDay(ch.due_date)
+                        ? <span className="ml-1 font-semibold text-warning">· Ultima zi!</span>
+                        : <span> · Termen: {formatDueDate(ch.due_date)}</span>)}
                     </p>
                   </div>
                   <Button size="sm" className="gap-1" onClick={() => handleStartChallenge(ch)}>
@@ -466,7 +473,37 @@ const StudentTab = ({ memberClassName, onLeaveClass }: StudentTabProps) => {
         </div>
       )}
 
-      {activeChallenges.length === 0 && completedChallenges.length === 0 && assignments.length === 0 && (
+      {expiredChallenges.length > 0 && (
+        <Collapsible open={challengeHistoryOpen} onOpenChange={setChallengeHistoryOpen}>
+          <CollapsibleTrigger className="w-full flex items-center justify-between p-3 rounded-lg border border-border text-sm text-muted-foreground hover:bg-muted transition-colors">
+            <span className="flex items-center gap-2"><History className="h-4 w-4" /> Istoric provocări ({expiredChallenges.length})</span>
+            <ChevronDown className={`h-4 w-4 transition-transform ${challengeHistoryOpen ? "rotate-180" : ""}`} />
+          </CollapsibleTrigger>
+          <CollapsibleContent className="pt-2 space-y-1.5">
+            {expiredChallenges.map((ch) => {
+              const done = completedLessonIds.has(getProgressKey(ch));
+              const score = getDisplayScore(ch);
+              return (
+                <Card key={ch.id} className="border-border">
+                  <CardContent className="p-3 flex items-center gap-3">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm text-foreground truncate">{ch.item_title}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {ch.item_type === "lesson" ? "Lecție" : "Problemă"} · Termen: {formatDueDate(ch.due_date!)} · {done ? `completată${score !== null ? ` (${score}%)` : ""}` : "necompletată"}
+                      </p>
+                    </div>
+                    <Button variant="outline" size="sm" className="gap-1 shrink-0" onClick={() => handleStartChallenge(ch)}>
+                      <Play className="h-3.5 w-3.5" /> Deschide
+                    </Button>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </CollapsibleContent>
+        </Collapsible>
+      )}
+
+      {activeChallenges.length === 0 && completedChallenges.length === 0 && expiredChallenges.length === 0 && assignments.length === 0 && (
         <div className="text-center py-8">
           <p className="text-sm text-muted-foreground">Nicio provocare sau test primit încă.</p>
         </div>

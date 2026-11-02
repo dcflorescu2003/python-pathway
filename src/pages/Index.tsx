@@ -1,3 +1,4 @@
+import { isChallengeExpired } from "@/lib/challengeDeadline";
 import { useState, useEffect, useRef } from "react";
 import { Capacitor } from "@capacitor/core";
 import LandingPage from "@/pages/web/LandingPage";
@@ -69,7 +70,8 @@ const Index = (): JSX.Element => {
   const { user, loading: authLoading } = useAuth();
   const { progress, setLivesFromReward, pendingAwards } = useProgress();
   const { data: chapters, isLoading: chaptersLoading } = useChapters();
-  const { challenges, isChallenge } = useChallenges();
+  const { challenges: allChallenges, isChallenge } = useChallenges();
+  const challenges = allChallenges.filter((c) => !isChallengeExpired(c.due_date));
   
   const [needsOnboarding, setNeedsOnboarding] = useState<boolean | null>(null);
   const [selectedSchool, setSchool] = useState(getSelectedSchool());
