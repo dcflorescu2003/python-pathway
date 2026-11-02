@@ -145,8 +145,19 @@ export function useDeleteClass() {
 export function useCreateChallenge() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (challenges: { class_id: string; item_type: string; item_id: string }[]) => {
+    mutationFn: async (challenges: { class_id: string; item_type: string; item_id: string; due_date?: string | null }[]) => {
       const { error } = await supabase.from("challenges").insert(challenges);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["class-challenges"] }),
+  });
+}
+
+export function useUpdateChallengeDueDate() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, due_date }: { id: string; due_date: string | null }) => {
+      const { error } = await supabase.from("challenges").update({ due_date }).eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["class-challenges"] }),

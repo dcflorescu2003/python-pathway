@@ -84,6 +84,7 @@ export type Database = {
         Row: {
           class_id: string
           created_at: string
+          due_date: string | null
           id: string
           item_id: string
           item_type: string
@@ -91,6 +92,7 @@ export type Database = {
         Insert: {
           class_id: string
           created_at?: string
+          due_date?: string | null
           id?: string
           item_id: string
           item_type: string
@@ -98,6 +100,7 @@ export type Database = {
         Update: {
           class_id?: string
           created_at?: string
+          due_date?: string | null
           id?: string
           item_id?: string
           item_type?: string

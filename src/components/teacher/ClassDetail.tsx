@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { useClassMembers, useClassChallenges, useDeleteChallenge } from "@/hooks/useTeacher";
+import { useClassMembers, useClassChallenges, useDeleteChallenge, useUpdateChallengeDueDate } from "@/hooks/useTeacher";
 import { useChapters } from "@/hooks/useChapters";
 import { useProblems } from "@/hooks/useProblems";
 import { useSubscription } from "@/hooks/useSubscription";
@@ -18,6 +18,7 @@ import StudentReport from "./StudentReport";
 import { ArrowLeft, Copy, Trash2, Target, BookOpen, Code, Zap, Flame, CheckCircle, XCircle, ChevronDown, ChevronRight, BarChart3, FileText, Clock, Users, Eye } from "lucide-react";
 import { toast } from "sonner";
 import { sortByDisplayName } from "@/lib/sortStudents";
+import { isChallengeExpired, formatDueDate } from "@/lib/challengeDeadline";
 
 interface ClassDetailProps {
   classId: string;
@@ -30,6 +31,8 @@ const ClassDetail = ({ classId, className: clsName, joinCode, onBack }: ClassDet
   const { data: members = [] } = useClassMembers(classId);
   const { data: challenges = [] } = useClassChallenges(classId);
   const deleteChallenge = useDeleteChallenge();
+  const updateDueDate = useUpdateChallengeDueDate();
+  const [historyOpen, setHistoryOpen] = useState(false);
   const { data: chapters = [] } = useChapters();
   const { data: problemsData } = useProblems();
   const { isTeacherPremium } = useSubscription();
@@ -93,6 +96,18 @@ const ClassDetail = ({ classId, className: clsName, joinCode, onBack }: ClassDet
     return itemId;
   };
 
+  const handleDueDateChange = async (id: string, value: string) => {
+    try {
+      await updateDueDate.mutateAsync({ id, due_date: value || null });
+      toast.success(value ? "Termen actualizat" : "Termen eliminat");
+    } catch {
+      toast.error("Nu am putut actualiza termenul");
+    }
+  };
+
+  const activeChallenges = challenges.filter((c) => !isChallengeExpired(c.due_date));
+  const expiredChallenges = challenges.filter((c) => isChallengeExpired(c.due_date));
+
   const handleDeleteChallenge = async (id: string) => {
     try {
       await deleteChallenge.mutateAsync(id);
@@ -153,6 +168,128 @@ const ClassDetail = ({ classId, className: clsName, joinCode, onBack }: ClassDet
     );
   }
 
+
+  const renderChallengeCard = (ch: (typeof challenges)[number]) => {
+                    const isExpanded = expandedChallenge === ch.id;
+                    const completedCount = sortedMembers.filter(
+                      (m) => getStudentStatus(ch.item_type, ch.item_id, m.student_id) !== null
+                    ).length;
+                    const revealedCount = sortedMembers.filter(
+                      (m) => !!getStudentStatus(ch.item_type, ch.item_id, m.student_id)?.solutionRevealedAt
+                    ).length;
+
+                    return (
+                      <Card key={ch.id}>
+                        <CardContent className="p-0">
+                          <button
+                            onClick={() => setExpandedChallenge(isExpanded ? null : ch.id)}
+                            className="w-full p-3 flex items-center justify-between text-left"
+                          >
+                            <div className="flex items-center gap-2 flex-1 min-w-0">
+                              {ch.item_type === "lesson" ? (
+                                <BookOpen className="h-4 w-4 text-primary shrink-0" />
+                              ) : (
+                                <Code className="h-4 w-4 text-accent-foreground shrink-0" />
+                              )}
+                              <div className="min-w-0">
+                                <p className="text-sm font-medium text-foreground truncate">
+                                  {getItemName(ch.item_type, ch.item_id)}
+                                </p>
+                                <p className="text-[10px] text-muted-foreground">
+                                  {new Date(ch.created_at).toLocaleDateString("ro-RO")} · {completedCount}/{members.length} completat
+                                  {revealedCount > 0 && ` · ${revealedCount} cu rezolvarea văzută`}
+                                  {ch.due_date && ` · Termen: ${formatDueDate(ch.due_date)}`}
+                                </p>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-1 shrink-0">
+                              <input
+                                type="date"
+                                aria-label="Termen limită"
+                                title="Modifică termenul"
+                                value={ch.due_date ?? ""}
+                                onClick={(e) => e.stopPropagation()}
+                                onChange={(e) => handleDueDateChange(ch.id, e.target.value)}
+                                className="h-8 w-[130px] rounded-md border border-input bg-background px-1 text-[11px] text-foreground"
+                              />
+                              <button
+                                onClick={(e) => { e.stopPropagation(); handleDeleteChallenge(ch.id); }}
+                                className="p-1.5 rounded-md hover:bg-destructive/10 text-muted-foreground hover:text-destructive"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </button>
+                              {isExpanded ? (
+                                <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                              ) : (
+                                <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                              )}
+                            </div>
+                          </button>
+
+                          {isExpanded && members.length > 0 && (
+                            <div className="border-t border-border px-3 pb-3 pt-2 space-y-1.5">
+                              {sortedMembers.map((m) => {
+                                const status = getStudentStatus(ch.item_type, ch.item_id, m.student_id);
+                                const completed = status !== null;
+                                const displayScore = completed ? getDisplayPercent(ch.item_type, ch.item_id, status.score) : 0;
+                                const hasMistakes = completed && displayScore < 100;
+                                 const mistakePoints = completed ? Math.max(0, 100 - displayScore) : 0;
+                                 const revealedAt = status?.solutionRevealedAt ?? null;
+
+                                return (
+                                  <div
+                                    key={m.id}
+                                    className={`flex items-center justify-between rounded-lg px-2.5 py-1.5 text-sm ${
+                                      completed
+                                        ? hasMistakes
+                                          ? "bg-warning/10"
+                                          : "bg-primary/5"
+                                        : "bg-muted/50"
+                                    }`}
+                                  >
+                                    <div className="flex items-center gap-2">
+                                      {completed ? (
+                                        hasMistakes ? (
+                                          <XCircle className="h-3.5 w-3.5 text-warning shrink-0" />
+                                        ) : (
+                                          <CheckCircle className="h-3.5 w-3.5 text-primary shrink-0" />
+                                        )
+                                      ) : (
+                                        <div className="h-3.5 w-3.5 rounded-full border-2 border-muted-foreground/30 shrink-0" />
+                                      )}
+                                      <span className="text-foreground text-xs font-medium">
+                                        {m.profile?.display_name || "Elev"}
+                                      </span>
+                                      {revealedAt && (
+                                        <span
+                                          className="flex items-center gap-1 rounded-full bg-accent/15 px-1.5 py-0.5 text-[10px] font-medium text-accent-foreground"
+                                          title={`Elevul a deschis rezolvarea pe ${new Date(revealedAt).toLocaleDateString("ro-RO")}`}
+                                        >
+                                          <Eye className="h-3 w-3" /> A văzut rezolvarea
+                                        </span>
+                                      )}
+                                    </div>
+                                    <div className="text-xs">
+                                      {completed ? (
+                                        <span
+                                          className={hasMistakes ? "text-warning font-medium" : "text-primary font-medium"}
+                                          title="Cel mai bun scor obținut de elev la această provocare"
+                                        >
+                                          Best: {displayScore}% {hasMistakes && `· ${mistakePoints} pct. pierdute`}
+                                        </span>
+                                      ) : (
+                                        <span className="text-muted-foreground">Necompletat</span>
+                                      )}
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </CardContent>
+                      </Card>
+                    );
+                  };
 
   return (
     <div className="space-y-4">
@@ -326,117 +463,19 @@ const ClassDetail = ({ classId, className: clsName, joinCode, onBack }: ClassDet
                 <p className="text-sm text-muted-foreground px-1">Nicio provocare atribuită.</p>
               ) : (
                 <div className="space-y-2">
-                  {challenges.map((ch) => {
-                    const isExpanded = expandedChallenge === ch.id;
-                    const completedCount = sortedMembers.filter(
-                      (m) => getStudentStatus(ch.item_type, ch.item_id, m.student_id) !== null
-                    ).length;
-                    const revealedCount = sortedMembers.filter(
-                      (m) => !!getStudentStatus(ch.item_type, ch.item_id, m.student_id)?.solutionRevealedAt
-                    ).length;
-
-                    return (
-                      <Card key={ch.id}>
-                        <CardContent className="p-0">
-                          <button
-                            onClick={() => setExpandedChallenge(isExpanded ? null : ch.id)}
-                            className="w-full p-3 flex items-center justify-between text-left"
-                          >
-                            <div className="flex items-center gap-2 flex-1 min-w-0">
-                              {ch.item_type === "lesson" ? (
-                                <BookOpen className="h-4 w-4 text-primary shrink-0" />
-                              ) : (
-                                <Code className="h-4 w-4 text-accent-foreground shrink-0" />
-                              )}
-                              <div className="min-w-0">
-                                <p className="text-sm font-medium text-foreground truncate">
-                                  {getItemName(ch.item_type, ch.item_id)}
-                                </p>
-                                <p className="text-[10px] text-muted-foreground">
-                                  {new Date(ch.created_at).toLocaleDateString("ro-RO")} · {completedCount}/{members.length} completat
-                                  {revealedCount > 0 && ` · ${revealedCount} cu rezolvarea văzută`}
-                                </p>
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-1 shrink-0">
-                              <button
-                                onClick={(e) => { e.stopPropagation(); handleDeleteChallenge(ch.id); }}
-                                className="p-1.5 rounded-md hover:bg-destructive/10 text-muted-foreground hover:text-destructive"
-                              >
-                                <Trash2 className="h-3.5 w-3.5" />
-                              </button>
-                              {isExpanded ? (
-                                <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                              ) : (
-                                <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                              )}
-                            </div>
-                          </button>
-
-                          {isExpanded && members.length > 0 && (
-                            <div className="border-t border-border px-3 pb-3 pt-2 space-y-1.5">
-                              {sortedMembers.map((m) => {
-                                const status = getStudentStatus(ch.item_type, ch.item_id, m.student_id);
-                                const completed = status !== null;
-                                const displayScore = completed ? getDisplayPercent(ch.item_type, ch.item_id, status.score) : 0;
-                                const hasMistakes = completed && displayScore < 100;
-                                 const mistakePoints = completed ? Math.max(0, 100 - displayScore) : 0;
-                                 const revealedAt = status?.solutionRevealedAt ?? null;
-
-                                return (
-                                  <div
-                                    key={m.id}
-                                    className={`flex items-center justify-between rounded-lg px-2.5 py-1.5 text-sm ${
-                                      completed
-                                        ? hasMistakes
-                                          ? "bg-warning/10"
-                                          : "bg-primary/5"
-                                        : "bg-muted/50"
-                                    }`}
-                                  >
-                                    <div className="flex items-center gap-2">
-                                      {completed ? (
-                                        hasMistakes ? (
-                                          <XCircle className="h-3.5 w-3.5 text-warning shrink-0" />
-                                        ) : (
-                                          <CheckCircle className="h-3.5 w-3.5 text-primary shrink-0" />
-                                        )
-                                      ) : (
-                                        <div className="h-3.5 w-3.5 rounded-full border-2 border-muted-foreground/30 shrink-0" />
-                                      )}
-                                      <span className="text-foreground text-xs font-medium">
-                                        {m.profile?.display_name || "Elev"}
-                                      </span>
-                                      {revealedAt && (
-                                        <span
-                                          className="flex items-center gap-1 rounded-full bg-accent/15 px-1.5 py-0.5 text-[10px] font-medium text-accent-foreground"
-                                          title={`Elevul a deschis rezolvarea pe ${new Date(revealedAt).toLocaleDateString("ro-RO")}`}
-                                        >
-                                          <Eye className="h-3 w-3" /> A văzut rezolvarea
-                                        </span>
-                                      )}
-                                    </div>
-                                    <div className="text-xs">
-                                      {completed ? (
-                                        <span
-                                          className={hasMistakes ? "text-warning font-medium" : "text-primary font-medium"}
-                                          title="Cel mai bun scor obținut de elev la această provocare"
-                                        >
-                                          Best: {displayScore}% {hasMistakes && `· ${mistakePoints} pct. pierdute`}
-                                        </span>
-                                      ) : (
-                                        <span className="text-muted-foreground">Necompletat</span>
-                                      )}
-                                    </div>
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          )}
-                        </CardContent>
-                      </Card>
-                    );
-                  })}
+                  {activeChallenges.map(renderChallengeCard)}
+                  {activeChallenges.length === 0 && <p className="text-sm text-muted-foreground px-1">Nicio provocare activă.</p>}
+                  {expiredChallenges.length > 0 && (
+                    <Collapsible open={historyOpen} onOpenChange={setHistoryOpen}>
+                      <CollapsibleTrigger className="w-full flex items-center justify-between p-3 rounded-lg border border-border text-sm text-muted-foreground hover:bg-muted transition-colors">
+                        <span className="flex items-center gap-2"><Clock className="h-4 w-4" /> Istoric provocări ({expiredChallenges.length})</span>
+                        {historyOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                      </CollapsibleTrigger>
+                      <CollapsibleContent className="pt-2 space-y-2">
+                        {expiredChallenges.map(renderChallengeCard)}
+                      </CollapsibleContent>
+                    </Collapsible>
+                  )}
                 </div>
               )}
             </CollapsibleContent>
