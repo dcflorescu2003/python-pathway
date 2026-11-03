@@ -88,6 +88,7 @@ const TeacherClassesTab = ({ teacherStatus }: TeacherClassesTabProps) => {
         className={selectedClass.name}
         joinCode={selectedClass.join_code}
         onBack={() => setSelectedClassId(null)}
+        isOwner={(selectedClass as any).is_owner !== false}
       />
     );
   }

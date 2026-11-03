@@ -145,6 +145,79 @@ export type Database = {
         }
         Relationships: []
       }
+      class_co_teacher_invites: {
+        Row: {
+          class_id: string
+          code: string
+          created_at: string
+          created_by: string
+          expires_at: string
+          id: string
+          used_at: string | null
+          used_by: string | null
+        }
+        Insert: {
+          class_id: string
+          code: string
+          created_at?: string
+          created_by: string
+          expires_at?: string
+          id?: string
+          used_at?: string | null
+          used_by?: string | null
+        }
+        Update: {
+          class_id?: string
+          code?: string
+          created_at?: string
+          created_by?: string
+          expires_at?: string
+          id?: string
+          used_at?: string | null
+          used_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "class_co_teacher_invites_class_id_fkey"
+            columns: ["class_id"]
+            isOneToOne: false
+            referencedRelation: "teacher_classes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      class_co_teachers: {
+        Row: {
+          added_by: string | null
+          class_id: string
+          created_at: string
+          id: string
+          teacher_id: string
+        }
+        Insert: {
+          added_by?: string | null
+          class_id: string
+          created_at?: string
+          id?: string
+          teacher_id: string
+        }
+        Update: {
+          added_by?: string | null
+          class_id?: string
+          created_at?: string
+          id?: string
+          teacher_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "class_co_teachers_class_id_fkey"
+            columns: ["class_id"]
+            isOneToOne: false
+            referencedRelation: "teacher_classes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       class_members: {
         Row: {
           class_id: string
@@ -1937,6 +2010,7 @@ export type Database = {
       }
     }
     Functions: {
+      accept_co_teacher_invite: { Args: { p_code: string }; Returns: Json }
       admin_get_anomalies: { Args: { p_days?: number }; Returns: Json }
       admin_get_stats: { Args: { p_days?: number }; Returns: Json }
       admin_recompute_xp: { Args: { p_user_id: string }; Returns: Json }
@@ -1959,10 +2033,19 @@ export type Database = {
         Returns: Json
       }
       backfill_competency_scores: { Args: { p_user_id: string }; Returns: Json }
+      can_grade_assignment: {
+        Args: { _assignment_id: string; _user_id: string }
+        Returns: boolean
+      }
       can_teacher_view_student: {
         Args: { p_student_id: string; p_teacher_id: string }
         Returns: boolean
       }
+      can_teacher_view_test: {
+        Args: { _test_id: string; _user_id: string }
+        Returns: boolean
+      }
+      create_co_teacher_invite: { Args: { p_class_id: string }; Returns: Json }
       deactivate_teacher_mode: { Args: never; Returns: undefined }
       delete_email: {
         Args: { message_id: number; queue_name: string }
@@ -2009,6 +2092,14 @@ export type Database = {
           streak: number
           user_id: string
           xp: number
+        }[]
+      }
+      get_class_teachers: {
+        Args: { p_class_id: string }
+        Returns: {
+          display_name: string
+          role: string
+          user_id: string
         }[]
       }
       get_eval_exercise_for_student: {
@@ -2207,6 +2298,10 @@ export type Database = {
         Args: { _class_id: string; _user_id: string }
         Returns: boolean
       }
+      is_class_owner: {
+        Args: { _class_id: string; _user_id: string }
+        Returns: boolean
+      }
       is_class_teacher: {
         Args: { _class_id: string; _user_id: string }
         Returns: boolean
@@ -2251,6 +2346,10 @@ export type Database = {
       }
       reject_teacher_request: {
         Args: { p_notes?: string; p_request_id: string }
+        Returns: undefined
+      }
+      remove_co_teacher: {
+        Args: { p_class_id: string; p_teacher_id: string }
         Returns: undefined
       }
       request_teacher_status: { Args: never; Returns: undefined }
