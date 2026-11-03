@@ -29,6 +29,13 @@
       "when": 1793651395785,
       "tag": "0003_challenge_due_date",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1793687028675,
+      "tag": "0004_class_co_teachers",
+      "breakpoints": true
     }
   ]
 }
