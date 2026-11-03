@@ -17,15 +17,63 @@ export function useTeacherClasses() {
     queryKey: ["teacher-classes", user?.id],
     queryFn: async () => {
       if (!user) return [];
+      // RLS returns own classes + classes where the user is a co-teacher.
       const { data, error } = await supabase
         .from("teacher_classes")
         .select("*")
-        .eq("teacher_id", user.id)
         .order("created_at", { ascending: false });
       if (error) throw error;
-      return data;
+      return (data ?? []).map((c) => ({ ...c, is_owner: c.teacher_id === user.id }));
     },
     enabled: !!user,
+  });
+}
+
+export function useClassTeachers(classId: string | null) {
+  return useQuery({
+    queryKey: ["class-teachers", classId],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any).rpc("get_class_teachers", { p_class_id: classId });
+      if (error) throw error;
+      return (data ?? []) as { user_id: string; display_name: string | null; role: "owner" | "co" }[];
+    },
+    enabled: !!classId,
+  });
+}
+
+export function useCreateCoTeacherInvite() {
+  return useMutation({
+    mutationFn: async (classId: string) => {
+      const { data, error } = await (supabase as any).rpc("create_co_teacher_invite", { p_class_id: classId });
+      if (error) throw error;
+      return data as { code: string; expires_at: string };
+    },
+  });
+}
+
+export function useAcceptCoTeacherInvite() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (code: string) => {
+      const { data, error } = await (supabase as any).rpc("accept_co_teacher_invite", { p_code: code });
+      if (error) throw error;
+      return data as { class_id: string; name: string };
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["teacher-classes"] }),
+  });
+}
+
+export function useRemoveCoTeacher() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ classId, teacherId }: { classId: string; teacherId: string }) => {
+      const { error } = await (supabase as any).rpc("remove_co_teacher", { p_class_id: classId, p_teacher_id: teacherId });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["class-teachers"] });
+      qc.invalidateQueries({ queryKey: ["teacher-classes"] });
+    },
   });
 }
 

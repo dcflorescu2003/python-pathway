@@ -103,7 +103,15 @@ Deno.serve(async (req) => {
       }
       const teacherId = (ownerSub as any).test_assignments?.tests?.teacher_id;
       const isOwner = ownerSub.student_id === callerId;
-      const isTeacher = teacherId && teacherId === callerId;
+      let isTeacher = !!teacherId && teacherId === callerId;
+      if (!isTeacher) {
+        // Co-teachers of the class can also grade.
+        const { data: canGrade } = await supabase.rpc("can_grade_assignment", {
+          _assignment_id: ownerSub.assignment_id,
+          _user_id: callerId,
+        });
+        isTeacher = canGrade === true;
+      }
       // Batch mode is a teacher action (mass grading / regrading).
       if (isBatch ? !isTeacher : (!isOwner && !isTeacher)) {
         if (!isBatch) {
