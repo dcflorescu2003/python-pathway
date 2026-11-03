@@ -2,8 +2,8 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
-import { useTeacherClasses, useCreateClass, useDeleteClass, useRenameClass } from "@/hooks/useTeacher";
-import { Plus, Trash2, Users, ChevronRight, Pencil, Check, X } from "lucide-react";
+import { useTeacherClasses, useCreateClass, useDeleteClass, useRenameClass, useAcceptCoTeacherInvite } from "@/hooks/useTeacher";
+import { Plus, Trash2, Users, ChevronRight, Pencil, Check, X, KeyRound } from "lucide-react";
 import { toast } from "sonner";
 
 interface ClassManagerProps {
@@ -15,10 +15,24 @@ const ClassManager = ({ onSelectClass }: ClassManagerProps) => {
   const createClass = useCreateClass();
   const deleteClass = useDeleteClass();
   const renameClass = useRenameClass();
+  const acceptInvite = useAcceptCoTeacherInvite();
   const [newName, setNewName] = useState("");
   const [showCreate, setShowCreate] = useState(false);
+  const [showJoin, setShowJoin] = useState(false);
+  const [joinCode, setJoinCode] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
+
+  const handleJoin = async () => {
+    try {
+      const res = await acceptInvite.mutateAsync(joinCode.trim());
+      toast.success(`Ești acum co-profesor la ${res.name}`);
+      setJoinCode("");
+      setShowJoin(false);
+    } catch (e: any) {
+      toast.error(e?.message || "Cod invalid.");
+    }
+  };
 
   const startEdit = (e: React.MouseEvent, classId: string, currentName: string) => {
     e.stopPropagation();
@@ -118,6 +132,11 @@ const ClassManager = ({ onSelectClass }: ClassManagerProps) => {
                     <X className="h-4 w-4" />
                   </button>
                 </>
+              ) : !(cls as any).is_owner ? (
+                <>
+                  <span className="text-[10px] font-medium rounded-full bg-accent/15 px-2 py-0.5 text-accent-foreground">Co-profesor</span>
+                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                </>
               ) : (
                 <>
                   <button
@@ -142,9 +161,34 @@ const ClassManager = ({ onSelectClass }: ClassManagerProps) => {
       ))}
 
       {!showCreate ? (
-        <Button variant="outline" className="w-full gap-2" onClick={() => setShowCreate(true)}>
-          <Plus className="h-4 w-4" /> Creează clasă nouă
-        </Button>
+        <div className="space-y-2">
+          <Button variant="outline" className="w-full gap-2" onClick={() => setShowCreate(true)}>
+            <Plus className="h-4 w-4" /> Creează clasă nouă
+          </Button>
+          {!showJoin ? (
+            <Button variant="ghost" className="w-full gap-2 text-sm" onClick={() => setShowJoin(true)}>
+              <KeyRound className="h-4 w-4" /> Am un cod de co-profesor
+            </Button>
+          ) : (
+            <Card>
+              <CardContent className="p-4 space-y-3">
+                <Input
+                  placeholder="Ex: PROF-K7Q2AB"
+                  value={joinCode}
+                  onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
+                  className="font-mono"
+                  autoFocus
+                />
+                <div className="flex gap-2">
+                  <Button variant="outline" onClick={() => setShowJoin(false)} className="flex-1">Anulează</Button>
+                  <Button onClick={handleJoin} disabled={!joinCode.trim() || acceptInvite.isPending} className="flex-1">
+                    {acceptInvite.isPending ? "Se verifică..." : "Alătură-te"}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </div>
       ) : (
         <Card>
           <CardContent className="p-4 space-y-3">
