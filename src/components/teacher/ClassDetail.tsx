@@ -14,6 +14,7 @@ import ClassAnalytics from "./ClassAnalytics";
 import TestResults from "./TestResults";
 import StudentCompetencyView from "./StudentCompetencyView";
 import StudentReport from "./StudentReport";
+import CoTeachersSection from "./CoTeachersSection";
 
 import { ArrowLeft, Copy, Trash2, Target, BookOpen, Code, Zap, Flame, CheckCircle, XCircle, ChevronDown, ChevronRight, BarChart3, FileText, Clock, Users, Eye } from "lucide-react";
 import { toast } from "sonner";
@@ -25,9 +26,10 @@ interface ClassDetailProps {
   className: string;
   joinCode: string;
   onBack: () => void;
+  isOwner?: boolean;
 }
 
-const ClassDetail = ({ classId, className: clsName, joinCode, onBack }: ClassDetailProps) => {
+const ClassDetail = ({ classId, className: clsName, joinCode, onBack, isOwner = true }: ClassDetailProps) => {
   const { data: members = [] } = useClassMembers(classId);
   const { data: challenges = [] } = useClassChallenges(classId);
   const deleteChallenge = useDeleteChallenge();
@@ -298,7 +300,10 @@ const ClassDetail = ({ classId, className: clsName, joinCode, onBack }: ClassDet
           <ArrowLeft className="h-5 w-5 text-foreground" />
         </button>
         <div className="flex-1">
-          <h2 className="text-lg font-bold text-foreground">{clsName}</h2>
+          <h2 className="text-lg font-bold text-foreground">
+            {clsName}
+            {!isOwner && <span className="ml-2 align-middle text-[10px] font-medium rounded-full bg-accent/15 px-2 py-0.5 text-accent-foreground">Co-profesor</span>}
+          </h2>
           <button onClick={copyCode} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary">
             <Copy className="h-3 w-3" /> Cod: {joinCode}
           </button>
@@ -316,6 +321,7 @@ const ClassDetail = ({ classId, className: clsName, joinCode, onBack }: ClassDet
         </TabsList>
 
         <TabsContent value="overview" className="mt-4 space-y-3">
+          <CoTeachersSection classId={classId} isOwner={isOwner} onLeft={onBack} />
           {/* Elevi collapsible */}
           <Collapsible open={studentsOpen} onOpenChange={setStudentsOpen}>
             <CollapsibleTrigger className="w-full flex items-center justify-between p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors">
