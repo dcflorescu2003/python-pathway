@@ -36,6 +36,22 @@ describe("probleme publice de pseudocod", () => {
     expect(checkAgainstSolution(p.solution, p.solution, p.tests).passed).toBe(p.tests.length);
   });
 
+  it("exemplele lecțiilor de algoritmi elementari dau rezultatele corecte", () => {
+    const out = (slug: string, idx: number) => {
+      const s = pseudoLessons.find((l) => l.slug === slug)!.sections[idx];
+      return interpretPseudocode(s.code!, s.input ?? "").output.trim();
+    };
+    expect(out("numarul-de-cifre-si-suma-cifrelor", 1)).toBe("3");
+    expect(out("numarul-de-cifre-si-suma-cifrelor", 2)).toBe("10");
+    expect(out("oglinditul-unui-numar-si-palindrom", 0)).toBe("4321");
+    expect(out("oglinditul-unui-numar-si-palindrom", 1)).toBe("DA");
+    expect(out("numar-prim-si-numar-perfect", 0)).toBe("DA");
+    expect(out("numar-prim-si-numar-perfect", 1)).toBe("DA");
+    expect(out("cmmdc-si-cmmmc", 0)).toBe("6");
+    expect(out("cmmdc-si-cmmmc", 1)).toBe("6");
+    expect(out("cmmdc-si-cmmmc", 2).replace(/\s+/g, " ")).toBe("cmmdc = 2 cmmmc = 12");
+  });
+
   it("exemplele din lecții rulează", () => {
     for (const l of pseudoLessons) for (const s of l.sections) if (s.code) {
       expect(interpretPseudocode(s.code, s.input ?? "").error).toBeUndefined();

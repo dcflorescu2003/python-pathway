@@ -179,6 +179,158 @@ export const pseudoLessons: PseudoLesson[] = [
       },
     ],
   },
+  {
+    slug: "numarul-de-cifre-si-suma-cifrelor",
+    number: 7,
+    title: "Numărul de cifre și suma cifrelor unui număr",
+    description: "Algoritmul clasic de extragere a cifrelor cu mod 10 și div 10: numărul de cifre și suma cifrelor în pseudocod.",
+    sections: [
+      {
+        heading: "Ideea: extragem cifrele de la coadă",
+        paragraphs: [
+          "Orice număr natural n își „dă” ultima cifră prin n mod 10 și o pierde prin n div 10. Repetând acești doi pași cât timp n este diferit de 0, vizităm toate cifrele numărului, de la dreapta la stânga.",
+          "Exemplu pentru n = 352: cifra 2, n devine 35; cifra 5, n devine 3; cifra 3, n devine 0 și ne oprim. Au fost 3 pași, deci numărul are 3 cifre, iar suma lor este 2 + 5 + 3 = 10.",
+        ],
+      },
+      {
+        heading: "Numărul de cifre",
+        paragraphs: [
+          "Folosim un contor k, inițializat cu 0, care crește cu 1 la fiecare cifră tăiată. Cu repetă…până când, numărul 0 este tratat corect (are o cifră), fără un caz special.",
+        ],
+        code: `citeste n\nk <- 0\nrepeta\n  k <- k + 1\n  n <- n div 10\npana cand n = 0\nscrie k`,
+        input: "352",
+      },
+      {
+        heading: "Suma cifrelor",
+        paragraphs: [
+          "Acum folosim un acumulator s, inițializat cu 0, la care adunăm fiecare cifră extrasă. Tabelul de urmărire pentru n = 352: (c=2, s=2, n=35), (c=5, s=7, n=3), (c=3, s=10, n=0).",
+          "Variații frecvente: produsul cifrelor (inițializăm cu 1 și înmulțim), suma cifrelor pare (adunăm doar dacă c mod 2 = 0), cifra maximă (comparăm fiecare c cu maximul curent).",
+        ],
+        code: `citeste n\ns <- 0\ncat timp n <> 0 executa\n  c <- n mod 10\n  s <- s + c\n  n <- n div 10\nsfarsit cat timp\nscrie s`,
+        input: "352",
+      },
+    ],
+  },
+  {
+    slug: "oglinditul-unui-numar-si-palindrom",
+    number: 8,
+    title: "Oglinditul unui număr și numere palindrom",
+    description: "Cum construim inversul unui număr cifră cu cifră și cum verificăm dacă un număr este palindrom, în pseudocod.",
+    sections: [
+      {
+        heading: "Construirea oglinditului",
+        paragraphs: [
+          "Oglinditul (inversul) lui 1234 este 4321. Extragem cifrele de la coadă, ca la suma cifrelor, dar le „lipim” la dreapta unui număr nou: ogl <- ogl * 10 + c. Înmulțirea cu 10 face loc unei cifre noi la final.",
+          "Urmărire pentru n = 123: ogl = 0*10+3 = 3; ogl = 3*10+2 = 32; ogl = 32*10+1 = 321.",
+        ],
+        code: `citeste n\nogl <- 0\ncat timp n <> 0 executa\n  ogl <- ogl * 10 + n mod 10\n  n <- n div 10\nsfarsit cat timp\nscrie ogl`,
+        input: "1234",
+      },
+      {
+        heading: "Verificarea palindromului",
+        paragraphs: [
+          "Un număr este palindrom dacă se citește la fel în ambele sensuri (121, 4554, 7). Asta înseamnă că este egal cu oglinditul său.",
+          "Atenție: bucla distruge valoarea lui n (la final n = 0). De aceea salvăm înainte o copie, iar la sfârșit comparăm copia cu oglinditul.",
+        ],
+        code: `citeste n\ncopie <- n\nogl <- 0\ncat timp n <> 0 executa\n  ogl <- ogl * 10 + n mod 10\n  n <- n div 10\nsfarsit cat timp\ndaca copie = ogl atunci\n  scrie "DA"\naltfel\n  scrie "NU"\nsfarsit daca`,
+        input: "12321",
+      },
+    ],
+  },
+  {
+    slug: "divizorii-si-multiplii-unui-numar",
+    number: 9,
+    title: "Divizorii și multiplii unui număr",
+    description: "Afișarea divizorilor, numărul și suma divizorilor și generarea multiplilor unui număr natural în pseudocod.",
+    sections: [
+      {
+        heading: "Divizorii unui număr",
+        paragraphs: [
+          "d este divizor al lui n dacă împărțirea lui n la d nu dă rest: n mod d = 0. Cea mai simplă metodă este să încercăm toate valorile d de la 1 la n.",
+        ],
+        code: `citeste n\npentru d <- 1, n executa\n  daca n mod d = 0 atunci\n    scrie d\n  sfarsit daca\nsfarsit pentru`,
+        input: "12",
+      },
+      {
+        heading: "Numărul și suma divizorilor",
+        paragraphs: [
+          "Combinăm parcurgerea cu un contor și un acumulator. Pentru n = 12, divizorii sunt 1, 2, 3, 4, 6, 12: sunt 6 divizori, cu suma 28.",
+          "Optimizare: divizorii vin în perechi (d și n div d), deci este suficient să mergem cu d până la radicalul lui n — util pentru numere mari.",
+        ],
+        code: `citeste n\nk <- 0\ns <- 0\npentru d <- 1, n executa\n  daca n mod d = 0 atunci\n    k <- k + 1\n    s <- s + d\n  sfarsit daca\nsfarsit pentru\nscrie k, s`,
+        input: "12",
+      },
+      {
+        heading: "Multiplii unui număr",
+        paragraphs: [
+          "Multiplii lui n sunt n·1, n·2, n·3, … Primii k multipli se obțin direct cu o buclă pentru. Ca să numărăm multiplii lui n dintr-un interval [a, b], verificăm x mod n = 0 pentru fiecare x.",
+        ],
+        code: `citeste n, k\npentru i <- 1, k executa\n  scrie n * i\nsfarsit pentru`,
+        input: "7\n5",
+      },
+    ],
+  },
+  {
+    slug: "numar-prim-si-numar-perfect",
+    number: 10,
+    title: "Număr prim și număr perfect",
+    description: "Verificarea primalității și a numerelor perfecte în pseudocod, cu varianta optimizată până la radical.",
+    sections: [
+      {
+        heading: "Număr prim",
+        paragraphs: [
+          "Un număr natural n ≥ 2 este prim dacă are exact doi divizori: 1 și el însuși (2, 3, 5, 7, 11…). 0 și 1 nu sunt prime.",
+          "Căutăm un divizor d între 2 și radicalul lui n (condiția d * d <= n). Dacă găsim unul, numărul nu este prim și ne oprim. Variabila prim funcționează ca un „steguleț”.",
+        ],
+        code: `citeste n\nprim <- 1\ndaca n < 2 atunci\n  prim <- 0\nsfarsit daca\nd <- 2\ncat timp d * d <= n si prim = 1 executa\n  daca n mod d = 0 atunci\n    prim <- 0\n  sfarsit daca\n  d <- d + 1\nsfarsit cat timp\ndaca prim = 1 atunci\n  scrie "DA"\naltfel\n  scrie "NU"\nsfarsit daca`,
+        input: "97",
+      },
+      {
+        heading: "Număr perfect",
+        paragraphs: [
+          "Un număr este perfect dacă este egal cu suma divizorilor săi proprii (toți divizorii, mai puțin el însuși). Exemple: 6 = 1 + 2 + 3 și 28 = 1 + 2 + 4 + 7 + 14.",
+          "Adunăm divizorii de la 1 la n div 2 (niciun divizor propriu nu e mai mare decât jumătatea) și comparăm suma cu n.",
+        ],
+        code: `citeste n\ns <- 0\npentru d <- 1, n div 2 executa\n  daca n mod d = 0 atunci\n    s <- s + d\n  sfarsit daca\nsfarsit pentru\ndaca s = n si n > 1 atunci\n  scrie "DA"\naltfel\n  scrie "NU"\nsfarsit daca`,
+        input: "28",
+      },
+    ],
+  },
+  {
+    slug: "cmmdc-si-cmmmc",
+    number: 11,
+    title: "CMMDC și CMMMC — algoritmul lui Euclid",
+    description: "Cel mai mare divizor comun prin scăderi și prin împărțiri repetate (Euclid) și calculul celui mai mic multiplu comun.",
+    sections: [
+      {
+        heading: "Euclid prin scăderi repetate",
+        paragraphs: [
+          "Observația lui Euclid: cmmdc(a, b) = cmmdc(a − b, b) dacă a > b. Scădem mereu numărul mai mic din cel mai mare până când devin egale; valoarea comună este cmmdc-ul. Funcționează pentru a, b > 0.",
+          "Urmărire pentru 48 și 18: (30, 18), (12, 18), (12, 6), (6, 6) → cmmdc = 6.",
+        ],
+        code: `citeste a, b\ncat timp a <> b executa\n  daca a > b atunci\n    a <- a - b\n  altfel\n    b <- b - a\n  sfarsit daca\nsfarsit cat timp\nscrie a`,
+        input: "48\n18",
+      },
+      {
+        heading: "Euclid prin împărțiri repetate",
+        paragraphs: [
+          "Varianta rapidă înlocuiește scăderile succesive cu restul împărțirii: cât timp b ≠ 0, calculăm r = a mod b, apoi a devine b și b devine r. Când b ajunge 0, răspunsul este a.",
+          "Urmărire pentru 48 și 18: r = 12 → (18, 12); r = 6 → (12, 6); r = 0 → (6, 0) → cmmdc = 6. Această variantă funcționează și când unul dintre numere este 0.",
+        ],
+        code: `citeste a, b\ncat timp b <> 0 executa\n  r <- a mod b\n  a <- b\n  b <- r\nsfarsit cat timp\nscrie a`,
+        input: "48\n18",
+      },
+      {
+        heading: "Cel mai mic multiplu comun",
+        paragraphs: [
+          "Între cmmdc și cmmmc există relația a · b = cmmdc(a, b) · cmmmc(a, b). Deci cmmmc = a · b div cmmdc. Salvăm produsul înainte de buclă, pentru că a și b se modifică.",
+          "Pentru 4 și 6: cmmdc = 2, cmmmc = 24 div 2 = 12. Două numere cu cmmdc = 1 se numesc prime între ele.",
+        ],
+        code: `citeste a, b\np <- a * b\ncat timp b <> 0 executa\n  r <- a mod b\n  a <- b\n  b <- r\nsfarsit cat timp\nscrie "cmmdc =", a\nscrie "cmmmc =", p div a`,
+        input: "4\n6",
+      },
+    ],
+  },
 ];
 
 export const getPseudoLesson = (slug?: string) => pseudoLessons.find((l) => l.slug === slug);
