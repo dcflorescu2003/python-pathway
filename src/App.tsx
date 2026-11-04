@@ -61,6 +61,11 @@ const TeacherTutorialsIndex = lazy(() => import("./pages/web/TeacherTutorialsInd
 const TeacherTutorialDetail = lazy(() => import("./pages/web/TeacherTutorialDetail"));
 const LearnIndexPage = lazy(() => import("./pages/web/LearnIndexPage"));
 const LearnChapterPage = lazy(() => import("./pages/web/LearnChapterPage"));
+const PseudocodeIndexPage = lazy(() => import("./pages/web/PseudocodeIndexPage"));
+const PseudocodeEditorPage = lazy(() => import("./pages/web/PseudocodeEditorPage"));
+const PseudocodeLessonPage = lazy(() => import("./pages/web/PseudocodeLessonPage"));
+const PseudocodeProblemPage = lazy(() => import("./pages/web/PseudocodeProblemPage"));
+import WebOnly from "./components/web/WebOnly";
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 const queryClient = new QueryClient();
@@ -103,6 +108,10 @@ const AppRoutes = () => {
           <Route path="/about" element={<AboutPage />} />
           <Route path="/invata" element={<LearnIndexPage />} />
           <Route path="/invata/:slug" element={<LearnChapterPage />} />
+          <Route path="/pseudocod" element={<WebOnly><PseudocodeIndexPage /></WebOnly>} />
+          <Route path="/pseudocod/editor" element={<WebOnly><PseudocodeEditorPage /></WebOnly>} />
+          <Route path="/pseudocod/lectii/:slug" element={<WebOnly><PseudocodeLessonPage /></WebOnly>} />
+          <Route path="/pseudocod/probleme/:slug" element={<WebOnly><PseudocodeProblemPage /></WebOnly>} />
           <Route path="/tutoriale/elevi" element={<StudentTutorialsIndex />} />
           <Route path="/tutoriale/elevi/:slug" element={<StudentTutorialDetail />} />
           <Route path="/tutoriale/profesori" element={<TeacherTutorialsIndex />} />

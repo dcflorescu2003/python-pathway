@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 const navItems = [
   { to: "/about", label: "Despre" },
   { to: "/invata", label: "Lecții gratuite" },
+  { to: "/pseudocod", label: "Pseudocod" },
   { to: "/tutoriale/elevi", label: "Tutoriale Elevi" },
   { to: "/tutoriale/profesori", label: "Tutoriale Profesori" },
 ];
