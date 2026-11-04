@@ -7,6 +7,7 @@ export interface LearnChapter {
   number: number;
   title: string;
   description: string;
+  grade: 9 | 10 | 11;
 }
 
 export const learnChapters: LearnChapter[] = [
