@@ -37,8 +37,13 @@ const LearnIndexPage = () => {
       </section>
 
       <section className="mx-auto max-w-4xl px-4 py-12">
+        {([9, 10, 11] as const).map((grade) => (
+        <div key={grade} className="mb-12">
+        <h2 className="mb-4 font-mono text-sm uppercase tracking-wider text-primary">
+          Clasa a {grade === 9 ? "IX" : grade === 10 ? "X" : "XI"}-a
+        </h2>
         <div className="grid gap-4 sm:grid-cols-2">
-          {learnChapters.map((chapter) => (
+          {learnChapters.filter((c) => c.grade === grade).map((chapter) => (
             <Link
               key={chapter.slug}
               to={`/invata/${chapter.slug}`}
@@ -59,6 +64,8 @@ const LearnIndexPage = () => {
             </Link>
           ))}
         </div>
+        </div>
+        ))}
 
         <div className="mt-12 rounded-xl border border-border/60 bg-muted/20 p-6 text-center">
           <h2 className="text-xl font-semibold">Vrei să exersezi, nu doar să citești?</h2>

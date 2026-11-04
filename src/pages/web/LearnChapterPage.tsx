@@ -6,12 +6,13 @@ import { Button } from "@/components/ui/button";
 import { useSeoHead } from "@/hooks/useSeoHead";
 import { learnChapters } from "@/data/learnChapters";
 import { chapterTheories } from "@/data/chapterTheory";
+import { advancedTheories } from "@/data/advancedTheory";
 
 const LearnChapterPage = () => {
   const { slug } = useParams();
   const chapter = learnChapters.find((c) => c.slug === slug);
   const theory = chapter
-    ? chapterTheories.find((t) => t.chapterId === chapter.chapterId)
+    ? [...chapterTheories, ...advancedTheories].find((t) => t.chapterId === chapter.chapterId)
     : undefined;
 
   useSeoHead({
@@ -57,7 +58,7 @@ const LearnChapterPage = () => {
 
         <header className="mt-4">
           <p className="text-xs font-mono uppercase tracking-wider text-primary">
-            Capitolul {chapter.number} · Lecție gratuită
+            Clasa a {chapter.grade === 9 ? "IX" : chapter.grade === 10 ? "X" : "XI"}-a · Capitolul {chapter.number} · Lecție gratuită
           </p>
           <h1 className="mt-2 text-3xl font-bold leading-tight sm:text-4xl">{chapter.title}</h1>
           <p className="mt-3 text-muted-foreground">{chapter.description}</p>
