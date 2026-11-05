@@ -114,6 +114,8 @@ export function interpretPseudocode(code: string, input: string): InterpreterRes
       .replace(/<>/g, '!=')
       .replace(/([^<>=!])=([^=])/g, '$1==$2')
       .replace(/^=([^=])/g, '==$1');
+    // "nu" negates the whole operand until the next logical operator / closing paren
+    jsExpr = jsExpr.replace(/(^|[\s(]) ! \s*((?:[^&|()]|\([^()]*\))+)/g, (_m, pre, operand) => `${pre}!(${operand.trim()})`);
     
     // Handle div operator (integer division) - must be done after variable replacement
     const handleDiv = (expression: string): string => {
@@ -168,6 +170,9 @@ export function interpretPseudocode(code: string, input: string): InterpreterRes
       const result = new Function(`return ${jsExpr}`)();
       return result;
     } catch {
+      if (/&&|\|\||==|!=|<|>|!\(/.test(jsExpr)) {
+        throw new Error(`Nu pot evalua condiția: ${expr}`);
+      }
       // Try to return as number
       const num = parseFloat(expr);
       if (!isNaN(num)) return num;
