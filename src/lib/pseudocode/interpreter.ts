@@ -107,13 +107,15 @@ export function interpretPseudocode(code: string, input: string): InterpreterRes
     let jsExpr = expr
       .replace(/\brad\s*\(/g, 'Math.sqrt(')
       .replace(/\bint\s*\(/g, 'Math.floor(')
-      .replace(/\bsi\b/gi, '&&')
-      .replace(/\bsau\b/gi, '||')
-      .replace(/\bnu\b/gi, '!')
+      .replace(/(?<![\p{L}\p{N}_])[sșşSȘŞ][iI](?![\p{L}\p{N}_])/gu, ' && ')
+      .replace(/(?<![\p{L}\p{N}_])sau(?![\p{L}\p{N}_])/giu, ' || ')
+      .replace(/(?<![\p{L}\p{N}_])nu(?![\p{L}\p{N}_])/giu, ' ! ')
       .replace(/\bmod\b/gi, '%')
       .replace(/<>/g, '!=')
       .replace(/([^<>=!])=([^=])/g, '$1==$2')
       .replace(/^=([^=])/g, '==$1');
+    // "nu" negates the whole operand until the next logical operator / closing paren
+    jsExpr = jsExpr.replace(/(^|[\s(]) ! \s*((?:[^&|()]|\([^()]*\))+)/g, (_m, pre, operand) => `${pre}!(${operand.trim()})`);
     
     // Handle div operator (integer division) - must be done after variable replacement
     const handleDiv = (expression: string): string => {
@@ -168,6 +170,9 @@ export function interpretPseudocode(code: string, input: string): InterpreterRes
       const result = new Function(`return ${jsExpr}`)();
       return result;
     } catch {
+      if (/&&|\|\||==|!=|<|>|!\(/.test(jsExpr)) {
+        throw new Error(`Nu pot evalua condiția: ${expr}`);
+      }
       // Try to return as number
       const num = parseFloat(expr);
       if (!isNaN(num)) return num;
@@ -397,7 +402,7 @@ export function interpretPseudocode(code: string, input: string): InterpreterRes
       }
       
       // Traditional for loop: pentru i <- start, stop, pas executa
-      const forMatch = line.match(/pentru\s+(\w+)\s*(?:<-|:=|←)\s*(\S+)\s*,\s*(\S+)(?:\s*,\s*(\S+))?\s+execut[aă]/i);
+      const forMatch = line.match(/pentru\s+(\w+)\s*(?:<-|:=|←)\s*([^,]+?)\s*,\s*([^,]+?)(?:\s*,\s*([^,]+?))?\s+execut[aă]/i);
       if (forMatch) {
         const varName = forMatch[1];
         const startVal = evaluateExpression(forMatch[2]) as number;

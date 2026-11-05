@@ -58,3 +58,19 @@ describe("probleme publice de pseudocod", () => {
     }
   });
 });
+
+describe("operatori logici și bucla pentru", () => {
+  const perfect = (op: string) =>
+    `citeste n\ns <- 0\npentru d <- 1, n div 2 executa\n  daca n mod d = 0 atunci\n    s <- s + d\n  sfarsit daca\nsfarsit pentru\ndaca s = n ${op} n > 1 atunci\n  scrie "DA"\naltfel\n  scrie "NU"\nsfarsit daca`;
+  it("număr perfect cu si / și", () => {
+    for (const op of ["si", "și", "ŞI"]) {
+      expect(interpretPseudocode(perfect(op), "6").output.trim()).toBe("DA");
+      expect(interpretPseudocode(perfect(op), "28").output.trim()).toBe("DA");
+      expect(interpretPseudocode(perfect(op), "8").output.trim()).toBe("NU");
+    }
+  });
+  it("nu neagă toată comparația", () => {
+    const c = `a <- 3\ndaca nu a = 4 si a > 1 atunci\n  scrie "DA"\naltfel\n  scrie "NU"\nsfarsit daca`;
+    expect(interpretPseudocode(c, "").output.trim()).toBe("DA");
+  });
+});
