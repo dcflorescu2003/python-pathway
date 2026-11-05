@@ -55,6 +55,7 @@ const TakeTestPage = lazy(() => import("./pages/TakeTestPage"));
 const SkipChallengePage = lazy(() => import("./pages/SkipChallengePage"));
 const UnsubscribePage = lazy(() => import("./pages/UnsubscribePage"));
 const AboutPage = lazy(() => import("./pages/web/AboutPage"));
+const ContactPage = lazy(() => import("./pages/web/ContactPage"));
 const StudentTutorialsIndex = lazy(() => import("./pages/web/StudentTutorialsIndex"));
 const StudentTutorialDetail = lazy(() => import("./pages/web/StudentTutorialDetail"));
 const TeacherTutorialsIndex = lazy(() => import("./pages/web/TeacherTutorialsIndex"));
@@ -106,6 +107,7 @@ const AppRoutes = () => {
           <Route path="/skip-challenge/:lessonId" element={<SkipChallengePage />} />
           <Route path="/unsubscribe" element={<UnsubscribePage />} />
           <Route path="/about" element={<AboutPage />} />
+          <Route path="/contact" element={<ContactPage />} />
           <Route path="/invata" element={<LearnIndexPage />} />
           <Route path="/invata/:slug" element={<LearnChapterPage />} />
           <Route path="/pseudocod" element={<WebOnly><PseudocodeIndexPage /></WebOnly>} />

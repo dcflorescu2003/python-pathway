@@ -1,3 +1,4 @@
+import AuthorNote from "@/components/web/AuthorNote";
 import { Link, useParams } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
 import { ArrowLeft, ArrowRight } from "lucide-react";
@@ -62,6 +63,7 @@ const LearnChapterPage = () => {
           </p>
           <h1 className="mt-2 text-3xl font-bold leading-tight sm:text-4xl">{chapter.title}</h1>
           <p className="mt-3 text-muted-foreground">{chapter.description}</p>
+          <AuthorNote crumbs={[{ name: "Acasă", path: "/" }, { name: "Lecții gratuite", path: "/invata" }, { name: chapter.title, path: `/invata/${chapter.slug}` }]} headline={chapter.title} description={chapter.description} />
         </header>
 
         <div className="mt-10 space-y-10">

@@ -1,3 +1,4 @@
+import AuthorNote from "@/components/web/AuthorNote";
 import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
@@ -46,6 +47,7 @@ const PseudocodeProblemPage = () => {
           Capitolul {p.chapter} · {pseudoChapters[p.chapter].title} · {p.difficulty}
         </div>
         <h1 className="mt-1 text-3xl font-bold">{p.title}</h1>
+        <AuthorNote crumbs={[{ name: "Acasă", path: "/" }, { name: "Pseudocod", path: "/pseudocod" }, { name: p.title, path: `/pseudocod/probleme/${p.slug}` }]} headline={p.title} description={p.statement.slice(0, 155)} />
 
         <section className="mt-6 space-y-4 leading-relaxed">
           <h2 className="text-xl font-semibold">Enunț</h2>
