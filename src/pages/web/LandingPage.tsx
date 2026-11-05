@@ -153,6 +153,28 @@ const LandingPage = () => {
         </div>
       </section>
 
+      {/* Video prezentare */}
+      <section className="border-b border-border/60">
+        <div className="mx-auto max-w-4xl px-4 py-14">
+          <h2 className="text-2xl font-semibold sm:text-3xl">Vezi PyRo în acțiune</h2>
+          <p className="mt-2 text-muted-foreground">
+            O scurtă prezentare a modului în care elevii învață Python prin exerciții interactive,
+            iar profesorii își gestionează clasele.
+          </p>
+          <div className="mt-6 aspect-video w-full overflow-hidden rounded-xl border border-border/60 bg-card">
+            <iframe
+              className="h-full w-full"
+              src="https://www.youtube-nocookie.com/embed/iplft0a5Xmk?rel=0"
+              title="Prezentare PyRo"
+              loading="lazy"
+              allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowFullScreen
+              referrerPolicy="strict-origin-when-cross-origin"
+            />
+          </div>
+        </div>
+      </section>
+
       {/* Cum funcționează */}
       <section className="border-b border-border/60 bg-muted/20">
         <div className="mx-auto max-w-5xl px-4 py-14">
