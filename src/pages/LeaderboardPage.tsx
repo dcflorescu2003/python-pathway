@@ -10,6 +10,7 @@ import { Flame, Zap, Medal, Loader2, Search } from "lucide-react";
 import { motion } from "framer-motion";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
+import { getClassLeaderboardName } from "@/lib/leaderboardIdentity";
 
 const medalColors = [
   "text-yellow-400",
@@ -161,7 +162,7 @@ const LeaderboardPage = () => {
 
   // Query: topul clasei (elevi + profesorul clasei), via RPC.
   const { data: classRows = [], isLoading: classLoading } = useQuery({
-    queryKey: ["leaderboard-class-rows", activeClassId],
+    queryKey: ["leaderboard-class-rows", activeClassId, user?.id],
     enabled: tab === "class" && !!activeClassId,
     staleTime: 15_000,
     refetchOnWindowFocus: true,
@@ -331,9 +332,7 @@ const LeaderboardPage = () => {
     const isUser = entry.user_id === user?.id;
     // Pe tabul Clasă: elevii văd doar nickname-uri, profesorii văd numele din catalog
     const displayName = tab === "class"
-      ? (isTeacherAccount
-          ? (entry.display_name || entry.nickname || "Anonim")
-          : (entry.nickname || "Anonim"))
+      ? getClassLeaderboardName(entry, isTeacherAccount || isTeacherClassView)
       : (entry.nickname || entry.display_name || "Anonim");
     const level = getLevelFromXP(entry.xp, xpPerLevel);
     const tier = getLevelInfo(level);
