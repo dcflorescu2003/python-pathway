@@ -44,3 +44,4 @@ Disallow: /unsubscribe
 Disallow: /delete-account
 
 Sitemap: https://pyroskill.info/sitemap.xml
+Sitemap: https://pyroskill.info/sitemap-pages.xml
