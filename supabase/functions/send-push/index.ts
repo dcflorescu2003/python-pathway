@@ -198,6 +198,7 @@ Deno.serve(async (req) => {
     let callerId: string | null = null;
     let callerIsAdmin = false;
     let callerIsTeacher = false;
+    let overrideBody: any = null;
 
     if (!isServiceRole) {
       if (!authHeader?.startsWith("Bearer ")) {
@@ -233,6 +234,33 @@ Deno.serve(async (req) => {
         .maybeSingle();
       callerIsAdmin = !!roleRow;
 
+      // Special mode: a user who just submitted a teacher verification request
+      // may trigger a fixed push to all admins (in-app row already inserted by DB trigger).
+      const peek = await req.clone().json().catch(() => ({}));
+      if (peek?.admin_verification_request === true) {
+        const since = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+        const { data: reqRow } = await adminClient
+          .from("teacher_verification_requests")
+          .select("id, method")
+          .eq("user_id", callerId)
+          .eq("status", "pending")
+          .gte("created_at", since)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if (!reqRow) {
+          return new Response(JSON.stringify({ error: "No recent request" }), { status: 403, headers: corsHeaders });
+        }
+        const { data: admins } = await adminClient.from("user_roles").select("user_id").eq("role", "admin");
+        overrideBody = {
+          student_ids: (admins ?? []).map((a: any) => a.user_id),
+          title: "Cerere nouă de verificare profesor",
+          body: `Metodă: ${reqRow.method}. Deschide panoul Admin pentru a o analiza.`,
+          skip_in_app: true,
+        };
+        callerIsAdmin = true;
+      }
+
       if (!callerIsAdmin) {
         const { data: profile } = await adminClient
           .from("profiles")
@@ -250,7 +278,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    const body = await req.json();
+    const body = overrideBody ?? (await req.json());
     const { student_ids, title, body: msgBody } = body;
     console.log("[SEND-PUSH] Body parsed:", JSON.stringify({ student_ids_count: student_ids?.length, title, body: msgBody }));
 
@@ -284,7 +312,7 @@ Deno.serve(async (req) => {
     // Sync to in-app bell: insert one notification row per recipient.
     // This guarantees the bell shows the message even if the push is dropped
     // by the OS (Focus mode, Low Power, no permission, etc.).
-    try {
+    if (!(body as any).skip_in_app) try {
       const rows = effectiveStudentIds.map((uid: string) => ({
         user_id: uid,
         title,
