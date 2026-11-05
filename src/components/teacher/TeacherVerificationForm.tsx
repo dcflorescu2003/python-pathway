@@ -158,6 +158,9 @@ const TeacherVerificationForm = ({ onSuccess, onCancel }: Props) => {
       if (res?.status === "approved") {
         toast.success("Cont de profesor verificat! 🎓");
       } else {
+        supabase.functions
+          .invoke("send-push", { body: { admin_verification_request: true } })
+          .catch((e) => console.error("Admin push error:", e));
         toast.success("Cererea a fost trimisă! Vei fi notificat. 📨");
       }
       onSuccess();
