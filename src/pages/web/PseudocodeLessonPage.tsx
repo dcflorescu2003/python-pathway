@@ -1,3 +1,4 @@
+import AuthorNote from "@/components/web/AuthorNote";
 import { Link, useParams } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
 import { ArrowLeft, ArrowRight } from "lucide-react";
@@ -37,6 +38,7 @@ const PseudocodeLessonPage = () => {
         <div className="mt-4 text-xs font-mono uppercase tracking-wider text-primary">Lecția {lesson.number}</div>
         <h1 className="mt-1 text-3xl font-bold">{lesson.title}</h1>
         <p className="mt-3 text-lg text-muted-foreground">{lesson.description}</p>
+        <AuthorNote crumbs={[{ name: "Acasă", path: "/" }, { name: "Pseudocod", path: "/pseudocod" }, { name: lesson.title, path: `/pseudocod/lectii/${lesson.slug}` }]} headline={lesson.title} description={lesson.description} />
 
         {lesson.sections.map((s) => (
           <section key={s.heading} className="mt-10">
