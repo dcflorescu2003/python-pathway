@@ -10,7 +10,7 @@ import { Flame, Zap, Medal, Loader2, Search } from "lucide-react";
 import { motion } from "framer-motion";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import { getClassLeaderboardName } from "@/lib/leaderboardIdentity";
+import { getClassLeaderboardName, getPublicName } from "@/lib/leaderboardIdentity";
 
 const medalColors = [
   "text-yellow-400",
