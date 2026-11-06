@@ -12,6 +12,11 @@ import { useSubscription } from "@/hooks/useSubscription";
 import { getTeacherTestLimit, TEACHER_TIER_LABEL } from "@/lib/teacherLimits";
 import TestLimitReachedDialog from "./TestLimitReachedDialog";
 import TeacherPremiumDialog from "@/components/TeacherPremiumDialog";
+import ShareTestDialog from "./ShareTestDialog";
+import TestDiscussion from "./TestDiscussion";
+import { useSharedTests, useDuplicateTest, useTestShares } from "@/hooks/useTestSharing";
+import { useSearchParams } from "react-router-dom";
+import { Share2, Copy } from "lucide-react";
 
 interface TestManagerProps {
   onCreateTest: () => void;
@@ -32,6 +37,28 @@ const TestManager = ({ onCreateTest, onEditTest, teacherStatus }: TestManagerPro
   const [limitDialogOpen, setLimitDialogOpen] = useState(false);
   const [premiumDialogOpen, setPremiumDialogOpen] = useState(false);
   const warnedRef = useRef<{ p80: boolean; p95: boolean }>({ p80: false, p95: false });
+  const [sharingTestId, setSharingTestId] = useState<string | null>(null);
+  const { data: sharedTests = [] } = useSharedTests();
+  const duplicateTest = useDuplicateTest();
+  const { data: expandedShares = [] } = useTestShares(expandedTestId);
+  const [searchParams] = useSearchParams();
+  const testFromUrl = searchParams.get("test");
+  useEffect(() => {
+    if (testFromUrl) setExpandedTestId(testFromUrl);
+  }, [testFromUrl]);
+
+  const handleDuplicate = async (testId: string) => {
+    if (atLimit) {
+      setLimitDialogOpen(true);
+      return;
+    }
+    try {
+      await duplicateTest.mutateAsync(testId);
+      toast.success("Testul a fost copiat în testele tale.");
+    } catch {
+      toast.error("Eroare la duplicare.");
+    }
+  };
 
   const { isTeacherPremium } = useSubscription();
   const { limit: testLimit, tier: teacherTier } = getTeacherTestLimit({ teacherStatus, isTeacherPremium });
@@ -149,7 +176,11 @@ const TestManager = ({ onCreateTest, onEditTest, teacherStatus }: TestManagerPro
 
               {isExpanded && (
                 <div className="border-t border-border px-3 pb-3 pt-2 space-y-3">
-                  <p className="text-xs text-muted-foreground">{items.length} itemi</p>
+                  {expandedShares.length > 0 && <TestDiscussion testId={test.id} />}
+                  <p className="text-xs text-muted-foreground">
+                    {items.length} itemi
+                    {expandedShares.length > 0 && ` · partajat cu ${expandedShares.length} ${expandedShares.length === 1 ? "coleg" : "colegi"}`}
+                  </p>
 
                   <div className="flex gap-2 flex-wrap">
                     <Button
@@ -182,6 +213,14 @@ const TestManager = ({ onCreateTest, onEditTest, teacherStatus }: TestManagerPro
                       onClick={() => setViewingResultsTestId(test.id)}
                     >
                       <Users className="h-3.5 w-3.5" /> Rezultate
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="gap-1"
+                      onClick={() => setSharingTestId(test.id)}
+                    >
+                      <Share2 className="h-3.5 w-3.5" /> Partajează
                     </Button>
                   </div>
 
@@ -238,6 +277,49 @@ const TestManager = ({ onCreateTest, onEditTest, teacherStatus }: TestManagerPro
       >
         <Plus className="h-4 w-4" /> {atLimit ? 'Limită atinsă — vezi opțiuni' : 'Creează test nou'}
       </Button>
+
+      {sharedTests.length > 0 && (
+        <div className="space-y-2 pt-2">
+          <h3 className="text-sm font-semibold text-muted-foreground">Teste partajate cu mine ({sharedTests.length})</h3>
+          {sharedTests.map((t) => {
+            const isExpanded = expandedTestId === t.id;
+            return (
+              <Card key={t.id}>
+                <CardContent className="p-0">
+                  <button
+                    onClick={() => setExpandedTestId(isExpanded ? null : t.id)}
+                    className="w-full p-3 flex items-center justify-between text-left min-h-[48px]"
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <Share2 className="h-4 w-4 text-secondary shrink-0" />
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-foreground truncate">{t.title}</p>
+                        <p className="text-[10px] text-muted-foreground">de la {t.owner_name}</p>
+                      </div>
+                    </div>
+                    {isExpanded ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+                  </button>
+                  {isExpanded && (
+                    <div className="border-t border-border px-3 pb-3 pt-2 space-y-3">
+                      <TestDiscussion testId={t.id} />
+                      <p className="text-xs text-muted-foreground">{items.length} itemi · doar autorul poate modifica testul</p>
+                      <Button size="sm" variant="outline" className="gap-1" onClick={() => handleDuplicate(t.id)} disabled={duplicateTest.isPending}>
+                        <Copy className="h-3.5 w-3.5" /> Duplică în testele mele
+                      </Button>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      )}
+
+      <ShareTestDialog
+        testId={sharingTestId}
+        testTitle={tests.find((t: any) => t.id === sharingTestId)?.title}
+        onOpenChange={(o) => !o && setSharingTestId(null)}
+      />
 
       <TestLimitReachedDialog
         open={limitDialogOpen}
