@@ -19,6 +19,7 @@ import RichContent from "@/components/RichContent";
 import WatchAdForLivesButton from "@/components/WatchAdForLivesButton";
 import WebWatchAdForLivesButton from "@/components/web/WebWatchAdForLivesButton";
 import PremiumDialog from "@/components/PremiumDialog";
+import NicknamePromptDialog from "@/components/NicknamePromptDialog";
 import AppDownloadCTA from "@/components/web/AppDownloadCTA";
 import { Capacitor } from "@capacitor/core";
 import { useAuth } from "@/hooks/useAuth";
@@ -323,6 +324,7 @@ const LessonPage = () => {
             <Button className="flex-1 touch-target" onClick={() => navigate(`/chapter/${chapter.id}`)}>Continuă</Button>
           </div>
           <StreakCelebrationDialog open={streakJustIncreased} streakCount={newStreakCount} onClose={dismissStreakCelebration} />
+          <NicknamePromptDialog trigger={!streakJustIncreased} />
         </motion.div>
       </div>
     );
