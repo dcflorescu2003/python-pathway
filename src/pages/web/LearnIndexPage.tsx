@@ -15,10 +15,10 @@ const LearnIndexPage = () => {
   return (
     <WebLayout>
       <Helmet>
-        <title>Învață Python gratuit — Lecții de programare pentru clasa a IX-a | PyRo</title>
+        <title>Învață Python gratuit — Lecții de programare pentru clasele IX–XI | PyRo</title>
         <meta
           name="description"
-          content="Lecții gratuite de Python, în română, fără cont: variabile, condiții, bucle, liste, funcții, fișiere și interfețe grafice. Conținut aliniat programei de informatică pentru clasa a IX-a."
+          content="Lecții gratuite de Python, în română, fără cont: variabile, condiții, bucle, liste, funcții, fișiere și interfețe grafice. Include grafuri, arbori și POO pentru clasa a XI-a."
         />
       </Helmet>
 
@@ -29,7 +29,7 @@ const LearnIndexPage = () => {
           </h1>
           <p className="mt-4 text-base text-muted-foreground sm:text-lg">
             Am publicat aici, în acces liber, teoria completă pe care o folosim în aplicația PyRo:
-            șase capitole de programare în Python, în română, cu explicații și exemple de cod
+            capitole de programare în Python pentru clasele IX–XI, în română, cu explicații și exemple de cod
             comentate. Poți citi totul fără cont și fără instalare — iar când vrei să exersezi
             cu exerciții interactive, aplicația te așteaptă.
           </p>
