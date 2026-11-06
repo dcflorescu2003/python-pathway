@@ -261,4 +261,156 @@ export const advancedTheories: ChapterTheory[] = [
       },
     ],
   },
+  {
+    chapterId: "xi3",
+    sections: [
+      {
+        title: "Ce este un graf",
+        content:
+          "Un graf neorientat G = (V, E) este format dintr-o mulțime finită și nevidă V de vârfuri (noduri) și o mulțime E de muchii. O muchie este o pereche NEORDONATĂ de vârfuri distincte, notată [x, y]: [x, y] și [y, x] reprezintă aceeași muchie.\n\nÎn programa de liceu lucrăm cu grafuri simple: fără bucle (muchii de la un vârf la el însuși) și fără muchii multiple între aceleași două vârfuri. Notăm de obicei n = numărul de vârfuri și m = numărul de muchii, iar vârfurile cu 1, 2, …, n.\n\nDacă există muchia [x, y], spunem că x și y sunt adiacente, iar muchia este incidentă cu fiecare dintre ele.\n\nUn graf simplu cu n vârfuri are cel mult n(n − 1)/2 muchii. Graful care le are pe toate se numește graf complet și se notează Kn.\n\nExemple din viața reală: rețeaua de prietenii dintr-o clasă, străzile cu dublu sens dintre intersecții, conexiunile dintre calculatoarele unei rețele.",
+      },
+      {
+        title: "Gradul unui vârf",
+        content:
+          "Gradul unui vârf x, notat d(x), este numărul muchiilor incidente cu x (adică numărul vecinilor săi, într-un graf simplu).\n\n• Un vârf cu gradul 0 se numește vârf izolat.\n• Un vârf cu gradul 1 se numește vârf terminal.\n\nProprietate fundamentală: suma gradelor tuturor vârfurilor este 2m. Motivul: fiecare muchie [x, y] se numără de două ori — o dată la gradul lui x și o dată la gradul lui y.\n\nConsecință: numărul vârfurilor cu grad impar este întotdeauna PAR. De exemplu, nu poate exista un grup de 5 elevi în care fiecare să aibă exact 3 prieteni în grup, pentru că suma gradelor ar fi 15, un număr impar.",
+        code: "n = 5\nmuchii = [(1, 2), (1, 3), (2, 3), (3, 4)]\n\ngrad = [0] * (n + 1)          # folosim pozițiile 1..n\nfor x, y in muchii:\n    grad[x] += 1\n    grad[y] += 1\n\nfor v in range(1, n + 1):\n    print(f'd({v}) = {grad[v]}')\n\nprint('Suma gradelor:', sum(grad))      # 8\nprint('2 * m =', 2 * len(muchii))       # 8\nprint('Izolate:', [v for v in range(1, n + 1) if grad[v] == 0])  # [5]",
+      },
+      {
+        title: "Reprezentarea prin matrice de adiacență",
+        content:
+          "Matricea de adiacență este o matrice pătratică a cu n linii și n coloane, în care a[i][j] = 1 dacă există muchia [i, j] și 0 în caz contrar.\n\nPentru un graf neorientat matricea este simetrică față de diagonala principală (a[i][j] = a[j][i]), iar diagonala principală conține doar 0, pentru că nu avem bucle. Gradul vârfului i este suma elementelor de pe linia i.\n\nAvantaj: verifici în timp constant dacă două vârfuri sunt adiacente. Dezavantaj: ocupă memorie proporțională cu n², chiar dacă graful are foarte puține muchii.\n\nÎn Python lăsăm linia și coloana 0 nefolosite, ca să lucrăm cu vârfurile 1..n la fel ca în manual.",
+        code: "n = 4\nmuchii = [(1, 2), (1, 3), (2, 3), (3, 4)]\n\na = [[0] * (n + 1) for _ in range(n + 1)]\nfor x, y in muchii:\n    a[x][y] = 1\n    a[y][x] = 1      # graf neorientat: simetrie\n\nfor i in range(1, n + 1):\n    print(*a[i][1:])\n\nprint('Gradul lui 3:', sum(a[3]))          # 3\nprint('Sunt 2 și 4 adiacente?', a[2][4] == 1)  # False",
+      },
+      {
+        title: "Reprezentarea prin liste de adiacență",
+        content:
+          "Pentru fiecare vârf păstrăm lista vecinilor săi. În Python, cea mai simplă variantă este o listă de liste: vecini[x] conține toate vârfurile adiacente cu x.\n\nMemoria folosită este proporțională cu n + m (fiecare muchie apare în exact două liste), deci reprezentarea este potrivită pentru grafuri mari cu puține muchii. Gradul vârfului x este chiar len(vecini[x]).\n\nO a treia variantă este lista muchiilor: păstrăm doar perechile (x, y). Este forma în care graful apare de obicei în fișierele de intrare, iar din ea construim una dintre celelalte două reprezentări.",
+        code: "n = 6\nmuchii = [(1, 2), (1, 3), (2, 4), (3, 4), (5, 6)]\n\nvecini = [[] for _ in range(n + 1)]\nfor x, y in muchii:\n    vecini[x].append(y)\n    vecini[y].append(x)\n\nfor v in range(1, n + 1):\n    print(v, '->', vecini[v], ' grad =', len(vecini[v]))",
+      },
+      {
+        title: "Lanțuri, cicluri și conexitate",
+        content:
+          "Un lanț este o succesiune de vârfuri x1, x2, …, xk în care oricare două vârfuri consecutive sunt adiacente. Lungimea lanțului este numărul de muchii, adică k − 1.\n\n• Lanț elementar: toate vârfurile sunt distincte.\n• Lanț simplu: toate muchiile sunt distincte (un vârf se poate repeta).\nOrice lanț elementar este și simplu, dar invers nu.\n\nUn ciclu este un lanț simplu în care primul și ultimul vârf coincid. Ciclul este elementar dacă, în afară de capete, vârfurile sunt distincte. Un ciclu elementar într-un graf simplu are cel puțin 3 vârfuri distincte.\n\nUn graf este conex dacă între oricare două vârfuri există cel puțin un lanț. O componentă conexă este un subgraf conex maximal — „o bucată” a grafului care nu mai poate fi extinsă. Graful din exemplul anterior are două componente conexe: {1, 2, 3, 4} și {5, 6}.",
+      },
+      {
+        title: "Parcurgerea în lățime (BFS)",
+        content:
+          "Parcurgerea în lățime (Breadth-First Search) pornește dintr-un vârf de start și vizitează mai întâi toți vecinii lui, apoi vecinii vecinilor și așa mai departe — „în valuri”, ca cercurile de pe apă.\n\nFolosim o coadă: scoatem vârful din față și adăugăm la final vecinii nevizitați. În Python, collections.deque face ambele operații în timp constant (lista obișnuită cu pop(0) este lentă).\n\nProprietate importantă: într-un graf neorientat fără costuri pe muchii, BFS găsește distanța minimă (numărul minim de muchii) de la start la fiecare vârf.\n\nComplexitatea, cu liste de adiacență, este O(n + m).",
+        code: "from collections import deque\n\nn = 7\nmuchii = [(1, 2), (1, 3), (2, 4), (3, 4), (4, 5), (6, 7)]\nvecini = [[] for _ in range(n + 1)]\nfor x, y in muchii:\n    vecini[x].append(y)\n    vecini[y].append(x)\n\ndef bfs(start):\n    dist = [-1] * (n + 1)      # -1 = nevizitat\n    dist[start] = 0\n    coada = deque([start])\n    ordine = []\n    while coada:\n        x = coada.popleft()\n        ordine.append(x)\n        for y in vecini[x]:\n            if dist[y] == -1:\n                dist[y] = dist[x] + 1\n                coada.append(y)\n    return ordine, dist\n\nordine, dist = bfs(1)\nprint('Ordinea vizitării:', ordine)   # [1, 2, 3, 4, 5]\nprint('Distanța de la 1 la 5:', dist[5])  # 3\nprint('Se ajunge din 1 în 6?', dist[6] != -1)  # False",
+      },
+      {
+        title: "Parcurgerea în adâncime (DFS) și componentele conexe",
+        content:
+          "Parcurgerea în adâncime (Depth-First Search) merge cât mai departe pe un drum, iar când nu mai are vecini nevizitați se întoarce la vârful anterior. Se scrie natural recursiv; stiva apelurilor ține minte drumul de întoarcere.\n\nComplexitatea este tot O(n + m).\n\nAplicație clasică: numărarea componentelor conexe. Pornim un DFS din fiecare vârf încă nevizitat; fiecare pornire nouă descoperă o componentă nouă. Graful este conex dacă și numai dacă obținem exact o componentă.\n\nAtenție: pentru grafuri foarte mari, recursivitatea poate depăși limita implicită din Python (aproximativ 1000 de apeluri). În astfel de cazuri se folosește o stivă explicită sau BFS.",
+        code: "n = 7\nmuchii = [(1, 2), (1, 3), (2, 4), (3, 4), (4, 5), (6, 7)]\nvecini = [[] for _ in range(n + 1)]\nfor x, y in muchii:\n    vecini[x].append(y)\n    vecini[y].append(x)\n\nvizitat = [False] * (n + 1)\n\ndef dfs(x, componenta):\n    vizitat[x] = True\n    componenta.append(x)\n    for y in vecini[x]:\n        if not vizitat[y]:\n            dfs(y, componenta)\n\ncomponente = []\nfor v in range(1, n + 1):\n    if not vizitat[v]:\n        comp = []\n        dfs(v, comp)\n        componente.append(comp)\n\nprint('Componente conexe:', componente)  # [[1, 2, 4, 3, 5], [6, 7]]\nprint('Graful este conex?', len(componente) == 1)  # False",
+      },
+      {
+        title: "Grafuri orientate",
+        content:
+          "Într-un graf orientat, legăturile se numesc arce și sunt perechi ORDONATE (x, y): arcul pleacă din x (extremitatea inițială) și ajunge în y (extremitatea finală). Arcul (x, y) este diferit de (y, x). Exemplu: urmăritorii pe o rețea socială — dacă tu urmărești pe cineva, nu înseamnă că și el te urmărește.\n\n• Gradul exterior d⁺(x) = numărul arcelor care pleacă din x.\n• Gradul interior d⁻(x) = numărul arcelor care intră în x.\nSuma gradelor exterioare este egală cu suma gradelor interioare și ambele sunt egale cu m, numărul de arce.\n\nMatricea de adiacență nu mai este, în general, simetrică. Corespondentul lanțului este drumul (arcele se parcurg în sensul lor), iar al ciclului este circuitul.\n\nUn graf orientat este tare conex dacă pentru oricare două vârfuri x și y există drum atât de la x la y, cât și de la y la x.",
+        code: "n = 4\narce = [(1, 2), (2, 3), (3, 1), (3, 4)]\n\ngrad_ext = [0] * (n + 1)\ngrad_int = [0] * (n + 1)\nfor x, y in arce:\n    grad_ext[x] += 1\n    grad_int[y] += 1\n\nfor v in range(1, n + 1):\n    print(f'{v}: d+ = {grad_ext[v]}, d- = {grad_int[v]}')\n\nprint(sum(grad_ext), sum(grad_int), len(arce))  # 4 4 4",
+      },
+      {
+        title: "Capcane frecvente",
+        content:
+          "• La grafuri neorientate, când citești muchia (x, y), adaug-o în AMBELE liste de adiacență sau în ambele poziții ale matricei. Uitarea simetriei este cea mai frecventă greșeală.\n• Nu crea matricea cu [[0] * (n + 1)] * (n + 1): toate liniile ar fi aceeași listă, iar modificarea uneia le modifică pe toate.\n• În BFS marchează vârful ca vizitat în momentul în care îl adaugi în coadă, nu când îl scoți; altfel același vârf poate intra de mai multe ori în coadă.\n• Nu confunda lungimea unui lanț (număr de muchii) cu numărul de vârfuri de pe lanț.\n• Ordinea în care BFS și DFS vizitează vecinii depinde de ordinea din listele de adiacență; la examen, dacă se cere ordinea, se respectă de obicei ordinea crescătoare a vârfurilor.",
+      },
+    ],
+  },
+  {
+    chapterId: "xi4",
+    sections: [
+      {
+        title: "Ce este un arbore",
+        content:
+          "Un arbore este un graf neorientat conex și fără cicluri (aciclic).\n\nPentru un graf neorientat cu n vârfuri, următoarele afirmații sunt echivalente — oricare dintre ele poate fi folosită ca definiție:\n1. G este conex și aciclic.\n2. G este conex și are exact n − 1 muchii.\n3. G este aciclic și are exact n − 1 muchii.\n4. Între oricare două vârfuri ale lui G există un lanț elementar UNIC.\n\nConsecințe utile: dacă ștergi o muchie dintr-un arbore, acesta nu mai este conex; dacă adaugi o muchie nouă, se formează exact un ciclu.\n\nUn graf aciclic, nu neapărat conex, se numește pădure: fiecare componentă conexă a lui este un arbore.",
+        code: "def este_arbore(n, muchii):\n    if len(muchii) != n - 1:\n        return False\n    vecini = [[] for _ in range(n + 1)]\n    for x, y in muchii:\n        vecini[x].append(y)\n        vecini[y].append(x)\n    vizitat = [False] * (n + 1)\n    stiva = [1]\n    vizitat[1] = True\n    while stiva:\n        x = stiva.pop()\n        for y in vecini[x]:\n            if not vizitat[y]:\n                vizitat[y] = True\n                stiva.append(y)\n    return all(vizitat[1:])    # n - 1 muchii + conex => arbore\n\nprint(este_arbore(5, [(1, 2), (1, 3), (3, 4), (3, 5)]))  # True\nprint(este_arbore(5, [(1, 2), (2, 3), (3, 1), (4, 5)]))  # False",
+      },
+      {
+        title: "Arbori cu rădăcină: vocabular",
+        content:
+          "Dacă alegem un vârf al arborelui ca rădăcină, toate celelalte vârfuri se așază pe niveluri, „atârnând” de ea. Pentru fiecare vârf x diferit de rădăcină există un lanț unic de la rădăcină la x.\n\n• Tatăl (părintele) lui x este vârful de dinaintea lui x pe acest lanț. Rădăcina este singurul vârf fără tată.\n• Fiii lui x sunt vârfurile al căror tată este x. Vârfurile care au același tată se numesc frați.\n• Ascendenții lui x sunt vârfurile de pe lanțul de la rădăcină la x (fără x); descendenții sunt vârfurile din subarborele lui x.\n• O frunză este un vârf fără fii.\n• Adâncimea (nivelul) unui vârf este numărul de muchii de la rădăcină până la el; rădăcina are adâncimea 0.\n• Înălțimea arborelui este adâncimea maximă a unui vârf.\n\nAtenție: unele manuale numerotează nivelurile începând de la 1. Citește cu grijă convenția din enunț înainte de a răspunde.",
+      },
+      {
+        title: "Reprezentarea prin vectorul de tați",
+        content:
+          "Cea mai folosită reprezentare la liceu: un vector tata în care tata[x] este tatăl vârfului x, iar pentru rădăcină tata[r] = 0.\n\nDin acest vector se obțin rapid:\n• rădăcina — singurul x cu tata[x] = 0;\n• fiii lui x — toate vârfurile i cu tata[i] = x;\n• frunzele — vârfurile care NU apar ca valoare în vector (nu sunt tatăl nimănui);\n• lanțul de la x la rădăcină — urcăm repetat x = tata[x] până ajungem la 0.\n\nUn arbore cu n vârfuri are exact n − 1 muchii, câte una între fiecare vârf (în afară de rădăcină) și tatăl său.",
+        code: "#        1  2  3  4  5  6  7\ntata = [None, 0, 1, 1, 2, 2, 3, 6]   # poziția 0 nefolosită\nn = 7\n\nradacina = [x for x in range(1, n + 1) if tata[x] == 0][0]\nprint('Rădăcina:', radacina)                          # 1\nprint('Fiii lui 2:', [i for i in range(1, n + 1) if tata[i] == 2])  # [4, 5]\n\nparinti = set(tata[1:])\nprint('Frunze:', [x for x in range(1, n + 1) if x not in parinti])  # [4, 5, 7]\n\ndef lant_spre_radacina(x):\n    lant = []\n    while x != 0:\n        lant.append(x)\n        x = tata[x]\n    return lant\n\nprint('De la 7 la rădăcină:', lant_spre_radacina(7))  # [7, 6, 3, 1]\nprint('Adâncimea lui 7:', len(lant_spre_radacina(7)) - 1)  # 3",
+      },
+      {
+        title: "Arbori binari",
+        content:
+          "Un arbore binar este un arbore cu rădăcină în care fiecare vârf are cel mult doi fii, iar fiii se deosebesc între ei: fiul stâng și fiul drept. Un vârf cu un singur fiu stâng este diferit de unul cu un singur fiu drept.\n\nCâteva proprietăți (cu nivelurile numerotate de la 0):\n• pe nivelul k există cel mult 2ᵏ vârfuri;\n• un arbore binar de înălțime h are cel mult 2ʰ⁺¹ − 1 vârfuri;\n• un arbore binar plin (toate nivelurile complet ocupate) de înălțime h are exact 2ʰ⁺¹ − 1 vârfuri și 2ʰ frunze.\n\nÎn Python, cel mai clar mod de a reprezenta un arbore binar este cu o clasă mică, Nod, care ține valoarea și legăturile către cei doi fii (None dacă fiul lipsește).",
+        code: "class Nod:\n    def __init__(self, val, st=None, dr=None):\n        self.val = val\n        self.st = st\n        self.dr = dr\n\n#        8\n#       / \\\n#      3   10\n#     / \\    \\\n#    1   6    14\nrad = Nod(8, Nod(3, Nod(1), Nod(6)), Nod(10, None, Nod(14)))\n\ndef inaltime(nod):\n    if nod is None:\n        return -1          # arborele vid; o frunză va avea înălțimea 0\n    return 1 + max(inaltime(nod.st), inaltime(nod.dr))\n\ndef numar_noduri(nod):\n    if nod is None:\n        return 0\n    return 1 + numar_noduri(nod.st) + numar_noduri(nod.dr)\n\nprint('Înălțime:', inaltime(rad))         # 2\nprint('Noduri:', numar_noduri(rad))       # 6",
+      },
+      {
+        title: "Parcurgerile RSD, SRD, SDR",
+        content:
+          "Un arbore binar se parcurge recursiv în trei moduri clasice; diferă doar momentul în care prelucrăm rădăcina subarborelui curent:\n\n• Preordine (RSD): Rădăcină, apoi subarborele Stâng, apoi cel Drept.\n• Inordine (SRD): subarborele Stâng, Rădăcină, subarborele Drept.\n• Postordine (SDR): subarborele Stâng, subarborele Drept, apoi Rădăcina.\n\nTruc de memorare: litera R arată poziția rădăcinii, iar S este mereu înaintea lui D.\n\nPostordinea este utilă când un vârf are nevoie de rezultatele fiilor (de exemplu calculul înălțimii sau evaluarea unei expresii aritmetice reprezentate ca arbore).",
+        code: "class Nod:\n    def __init__(self, val, st=None, dr=None):\n        self.val, self.st, self.dr = val, st, dr\n\nrad = Nod(8, Nod(3, Nod(1), Nod(6)), Nod(10, None, Nod(14)))\n\ndef rsd(n, rez):\n    if n:\n        rez.append(n.val); rsd(n.st, rez); rsd(n.dr, rez)\n    return rez\n\ndef srd(n, rez):\n    if n:\n        srd(n.st, rez); rez.append(n.val); srd(n.dr, rez)\n    return rez\n\ndef sdr(n, rez):\n    if n:\n        sdr(n.st, rez); sdr(n.dr, rez); rez.append(n.val)\n    return rez\n\nprint('RSD:', rsd(rad, []))   # [8, 3, 1, 6, 10, 14]\nprint('SRD:', srd(rad, []))   # [1, 3, 6, 8, 10, 14]\nprint('SDR:', sdr(rad, []))   # [1, 6, 3, 14, 10, 8]",
+      },
+      {
+        title: "Arbori binari de căutare",
+        content:
+          "Un arbore binar de căutare (ABC, în engleză BST) este un arbore binar în care, pentru fiecare vârf cu valoarea v:\n• toate valorile din subarborele stâng sunt mai mici decât v;\n• toate valorile din subarborele drept sunt mai mari decât v.\n(Aici presupunem valori distincte.)\n\nAtenție: nu este suficient ca fiecare vârf să fie mai mare decât fiul stâng și mai mic decât fiul drept — condiția privește ÎNTREGUL subarbore.\n\nConsecințe:\n• parcurgerea în inordine (SRD) afișează valorile în ordine crescătoare — arborele din exemplul anterior este un ABC, iar SRD a dat [1, 3, 6, 8, 10, 14];\n• căutarea unei valori coboară pe un singur drum, deci face cel mult h + 1 comparații, unde h este înălțimea. Dacă arborele este echilibrat, h este aproximativ log₂ n; dacă valorile sunt inserate deja sortate, arborele degenerează într-un „lanț” și h = n − 1.",
+        code: "class Nod:\n    def __init__(self, val):\n        self.val, self.st, self.dr = val, None, None\n\ndef insereaza(rad, val):\n    if rad is None:\n        return Nod(val)\n    if val < rad.val:\n        rad.st = insereaza(rad.st, val)\n    elif val > rad.val:\n        rad.dr = insereaza(rad.dr, val)\n    return rad                    # valorile duplicate sunt ignorate\n\ndef cauta(rad, val):\n    while rad is not None and rad.val != val:\n        rad = rad.st if val < rad.val else rad.dr\n    return rad is not None\n\ndef srd(n, rez):\n    if n:\n        srd(n.st, rez); rez.append(n.val); srd(n.dr, rez)\n    return rez\n\nrad = None\nfor x in [50, 30, 70, 20, 40, 60, 80]:\n    rad = insereaza(rad, x)\n\nprint(srd(rad, []))       # [20, 30, 40, 50, 60, 70, 80]\nprint(cauta(rad, 60))     # True\nprint(cauta(rad, 65))     # False",
+      },
+      {
+        title: "Capcane frecvente",
+        content:
+          "• Nu confunda arborele (graf neorientat, conex, aciclic) cu arborele cu rădăcină: același arbore poate avea rădăcini diferite, deci vectori de tați diferiți.\n• În vectorul de tați, frunzele sunt vârfurile care nu apar ca valori, nu vârfurile cu tata[x] = 0 (acela este rădăcina).\n• Verifică întotdeauna convenția pentru niveluri și înălțime (de la 0 sau de la 1).\n• La parcurgerile recursive nu uita cazul de bază (nod is None); fără el programul se oprește cu eroare când ajunge la un fiu lipsă.\n• Un arbore binar nu este neapărat un arbore binar de căutare: proprietatea de ordonare trebuie verificată pe subarbori întregi.",
+      },
+    ],
+  },
+  {
+    chapterId: "xi5",
+    sections: [
+      {
+        title: "De ce avem nevoie de clase",
+        content:
+          "Până acum am lucrat cu tipuri gata făcute: int, str, list, dict. Când datele devin mai complexe, apare tentația să le ținem în liste paralele sau în tupluri: nume[i], medie[i], clasa[i]. Codul devine greu de citit, iar o greșeală de indice amestecă datele elevilor între ei.\n\nO clasă este un tip de date definit de programator, care grupează la un loc:\n• atributele — datele care descriu starea (de exemplu numele și notele unui elev);\n• metodele — funcțiile care lucrează cu aceste date (de exemplu calculul mediei).\n\nUn obiect (o instanță) este o valoare concretă creată după „șablonul” clasei. Clasa Elev este una singură, dar putem crea oricâți elevi, fiecare cu propriile date.\n\nAcest mod de organizare a programelor se numește programare orientată pe obiecte (POO).",
+      },
+      {
+        title: "Prima clasă: constructorul și self",
+        content:
+          "O clasă se definește cu cuvântul cheie class. Metoda specială __init__ este apelată automat când creăm un obiect și are rolul de a-i inițializa atributele. (Tehnic, obiectul a fost deja creat înainte de __init__; această metodă doar îi stabilește starea inițială, motiv pentru care se numește corect inițializator, deși la liceu e numită frecvent și constructor.)\n\nPrimul parametru al oricărei metode obișnuite este, prin convenție, self: o referință către obiectul pentru care a fost apelată metoda. Când scriem ana.medie(), Python apelează de fapt Elev.medie(ana), deci self este ana.\n\nAtributele create cu self.nume = ... aparțin fiecărui obiect în parte (atribute de instanță).",
+        code: "class Elev:\n    def __init__(self, nume, note):\n        self.nume = nume\n        self.note = list(note)    # copie, ca să nu partajăm lista primită\n\n    def medie(self):\n        if not self.note:\n            return 0\n        return sum(self.note) / len(self.note)\n\n    def adauga_nota(self, nota):\n        if not 1 <= nota <= 10:\n            raise ValueError('Nota trebuie să fie între 1 și 10')\n        self.note.append(nota)\n\nana = Elev('Ana', [9, 10])\nmihai = Elev('Mihai', [7])\nana.adauga_nota(8)\n\nprint(ana.nume, round(ana.medie(), 2))   # Ana 9.0\nprint(mihai.nume, mihai.medie())         # Mihai 7.0\nprint(Elev.medie(ana) == ana.medie())    # True",
+      },
+      {
+        title: "Afișarea unui obiect: __str__ și __repr__",
+        content:
+          "Dacă afișăm direct un obiect, Python arată ceva de forma <__main__.Elev object at 0x...>, adică tipul și o adresă — puțin util.\n\nMetodele speciale („dunder”, de la double underscore) ne permit să controlăm acest comportament:\n• __str__ întoarce textul prietenos folosit de print() și str();\n• __repr__ întoarce o reprezentare destinată programatorului, ideal una din care s-ar putea recrea obiectul. Este folosită, de exemplu, când afișăm o listă de obiecte.\n\nAmbele trebuie să întoarcă (return) un șir de caractere, nu să-l afișeze.",
+        code: "class Punct:\n    def __init__(self, x, y):\n        self.x = x\n        self.y = y\n\n    def __str__(self):\n        return f'({self.x}, {self.y})'\n\n    def __repr__(self):\n        return f'Punct({self.x}, {self.y})'\n\n    def distanta(self, alt):\n        return ((self.x - alt.x) ** 2 + (self.y - alt.y) ** 2) ** 0.5\n\nA = Punct(0, 0)\nB = Punct(3, 4)\nprint(A, B)              # (0, 0) (3, 4)\nprint([A, B])            # [Punct(0, 0), Punct(3, 4)]\nprint(A.distanta(B))     # 5.0",
+      },
+      {
+        title: "Atribute de instanță și atribute de clasă",
+        content:
+          "Un atribut definit direct în corpul clasei (nu prin self) este un atribut de clasă: există o singură dată și este comun tuturor obiectelor. Un atribut creat prin self.ceva = ... este un atribut de instanță: fiecare obiect are propria valoare.\n\nAtributele de clasă sunt potrivite pentru constante sau pentru informații despre clasă în ansamblu, cum ar fi numărul de obiecte create.\n\nCapcană importantă: dacă atributul de clasă este o listă sau un dicționar și îl modifici prin append, modificarea se vede la TOATE obiectele. Datele specifice fiecărui obiect se inițializează întotdeauna în __init__.",
+        code: "class Elev:\n    scoala = 'Liceul de Informatică'   # atribut de clasă (comun)\n    numar_elevi = 0\n\n    def __init__(self, nume):\n        self.nume = nume                # atribut de instanță\n        Elev.numar_elevi += 1\n\na = Elev('Ana')\nb = Elev('Dan')\nprint(a.scoala, '|', b.scoala)\nprint('Elevi creați:', Elev.numar_elevi)   # 2\n\n# Capcana listei comune\nclass Grupa:\n    membri = []                # GREȘIT: listă partajată\n    def adauga(self, x):\n        self.membri.append(x)\n\ng1, g2 = Grupa(), Grupa()\ng1.adauga('Ana')\nprint(g2.membri)               # ['Ana']  — surpriză!",
+      },
+      {
+        title: "Încapsulare",
+        content:
+          "Încapsularea înseamnă că un obiect își protejează datele interne și permite modificarea lor doar prin metode care verifică validitatea.\n\nSpre deosebire de C++ sau Java, Python nu are cuvintele cheie private și public. Folosește convenții:\n• _sold (o liniuță): atribut de uz intern; programatorii înțeleg că nu trebuie folosit din afara clasei, dar Python nu îl blochează.\n• __sold (două liniuțe): Python redenumește automat atributul în _ContBancar__sold (name mangling), ceea ce îngreunează accesul accidental din afară și evită conflictele de nume la moștenire. Nici aceasta nu este o protecție absolută.\n\nDecoratorul @property permite citirea unei valori ca pe un atribut, fără a o lăsa modificată direct.",
+        code: "class ContBancar:\n    def __init__(self, titular):\n        self.titular = titular\n        self.__sold = 0\n\n    @property\n    def sold(self):\n        return self.__sold\n\n    def depune(self, suma):\n        if suma <= 0:\n            raise ValueError('Suma trebuie să fie pozitivă')\n        self.__sold += suma\n\n    def retrage(self, suma):\n        if suma > self.__sold:\n            return False\n        self.__sold -= suma\n        return True\n\ncont = ContBancar('Ioana')\ncont.depune(100)\nprint(cont.retrage(30), cont.sold)   # True 70\nprint(cont.retrage(500), cont.sold)  # False 70\n# cont.sold = 1000   -> AttributeError: nu are setter",
+      },
+      {
+        title: "Moștenire",
+        content:
+          "Moștenirea permite definirea unei clase noi pe baza uneia existente. Clasa derivată (copil) preia automat atributele și metodele clasei de bază (părinte) și poate adăuga altele sau le poate redefini.\n\nSintaxa: class Profesor(Persoana). Relația potrivită pentru moștenire este „este un/o”: un profesor ESTE o persoană.\n\nÎn __init__-ul clasei copil, super().__init__(...) apelează inițializatorul părintelui, ca să nu duplicăm codul.\n\nDacă o clasă copil definește o metodă cu același nume ca în părinte, versiunea copilului o înlocuiește (suprascriere). Astfel, obiecte de tipuri diferite pot răspunde diferit la același apel — idee numită polimorfism.",
+        code: "class Persoana:\n    def __init__(self, nume):\n        self.nume = nume\n\n    def prezentare(self):\n        return f'Sunt {self.nume}.'\n\nclass Profesor(Persoana):\n    def __init__(self, nume, materie):\n        super().__init__(nume)\n        self.materie = materie\n\n    def prezentare(self):          # suprascriere\n        return f'Sunt {self.nume} și predau {self.materie}.'\n\noameni = [Persoana('Ana'), Profesor('Popescu', 'informatică')]\nfor o in oameni:\n    print(o.prezentare())\n\nprint(isinstance(oameni[1], Persoana))   # True",
+      },
+      {
+        title: "Exemplu complet: clasa Fractie",
+        content:
+          "Reunim totul într-un tip numeric propriu. O fracție se păstrează mereu în formă ireductibilă, cu numitorul pozitiv: la creare împărțim numărătorul și numitorul la CMMDC-ul lor.\n\nDefinind metoda specială __add__, operatorul + funcționează direct între două fracții, iar __eq__ permite compararea cu ==.\n\n(Python are deja în biblioteca standard modulul fractions; aici construim versiunea noastră ca exercițiu de POO.)",
+        code: "from math import gcd\n\nclass Fractie:\n    def __init__(self, a, b):\n        if b == 0:\n            raise ZeroDivisionError('Numitorul nu poate fi 0')\n        if b < 0:\n            a, b = -a, -b\n        d = gcd(a, b)\n        self.a = a // d\n        self.b = b // d\n\n    def __add__(self, alta):\n        return Fractie(self.a * alta.b + alta.a * self.b, self.b * alta.b)\n\n    def __mul__(self, alta):\n        return Fractie(self.a * alta.a, self.b * alta.b)\n\n    def __eq__(self, alta):\n        return self.a == alta.a and self.b == alta.b\n\n    def __str__(self):\n        return f'{self.a}/{self.b}'\n\nx = Fractie(1, 6)\ny = Fractie(1, 3)\nprint(x + y)                          # 1/2\nprint(Fractie(4, -8))                 # -1/2\nprint(x * y)                          # 1/18\nprint(Fractie(2, 4) == Fractie(1, 2)) # True",
+      },
+      {
+        title: "Capcane frecvente",
+        content:
+          "• Uitarea lui self: o metodă definită ca def medie(): va produce eroare la apelul ana.medie(), pentru că Python transmite automat obiectul ca prim argument.\n• Scrierea nume = nume în loc de self.nume = nume în __init__ creează doar o variabilă locală, iar obiectul rămâne fără atribut.\n• Liste sau dicționare ca atribute de clasă, modificate pe loc — sunt partajate de toate obiectele.\n• __init__ nu trebuie să întoarcă o valoare (în afară de None).\n• __str__ trebuie să întoarcă un șir de caractere; dacă folosește print în loc de return, apare eroare.",
+      },
+    ],
+  },
 ];
