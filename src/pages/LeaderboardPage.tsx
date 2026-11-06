@@ -10,7 +10,7 @@ import { Flame, Zap, Medal, Loader2, Search } from "lucide-react";
 import { motion } from "framer-motion";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import { getClassLeaderboardName } from "@/lib/leaderboardIdentity";
+import { getClassLeaderboardName, getPublicName } from "@/lib/leaderboardIdentity";
 
 const medalColors = [
   "text-yellow-400",
@@ -333,7 +333,7 @@ const LeaderboardPage = () => {
     // Pe tabul Clasă: elevii văd doar nickname-uri, profesorii văd numele din catalog
     const displayName = tab === "class"
       ? getClassLeaderboardName(entry, isTeacherAccount || isTeacherClassView)
-      : (entry.nickname || entry.display_name || "Anonim");
+      : getPublicName(entry);
     const level = getLevelFromXP(entry.xp, xpPerLevel);
     const tier = getLevelInfo(level);
     return (
