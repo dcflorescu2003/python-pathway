@@ -1744,6 +1744,70 @@ export type Database = {
           },
         ]
       }
+      test_messages: {
+        Row: {
+          body: string
+          created_at: string
+          id: string
+          sender_id: string
+          test_id: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          id?: string
+          sender_id: string
+          test_id: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          id?: string
+          sender_id?: string
+          test_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "test_messages_test_id_fkey"
+            columns: ["test_id"]
+            isOneToOne: false
+            referencedRelation: "tests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      test_shares: {
+        Row: {
+          created_at: string
+          id: string
+          shared_by: string
+          shared_with: string
+          test_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          shared_by: string
+          shared_with: string
+          test_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          shared_by?: string
+          shared_with?: string
+          test_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "test_shares_test_id_fkey"
+            columns: ["test_id"]
+            isOneToOne: false
+            referencedRelation: "tests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       test_submissions: {
         Row: {
           assignment_id: string
@@ -2033,6 +2097,10 @@ export type Database = {
         Returns: Json
       }
       backfill_competency_scores: { Args: { p_user_id: string }; Returns: Json }
+      can_access_test_chat: {
+        Args: { _test_id: string; _user_id: string }
+        Returns: boolean
+      }
       can_grade_assignment: {
         Args: { _assignment_id: string; _user_id: string }
         Returns: boolean
@@ -2051,6 +2119,7 @@ export type Database = {
         Args: { message_id: number; queue_name: string }
         Returns: boolean
       }
+      duplicate_test: { Args: { p_test_id: string }; Returns: string }
       email_queue_dispatch: { Args: never; Returns: undefined }
       enqueue_email: {
         Args: { payload: Json; queue_name: string }
@@ -2165,6 +2234,13 @@ export type Database = {
           xp: number
         }[]
       }
+      get_my_colleagues: {
+        Args: never
+        Returns: {
+          display_name: string
+          user_id: string
+        }[]
+      }
       get_problem_solution: { Args: { p_id: string }; Returns: string }
       get_problems_catalog: {
         Args: never
@@ -2179,6 +2255,18 @@ export type Database = {
           test_cases: Json
           title: string
           xp_reward: number
+        }[]
+      }
+      get_shared_tests: {
+        Args: never
+        Returns: {
+          created_at: string
+          id: string
+          owner_name: string
+          shared_at: string
+          time_limit_minutes: number
+          title: string
+          variant_mode: string
         }[]
       }
       get_student_competency_profile:
@@ -2266,6 +2354,16 @@ export type Database = {
           source_type: string
           statement: string
           test_id: string
+        }[]
+      }
+      get_test_messages: {
+        Args: { p_test_id: string }
+        Returns: {
+          body: string
+          created_at: string
+          id: string
+          sender_id: string
+          sender_name: string
         }[]
       }
       get_test_roster_allocations: {
@@ -2362,6 +2460,10 @@ export type Database = {
       save_submission_draft: {
         Args: { p_answers: Json; p_submission_id: string }
         Returns: undefined
+      }
+      share_test: {
+        Args: { p_teacher_ids: string[]; p_test_id: string }
+        Returns: Json
       }
       source_in_accessible_test: {
         Args: { _source_id: string }
