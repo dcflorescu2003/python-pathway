@@ -261,6 +261,33 @@ Deno.serve(async (req) => {
         callerIsAdmin = true;
       }
 
+      // Special mode: test chat / share — push only to users whose in-app row
+      // was just inserted by the DB (throttle already applied there).
+      if (typeof peek?.test_chat_test_id === "string") {
+        const testId = peek.test_chat_test_id;
+        const { data: allowed } = await adminClient.rpc("can_access_test_chat", { _test_id: testId, _user_id: callerId });
+        if (!allowed) {
+          return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403, headers: corsHeaders });
+        }
+        const since = new Date(Date.now() - 30 * 1000).toISOString();
+        const { data: rows } = await adminClient
+          .from("notifications")
+          .select("user_id, title, body")
+          .eq("link", `/auth?tab=tests&test=${testId}`)
+          .neq("user_id", callerId)
+          .gte("created_at", since);
+        if (!rows?.length) {
+          return new Response(JSON.stringify({ sent: 0 }), { headers: corsHeaders });
+        }
+        overrideBody = {
+          student_ids: [...new Set(rows.map((r: any) => r.user_id))],
+          title: rows[0].title,
+          body: rows[0].body,
+          skip_in_app: true,
+        };
+        callerIsAdmin = true;
+      }
+
       if (!callerIsAdmin) {
         const { data: profile } = await adminClient
           .from("profiles")
