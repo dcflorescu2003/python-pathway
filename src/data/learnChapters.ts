@@ -119,4 +119,31 @@ export const learnChapters: LearnChapter[] = [
     description:
       "Backtracking în Python: schema generală, combinări și permutări. Programare dinamică: stări, recurențe, numărul de moduri și restul cu număr minim de monede.",
   },
+  {
+    slug: "grafuri",
+    chapterId: "xi3",
+    number: 13,
+    grade: 11,
+    title: "Grafuri: reprezentare și proprietăți",
+    description:
+      "Grafuri neorientate și orientate în Python: grade, matrice și liste de adiacență, lanțuri, cicluri, conexitate, parcurgerile BFS și DFS.",
+  },
+  {
+    slug: "arbori",
+    chapterId: "xi4",
+    number: 14,
+    grade: 11,
+    title: "Arbori cu rădăcină și arbori binari",
+    description:
+      "Arbori și proprietățile lor, vectorul de tați, frunze și niveluri, arbori binari, parcurgerile RSD, SRD, SDR și arbori binari de căutare în Python.",
+  },
+  {
+    slug: "clase-si-obiecte",
+    chapterId: "xi5",
+    number: 15,
+    grade: 11,
+    title: "Clase și obiecte (POO)",
+    description:
+      "Programare orientată pe obiecte în Python: clase, __init__ și self, __str__, atribute de instanță și de clasă, încapsulare, moștenire și clasa Fractie.",
+  },
 ];
