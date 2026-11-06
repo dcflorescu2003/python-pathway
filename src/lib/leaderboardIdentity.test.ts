@@ -21,7 +21,7 @@ describe("class leaderboard identity", () => {
     expect(getClassLeaderboardName(missing, false)).toBe(getDefaultNickname(student.user_id));
     expect(getClassLeaderboardName({ ...missing, display_name: "Alt nume" }, false))
       .toBe(getClassLeaderboardName(missing, false));
-    expect(getClassLeaderboardName({ ...missing, user_id: "87654321-abcd-4567-8901-123456789012" }, false))
+    expect(getClassLeaderboardName({ ...missing, user_id: "87654322-1111-4567-8901-123456789012" }, false))
       .not.toBe(getClassLeaderboardName(missing, false));
   });
 
@@ -34,6 +34,6 @@ describe("class leaderboard identity", () => {
     expect(FUNNY_NICKNAMES).toHaveLength(15);
     const alias = getPublicName({ user_id: student.user_id, nickname: null });
     expect(FUNNY_NICKNAMES.some((n) => alias.startsWith(n))).toBe(true);
-    expect(alias).not.toContain("Ana");
+    expect(alias).not.toContain("Popescu");
   });
 });
