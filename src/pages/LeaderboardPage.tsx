@@ -333,7 +333,7 @@ const LeaderboardPage = () => {
     // Pe tabul Clasă: elevii văd doar nickname-uri, profesorii văd numele din catalog
     const displayName = tab === "class"
       ? getClassLeaderboardName(entry, isTeacherAccount || isTeacherClassView)
-      : (entry.nickname || entry.display_name || "Anonim");
+      : getPublicName(entry);
     const level = getLevelFromXP(entry.xp, xpPerLevel);
     const tier = getLevelInfo(level);
     return (
