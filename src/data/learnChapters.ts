@@ -102,9 +102,18 @@ export const learnChapters: LearnChapter[] = [
       "Funcții recursive în Python: cazul de bază, stiva de apeluri, exemple pe numere, liste și șiruri, memoizare pentru Fibonacci și alegerea între recursiv și iterativ.",
   },
   {
+    slug: "eficienta-si-sume-partiale",
+    chapterId: "x5",
+    number: 11,
+    grade: 10,
+    title: "Eficiența algoritmilor și sume parțiale",
+    description:
+      "Complexitate timp și memorie, notația O, prelucrare din zbor pentru Bacalaureat, vectori de frecvență, sume parțiale, algoritmul lui Kadane și ridicarea la putere rapidă în Python.",
+  },
+  {
     slug: "greedy-divide-et-impera",
     chapterId: "xi1",
-    number: 11,
+    number: 12,
     grade: 11,
     title: "Greedy și Divide et Impera",
     description:
@@ -113,7 +122,7 @@ export const learnChapters: LearnChapter[] = [
   {
     slug: "backtracking-programare-dinamica",
     chapterId: "xi2",
-    number: 12,
+    number: 13,
     grade: 11,
     title: "Backtracking și programare dinamică",
     description:
@@ -122,7 +131,7 @@ export const learnChapters: LearnChapter[] = [
   {
     slug: "grafuri",
     chapterId: "xi3",
-    number: 13,
+    number: 14,
     grade: 11,
     title: "Grafuri: reprezentare și proprietăți",
     description:
@@ -131,7 +140,7 @@ export const learnChapters: LearnChapter[] = [
   {
     slug: "arbori",
     chapterId: "xi4",
-    number: 14,
+    number: 15,
     grade: 11,
     title: "Arbori cu rădăcină și arbori binari",
     description:
@@ -140,10 +149,19 @@ export const learnChapters: LearnChapter[] = [
   {
     slug: "clase-si-obiecte",
     chapterId: "xi5",
-    number: 15,
+    number: 16,
     grade: 11,
     title: "Clase și obiecte (POO)",
     description:
       "Programare orientată pe obiecte în Python: clase, __init__ și self, __str__, atribute de instanță și de clasă, încapsulare, moștenire și clasa Fractie.",
+  },
+  {
+    slug: "programare-dinamica-probleme-clasice",
+    chapterId: "xi6",
+    number: 17,
+    grade: 11,
+    title: "Programare dinamică: probleme clasice",
+    description:
+      "Numărul de drumuri și drumul de sumă maximă într-o matrice, cel mai lung subșir strict crescător cu reconstituire și problema rucsacului 0-1 în Python.",
   },
 ];

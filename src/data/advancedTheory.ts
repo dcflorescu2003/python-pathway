@@ -2,6 +2,7 @@
 // Conținut original PyRo — exemple și explicații scrise de noi.
 // Păstrat separat de chapterTheory.ts ca să nu apară în aplicația mobilă.
 import type { ChapterTheory } from "./chapterTheory";
+import { extraTheories } from "./extraTheory";
 
 export const advancedTheories: ChapterTheory[] = [
   {
@@ -413,4 +414,5 @@ export const advancedTheories: ChapterTheory[] = [
       },
     ],
   },
+  ...extraTheories,
 ];
