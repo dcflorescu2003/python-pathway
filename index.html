@@ -22,7 +22,6 @@
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800;900&display=swap" />
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
     <link rel="manifest" href="/manifest.webmanifest" />
-    <link rel="canonical" href="https://pyroskill.info/" />
     <meta name="google-site-verification" content="hHFIUXOY7L_jZDmB18vPZdWCAIQe8kQAI-YZpmWBV0g" />
     <meta name="google-adsense-account" content="ca-pub-8441862030200888" />
     <!-- AdSense se încarcă dinamic din aplicație DOAR după consimțământul GDPR (vezi src/lib/cookieConsent.ts). -->
@@ -39,7 +38,12 @@
         var path = window.location.pathname.replace(/\/+$/, "") || "/";
         var url = "https://pyroskill.info" + path;
         var link = document.querySelector('link[rel="canonical"]');
-        if (link) link.setAttribute("href", url);
+        if (!link) {
+          link = document.createElement("link");
+          link.setAttribute("rel", "canonical");
+          document.head.appendChild(link);
+        }
+        link.setAttribute("href", url);
         var og = document.querySelector('meta[property="og:url"]');
         if (og) og.setAttribute("content", url);
       })();
