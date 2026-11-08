@@ -108,8 +108,8 @@ const AppRoutes = () => {
           <Route path="/unsubscribe" element={<UnsubscribePage />} />
           <Route path="/about" element={<AboutPage />} />
           <Route path="/contact" element={<ContactPage />} />
-          <Route path="/invata" element={<LearnIndexPage />} />
-          <Route path="/invata/:slug" element={<LearnChapterPage />} />
+          <Route path="/invata" element={<WebOnly><LearnIndexPage /></WebOnly>} />
+          <Route path="/invata/:slug" element={<WebOnly><LearnChapterPage /></WebOnly>} />
           <Route path="/pseudocod" element={<WebOnly><PseudocodeIndexPage /></WebOnly>} />
           <Route path="/pseudocod/editor" element={<WebOnly><PseudocodeEditorPage /></WebOnly>} />
           <Route path="/pseudocod/lectii/:slug" element={<WebOnly><PseudocodeLessonPage /></WebOnly>} />
