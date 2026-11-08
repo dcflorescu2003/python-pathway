@@ -49,6 +49,9 @@ export interface TestResultSummary {
 export interface ProblemsByChapter {
   chapterTitle: string;
   solved: number;
+  /** Solved without revealing the solution */
+  solvedClean: number;
+  problems: { id: string; title: string; viaSolution: boolean; completedAt: string | null }[];
 }
 
 export interface StudentReportData {
@@ -113,6 +116,7 @@ interface FetchOpts {
   manualTitles: Record<string, string>;
   assignments: any[];
   problemChapterTitleById?: Record<string, string>;
+  problemTitleById?: Record<string, string>;
 }
 
 /**
@@ -125,7 +129,7 @@ export async function fetchStudentReport(
   profile: StudentProfileLike,
   opts: FetchOpts
 ): Promise<StudentReportData> {
-  const { chapters, manualTitles, assignments, problemChapterTitleById = {} } = opts;
+  const { chapters, manualTitles, assignments, problemChapterTitleById = {}, problemTitleById = {} } = opts;
   const studentId = profile.user_id;
 
   const assignmentIds = assignments.map((a) => a.id);
@@ -133,7 +137,7 @@ export async function fetchStudentReport(
   const [{ data: completed }, { data: competencies }, submissionsRes] = await Promise.all([
     supabase
       .from("completed_lessons")
-      .select("lesson_id, score, completed_at")
+      .select("lesson_id, score, completed_at, solution_revealed_at")
       .eq("user_id", studentId),
     (supabase as any).rpc("get_student_competency_profile", {
       p_user_id: studentId,
@@ -149,7 +153,7 @@ export async function fetchStudentReport(
       : Promise.resolve({ data: [] as any[] }),
   ]);
 
-  const rows = (completed ?? []) as { lesson_id: string; score: number; completed_at: string | null }[];
+  const rows = (completed ?? []) as { lesson_id: string; score: number; completed_at: string | null; solution_revealed_at?: string | null }[];
 
   const chapterTitleByLesson: Record<string, string> = {};
   chapters.forEach((ch) => ch.lessons.forEach((l) => { chapterTitleByLesson[l.id] = ch.title; }));
@@ -185,14 +189,18 @@ export async function fetchStudentReport(
     : null;
 
   // Problems grouped by chapter title
-  const problemCounts: Record<string, number> = {};
+  const groups: Record<string, ProblemsByChapter> = {};
   problemRows.forEach((r) => {
     const pid = r.lesson_id.replace(/^problem-/, "");
     const chTitle = problemChapterTitleById[pid] ?? "Alte probleme";
-    problemCounts[chTitle] = (problemCounts[chTitle] ?? 0) + 1;
+    const g = (groups[chTitle] ??= { chapterTitle: chTitle, solved: 0, solvedClean: 0, problems: [] });
+    const viaSolution = !!r.solution_revealed_at;
+    g.solved += 1;
+    if (!viaSolution) g.solvedClean += 1;
+    g.problems.push({ id: pid, title: problemTitleById[pid] ?? pid, viaSolution, completedAt: r.completed_at });
   });
-  const problemsByChapter = Object.entries(problemCounts)
-    .map(([chapterTitle, solved]) => ({ chapterTitle, solved }))
+  const problemsByChapter = Object.values(groups)
+    .map((g) => ({ ...g, problems: g.problems.sort((a, b) => Number(a.viaSolution) - Number(b.viaSolution) || a.title.localeCompare(b.title, "ro")) }))
     .sort((a, b) => b.solved - a.solved);
 
   // Tests + per-item detail

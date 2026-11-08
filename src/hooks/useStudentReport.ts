@@ -37,7 +37,13 @@ export function useReportDeps(classId: string | null) {
     return map;
   }, [problemsData]);
 
-  return { chapters, manualTitles, assignments, problemChapterTitleById };
+  const problemTitleById = useMemo(() => {
+    const map: Record<string, string> = {};
+    (problemsData?.problems ?? []).forEach((p) => { map[p.id] = p.title; });
+    return map;
+  }, [problemsData]);
+
+  return { chapters, manualTitles, assignments, problemChapterTitleById, problemTitleById };
 }
 
 export function useStudentReport(

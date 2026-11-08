@@ -1,4 +1,6 @@
 import { useMemo } from "react";
+import { ChevronDown, Eye } from "lucide-react";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { ArrowLeft, Download, Zap, Flame, BookOpen, FileText, Code, Lightbulb, Clock, AlertTriangle, CheckCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -199,12 +201,41 @@ const StudentReport = ({ classId, className: clsName, profile, onBack }: Props) 
               {data.problemsByChapter.length === 0 ? (
                 <p className="text-xs text-muted-foreground">Nicio problemă rezolvată.</p>
               ) : (
-                data.problemsByChapter.map((p) => (
-                  <div key={p.chapterTitle} className="flex items-center justify-between text-xs">
-                    <span className="text-muted-foreground truncate">{p.chapterTitle}</span>
-                    <span className="text-foreground font-semibold">{p.solved}</span>
-                  </div>
-                ))
+                <>
+                  <p className="text-[10px] text-muted-foreground flex items-center gap-1">
+                    <Eye className="h-3 w-3 text-warning" /> = rezolvată după ce a văzut rezolvarea
+                  </p>
+                  {data.problemsByChapter.map((p) => (
+                    <Collapsible key={p.chapterTitle} className="rounded-lg bg-muted/40">
+                      <CollapsibleTrigger className="group flex w-full items-center justify-between gap-2 p-2.5 text-xs min-h-[44px]">
+                        <span className="text-foreground truncate text-left">{p.chapterTitle}</span>
+                        <span className="flex items-center gap-2 shrink-0">
+                          <span className="text-success font-semibold">{p.solvedClean}</span>
+                          {p.solved > p.solvedClean && (
+                            <span className="flex items-center gap-0.5 text-warning font-semibold">
+                              <Eye className="h-3 w-3" />{p.solved - p.solvedClean}
+                            </span>
+                          )}
+                          <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
+                        </span>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent className="px-2.5 pb-2 space-y-1">
+                        {p.problems.map((pr) => (
+                          <div key={pr.id} className="flex items-center justify-between gap-2 text-[11px] py-1 border-t border-border/40">
+                            <span className={`truncate ${pr.viaSolution ? "text-warning" : "text-foreground"}`}>{pr.title}</span>
+                            {pr.viaSolution ? (
+                              <Badge variant="outline" className="shrink-0 text-[9px] border-warning/50 text-warning gap-1">
+                                <Eye className="h-2.5 w-2.5" /> cu rezolvare
+                              </Badge>
+                            ) : (
+                              <span className="text-[10px] text-muted-foreground shrink-0">{fmtDate(pr.completedAt)}</span>
+                            )}
+                          </div>
+                        ))}
+                      </CollapsibleContent>
+                    </Collapsible>
+                  ))}
+                </>
               )}
             </CardContent>
           </Card>
