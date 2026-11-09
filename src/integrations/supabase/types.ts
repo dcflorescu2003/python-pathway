@@ -85,6 +85,8 @@ export type Database = {
           class_id: string
           created_at: string
           due_date: string | null
+          group_id: string | null
+          group_title: string | null
           id: string
           item_id: string
           item_type: string
@@ -93,6 +95,8 @@ export type Database = {
           class_id: string
           created_at?: string
           due_date?: string | null
+          group_id?: string | null
+          group_title?: string | null
           id?: string
           item_id: string
           item_type: string
@@ -101,6 +105,8 @@ export type Database = {
           class_id?: string
           created_at?: string
           due_date?: string | null
+          group_id?: string | null
+          group_title?: string | null
           id?: string
           item_id?: string
           item_type?: string
