@@ -783,7 +783,7 @@ const splitAlternatives = (value: unknown): string[] => {
   const result = parts.map((p) => p.trim()).filter(Boolean);
     // Răspuns format doar din separatori (ex. `|`, `,`) → îl acceptăm literal.
     if (result.length === 0) {
-      const raw = parts.join("").trim() || String(PLACEHOLDER ?? "").trim();
+      const raw = String(value ?? "").trim();
       return raw ? [raw] : [];
     }
     return result;
