@@ -709,7 +709,13 @@ function gradeExercise(exercise: any, answerData: any, maxPoints: number): numbe
         }
       }
       parts.push(buf);
-      return parts.map((p) => p.trim()).filter(Boolean);
+      const result = parts.map((p) => p.trim()).filter(Boolean);
+    // Răspuns format doar din separatori (ex. `|`, `,`) → îl acceptăm literal.
+    if (result.length === 0) {
+      const raw = parts.join("").trim() || String(PLACEHOLDER ?? "").trim();
+      return raw ? [raw] : [];
+    }
+    return result;
     };
     const stripQuotes = (s: string) => {
       const t = s.trim();
