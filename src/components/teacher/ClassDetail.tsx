@@ -4,7 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { useClassMembers, useClassChallenges, useDeleteChallenge, useUpdateChallengeDueDate } from "@/hooks/useTeacher";
+import { useClassMembers, useClassChallenges, useDeleteChallenge, useUpdateChallengeDueDate, useUpdateChallengeGroup, useDeleteChallengeGroup } from "@/hooks/useTeacher";
+import { groupChallenges, type ChallengeGroup } from "@/lib/challengeGroups";
 import { useChapters } from "@/hooks/useChapters";
 import { useProblems } from "@/hooks/useProblems";
 import { useSubscription } from "@/hooks/useSubscription";
@@ -34,6 +35,9 @@ const ClassDetail = ({ classId, className: clsName, joinCode, onBack, isOwner = 
   const { data: challenges = [] } = useClassChallenges(classId);
   const deleteChallenge = useDeleteChallenge();
   const updateDueDate = useUpdateChallengeDueDate();
+  const updateGroup = useUpdateChallengeGroup();
+  const deleteGroup = useDeleteChallengeGroup();
+  const [expandedGroup, setExpandedGroup] = useState<string | null>(null);
   const [historyOpen, setHistoryOpen] = useState(false);
   const { data: chapters = [] } = useChapters();
   const { data: problemsData } = useProblems();
@@ -107,8 +111,9 @@ const ClassDetail = ({ classId, className: clsName, joinCode, onBack, isOwner = 
     }
   };
 
-  const activeChallenges = challenges.filter((c) => !isChallengeExpired(c.due_date));
-  const expiredChallenges = challenges.filter((c) => isChallengeExpired(c.due_date));
+  const challengeGroups = groupChallenges(challenges as any[]) as ChallengeGroup<(typeof challenges)[number]>[];
+  const activeChallenges = challengeGroups.filter((g) => !isChallengeExpired(g.due_date));
+  const expiredChallenges = challengeGroups.filter((g) => isChallengeExpired(g.due_date));
 
   const handleDeleteChallenge = async (id: string) => {
     try {
@@ -293,6 +298,52 @@ const ClassDetail = ({ classId, className: clsName, joinCode, onBack, isOwner = 
                     );
                   };
 
+  const renderGroupCard = (g: ChallengeGroup<(typeof challenges)[number]>) => {
+    const open = expandedGroup === g.key;
+    const ids = g.items.map((i) => i.id);
+    const doneAll = sortedMembers.filter((m) =>
+      g.items.every((ch) => getStudentStatus(ch.item_type, ch.item_id, m.student_id) !== null)
+    ).length;
+    return (
+      <Card key={g.key} className="border-primary/30">
+        <CardContent className="p-0">
+          <button onClick={() => setExpandedGroup(open ? null : g.key)} className="w-full p-3 flex items-center justify-between text-left gap-2">
+            <div className="flex items-center gap-2 flex-1 min-w-0">
+              <Target className="h-4 w-4 text-primary shrink-0" />
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-foreground truncate">{g.title}</p>
+                <p className="text-[10px] text-muted-foreground">
+                  {g.items.length} {g.items.length === 1 ? "item" : "itemi"} · {doneAll}/{members.length} elevi au terminat tot
+                  {g.due_date && ` · Termen: ${formatDueDate(g.due_date)}`}
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-1 shrink-0">
+              <input type="date" aria-label="Termen limită provocare" title="Modifică termenul pentru toată provocarea"
+                value={g.due_date ?? ""} onClick={(e) => e.stopPropagation()}
+                onChange={async (e) => {
+                  try { await updateGroup.mutateAsync({ ids, patch: { due_date: e.target.value || null } }); toast.success("Termen actualizat"); }
+                  catch { toast.error("Nu am putut actualiza termenul"); }
+                }}
+                className="h-8 w-[130px] rounded-md border border-input bg-background px-1 text-[11px] text-foreground" />
+              <button aria-label="Șterge provocarea"
+                onClick={async (e) => {
+                  e.stopPropagation();
+                  if (!confirm(`Ștergi provocarea „${g.title}” (${g.items.length} itemi)?`)) return;
+                  try { await deleteGroup.mutateAsync(ids); toast.success("Provocare eliminată."); } catch { toast.error("Eroare."); }
+                }}
+                className="p-1.5 rounded-md hover:bg-destructive/10 text-muted-foreground hover:text-destructive">
+                <Trash2 className="h-3.5 w-3.5" />
+              </button>
+              {open ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
+            </div>
+          </button>
+          {open && <div className="border-t border-border p-2 space-y-2">{g.items.map(renderChallengeCard)}</div>}
+        </CardContent>
+      </Card>
+    );
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-3">
@@ -469,7 +520,7 @@ const ClassDetail = ({ classId, className: clsName, joinCode, onBack, isOwner = 
                 <p className="text-sm text-muted-foreground px-1">Nicio provocare atribuită.</p>
               ) : (
                 <div className="space-y-2">
-                  {activeChallenges.map(renderChallengeCard)}
+                  {activeChallenges.map(renderGroupCard)}
                   {activeChallenges.length === 0 && <p className="text-sm text-muted-foreground px-1">Nicio provocare activă.</p>}
                   {expiredChallenges.length > 0 && (
                     <Collapsible open={historyOpen} onOpenChange={setHistoryOpen}>
@@ -478,7 +529,7 @@ const ClassDetail = ({ classId, className: clsName, joinCode, onBack, isOwner = 
                         {historyOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
                       </CollapsibleTrigger>
                       <CollapsibleContent className="pt-2 space-y-2">
-                        {expiredChallenges.map(renderChallengeCard)}
+                        {expiredChallenges.map(renderGroupCard)}
                       </CollapsibleContent>
                     </Collapsible>
                   )}

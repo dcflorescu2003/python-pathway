@@ -1,3 +1,4 @@
+import { groupChallenges, type ChallengeGroup } from "@/lib/challengeGroups";
 import { isChallengeExpired, isLastDay, formatDueDate } from "@/lib/challengeDeadline";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -141,11 +142,12 @@ const StudentTab = ({ memberClassName, onLeaveClass }: StudentTabProps) => {
     return Math.min(100, Math.max(0, score));
   };
 
-  // Split challenges into active vs completed
-  const activeChallenges = challenges.filter((ch) => !completedLessonIds.has(getProgressKey(ch)) && !isChallengeExpired(ch.due_date));
-
-  const completedChallenges = challenges.filter((ch) => completedLessonIds.has(getProgressKey(ch)) && !isChallengeExpired(ch.due_date));
-  const expiredChallenges = challenges.filter((ch) => isChallengeExpired(ch.due_date));
+  const groups = groupChallenges(challenges);
+  const isDone = (ch: typeof challenges[0]) => completedLessonIds.has(getProgressKey(ch));
+  const activeChallenges = groups.filter((g) => !isChallengeExpired(g.due_date) && !g.items.every(isDone));
+  const completedChallenges = groups.filter((g) => !isChallengeExpired(g.due_date) && g.items.every(isDone));
+  const expiredChallenges = groups.filter((g) => isChallengeExpired(g.due_date));
+  const [openGroup, setOpenGroup] = useState<string | null>(null);
   const [challengeHistoryOpen, setChallengeHistoryOpen] = useState(false);
 
   const handleLeave = async () => {
@@ -194,6 +196,59 @@ const StudentTab = ({ memberClassName, onLeaveClass }: StudentTabProps) => {
     } else if (ch.item_type === "problem") {
       navigate(`/problem/${ch.item_id}`);
     }
+  };
+
+  const renderGroup = (g: ChallengeGroup<typeof challenges[0]>) => {
+    const done = g.items.filter(isDone).length;
+    const total = g.items.length;
+    const open = openGroup === g.key;
+    const expired = isChallengeExpired(g.due_date);
+    return (
+      <Card key={g.key} className="border-border">
+        <CardContent className="p-0">
+          <button className="w-full p-3 flex items-center gap-3 text-left" onClick={() => setOpenGroup(open ? null : g.key)}>
+            <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${done === total ? "bg-green-500/10" : "bg-primary/10"}`}>
+              {done === total ? <CheckCircle className="h-4 w-4 text-green-600" /> : <Trophy className="h-4 w-4 text-primary" />}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-foreground truncate">{g.title}</p>
+              <p className="text-xs text-muted-foreground">
+                {done}/{total} rezolvate · {g.items[0]?.class_name}
+                {g.due_date && (!expired && isLastDay(g.due_date)
+                  ? <span className="ml-1 font-semibold text-warning">· Ultima zi!</span>
+                  : <span> · Termen: {formatDueDate(g.due_date)}</span>)}
+              </p>
+              <div className="mt-1.5 h-1.5 rounded-full bg-muted overflow-hidden">
+                <div className="h-full bg-primary transition-all" style={{ width: `${(done / total) * 100}%` }} />
+              </div>
+            </div>
+            <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform shrink-0 ${open ? "rotate-180" : ""}`} />
+          </button>
+          {open && (
+            <div className="border-t border-border p-2 space-y-1.5">
+              {g.items.map((ch) => {
+                const finished = isDone(ch);
+                const score = getDisplayScore(ch);
+                return (
+                  <div key={ch.id} className={`flex items-center gap-2 rounded-lg px-2.5 py-2 ${finished ? "bg-primary/5" : "bg-muted/50"}`}>
+                    {finished ? <CheckCircle className="h-4 w-4 text-green-600 shrink-0" /> : <div className="h-4 w-4 rounded-full border-2 border-muted-foreground/30 shrink-0" />}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm text-foreground truncate">{ch.item_title}</p>
+                      <p className="text-[11px] text-muted-foreground">
+                        {ch.item_type === "lesson" ? "Lecție" : "Problemă"}{finished && score !== null ? ` · Best: ${score}%` : ""}
+                      </p>
+                    </div>
+                    <Button size="sm" variant={finished ? "outline" : "default"} className="gap-1 shrink-0 min-h-[40px]" onClick={() => handleStartChallenge(ch)}>
+                      {finished ? <><RotateCcw className="h-3.5 w-3.5" /> Reia</> : <><Play className="h-3.5 w-3.5" /> Începe</>}
+                    </Button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    );
   };
 
   return (
@@ -398,79 +453,15 @@ const StudentTab = ({ memberClassName, onLeaveClass }: StudentTabProps) => {
         </div>
       )}
 
-      {/* Active Challenges */}
-      {activeChallenges.length > 0 && (
-        <div>
-          <h3 className="text-sm font-semibold text-foreground mb-2 flex items-center gap-2">
-            <Trophy className="h-4 w-4 text-primary" /> Provocări active ({activeChallenges.length})
-          </h3>
-          <div className="space-y-2">
-            {activeChallenges.map((ch) => (
-              <Card key={ch.id} className="border-border">
-                <CardContent className="p-3 flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
-                    <Trophy className="h-4 w-4 text-primary" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-foreground truncate">{ch.item_title}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {ch.item_type === "lesson" ? "Lecție" : ch.item_type === "problem" ? "Problemă" : ch.item_type}
-                      {ch.due_date && (isLastDay(ch.due_date)
-                        ? <span className="ml-1 font-semibold text-warning">· Ultima zi!</span>
-                        : <span> · Termen: {formatDueDate(ch.due_date)}</span>)}
-                    </p>
-                  </div>
-                  <Button size="sm" className="gap-1" onClick={() => handleStartChallenge(ch)}>
-                    <Play className="h-3.5 w-3.5" /> Începe
-                  </Button>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+      {([
+        { list: activeChallenges, label: "Provocări active", icon: <Trophy className="h-4 w-4 text-primary" /> },
+        { list: completedChallenges, label: "Provocări completate", icon: <History className="h-4 w-4 text-primary" /> },
+      ]).map(({ list, label, icon }) => list.length > 0 && (
+        <div key={label}>
+          <h3 className="text-sm font-semibold text-foreground mb-2 flex items-center gap-2">{icon} {label} ({list.length})</h3>
+          <div className="space-y-2">{list.map(renderGroup)}</div>
         </div>
-      )}
-
-      {/* Completed challenges */}
-      {completedChallenges.length > 0 && (
-        <div>
-          <h3 className="text-sm font-semibold text-foreground mb-2 flex items-center gap-2">
-            <History className="h-4 w-4 text-primary" /> Provocări completate ({completedChallenges.length})
-          </h3>
-          <div className="space-y-1.5">
-            {completedChallenges.map((ch) => {
-              const score = getDisplayScore(ch);
-              return (
-                <Card key={ch.id} className="border-border">
-                  <CardContent className="p-3 flex items-center gap-3">
-                    <div className="w-7 h-7 rounded-lg bg-green-500/10 flex items-center justify-center">
-                      <CheckCircle className="h-3.5 w-3.5 text-green-600" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <p className="text-sm text-foreground truncate">{ch.item_title}</p>
-                        {score !== null && (
-                          <span
-                            className="inline-flex items-center gap-1 rounded-full bg-primary/10 text-primary border border-primary/20 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide shrink-0"
-                            title="Cel mai bun scor obținut la această provocare"
-                          >
-                            <Trophy className="h-3 w-3" /> Best: {score}%
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-xs text-muted-foreground">
-                        {ch.item_type === "lesson" ? "Lecție" : "Problemă"} — completată
-                      </p>
-                    </div>
-                    <Button variant="outline" size="sm" className="gap-1 shrink-0" onClick={() => handleStartChallenge(ch)}>
-                      <RotateCcw className="h-3.5 w-3.5" /> Reia
-                    </Button>
-                  </CardContent>
-                </Card>
-              );
-            })}
-          </div>
-        </div>
-      )}
+      ))}
 
       {expiredChallenges.length > 0 && (
         <Collapsible open={challengeHistoryOpen} onOpenChange={setChallengeHistoryOpen}>
@@ -478,27 +469,7 @@ const StudentTab = ({ memberClassName, onLeaveClass }: StudentTabProps) => {
             <span className="flex items-center gap-2"><History className="h-4 w-4" /> Istoric provocări ({expiredChallenges.length})</span>
             <ChevronDown className={`h-4 w-4 transition-transform ${challengeHistoryOpen ? "rotate-180" : ""}`} />
           </CollapsibleTrigger>
-          <CollapsibleContent className="pt-2 space-y-1.5">
-            {expiredChallenges.map((ch) => {
-              const done = completedLessonIds.has(getProgressKey(ch));
-              const score = getDisplayScore(ch);
-              return (
-                <Card key={ch.id} className="border-border">
-                  <CardContent className="p-3 flex items-center gap-3">
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm text-foreground truncate">{ch.item_title}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {ch.item_type === "lesson" ? "Lecție" : "Problemă"} · Termen: {formatDueDate(ch.due_date!)} · {done ? `completată${score !== null ? ` (${score}%)` : ""}` : "necompletată"}
-                      </p>
-                    </div>
-                    <Button variant="outline" size="sm" className="gap-1 shrink-0" onClick={() => handleStartChallenge(ch)}>
-                      <Play className="h-3.5 w-3.5" /> Deschide
-                    </Button>
-                  </CardContent>
-                </Card>
-              );
-            })}
-          </CollapsibleContent>
+          <CollapsibleContent className="pt-2 space-y-2">{expiredChallenges.map(renderGroup)}</CollapsibleContent>
         </Collapsible>
       )}
 

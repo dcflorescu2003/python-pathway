@@ -193,7 +193,7 @@ export function useDeleteClass() {
 export function useCreateChallenge() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (challenges: { class_id: string; item_type: string; item_id: string; due_date?: string | null }[]) => {
+    mutationFn: async (challenges: { class_id: string; item_type: string; item_id: string; due_date?: string | null; group_id?: string; group_title?: string | null }[]) => {
       const { error } = await supabase.from("challenges").insert(challenges);
       if (error) throw error;
     },
@@ -206,6 +206,28 @@ export function useUpdateChallengeDueDate() {
   return useMutation({
     mutationFn: async ({ id, due_date }: { id: string; due_date: string | null }) => {
       const { error } = await supabase.from("challenges").update({ due_date }).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["class-challenges"] }),
+  });
+}
+
+export function useUpdateChallengeGroup() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ ids, patch }: { ids: string[]; patch: { due_date?: string | null; group_title?: string | null } }) => {
+      const { error } = await supabase.from("challenges").update(patch).in("id", ids);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["class-challenges"] }),
+  });
+}
+
+export function useDeleteChallengeGroup() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (ids: string[]) => {
+      const { error } = await supabase.from("challenges").delete().in("id", ids);
       if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["class-challenges"] }),

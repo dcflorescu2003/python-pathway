@@ -99,6 +99,7 @@ const ChallengeAssigner = ({ classId, existingChallengeIds, onClose }: Challenge
   const [previewLesson, setPreviewLesson] = useState<string | null>(null);
   const [previewProblem, setPreviewProblem] = useState<string | null>(null);
   const [expandedProblemChapter, setExpandedProblemChapter] = useState<string | null>(null);
+  const [groupTitle, setGroupTitle] = useState("");
 
   const toggle = (type: string, id: string) => {
     setSelected((prev) => {
@@ -115,7 +116,11 @@ const ChallengeAssigner = ({ classId, existingChallengeIds, onClose }: Challenge
     if (selected.length === 0) return;
     try {
       await createChallenge.mutateAsync(
-        selected.map((s) => ({ class_id: classId, item_type: s.type, item_id: s.id, due_date: dueDate || null }))
+        (() => {
+          const group_id = crypto.randomUUID();
+          const group_title = groupTitle.trim() || null;
+          return selected.map((s) => ({ class_id: classId, item_type: s.type, item_id: s.id, due_date: dueDate || null, group_id, group_title }));
+        })()
       );
 
       try {
@@ -288,6 +293,13 @@ const ChallengeAssigner = ({ classId, existingChallengeIds, onClose }: Challenge
           })}
         </TabsContent>
       </Tabs>
+
+      <div className="flex flex-col gap-1">
+        <label htmlFor="challenge-title" className="text-xs font-medium text-muted-foreground">Nume provocare (opțional)</label>
+        <input id="challenge-title" value={groupTitle} onChange={(e) => setGroupTitle(e.target.value)} maxLength={80}
+          placeholder="ex: Tema – Structuri repetitive"
+          className="h-12 rounded-md border border-input bg-background px-3 text-sm text-foreground" />
+      </div>
 
       <div className="flex flex-col gap-1">
         <label htmlFor="challenge-due" className="text-xs font-medium text-muted-foreground">Termen limită (opțional)</label>

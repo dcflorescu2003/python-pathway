@@ -11,6 +11,8 @@ export interface ActiveChallenge {
   item_title: string;
   created_at: string;
   due_date: string | null;
+  group_id: string | null;
+  group_title: string | null;
 }
 
 export function useChallenges() {
