@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { setRememberMe as persistRememberMe } from "@/lib/rememberMe";
 import { Capacitor } from "@capacitor/core";
 import PyroLogo from "@/components/brand/PyroLogo";
 import { useNavigate, useSearchParams } from "react-router-dom";
@@ -505,6 +506,7 @@ const AuthPage = () => {
   const [password, setPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(true);
   const [loading, setLoading] = useState(false);
   const [justSignedIn, setJustSignedIn] = useState(false);
   const [emailTaken, setEmailTaken] = useState(false);
