@@ -128,7 +128,10 @@ const StudentTab = ({ memberClassName, onLeaveClass }: StudentTabProps) => {
       if (error) throw error;
       return (data as any[]) || [];
     },
-    enabled: !!expandedTestId && submissions.length > 0,
+    enabled:
+      !!expandedTestId &&
+      submissions.length > 0 &&
+      !!(assignments as any[]).find((x: any) => x.id === expandedTestId)?.scores_released,
   });
 
   const completedLessonIds = new Set(completedLessons.map((cl) => cl.lesson_id));
