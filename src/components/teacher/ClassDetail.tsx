@@ -240,7 +240,7 @@ const ClassDetail = ({ classId, className: clsName, joinCode, onBack, isOwner = 
                                 <summary className="cursor-pointer text-xs font-medium text-primary flex items-center gap-1">
                                   <Eye className="h-3.5 w-3.5" /> Vezi cerința
                                 </summary>
-                                <div className="mt-2 -ml-6"><ProblemPreview problem={prob} /></div>
+                                <div className="mt-2 -ml-6"><ProblemPreview problem={prob} full /></div>
                               </details>
                             ) : null;
                           })()}
