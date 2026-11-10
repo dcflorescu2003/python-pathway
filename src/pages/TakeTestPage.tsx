@@ -1065,6 +1065,29 @@ const TakeTestPage = () => {
         </div>
       </main>
 
+      <AlertDialog open={confirmSubmitOpen} onOpenChange={setConfirmSubmitOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Trimiți testul?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {(() => {
+                const unanswered = items.filter((i) => !answers[i.id]).length;
+                return unanswered > 0
+                  ? `Atenție: ai ${unanswered} ${unanswered === 1 ? "întrebare fără răspuns" : "întrebări fără răspuns"}. `
+                  : "";
+              })()}
+              După trimitere nu mai poți modifica răspunsurile.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Înapoi la test</AlertDialogCancel>
+            <AlertDialogAction onClick={() => { setConfirmSubmitOpen(false); handleSubmit(); }}>
+              Trimite testul
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <AlertDialog open={showLeaveConfirm} onOpenChange={setShowLeaveConfirm}>
         <AlertDialogContent>
           <AlertDialogHeader>
