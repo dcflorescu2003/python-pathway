@@ -128,7 +128,10 @@ const StudentTab = ({ memberClassName, onLeaveClass }: StudentTabProps) => {
       if (error) throw error;
       return (data as any[]) || [];
     },
-    enabled: !!expandedTestId && submissions.length > 0,
+    enabled:
+      !!expandedTestId &&
+      submissions.length > 0 &&
+      !!(assignments as any[]).find((x: any) => x.id === expandedTestId)?.scores_released,
   });
 
   const completedLessonIds = new Set(completedLessons.map((cl) => cl.lesson_id));
@@ -411,7 +414,9 @@ const StudentTab = ({ memberClassName, onLeaveClass }: StudentTabProps) => {
                           <p className="text-sm font-medium text-foreground">{a.tests?.title || "Test"}</p>
                           <p className="text-xs text-muted-foreground">
                             {isCompleted
-                              ? `Scor: ${submission?.total_score ?? 0}/${submission?.max_score ?? 0}`
+                              ? (a.scores_released
+                                  ? `Scor: ${submission?.total_score ?? 0}/${submission?.max_score ?? 0}`
+                                  : "Rezultat în așteptare")
                               : isExpired
                                 ? "Expirat"
                                 : "Activ — începe testul"}
