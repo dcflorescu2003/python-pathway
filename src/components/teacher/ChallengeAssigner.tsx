@@ -12,7 +12,7 @@ import type { Exercise } from "@/hooks/useChapters";
 import type { Problem } from "@/hooks/useProblems";
 import RichContent from "@/components/RichContent";
 
-const ProblemPreview = ({ problem }: { problem: Problem }) => {
+export const ProblemPreview = ({ problem }: { problem: Problem }) => {
   const visibleTests = problem.testCases.filter((t) => !t.hidden);
   const hiddenCount = problem.testCases.length - visibleTests.length;
   const example = visibleTests[0];
