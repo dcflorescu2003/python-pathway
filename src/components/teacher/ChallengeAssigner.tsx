@@ -29,7 +29,7 @@ export const ProblemPreview = ({ problem, full = false }: { problem: Problem; fu
         </span>
       </div>
       {problem.description && (
-        <p className="text-foreground/80 ${full ? "" : "line-clamp-3"} whitespace-pre-wrap">{problem.description}</p>
+        <p className={`text-foreground/80 ${full ? "" : "line-clamp-3"} whitespace-pre-wrap`}>{problem.description}</p>
       )}
       {example && (
         <div className="font-mono text-[11px] bg-background/50 rounded p-1.5 space-y-0.5">
