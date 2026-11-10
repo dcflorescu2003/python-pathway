@@ -17,6 +17,10 @@ import {
   AlertCircle, RotateCcw
 } from "lucide-react";
 import { toast } from "sonner";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,
+  AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { SubmissionReviewRow } from "./SubmissionReviewRow";
 
 interface StudentTabProps {
@@ -235,7 +239,9 @@ const StudentTab = ({ memberClassName, onLeaveClass }: StudentTabProps) => {
                     <div className="flex-1 min-w-0">
                       <p className="text-sm text-foreground truncate">{ch.item_title}</p>
                       <p className="text-[11px] text-muted-foreground">
-                        {ch.item_type === "lesson" ? "Lecție" : "Problemă"}{finished && score !== null ? ` · Best: ${score}%` : ""}
+                        {ch.item_type === "lesson"
+                          ? `Lecție${finished && score !== null ? ` · Best: ${score}%` : ""}`
+                          : `Problemă · ${finished ? "Rezolvată" : "Nerezolvată"}`}
                       </p>
                     </div>
                     <Button size="sm" variant={finished ? "outline" : "default"} className="gap-1 shrink-0 min-h-[40px]" onClick={() => handleStartChallenge(ch)}>
@@ -261,16 +267,28 @@ const StudentTab = ({ memberClassName, onLeaveClass }: StudentTabProps) => {
               <BookOpen className="h-4 w-4 text-primary" />
               <span className="text-sm font-medium text-foreground">{memberClassName ?? "Clasa ta"}</span>
             </div>
-            <Button
-              variant="destructive"
-              size="sm"
-              className="gap-1"
-              disabled={leavingClass}
-              onClick={handleLeave}
-            >
-              <DoorOpen className="h-4 w-4" />
-              {leavingClass ? "..." : "Părăsește"}
-            </Button>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="destructive" size="sm" className="gap-1" disabled={leavingClass}>
+                  <DoorOpen className="h-4 w-4" />
+                  {leavingClass ? "..." : "Părăsește"}
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Părăsești clasa?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Sigur vrei să părăsești clasa {memberClassName ?? ""}? Vei pierde accesul la provocări și teste; poți reveni doar cu codul clasei.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Anulează</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleLeave} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                    Părăsește clasa
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </div>
 
           {/* Editable catalog name (Nume + Prenume) */}

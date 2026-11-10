@@ -74,6 +74,7 @@ const TakeTestPage = () => {
   const [answers, setAnswers] = useState<Record<string, any>>({});
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
   const [submitted, setSubmitted] = useState(false);
+  const [confirmSubmitOpen, setConfirmSubmitOpen] = useState(false);
   const [fullscreenReady, setFullscreenReady] = useState(false);
   const [assignedSlot, setAssignedSlot] = useState<{ variant: string; roster_number: number | null } | null>(null);
   const [noItemsReason, setNoItemsReason] = useState<"window_expired" | null>(null);
@@ -1037,7 +1038,7 @@ const TakeTestPage = () => {
               Următorul <ChevronRight className="h-4 w-4" />
             </Button>
           ) : (
-            <Button size="sm" onClick={() => handleSubmit()} disabled={submitTest.isPending || !isOnline} className="gap-1">
+            <Button size="sm" onClick={() => setConfirmSubmitOpen(true)} disabled={submitTest.isPending || !isOnline} className="gap-1">
               <Send className="h-4 w-4" /> {isOnline ? "Trimite testul" : "Fără conexiune"}
             </Button>
 
@@ -1063,6 +1064,29 @@ const TakeTestPage = () => {
           ))}
         </div>
       </main>
+
+      <AlertDialog open={confirmSubmitOpen} onOpenChange={setConfirmSubmitOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Trimiți testul?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {(() => {
+                const unanswered = items.filter((i) => !answers[i.id]).length;
+                return unanswered > 0
+                  ? `Atenție: ai ${unanswered} ${unanswered === 1 ? "întrebare fără răspuns" : "întrebări fără răspuns"}. `
+                  : "";
+              })()}
+              După trimitere nu mai poți modifica răspunsurile.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Înapoi la test</AlertDialogCancel>
+            <AlertDialogAction onClick={() => { setConfirmSubmitOpen(false); handleSubmit(); }}>
+              Trimite testul
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <AlertDialog open={showLeaveConfirm} onOpenChange={setShowLeaveConfirm}>
         <AlertDialogContent>

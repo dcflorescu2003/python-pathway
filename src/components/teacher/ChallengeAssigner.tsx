@@ -12,7 +12,7 @@ import type { Exercise } from "@/hooks/useChapters";
 import type { Problem } from "@/hooks/useProblems";
 import RichContent from "@/components/RichContent";
 
-const ProblemPreview = ({ problem }: { problem: Problem }) => {
+export const ProblemPreview = ({ problem, full = false }: { problem: Problem; full?: boolean }) => {
   const visibleTests = problem.testCases.filter((t) => !t.hidden);
   const hiddenCount = problem.testCases.length - visibleTests.length;
   const example = visibleTests[0];
@@ -29,7 +29,7 @@ const ProblemPreview = ({ problem }: { problem: Problem }) => {
         </span>
       </div>
       {problem.description && (
-        <p className="text-foreground/80 line-clamp-3 whitespace-pre-wrap">{problem.description}</p>
+        <p className={`text-foreground/80 ${full ? "" : "line-clamp-3"} whitespace-pre-wrap`}>{problem.description}</p>
       )}
       {example && (
         <div className="font-mono text-[11px] bg-background/50 rounded p-1.5 space-y-0.5">

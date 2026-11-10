@@ -10,7 +10,7 @@ import { useChapters } from "@/hooks/useChapters";
 import { useProblems } from "@/hooks/useProblems";
 import { useSubscription } from "@/hooks/useSubscription";
 import { supabase } from "@/integrations/supabase/client";
-import ChallengeAssigner from "./ChallengeAssigner";
+import ChallengeAssigner, { ProblemPreview } from "./ChallengeAssigner";
 import ClassAnalytics from "./ClassAnalytics";
 import TestResults from "./TestResults";
 import StudentCompetencyView from "./StudentCompetencyView";
@@ -233,6 +233,17 @@ const ClassDetail = ({ classId, className: clsName, joinCode, onBack, isOwner = 
                             </div>
                           </button>
 
+                          {isExpanded && ch.item_type === "problem" && (() => {
+                            const prob = allProblems.find((p) => p.id === ch.item_id);
+                            return prob ? (
+                              <details className="border-t border-border px-3 py-2">
+                                <summary className="cursor-pointer text-xs font-medium text-primary flex items-center gap-1">
+                                  <Eye className="h-3.5 w-3.5" /> Vezi cerința
+                                </summary>
+                                <div className="mt-2 -ml-6"><ProblemPreview problem={prob} full /></div>
+                              </details>
+                            ) : null;
+                          })()}
                           {isExpanded && members.length > 0 && (
                             <div className="border-t border-border px-3 pb-3 pt-2 space-y-1.5">
                               {sortedMembers.map((m) => {
@@ -277,7 +288,9 @@ const ClassDetail = ({ classId, className: clsName, joinCode, onBack, isOwner = 
                                       )}
                                     </div>
                                     <div className="text-xs">
-                                      {completed ? (
+                                      {completed && ch.item_type === "problem" ? (
+                                        <span className="text-primary font-medium">Rezolvată</span>
+                                      ) : completed ? (
                                         <span
                                           className={hasMistakes ? "text-warning font-medium" : "text-primary font-medium"}
                                           title="Cel mai bun scor obținut de elev la această provocare"

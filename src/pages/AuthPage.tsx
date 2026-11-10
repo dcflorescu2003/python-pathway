@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { setRememberMe as persistRememberMe } from "@/lib/rememberMe";
 import { Capacitor } from "@capacitor/core";
 import PyroLogo from "@/components/brand/PyroLogo";
 import { useNavigate, useSearchParams } from "react-router-dom";
@@ -505,6 +506,7 @@ const AuthPage = () => {
   const [password, setPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(true);
   const [loading, setLoading] = useState(false);
   const [justSignedIn, setJustSignedIn] = useState(false);
   const [emailTaken, setEmailTaken] = useState(false);
@@ -544,6 +546,7 @@ const AuthPage = () => {
         if (error) {
           toast.error(error.message === "Invalid login credentials" ? "Email sau parolă greșită." : error.message);
         } else {
+          persistRememberMe(rememberMe);
           setJustSignedIn(true);
           toast.success("Bine ai revenit! 👋");
           await new Promise(r => setTimeout(r, 300));
@@ -664,6 +667,12 @@ const AuthPage = () => {
                   {showPassword ? <EyeOff className="h-4 w-4 text-muted-foreground" /> : <Eye className="h-4 w-4 text-muted-foreground" />}
                 </button>
               </div>
+              {isLogin && (
+                <label className="flex items-center gap-2 text-sm text-muted-foreground min-h-[40px] cursor-pointer select-none">
+                  <input type="checkbox" checked={rememberMe} onChange={(e) => setRememberMe(e.target.checked)} className="h-4 w-4 accent-primary" />
+                  Ține-mă minte
+                </label>
+              )}
               {emailTaken && (
                 <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 space-y-2">
                   <p className="text-xs font-medium text-foreground">

@@ -16,7 +16,8 @@ import ShareTestDialog from "./ShareTestDialog";
 import TestDiscussion from "./TestDiscussion";
 import { useSharedTests, useDuplicateTest, useTestShares } from "@/hooks/useTestSharing";
 import { useSearchParams } from "react-router-dom";
-import { Share2, Copy } from "lucide-react";
+import { Share2, Copy, Eye } from "lucide-react";
+import SharedTestPreviewDialog from "./SharedTestPreviewDialog";
 
 interface TestManagerProps {
   onCreateTest: () => void;
@@ -38,6 +39,7 @@ const TestManager = ({ onCreateTest, onEditTest, teacherStatus }: TestManagerPro
   const [premiumDialogOpen, setPremiumDialogOpen] = useState(false);
   const warnedRef = useRef<{ p80: boolean; p95: boolean }>({ p80: false, p95: false });
   const [sharingTestId, setSharingTestId] = useState<string | null>(null);
+  const [previewTest, setPreviewTest] = useState<{ id: string; title: string } | null>(null);
   const { data: sharedTests = [] } = useSharedTests();
   const duplicateTest = useDuplicateTest();
   const { data: expandedShares = [] } = useTestShares(expandedTestId);
@@ -303,9 +305,14 @@ const TestManager = ({ onCreateTest, onEditTest, teacherStatus }: TestManagerPro
                     <div className="border-t border-border px-3 pb-3 pt-2 space-y-3">
                       <TestDiscussion testId={t.id} />
                       <p className="text-xs text-muted-foreground">{items.length} itemi · doar autorul poate modifica testul</p>
-                      <Button size="sm" variant="outline" className="gap-1" onClick={() => handleDuplicate(t.id)} disabled={duplicateTest.isPending}>
-                        <Copy className="h-3.5 w-3.5" /> Duplică în testele mele
-                      </Button>
+                      <div className="flex flex-wrap gap-2">
+                        <Button size="sm" variant="outline" className="gap-1 border-primary/50 text-primary" onClick={() => setPreviewTest({ id: t.id, title: t.title })}>
+                          <Eye className="h-3.5 w-3.5" /> Previzualizează testul
+                        </Button>
+                        <Button size="sm" variant="outline" className="gap-1" onClick={() => handleDuplicate(t.id)} disabled={duplicateTest.isPending}>
+                          <Copy className="h-3.5 w-3.5" /> Duplică în testele mele
+                        </Button>
+                      </div>
                     </div>
                   )}
                 </CardContent>
@@ -314,6 +321,12 @@ const TestManager = ({ onCreateTest, onEditTest, teacherStatus }: TestManagerPro
           })}
         </div>
       )}
+
+      <SharedTestPreviewDialog
+        testId={previewTest?.id ?? null}
+        title={previewTest?.title}
+        onOpenChange={(o) => !o && setPreviewTest(null)}
+      />
 
       <ShareTestDialog
         testId={sharingTestId}
