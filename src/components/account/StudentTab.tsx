@@ -411,7 +411,9 @@ const StudentTab = ({ memberClassName, onLeaveClass }: StudentTabProps) => {
                           <p className="text-sm font-medium text-foreground">{a.tests?.title || "Test"}</p>
                           <p className="text-xs text-muted-foreground">
                             {isCompleted
-                              ? `Scor: ${submission?.total_score ?? 0}/${submission?.max_score ?? 0}`
+                              ? (a.scores_released
+                                  ? `Scor: ${submission?.total_score ?? 0}/${submission?.max_score ?? 0}`
+                                  : "Rezultat în așteptare")
                               : isExpired
                                 ? "Expirat"
                                 : "Activ — începe testul"}
