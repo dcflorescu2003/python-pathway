@@ -21,4 +21,12 @@ describe("groupChallenges", () => {
     ]);
     expect(groups).toHaveLength(2);
   });
+  it("keeps items in the order the teacher selected them", () => {
+    const groups = groupChallenges([
+      { id: "x", group_id: "g", sort_order: 2, created_at: "2026-11-09T07:00:00Z", due_date: null },
+      { id: "y", group_id: "g", sort_order: 0, created_at: "2026-11-09T07:00:00Z", due_date: null },
+      { id: "z", group_id: "g", sort_order: 1, created_at: "2026-11-09T07:00:00Z", due_date: null },
+    ]);
+    expect(groups[0].items.map((i) => i.id)).toEqual(["y", "z", "x"]);
+  });
 });

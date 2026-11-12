@@ -4,6 +4,7 @@ export interface GroupableChallenge {
   group_title?: string | null;
   created_at: string;
   due_date: string | null;
+  sort_order?: number | null;
 }
 
 export interface ChallengeGroup<T extends GroupableChallenge> {
@@ -31,5 +32,6 @@ export function groupChallenges<T extends GroupableChallenge>(rows: T[]): Challe
     g.items.push(r);
     if (r.created_at < g.created_at) g.created_at = r.created_at;
   }
+  for (const g of map.values()) g.items.sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
   return [...map.values()].sort((a, b) => b.created_at.localeCompare(a.created_at));
 }

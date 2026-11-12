@@ -193,7 +193,7 @@ export function useDeleteClass() {
 export function useCreateChallenge() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (challenges: { class_id: string; item_type: string; item_id: string; due_date?: string | null; group_id?: string; group_title?: string | null }[]) => {
+    mutationFn: async (challenges: { class_id: string; item_type: string; item_id: string; due_date?: string | null; group_id?: string; group_title?: string | null; sort_order?: number }[]) => {
       const { error } = await supabase.from("challenges").insert(challenges);
       if (error) throw error;
     },

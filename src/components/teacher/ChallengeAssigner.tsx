@@ -119,7 +119,7 @@ const ChallengeAssigner = ({ classId, existingChallengeIds, onClose }: Challenge
         (() => {
           const group_id = crypto.randomUUID();
           const group_title = groupTitle.trim() || null;
-          return selected.map((s) => ({ class_id: classId, item_type: s.type, item_id: s.id, due_date: dueDate || null, group_id, group_title }));
+          return selected.map((s, i) => ({ class_id: classId, item_type: s.type, item_id: s.id, sort_order: i, due_date: dueDate || null, group_id, group_title }));
         })()
       );
 

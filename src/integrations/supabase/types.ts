@@ -90,6 +90,7 @@ export type Database = {
           id: string
           item_id: string
           item_type: string
+          sort_order: number
         }
         Insert: {
           class_id: string
@@ -100,6 +101,7 @@ export type Database = {
           id?: string
           item_id: string
           item_type: string
+          sort_order?: number
         }
         Update: {
           class_id?: string
@@ -110,6 +112,7 @@ export type Database = {
           id?: string
           item_id?: string
           item_type?: string
+          sort_order?: number
         }
         Relationships: [
           {

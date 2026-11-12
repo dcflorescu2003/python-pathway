@@ -64,6 +64,13 @@
       "when": 1794210145668,
       "tag": "0008_challenge_groups",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1794508420694,
+      "tag": "0009_challenge_sort_order",
+      "breakpoints": true
     }
   ]
 }
