@@ -280,7 +280,7 @@ const ChallengeAssigner = ({ classId, existingChallengeIds, onClose }: Challenge
                           </div>
                           {isPreviewing && (
                             <div className="mt-1 mb-2">
-                              <ProblemPreview problem={problem} />
+                              <ProblemPreview problem={problem} full />
                             </div>
                           )}
                         </div>
