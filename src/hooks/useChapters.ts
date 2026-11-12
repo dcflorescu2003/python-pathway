@@ -209,26 +209,41 @@ async function fetchChapters(): Promise<Chapter[]> {
 
 let lastWasFallback = false;
 
+async function fetchChaptersWithRetry(): Promise<Chapter[]> {
+  // On iOS the stored session can attach a moment after auth reports ready;
+  // read-access to chapters/lessons needs a session, so an early request returns
+  // empty rows and we'd fall back to the outdated bundled catalog. Retry first.
+  const delays = [0, 800, 2000];
+  let result: Chapter[] = [];
+  for (const delay of delays) {
+    if (delay) await new Promise((r) => setTimeout(r, delay));
+    lastWasFallback = false;
+    result = await fetchChapters();
+    if (!lastWasFallback) return result;
+    await supabase.auth.getSession().catch(() => null);
+  }
+  return result;
+}
+
 async function fetchChaptersCached(): Promise<Chapter[]> {
   return withCatalogCache(
     "chapters",
-    async () => {
-      lastWasFallback = false;
-      const result = await fetchChapters();
-      return result;
-    },
+    fetchChaptersWithRetry,
     (data) => !lastWasFallback && data.length > 0,
   );
 }
 
 export function useChapters() {
-  const { loading } = useAuth();
+  const { loading, user } = useAuth();
   return useQuery({
-    // Catalogul e același pentru toți utilizatorii — o singură cheie pe dispozitiv.
-    queryKey: ["chapters"],
+    // Catalogul e același pentru toți; cheia include contul ca să reîncărcăm
+    // imediat după ce sesiunea devine disponibilă (altfel rămânea catalogul local).
+    queryKey: ["chapters", user?.id ?? "anon"],
     queryFn: fetchChaptersCached,
     enabled: !loading,
-    staleTime: 30 * 60 * 1000, // la expirare verificăm doar versiunea (câțiva bytes)
+    // Dacă am căzut pe catalogul local, reîncercăm des până vin datele din cloud.
+    staleTime: () => (lastWasFallback ? 0 : 30 * 60 * 1000),
+    refetchInterval: () => (lastWasFallback ? 15_000 : false),
     gcTime: 60 * 60 * 1000,
     refetchOnWindowFocus: true,
   });
