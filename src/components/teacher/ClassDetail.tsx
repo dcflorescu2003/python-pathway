@@ -20,7 +20,7 @@ import CoTeachersSection from "./CoTeachersSection";
 import { ArrowLeft, Copy, Trash2, Target, BookOpen, Code, Zap, Flame, CheckCircle, XCircle, ChevronDown, ChevronRight, BarChart3, FileText, Clock, Users, Eye } from "lucide-react";
 import { toast } from "sonner";
 import { sortByDisplayName } from "@/lib/sortStudents";
-import { isChallengeExpired, formatDueDate } from "@/lib/challengeDeadline";
+import { isChallengeExpired, formatDueDate, isCompletedLate } from "@/lib/challengeDeadline";
 
 interface ClassDetailProps {
   classId: string;
@@ -77,7 +77,7 @@ const ClassDetail = ({ classId, className: clsName, joinCode, onBack, isOwner = 
       if (studentIds.length === 0) return [];
       const { data } = await supabase
         .from("completed_lessons")
-        .select("user_id, lesson_id, score, solution_revealed_at")
+        .select("user_id, lesson_id, score, solution_revealed_at, completed_at")
         .in("user_id", studentIds);
       return data || [];
     },
@@ -125,12 +125,13 @@ const ClassDetail = ({ classId, className: clsName, joinCode, onBack, isOwner = 
   };
 
   const completionMap = useMemo(() => {
-    const map: Record<string, Record<string, { score: number; solutionRevealedAt: string | null }>> = {};
+    const map: Record<string, Record<string, { score: number; solutionRevealedAt: string | null; completedAt: string | null }>> = {};
     for (const cl of allCompletedLessons) {
       if (!map[cl.lesson_id]) map[cl.lesson_id] = {};
       map[cl.lesson_id][cl.user_id] = {
         score: cl.score,
         solutionRevealedAt: (cl as any).solution_revealed_at ?? null,
+        completedAt: (cl as any).completed_at ?? null,
       };
     }
     return map;
@@ -184,6 +185,9 @@ const ClassDetail = ({ classId, className: clsName, joinCode, onBack, isOwner = 
                     const revealedCount = sortedMembers.filter(
                       (m) => !!getStudentStatus(ch.item_type, ch.item_id, m.student_id)?.solutionRevealedAt
                     ).length;
+                    const lateCount = sortedMembers.filter((m) =>
+                      isCompletedLate(ch.due_date, getStudentStatus(ch.item_type, ch.item_id, m.student_id)?.completedAt)
+                    ).length;
 
                     return (
                       <Card key={ch.id}>
@@ -205,6 +209,7 @@ const ClassDetail = ({ classId, className: clsName, joinCode, onBack, isOwner = 
                                 <p className="text-[10px] text-muted-foreground">
                                   {new Date(ch.created_at).toLocaleDateString("ro-RO")} · {completedCount}/{members.length} completat
                                   {revealedCount > 0 && ` · ${revealedCount} cu rezolvarea văzută`}
+                                  {lateCount > 0 && ` · ${lateCount} după termen`}
                                   {ch.due_date && ` · Termen: ${formatDueDate(ch.due_date)}`}
                                 </p>
                               </div>
@@ -253,12 +258,15 @@ const ClassDetail = ({ classId, className: clsName, joinCode, onBack, isOwner = 
                                 const hasMistakes = completed && displayScore < 100;
                                  const mistakePoints = completed ? Math.max(0, 100 - displayScore) : 0;
                                  const revealedAt = status?.solutionRevealedAt ?? null;
+                                 const late = completed && isCompletedLate(ch.due_date, status.completedAt);
 
                                 return (
                                   <div
                                     key={m.id}
                                     className={`flex items-center justify-between rounded-lg px-2.5 py-1.5 text-sm ${
-                                      completed
+                                      late
+                                        ? "bg-secondary border border-border"
+                                        : completed
                                         ? hasMistakes
                                           ? "bg-warning/10"
                                           : "bg-primary/5"
@@ -266,7 +274,9 @@ const ClassDetail = ({ classId, className: clsName, joinCode, onBack, isOwner = 
                                     }`}
                                   >
                                     <div className="flex items-center gap-2">
-                                      {completed ? (
+                                      {late ? (
+                                        <Clock className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                                      ) : completed ? (
                                         hasMistakes ? (
                                           <XCircle className="h-3.5 w-3.5 text-warning shrink-0" />
                                         ) : (
@@ -278,6 +288,14 @@ const ClassDetail = ({ classId, className: clsName, joinCode, onBack, isOwner = 
                                       <span className="text-foreground text-xs font-medium">
                                         {m.profile?.display_name || "Elev"}
                                       </span>
+                                      {late && (
+                                        <span
+                                          className="flex items-center gap-1 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground"
+                                          title={`Finalizat pe ${new Date(status!.completedAt!).toLocaleDateString("ro-RO")}`}
+                                        >
+                                          <Clock className="h-3 w-3" /> După termen
+                                        </span>
+                                      )}
                                       {revealedAt && (
                                         <span
                                           className="flex items-center gap-1 rounded-full bg-accent/15 px-1.5 py-0.5 text-[10px] font-medium text-accent-foreground"

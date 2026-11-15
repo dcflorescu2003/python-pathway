@@ -17,3 +17,9 @@ export function formatDueDate(dueDate: string): string {
   const [y, m, d] = dueDate.split("-").map(Number);
   return new Date(y, m - 1, d).toLocaleDateString("ro-RO", { day: "numeric", month: "short" });
 }
+
+/** True when the item was finished after the end of its due day (Bucharest time). */
+export function isCompletedLate(dueDate: string | null | undefined, completedAt: string | null | undefined): boolean {
+  if (!dueDate || !completedAt) return false;
+  return todayInBucharest(new Date(completedAt)) > dueDate;
+}

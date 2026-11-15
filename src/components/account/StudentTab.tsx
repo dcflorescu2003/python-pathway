@@ -1,5 +1,5 @@
 import { groupChallenges, type ChallengeGroup } from "@/lib/challengeGroups";
-import { isChallengeExpired, isLastDay, formatDueDate } from "@/lib/challengeDeadline";
+import { isChallengeExpired, isLastDay, formatDueDate, isCompletedLate } from "@/lib/challengeDeadline";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
@@ -79,7 +79,7 @@ const StudentTab = ({ memberClassName, onLeaveClass }: StudentTabProps) => {
       if (!user) return [];
       const { data } = await supabase
         .from("completed_lessons")
-        .select("lesson_id, score")
+        .select("lesson_id, score, completed_at")
         .eq("user_id", user.id);
       return data || [];
     },
@@ -135,6 +135,7 @@ const StudentTab = ({ memberClassName, onLeaveClass }: StudentTabProps) => {
   });
 
   const completedLessonIds = new Set(completedLessons.map((cl) => cl.lesson_id));
+  const completedLessonDates = new Map(completedLessons.map((cl: any) => [cl.lesson_id, cl.completed_at as string | null]));
   const completedLessonScores = new Map(completedLessons.map((cl) => [cl.lesson_id, cl.score]));
 
   // Helper: resolve the completed_lessons key for a challenge
@@ -236,6 +237,7 @@ const StudentTab = ({ memberClassName, onLeaveClass }: StudentTabProps) => {
               {g.items.map((ch) => {
                 const finished = isDone(ch);
                 const score = getDisplayScore(ch);
+                const late = finished && isCompletedLate(ch.due_date, completedLessonDates.get(getProgressKey(ch)));
                 return (
                   <div key={ch.id} className={`flex items-center gap-2 rounded-lg px-2.5 py-2 ${finished ? "bg-primary/5" : "bg-muted/50"}`}>
                     {finished ? <CheckCircle className="h-4 w-4 text-green-600 shrink-0" /> : <div className="h-4 w-4 rounded-full border-2 border-muted-foreground/30 shrink-0" />}
@@ -245,6 +247,7 @@ const StudentTab = ({ memberClassName, onLeaveClass }: StudentTabProps) => {
                         {ch.item_type === "lesson"
                           ? `Lecție${finished && score !== null ? ` · Best: ${score}%` : ""}`
                           : `Problemă · ${finished ? "Rezolvată" : "Nerezolvată"}`}
+                        {late && <span className="ml-1.5 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium">După termen</span>}
                       </p>
                     </div>
                     <Button size="sm" variant={finished ? "outline" : "default"} className="gap-1 shrink-0 min-h-[40px]" onClick={() => handleStartChallenge(ch)}>

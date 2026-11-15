@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { isChallengeExpired } from "./challengeDeadline";
+import { isChallengeExpired, isCompletedLate } from "./challengeDeadline";
 
 describe("isChallengeExpired", () => {
   it("is still active during the whole due day in Romania", () => {
@@ -12,5 +12,17 @@ describe("isChallengeExpired", () => {
   });
   it("never expires without a due date", () => {
     expect(isChallengeExpired(null, new Date("2030-01-01T00:00:00Z"))).toBe(false);
+  });
+});
+
+describe("isCompletedLate", () => {
+  it("is on time until the end of the due day in Romania", () => {
+    expect(isCompletedLate("2026-11-10", "2026-11-10T21:30:00Z")).toBe(false);
+  });
+  it("is late after midnight Romania time", () => {
+    expect(isCompletedLate("2026-11-10", "2026-11-10T22:30:00Z")).toBe(true);
+  });
+  it("is never late without a due date", () => {
+    expect(isCompletedLate(null, "2030-01-01T00:00:00Z")).toBe(false);
   });
 });
