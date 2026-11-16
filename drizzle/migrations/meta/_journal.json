@@ -71,6 +71,13 @@
       "when": 1794508420694,
       "tag": "0009_challenge_sort_order",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1794867405385,
+      "tag": "0010_fix_test_competency_scores",
+      "breakpoints": true
     }
   ]
 }

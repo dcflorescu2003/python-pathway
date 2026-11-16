@@ -620,6 +620,7 @@ async function recordCompetencies(supabase: any, submission_id: string, studentI
           item_id,
           score: Number(a.score ?? 0),
           max_score: Number(a.max_points ?? 0),
+          is_test: true,
         };
       })
       .filter(Boolean);
