@@ -10,6 +10,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "@/hooks/use-toast";
+import { competencyLevel, type CompetencyCoverage } from "@/lib/competencyLevel";
 
 export type CompetencyMode = "blended" | "tests_only" | "self_only";
 
@@ -27,12 +28,22 @@ type Row = {
   has_micro: boolean;
 };
 
-const masteryLabel = (m: number | null) => {
-  if (m === null) return { label: "Neevaluat", tone: "muted" as const };
-  if (m >= 0.85) return { label: "Nivel avansat", tone: "primary" as const };
-  if (m >= 0.6) return { label: "Nivel consolidat", tone: "secondary" as const };
-  if (m >= 0.4) return { label: "Nivel de bază", tone: "warning" as const };
-  return { label: "Insuficient", tone: "destructive" as const };
+const masteryLabel = (m: number | null, cov?: CompetencyCoverage | null) => {
+  const level = competencyLevel(m, cov);
+  if (level === "Neevaluat") return { label: "Neevaluat", tone: "muted" as const };
+  if (level === "Avansat") return { label: "Nivel avansat", tone: "primary" as const };
+  if (level === "Consolidat") return { label: "Nivel consolidat", tone: "secondary" as const };
+  if (level === "De bază") return { label: "Nivel de bază", tone: "warning" as const };
+  return { label: "În curs de dobândire", tone: "warning" as const };
+};
+
+const sumCoverage = (list: (CompetencyCoverage | undefined)[]): CompetencyCoverage | null => {
+  const xs = list.filter(Boolean) as CompetencyCoverage[];
+  if (!xs.length) return null;
+  return xs.reduce((a, c) => ({
+    lessonsTotal: a.lessonsTotal + c.lessonsTotal, lessonsDone: a.lessonsDone + c.lessonsDone,
+    problemsTotal: a.problemsTotal + c.problemsTotal, problemsDone: a.problemsDone + c.problemsDone,
+  }), { lessonsTotal: 0, lessonsDone: 0, problemsTotal: 0, problemsDone: 0 });
 };
 
 interface CompetencyProfileCardProps {
@@ -73,6 +84,23 @@ const CompetencyProfileCard = ({
       } as any);
       if (error) throw error;
       return (data ?? []) as Row[];
+    },
+    enabled: !!targetId && expanded,
+    staleTime: 60_000,
+  });
+
+  const { data: coverage } = useQuery({
+    queryKey: ["competency-coverage", targetId],
+    queryFn: async () => {
+      const map = new Map<string, CompetencyCoverage>();
+      if (!targetId) return map;
+      const { data, error } = await (supabase as any).rpc("get_student_competency_coverage", { p_user_id: targetId });
+      if (error) throw error;
+      ((data ?? []) as any[]).forEach((c) => map.set(c.specific_id, {
+        lessonsTotal: Number(c.lessons_total), lessonsDone: Number(c.lessons_done),
+        problemsTotal: Number(c.problems_total), problemsDone: Number(c.problems_done),
+      }));
+      return map;
     },
     enabled: !!targetId && expanded,
     staleTime: 60_000,
@@ -148,9 +176,10 @@ const CompetencyProfileCard = ({
         0
       );
       const mastery = anyData && totalCs > 0 ? sumPct / totalCs : null;
-      return { ...g, score, max, attempts, mastery };
+      const cov = sumCoverage(assessable.map((r) => coverage?.get(r.specific_id)));
+      return { ...g, score, max, attempts, mastery, cov };
     });
-  }, [data]);
+  }, [data, coverage]);
 
   const overall = useMemo(() => {
     if (!generals.length) return null;
@@ -233,7 +262,7 @@ const CompetencyProfileCard = ({
                     <p className="text-[11px] text-muted-foreground flex items-start gap-1.5 flex-1">
                       <Sparkles className="h-3 w-3 mt-0.5 shrink-0 text-primary" />
                       <span>
-                        Vezi pe scurt cum stai pe fiecare competență generală (CG). Apasă pentru detalii pe competențe specifice (CS).
+                        Procentul arată cât de corect lucrezi; nivelul ține cont și de câte lecții și probleme legate ai parcurs („Avansat” cere ≥85%, 90% din lecții și 30% din probleme). Apasă pe o CG pentru detalii.
                       </span>
                     </p>
                     {isOwnProfile && (
@@ -254,7 +283,7 @@ const CompetencyProfileCard = ({
                     {generals.map((g) => {
                       const isOpen = openCG === g.id;
                       const m = g.mastery;
-                      const meta = masteryLabel(m);
+                      const meta = masteryLabel(m, g.cov);
                       return (
                         <div key={g.id} className="rounded-lg border border-border bg-muted/30">
                           <button
@@ -330,6 +359,17 @@ const CompetencyProfileCard = ({
                                         </Badge>
                                         <span className="flex-1 text-[11px] text-foreground/90 break-words leading-snug">
                                           {r.specific_title}
+                                          {(() => {
+                                            const c = coverage?.get(r.specific_id);
+                                            if (!c || unassessable || (c.lessonsTotal === 0 && c.problemsTotal === 0)) return null;
+                                            return (
+                                              <span className="block text-[9px] text-muted-foreground">
+                                                {c.lessonsTotal > 0 && `Lecții ${c.lessonsDone}/${c.lessonsTotal}`}
+                                                {c.lessonsTotal > 0 && c.problemsTotal > 0 && " · "}
+                                                {c.problemsTotal > 0 && `Probleme ${c.problemsDone}/${c.problemsTotal}`}
+                                              </span>
+                                            );
+                                          })()}
                                         </span>
                                         {unassessable ? (
                                           <span
@@ -339,7 +379,8 @@ const CompetencyProfileCard = ({
                                             Neevaluat
                                           </span>
                                         ) : (() => {
-                                          const csMeta = masteryLabel(cm);
+                                          const csCov = coverage?.get(r.specific_id);
+                                          const csMeta = masteryLabel(cm, csCov);
                                           return (
                                             <div className="flex items-center gap-1.5 shrink-0">
                                               <div className="flex items-center gap-1.5 w-24">
