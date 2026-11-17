@@ -104,28 +104,37 @@ export const teacherTutorials: TutorialArticle[] = [
   {
     slug: "notare-ai",
     title: "Cum funcționează statisticile pentru clasă",
-    excerpt: "Exercițiile fixe se notează automat. Codul scris liber e evaluat de AI.",
-    durationMin: 4,
+    excerpt: "Notare automată și cu AI, rezultate publicate de tine, provocări cu termen și marcaj „După termen”.",
+    durationMin: 5,
     sections: [
       {
         heading: "Notare automată",
         body: [
-          "Quiz, true/false, fill-in, ordonare — se notează instant, pe baza răspunsului corect setat de tine.",
+          "Quiz, adevărat/fals, completare, ordonare — se notează instant, pe baza răspunsului corect setat de tine.",
+          "La completare poți accepta mai multe variante corecte; răspunsurile care conțin caractere precum |, virgulă sau punct și virgulă sunt recunoscute corect.",
         ],
       },
       {
         heading: "Notare cu AI (Gemini)",
         body: [
-          "Pentru exercițiile cu cod scris liber, AI-ul evaluează soluția în funcție de cerință și-ți dă scor + feedback.",
-          "Cu planul Premiu AI poti include până la 4 itemi subiectivi / test pentru a fi corectați automat.",
+          "Pentru exercițiile cu cod scris liber, AI-ul evaluează soluția în funcție de cerință și îți dă scor + feedback.",
+          "Cu planul Premium AI poți include până la 3 itemi evaluați de AI pe test.",
         ],
         image: { src: testResultsAsset.url, alt: "Rezultat test cu cod trimis de elev, feedback AI și nota 10/10, cu posibilitatea de a suprascrie scorul" },
         tip: "Tu rămâi profesorul: poți suprascrie manual orice scor dat de AI.",
       },
       {
-        heading: "Eliberarea răspunsurilor",
+        heading: "Publicarea rezultatelor",
         body: [
-          "Scorurile și răspunsurile corecte sunt eliberate manual de tine în două stadii, ca să eviți schimbul de răspunsuri între elevi.",
+          "Elevii văd „Rezultat în așteptare” până când publici tu notele. Scorurile, răspunsurile și baremul rămân ascunse până atunci.",
+          "Eliberarea se face în două etape (întâi scorul, apoi răspunsurile corecte), ca să eviți schimbul de răspunsuri între elevi.",
+        ],
+      },
+      {
+        heading: "Provocări în statistici",
+        body: [
+          "Pentru fiecare provocare vezi cine a terminat, scorul obținut și dacă elevul a apelat la „Vezi rezolvarea”.",
+          "Dacă ai setat termen, elevii care finalizează după termen sunt marcați neutru cu „După termen” (gri, nu roșu), iar sumarul arată câți au întârziat. Termenul expiră la sfârșitul zilei, ora României.",
         ],
       },
     ],
@@ -133,20 +142,30 @@ export const teacherTutorials: TutorialArticle[] = [
   {
     slug: "analitice-rapoarte",
     title: "Cum vezi analitice și exporți rapoarte",
-    excerpt: "Grafice pe clasă, performanța per elev, export CSV/PDF.",
-    durationMin: 3,
+    excerpt: "Grafice pe clasă, fișa completă a elevului, raport complet și rapoarte dedicate părinților.",
+    durationMin: 4,
     sections: [
       {
-        heading: "Class Analytics",
+        heading: "Analitice pe clasă",
         body: [
-          "În detaliul clasei vezi: media pe test, performanța per elev, evoluția în timp, distribuția scorurilor.",
+          "În detaliul clasei vezi: media pe test, performanța per elev, evoluția în timp și distribuția scorurilor.",
         ],
         image: { src: classAnalyticsAsset.url, alt: "Tabel rezultate test pentru clasă cu elevii, variante, scoruri, maxim și procente, plus detaliu per item cu tip, punctaj și feedback" },
       },
       {
-        heading: "Export",
+        heading: "Fișa completă a elevului",
         body: [
-          "Poți exporta rapoartele în CSV sau PDF cu un singur click. Util pentru catalog sau pentru raportare la conducerea școlii.",
+          "Conține XP, streak, lecții, medii la teste, problemele rezolvate pe capitole (cele la care a cerut rezolvarea sunt marcate distinct) și o secțiune „Provocări” cu termen, status și scor.",
+          "Tabelul de competențe arată: Grad de stăpânire, Lecții parcurse, Probleme rezolvate și Itemi parcurși.",
+          "„Itemi parcurși” = câte exerciții/itemi legați de acea competență a lucrat elevul. Nu înseamnă reluări sau greșeli, de aceea numărul poate fi mare.",
+        ],
+      },
+      {
+        heading: "Export pentru profesori și pentru părinți",
+        body: [
+          "Raport complet (statistici) și fișa elevului se pot exporta în CSV sau PDF, util pentru catalog sau conducerea școlii.",
+          "Raport părinți — din fișa elevului: rezumat în limbaj simplu, fără coduri CG/CS, cu explicații pe înțelesul oricui.",
+          "Raport părinți — din statistici: prima pagină are date generale despre clasă fără numele copiilor, urmată de câte o fișă simplificată pentru fiecare elev.",
         ],
         tip: "Exportul PDF e disponibil pe Premium și AI Teacher.",
       },
@@ -155,24 +174,41 @@ export const teacherTutorials: TutorialArticle[] = [
   {
     slug: "profil-competente",
     title: "Profilul de competențe (CG/CS/M)",
-    excerpt: "Urmărește competențele generale, specifice și microcompetențele.",
-    durationMin: 3,
+    excerpt: "Ce înseamnă competențele și cum se calculează nivelul: corectitudine + lecții + probleme.",
+    durationMin: 4,
     sections: [
       {
         heading: "Ierarhia CG → CS → M",
         body: [
           "Competențe Generale (CG): direcții mari din programă (ex: rezolvare de probleme, modelare).",
           "Competențe Specifice (CS): obiective concrete sub fiecare CG.",
-          "Microcompetențe (M): unități fine, asociate fiecărui exercițiu.",
+          "Microcompetențe (M): unități fine, asociate fiecărui exercițiu, problemă sau item de test.",
+        ],
+      },
+      {
+        heading: "Cum se calculează nivelul",
+        body: [
+          "Procentul afișat arată corectitudinea răspunsurilor. Nivelul ține cont și de cât din materie a fost parcursă:",
+          "Avansat — cel puțin 85% răspunsuri corecte, 90% din lecțiile legate de competență și 30% din problemele legate de ea.",
+          "Consolidat — cel puțin 70% corectitudine și 50% din lecții.",
+          "De bază — cel puțin 50% corectitudine și 25% din lecții.",
+          "În curs de dobândire — sub aceste praguri (marcat neutru, nu ca eșec).",
+        ],
+        tip: "Un elev cu 100% corectitudine, dar puține lecții parcurse, nu ajunge direct la Avansat — trebuie să acopere și materia.",
+      },
+      {
+        heading: "Toate datele sau doar teste",
+        body: [
+          "Fila „Toate” include lecții, probleme și teste. Fila „Doar teste” arată doar itemii din testele date la clasă, inclusiv cei preluați din banca de exerciții și probleme.",
         ],
       },
       {
         heading: "Cum vezi profilul",
         body: [
-          "Pentru fiecare elev vezi câte microcompetențe a atins și unde stă slab. Elevul vede doar CG + CS, nu detaliul M.",
-          "Poți să-ți creezi propriile microcompetențe personalizate pentru exercițiile tale custom.",
+          "Pentru fiecare elev vezi sub fiecare competență „Lecții X/Y · Probleme A/B”. Elevul vede același calcul, dar doar CG + CS, fără detaliul M.",
+          "Poți să-ți creezi propriile microcompetențe pentru exercițiile tale custom.",
         ],
-        image: { src: studentCompetencyAsset.url, alt: "Profil de competențe elev: competențe generale (CG) cu procente, bare de progres și badge-uri de nivel (Insuficient, Nivel de bază, Consolidat, Avansat)" },
+        image: { src: studentCompetencyAsset.url, alt: "Profil de competențe elev: competențe generale (CG) cu procente, bare de progres și niveluri" },
       },
     ],
   },
