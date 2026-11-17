@@ -23,7 +23,7 @@ import {
 import { toast } from "sonner";
 import { useReportDeps } from "@/hooks/useStudentReport";
 import { fetchStudentReport, type CompetencyRow } from "@/lib/studentReportData";
-import { buildStudentSectionHtml, openPrintDocument, BASE_REPORT_CSS, STUDENT_SECTION_CSS } from "@/lib/studentReportHtml";
+import { buildStudentSectionHtml, buildParentSectionHtml, openPrintDocument, BASE_REPORT_CSS, STUDENT_SECTION_CSS } from "@/lib/studentReportHtml";
 import { masteryLevelLabel } from "@/lib/studentInsights";
 import {
   buildStudentRows, computeKpis, buildScoreDistribution, buildWeakLessons,
@@ -31,7 +31,7 @@ import {
   aggregateClassCompetencies,
   type ClassAnalyticsInput, type StudentRow,
 } from "@/lib/classAnalytics";
-import { buildClassReportHtml, buildClassCsv } from "@/lib/classReportHtml";
+import { buildClassReportHtml, buildClassCsv, buildParentClassHtml } from "@/lib/classReportHtml";
 
 interface Props {
   classId: string;
@@ -307,6 +307,31 @@ const ClassAnalytics = ({ classId, className: clsName }: Props) => {
     }
   };
 
+  const [buildingParent, setBuildingParent] = useState(false);
+  const handleParentReport = async () => {
+    setBuildingParent(true);
+    try {
+      const sections: string[] = [];
+      for (const m of members) {
+        const profile = (m as any).profile ?? { user_id: m.student_id };
+        const data = await fetchStudentReport({ ...profile, user_id: m.student_id }, reportDeps);
+        sections.push(buildParentSectionHtml(data, true));
+      }
+      const groups = new Set(reportDeps.challenges.map((c: any) => c.group_title || c.created_at));
+      const header = buildParentClassHtml(
+        { className: clsName, kpis, rows: [], weakLessons, testStats, chapterProgress, itemDifficulty: [], competencies: [] },
+        groups.size,
+      );
+      const ok = openPrintDocument(`Raport părinți - ${clsName}`, header + sections.join(""), BASE_REPORT_CSS + STUDENT_SECTION_CSS);
+      if (!ok) toast.error("Permite pop-up-urile pentru a genera raportul.");
+      else toast.success("Raport pentru părinți generat 📄");
+    } catch (e: any) {
+      toast.error(e?.message || "Nu s-a putut genera raportul.");
+    } finally {
+      setBuildingParent(false);
+    }
+  };
+
   if (members.length === 0) {
     return (
       <p className="text-sm text-muted-foreground text-center py-8">
@@ -347,6 +372,10 @@ const ClassAnalytics = ({ classId, className: clsName }: Props) => {
           <Button size="sm" variant="outline" className="gap-1.5" disabled={buildingFull} onClick={handleFullReport}>
             {buildingFull ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileText className="h-3.5 w-3.5" />}
             Raport complet (fișe elevi)
+          </Button>
+          <Button size="sm" variant="outline" className="gap-1.5" disabled={buildingParent} onClick={handleParentReport}>
+            {buildingParent ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileText className="h-3.5 w-3.5" />}
+            Raport părinți
           </Button>
         </div>
       </div>

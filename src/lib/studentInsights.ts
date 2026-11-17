@@ -29,9 +29,9 @@ export function buildStudentInsights(d: StudentReportData): Insight[] {
   weakComps.forEach((c) => {
     out.push({
       tone: (c.mastery ?? 0) < 0.4 ? "bad" : "warn",
-      text: `Competența ${c.specific_code} (${c.specific_title}) este la nivel ${masteryLevelLabel(
+      text: `Competența ${c.specific_code} (${c.specific_title}) este la nivel ${c.level ?? masteryLevelLabel(
         c.mastery
-      )} — ${Math.round((c.mastery ?? 0) * 100)}%. Recomandă exerciții suplimentare pe această temă.`,
+      )} — ${Math.round((c.mastery ?? 0) * 100)}% grad de stăpânire. Recomandă exerciții suplimentare pe această temă.`,
     });
   });
 

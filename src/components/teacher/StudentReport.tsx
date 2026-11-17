@@ -10,7 +10,7 @@ import { toast } from "sonner";
 import StudentCompetencyView from "./StudentCompetencyView";
 import { useStudentReport } from "@/hooks/useStudentReport";
 import { buildStudentInsights } from "@/lib/studentInsights";
-import { exportStudentPdf } from "@/lib/studentReportHtml";
+import { exportStudentPdf, exportParentPdf, challengeSummary } from "@/lib/studentReportHtml";
 import type { StudentProfileLike } from "@/lib/studentReportData";
 
 interface Props {
@@ -47,6 +47,13 @@ const StudentReport = ({ classId, className: clsName, profile, onBack }: Props) 
     else toast.success("Raport pregătit pentru descărcare 📄");
   };
 
+  const handleParentExport = () => {
+    if (!data) return;
+    const ok = exportParentPdf(data, clsName);
+    if (!ok) toast.error("Permite pop-up-urile pentru a descărca PDF-ul.");
+    else toast.success("Fișa pentru părinți este gata 📄");
+  };
+
   return (
     <div className="space-y-4 pb-6">
       <div className="flex items-center gap-3">
@@ -62,6 +69,9 @@ const StudentReport = ({ classId, className: clsName, profile, onBack }: Props) 
         </div>
         <Button size="sm" variant="outline" className="gap-1 shrink-0" onClick={handleExport} disabled={!data}>
           <Download className="h-3.5 w-3.5" /> PDF
+        </Button>
+        <Button size="sm" variant="outline" className="gap-1 shrink-0" onClick={handleParentExport} disabled={!data}>
+          <Download className="h-3.5 w-3.5" /> Părinți
         </Button>
       </div>
 
@@ -120,6 +130,47 @@ const StudentReport = ({ classId, className: clsName, profile, onBack }: Props) 
 
           {/* Competency profile */}
           <StudentCompetencyView studentId={data.studentId} studentName={name} />
+
+          {/* Challenges */}
+          <Collapsible>
+            <Card>
+              <CardContent className="p-4 space-y-2">
+                <CollapsibleTrigger className="w-full flex items-center justify-between gap-2 min-h-[32px]">
+                  <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                    <Clock className="h-4 w-4 text-primary" /> Provocări ({data.challenges.length})
+                  </h3>
+                  <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                </CollapsibleTrigger>
+                {(() => {
+                  const s = challengeSummary(data);
+                  return (
+                    <p className="text-[11px] text-muted-foreground">
+                      {s.total === 0
+                        ? "Nicio provocare atribuită."
+                        : `${s.onTime + s.late}/${s.total} finalizate · ${s.onTime} la timp · ${s.late} după termen · ${s.missing} nefinalizate`}
+                    </p>
+                  );
+                })()}
+                <CollapsibleContent className="space-y-1 pt-1">
+                  {data.challenges.map((c, i) => (
+                    <div key={i} className="flex items-center justify-between gap-2 text-xs py-1 border-b border-border/40 last:border-0">
+                      <div className="min-w-0">
+                        <p className="text-foreground truncate">{c.title}</p>
+                        <p className="text-[10px] text-muted-foreground truncate">
+                          {c.groupTitle}{c.dueDate ? ` · termen ${fmtDate(c.dueDate)}` : ""}{c.viaSolution ? " · cu rezolvarea văzută" : ""}
+                        </p>
+                      </div>
+                      <span className={`px-1.5 py-0.5 rounded text-[10px] font-semibold shrink-0 ${
+                        c.status === "missing" ? "bg-warning/15 text-warning" : c.status === "late" ? "bg-muted text-muted-foreground" : scoreTone(c.score)
+                      }`}>
+                        {c.status === "missing" ? "Nefinalizată" : `${c.status === "late" ? "După termen · " : ""}${c.score ?? 0}%`}
+                      </span>
+                    </div>
+                  ))}
+                </CollapsibleContent>
+              </CardContent>
+            </Card>
+          </Collapsible>
 
           {/* Lessons */}
           <Card>

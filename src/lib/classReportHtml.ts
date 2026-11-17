@@ -77,7 +77,7 @@ export function buildClassReportHtml(p: ClassReportPayload): string {
 
   const comps = p.competencies.length
     ? `<table>
-      <thead><tr><th>Competență specifică</th><th>Competență generală</th><th>Nivel clasă</th><th>Mastery</th><th>Elevi evaluați</th></tr></thead>
+      <thead><tr><th>Competență specifică</th><th>Competență generală</th><th>Nivel clasă</th><th>Grad de stăpânire</th><th>Elevi evaluați</th></tr></thead>
       <tbody>${p.competencies
         .map(
           (c) => `<tr>
@@ -93,7 +93,7 @@ export function buildClassReportHtml(p: ClassReportPayload): string {
 
   const weak = p.weakLessons.length
     ? `<table>
-      <thead><tr><th>Lecție</th><th>Medie</th><th>Elevi</th><th>Încercări</th></tr></thead>
+      <thead><tr><th>Lecție</th><th>Medie</th><th>Elevi</th><th>Parcurgeri</th></tr></thead>
       <tbody>${p.weakLessons
         .map(
           (l) => `<tr><td>${esc(l.name)}</td><td>${badge(l.avgScore)}</td><td>${l.students}</td><td>${l.attempts}</td></tr>`
@@ -198,7 +198,7 @@ export function buildClassCsv(p: ClassReportPayload): string {
   if (p.competencies.length) {
     lines.push("");
     lines.push("Competențe la nivel de clasă");
-    lines.push("Cod,Competență,Nivel,Mastery (%),Elevi evaluați");
+    lines.push("Cod,Competență,Nivel,Grad de stăpânire (%),Elevi evaluați");
     p.competencies.forEach((c) => {
       lines.push([
         csvCell(c.specificCode), csvCell(c.specificTitle),
@@ -210,7 +210,7 @@ export function buildClassCsv(p: ClassReportPayload): string {
   if (p.weakLessons.length) {
     lines.push("");
     lines.push("Lecții de reluat (sub 80%)");
-    lines.push("Lecție,Medie (%),Elevi,Încercări");
+    lines.push("Lecție,Medie (%),Elevi,Parcurgeri");
     p.weakLessons.forEach((l) => {
       lines.push([csvCell(l.name), l.avgScore, l.students, l.attempts].join(","));
     });
@@ -235,4 +235,36 @@ export function buildClassCsv(p: ClassReportPayload): string {
   }
 
   return lines.join("\n");
+}
+
+/** Class overview for parents: aggregated only, never lists student names. */
+export function buildParentClassHtml(p: ClassReportPayload, challengeCount: number): string {
+  const date = new Date().toLocaleDateString("ro-RO");
+  const k = p.kpis;
+  const chapters = p.chapterProgress.length
+    ? `<table><thead><tr><th>Capitol</th><th>Cât a parcurs clasa în medie</th><th>Răspunsuri corecte (medie)</th></tr></thead><tbody>${p.chapterProgress
+        .map((c) => `<tr><td>${esc(c.title)}</td><td>${badge(c.coverage)}</td><td>${badge(c.avgScore)}</td></tr>`)
+        .join("")}</tbody></table>`
+    : `<p class="sub">Fără date încă.</p>`;
+  const tests = p.testStats.length
+    ? `<table><thead><tr><th>Test</th><th>Media clasei</th><th>Elevi care au predat</th></tr></thead><tbody>${p.testStats
+        .map((t) => `<tr><td>${esc(t.title)}</td><td>${badge(t.avg)}</td><td>${t.count}</td></tr>`)
+        .join("")}</tbody></table>`
+    : `<p class="sub">Niciun test dat încă.</p>`;
+  return `
+  <div style="text-align:center;margin-bottom:14px">
+    <h1 style="font-size:20px;color:#6d28d9">Informatică · ${esc(p.className)}</h1>
+    <p style="color:#666;font-size:10px">Informare pentru părinți · ${esc(date)} · PyRo</p>
+  </div>
+  <div class="mini-kpis">
+    ${kpi(k.totalStudents, "Elevi în clasă")}
+    ${kpi(`${k.activeStudents}`, "Elevi activi")}
+    ${kpi(k.classAvg !== null ? `${k.classAvg}%` : "-", "Media clasei")}
+    ${kpi(k.lessons, "Lecții parcurse (total)")}
+    ${kpi(challengeCount, "Teme date")}
+    ${kpi(k.submittedCount, "Teste predate")}
+  </div>
+  <div class="section"><h2>📚 Ce am parcurs la clasă</h2>${chapters}</div>
+  <div class="section"><h2>📝 Teste</h2>${tests}</div>
+  <p class="sub">Datele de mai sus sunt la nivelul întregii clase și nu conțin informații despre alți elevi.</p>`;
 }

@@ -1,6 +1,8 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { Chapter } from "@/hooks/useChapters";
 import { resolveLessonTitle } from "@/lib/lessonTitles";
+import { competencyLevel, type CompetencyCoverage, type CompetencyLevel } from "@/lib/competencyLevel";
+import { isCompletedLate } from "@/lib/challengeDeadline";
 
 export interface CompetencyRow {
   general_id: string;
@@ -13,6 +15,19 @@ export interface CompetencyRow {
   score_sum: number;
   max_sum: number;
   mastery: number | null;
+  coverage?: CompetencyCoverage | null;
+  level?: CompetencyLevel;
+}
+
+export interface ChallengeResult {
+  groupTitle: string;
+  title: string;
+  itemType: string;
+  dueDate: string | null;
+  status: "on_time" | "late" | "missing";
+  score: number | null;
+  viaSolution: boolean;
+  completedAt: string | null;
 }
 
 export interface LessonScore {
@@ -69,6 +84,7 @@ export interface StudentReportData {
   problemsSolved: number;
   problemsByChapter: ProblemsByChapter[];
   competencies: CompetencyRow[];
+  challenges: ChallengeResult[];
 }
 
 export interface StudentProfileLike {
@@ -117,6 +133,7 @@ interface FetchOpts {
   assignments: any[];
   problemChapterTitleById?: Record<string, string>;
   problemTitleById?: Record<string, string>;
+  challenges?: any[];
 }
 
 /**
@@ -129,12 +146,12 @@ export async function fetchStudentReport(
   profile: StudentProfileLike,
   opts: FetchOpts
 ): Promise<StudentReportData> {
-  const { chapters, manualTitles, assignments, problemChapterTitleById = {}, problemTitleById = {} } = opts;
+  const { chapters, manualTitles, assignments, problemChapterTitleById = {}, problemTitleById = {}, challenges: classChallenges = [] } = opts;
   const studentId = profile.user_id;
 
   const assignmentIds = assignments.map((a) => a.id);
 
-  const [{ data: completed }, { data: competencies }, submissionsRes] = await Promise.all([
+  const [{ data: completed }, { data: competencies }, submissionsRes, { data: coverageRows }] = await Promise.all([
     supabase
       .from("completed_lessons")
       .select("lesson_id, score, completed_at, solution_revealed_at")
@@ -151,6 +168,7 @@ export async function fetchStudentReport(
           .in("assignment_id", assignmentIds)
           .not("submitted_at", "is", null)
       : Promise.resolve({ data: [] as any[] }),
+    (supabase as any).rpc("get_student_competency_coverage", { p_user_id: studentId }),
   ]);
 
   const rows = (completed ?? []) as { lesson_id: string; score: number; completed_at: string | null; solution_revealed_at?: string | null }[];
@@ -256,6 +274,34 @@ export async function fetchStudentReport(
     return !acc || r.completed_at > acc ? r.completed_at : acc;
   }, null);
 
+  const coverageBySpecific = new Map<string, CompetencyCoverage>();
+  ((coverageRows ?? []) as any[]).forEach((c) => {
+    coverageBySpecific.set(c.specific_id, {
+      lessonsTotal: Number(c.lessons_total), lessonsDone: Number(c.lessons_done),
+      problemsTotal: Number(c.problems_total), problemsDone: Number(c.problems_done),
+    });
+  });
+
+  // Challenges assigned to the class
+  const rowByKey = new Map(rows.map((r) => [r.lesson_id, r]));
+  const lessonTitle = (id: string) => resolveLessonTitle(id, chapters, manualTitles);
+  const challengeResults: ChallengeResult[] = [...classChallenges]
+    .sort((a, b) => (a.created_at ?? "").localeCompare(b.created_at ?? "") || (a.sort_order ?? 0) - (b.sort_order ?? 0))
+    .map((ch) => {
+      const key = ch.item_type === "problem" ? `problem-${ch.item_id}` : ch.item_id;
+      const r = rowByKey.get(key);
+      return {
+        groupTitle: ch.group_title || "Provocare",
+        title: ch.item_type === "problem" ? (problemTitleById[ch.item_id] ?? ch.item_id) : lessonTitle(ch.item_id),
+        itemType: ch.item_type,
+        dueDate: ch.due_date ?? null,
+        status: !r ? "missing" : isCompletedLate(ch.due_date, r.completed_at) ? "late" : "on_time",
+        score: r ? Math.min(100, Math.max(0, r.score ?? 0)) : null,
+        viaSolution: !!r?.solution_revealed_at,
+        completedAt: r?.completed_at ?? null,
+      };
+    });
+
   const name =
     profile.display_name ||
     [profile.first_name, profile.last_name].filter(Boolean).join(" ") ||
@@ -275,9 +321,11 @@ export async function fetchStudentReport(
     tests,
     problemsSolved: problemRows.length,
     problemsByChapter,
-    competencies: ((competencies ?? []) as CompetencyRow[]).map((c) => ({
-      ...c,
-      mastery: c.mastery === null ? null : Number(c.mastery),
-    })),
+    competencies: ((competencies ?? []) as CompetencyRow[]).map((c) => {
+      const mastery = c.mastery === null ? null : Number(c.mastery);
+      const coverage = coverageBySpecific.get(c.specific_id) ?? null;
+      return { ...c, mastery, coverage, level: competencyLevel(mastery, coverage) };
+    }),
+    challenges: challengeResults,
   };
 }

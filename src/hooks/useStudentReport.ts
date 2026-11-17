@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useChapters } from "@/hooks/useChapters";
 import { useProblems } from "@/hooks/useProblems";
+import { supabase } from "@/integrations/supabase/client";
 import {
   fetchClassAssignments,
   fetchManualLessonTitles,
@@ -27,6 +28,19 @@ export function useReportDeps(classId: string | null) {
     staleTime: 2 * 60 * 1000,
   });
 
+  const { data: challenges = [] } = useQuery({
+    queryKey: ["report-challenges", classId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("challenges")
+        .select("item_type, item_id, due_date, group_title, created_at, sort_order")
+        .eq("class_id", classId as string);
+      return (data ?? []) as any[];
+    },
+    enabled: !!classId,
+    staleTime: 2 * 60 * 1000,
+  });
+
   const problemChapterTitleById = useMemo(() => {
     const chTitle: Record<string, string> = {};
     (problemsData?.problemChapters ?? []).forEach((c) => { chTitle[c.id] = c.title; });
@@ -43,7 +57,7 @@ export function useReportDeps(classId: string | null) {
     return map;
   }, [problemsData]);
 
-  return { chapters, manualTitles, assignments, problemChapterTitleById, problemTitleById };
+  return { chapters, manualTitles, assignments, problemChapterTitleById, problemTitleById, challenges };
 }
 
 export function useStudentReport(
@@ -54,7 +68,7 @@ export function useStudentReport(
   const ready = deps.chapters.length > 0 && !!profile;
 
   return useQuery<StudentReportData>({
-    queryKey: ["student-report", classId, profile?.user_id, deps.assignments.length, deps.chapters.length],
+    queryKey: ["student-report", classId, profile?.user_id, deps.assignments.length, deps.chapters.length, deps.challenges.length],
     enabled: ready,
     staleTime: 2 * 60 * 1000,
     queryFn: () => fetchStudentReport(profile as StudentProfileLike, deps),

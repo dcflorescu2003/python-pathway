@@ -2278,6 +2278,16 @@ export type Database = {
           variant_mode: string
         }[]
       }
+      get_student_competency_coverage: {
+        Args: { p_user_id: string }
+        Returns: {
+          lessons_done: number
+          lessons_total: number
+          problems_done: number
+          problems_total: number
+          specific_id: string
+        }[]
+      }
       get_student_competency_profile:
         | {
             Args: { p_user_id: string }
