@@ -34,7 +34,7 @@ const masteryLabel = (m: number | null, cov?: CompetencyCoverage | null) => {
   if (level === "Avansat") return { label: "Nivel avansat", tone: "primary" as const };
   if (level === "Consolidat") return { label: "Nivel consolidat", tone: "secondary" as const };
   if (level === "De bază") return { label: "Nivel de bază", tone: "warning" as const };
-  return { label: "În curs de dobândire", tone: "warning" as const };
+  return { label: "În curs de dobândire", tone: "destructive" as "warning" | "destructive" };
 };
 
 const sumCoverage = (list: (CompetencyCoverage | undefined)[]): CompetencyCoverage | null => {
