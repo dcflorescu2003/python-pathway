@@ -32,6 +32,32 @@ const isAuthKey = (key: string) =>
 
 let installed = false;
 
+/** Write one auth key into durable native storage (UserDefaults / SharedPreferences). */
+export async function saveAuthKeyToNative(key: string, value: string): Promise<void> {
+  if (!isNative) return;
+  try {
+    await Preferences.set({ key, value });
+    await Preferences.set({ key: BACKUP_TS_KEY, value: String(Date.now()) });
+  } catch {
+    /* ignore */
+  }
+}
+
+/** Copy every current localStorage auth key into native storage. */
+export async function syncAuthToNative(): Promise<void> {
+  if (!isNative) return;
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (!key || !isAuthKey(key)) continue;
+      const value = localStorage.getItem(key);
+      if (value != null) await saveAuthKeyToNative(key, value);
+    }
+  } catch {
+    /* ignore */
+  }
+}
+
 /**
  * Read all currently-stored Supabase auth backups from native Preferences.
  * Used by the auth layer to attempt recovery after a transient SIGNED_OUT.
@@ -133,16 +159,14 @@ export async function installNativeAuthPersistence(): Promise<void> {
     // 3. Mirror future localStorage writes into Preferences. Note that
     //    removeItem deliberately does NOT clear Preferences — see header
     //    comment. Use clearNativeAuthBackup() when truly signing out.
-    const origSetItem = localStorage.setItem.bind(localStorage);
-
-    localStorage.setItem = (key: string, value: string) => {
-      origSetItem(key, value);
-      if (isAuthKey(key)) {
-        Preferences.set({ key, value })
-          .then(() =>
-            Preferences.set({ key: BACKUP_TS_KEY, value: String(Date.now()) })
-          )
-          .catch(() => undefined);
+    // WebKit (iOS) ignores assignments on the localStorage instance, so we
+    // patch Storage.prototype and filter to localStorage only.
+    const proto = Storage.prototype;
+    const origSetItem = proto.setItem;
+    proto.setItem = function (this: Storage, key: string, value: string) {
+      origSetItem.call(this, key, value);
+      if (this === window.localStorage && isAuthKey(key)) {
+        void saveAuthKeyToNative(key, value);
       }
     };
   } catch (err) {

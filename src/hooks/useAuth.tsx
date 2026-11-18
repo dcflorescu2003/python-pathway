@@ -8,6 +8,7 @@ import type { User, Session } from "@supabase/supabase-js";
 import {
   readNativeAuthBackup,
   clearNativeAuthBackup,
+  syncAuthToNative,
 } from "@/integrations/supabase/native-persistence";
 import { wipeLocalUserData } from "@/lib/localWipe";
 
@@ -200,19 +201,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         recoveryAttempts === 0
       ) {
         tryRecoverFromNativeBackup().then((ok) => {
-          if (!ok) {
-            // Real signout (or refresh truly invalid): clean up backup.
-            clearNativeAuthBackup().catch(() => undefined);
-            applySession(null);
-          }
+          // Keep the native backup: the failure may be transient (no network
+          // after wake-up). It is cleared only by an explicit signOut().
+          if (!ok) applySession(null);
           markResolved();
         });
         return;
       }
 
-      // Explicit / repeated SIGNED_OUT → also clear durable backup.
-      if (isNative && event === "SIGNED_OUT") {
-        clearNativeAuthBackup().catch(() => undefined);
+      // Persist fresh tokens to native storage explicitly (after the client
+      // has written them to localStorage).
+      if (isNative && session && (event === "SIGNED_IN" || event === "TOKEN_REFRESHED" || event === "INITIAL_SESSION")) {
+        setTimeout(() => { void syncAuthToNative(); }, 0);
       }
 
       applySession(session);

@@ -1,3 +1,4 @@
+import { Capacitor } from "@capacitor/core";
 // "Ține-mă minte" for email+password login.
 // When unchecked, the session is dropped on the next cold start of the app/browser.
 const FLAG = "pyro-remember-me";
@@ -17,6 +18,8 @@ export function clearRememberMe() {
 
 /** Returns true when the stored session must be discarded (fresh start + remember disabled). */
 export function shouldDropSessionOnStart(): boolean {
+  // Native apps always stay signed in; iOS wipes sessionStorage on every launch.
+  if (Capacitor.isNativePlatform()) return false;
   try {
     const drop = localStorage.getItem(FLAG) === "0" && !sessionStorage.getItem(ALIVE);
     sessionStorage.setItem(ALIVE, "1");

@@ -667,7 +667,7 @@ const AuthPage = () => {
                   {showPassword ? <EyeOff className="h-4 w-4 text-muted-foreground" /> : <Eye className="h-4 w-4 text-muted-foreground" />}
                 </button>
               </div>
-              {isLogin && (
+              {isLogin && !Capacitor.isNativePlatform() && (
                 <label className="flex items-center gap-2 text-sm text-muted-foreground min-h-[40px] cursor-pointer select-none">
                   <input type="checkbox" checked={rememberMe} onChange={(e) => setRememberMe(e.target.checked)} className="h-4 w-4 accent-primary" />
                   Ține-mă minte
