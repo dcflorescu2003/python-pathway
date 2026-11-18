@@ -134,6 +134,8 @@ interface FetchOpts {
   problemChapterTitleById?: Record<string, string>;
   problemTitleById?: Record<string, string>;
   challenges?: any[];
+  /** Skip per-item test review RPCs (parent reports need only final scores). */
+  skipTestDetail?: boolean;
 }
 
 /**
@@ -230,7 +232,7 @@ export async function fetchStudentReport(
   for (const sub of submissions) {
     let wrongItems: TestItemResult[] = [];
     let itemCount = 0;
-    try {
+    if (!opts.skipTestDetail) try {
       const { data: review } = await (supabase as any).rpc("get_submission_review", {
         p_submission_id: sub.id,
       });

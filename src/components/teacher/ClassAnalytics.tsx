@@ -280,15 +280,29 @@ const ClassAnalytics = ({ classId, className: clsName }: Props) => {
     else toast.success("PDF pregătit pentru descărcare! 📄");
   };
 
+  const [reportProgress, setReportProgress] = useState<string | null>(null);
+  /** Fetch student data in small parallel batches, yielding between them so the UI stays responsive. */
+  const buildSectionsBatched = async (render: (d: any) => string, skipTestDetail: boolean) => {
+    const out: string[] = new Array(members.length);
+    const BATCH = 4;
+    for (let i = 0; i < members.length; i += BATCH) {
+      setReportProgress(`${Math.min(i, members.length)}/${members.length}`);
+      const chunk = members.slice(i, i + BATCH);
+      const results = await Promise.all(chunk.map((m) => {
+        const profile = (m as any).profile ?? { user_id: m.student_id };
+        return fetchStudentReport({ ...profile, user_id: m.student_id }, { ...reportDeps, skipTestDetail });
+      }));
+      results.forEach((d, j) => { out[i + j] = render(d); });
+      await new Promise((r) => setTimeout(r, 0));
+    }
+    setReportProgress(null);
+    return out;
+  };
+
   const handleFullReport = async () => {
     setBuildingFull(true);
     try {
-      const sections: string[] = [];
-      for (const m of members) {
-        const profile = (m as any).profile ?? { user_id: m.student_id };
-        const data = await fetchStudentReport({ ...profile, user_id: m.student_id }, reportDeps);
-        sections.push(buildStudentSectionHtml(data, true));
-      }
+      const sections = await buildSectionsBatched((d) => buildStudentSectionHtml(d, true), false);
       const header = buildClassReportHtml({
         className: clsName, kpis, rows: studentRows, weakLessons, testStats,
         chapterProgress, itemDifficulty, competencies: weakCompetencies,
@@ -304,6 +318,7 @@ const ClassAnalytics = ({ classId, className: clsName }: Props) => {
       toast.error(e?.message || "Nu s-a putut genera raportul.");
     } finally {
       setBuildingFull(false);
+      setReportProgress(null);
     }
   };
 
@@ -311,12 +326,7 @@ const ClassAnalytics = ({ classId, className: clsName }: Props) => {
   const handleParentReport = async () => {
     setBuildingParent(true);
     try {
-      const sections: string[] = [];
-      for (const m of members) {
-        const profile = (m as any).profile ?? { user_id: m.student_id };
-        const data = await fetchStudentReport({ ...profile, user_id: m.student_id }, reportDeps);
-        sections.push(buildParentSectionHtml(data, true));
-      }
+      const sections = await buildSectionsBatched((d) => buildParentSectionHtml(d, true), true);
       const groups = new Set(reportDeps.challenges.map((c: any) => c.group_title || c.created_at));
       const header = buildParentClassHtml(
         { className: clsName, kpis, rows: [], weakLessons, testStats, chapterProgress, itemDifficulty: [], competencies: [] },
@@ -329,6 +339,7 @@ const ClassAnalytics = ({ classId, className: clsName }: Props) => {
       toast.error(e?.message || "Nu s-a putut genera raportul.");
     } finally {
       setBuildingParent(false);
+      setReportProgress(null);
     }
   };
 
@@ -371,11 +382,11 @@ const ClassAnalytics = ({ classId, className: clsName }: Props) => {
           </Button>
           <Button size="sm" variant="outline" className="gap-1.5" disabled={buildingFull} onClick={handleFullReport}>
             {buildingFull ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileText className="h-3.5 w-3.5" />}
-            Raport complet (fișe elevi)
+            {buildingFull && reportProgress ? `Se generează ${reportProgress}…` : "Raport complet (fișe elevi)"}
           </Button>
           <Button size="sm" variant="outline" className="gap-1.5" disabled={buildingParent} onClick={handleParentReport}>
             {buildingParent ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileText className="h-3.5 w-3.5" />}
-            Raport părinți
+            {buildingParent && reportProgress ? `Se generează ${reportProgress}…` : "Raport părinți"}
           </Button>
         </div>
       </div>

@@ -82,6 +82,45 @@ export const challengeSummary = (d: StudentReportData) => {
   return { total, onTime, late, missing: total - onTime - late };
 };
 
+/** Compact homework summary for parents: counts only, plus currently missing items. */
+export const parentChallengeStats = (d: StudentReportData) => {
+  const part = (type: "lesson" | "problem") => {
+    const list = d.challenges.filter((c) => (type === "problem" ? c.itemType === "problem" : c.itemType !== "problem"));
+    const done = list.filter((c) => c.status !== "missing");
+    return {
+      total: list.length,
+      done: done.length,
+      late: done.filter((c) => c.status === "late").length,
+      viaSolution: done.filter((c) => c.viaSolution).length,
+    };
+  };
+  const total = d.challenges.length;
+  const done = d.challenges.filter((c) => c.status !== "missing").length;
+  const onTime = d.challenges.filter((c) => c.status === "on_time").length;
+  return {
+    lessons: part("lesson"),
+    problems: part("problem"),
+    onTimePct: total ? Math.round((onTime / total) * 100) : null,
+    missing: d.challenges.filter((c) => c.status === "missing"),
+    done,
+  };
+};
+
+const parentChallengesHtml = (d: StudentReportData) => {
+  if (d.challenges.length === 0) return `<p class="sub">Nicio temă dată încă.</p>`;
+  const st = parentChallengeStats(d);
+  const L = st.lessons, P = st.problems;
+  const rows: string[] = [];
+  if (L.total) rows.push(`<tr><td>Lecții</td><td><b>${L.done} din ${L.total}</b> parcurse${L.late ? ` (${L.late} după termen)` : ""}</td></tr>`);
+  if (P.total) rows.push(`<tr><td>Probleme</td><td><b>${P.done} din ${P.total}</b> rezolvate · ${P.done - P.viaSolution} singur(ă) · ${P.viaSolution} după ce a văzut rezolvarea</td></tr>`);
+  if (st.onTimePct !== null) rows.push(`<tr><td>Predate la timp</td><td>${st.onTimePct}%</td></tr>`);
+  const miss = st.missing.slice(0, 5);
+  const missHtml = miss.length
+    ? `<p class="sub" style="margin-top:6px"><b>Restante acum (${st.missing.length}):</b> ${miss.map((c) => `${esc(c.title)}${c.dueDate ? ` (termen ${fmtDate(c.dueDate)})` : ""}`).join(" · ")}${st.missing.length > 5 ? " …" : ""}</p>`
+    : `<p class="sub" style="margin-top:6px">Nicio temă restantă. 🎉</p>`;
+  return `<table><tbody>${rows.join("")}</tbody></table>${missHtml}`;
+};
+
 const challengesHtml = (d: StudentReportData) => {
   if (d.challenges.length === 0) return `<p class="sub">Nicio provocare atribuită clasei.</p>`;
   const s = challengeSummary(d);
@@ -102,6 +141,16 @@ const challengesHtml = (d: StudentReportData) => {
 
 const lessonsTableHtml = (d: StudentReportData) => {
   if (d.lessons.length === 0) return `<p class="sub">Nicio lecție finalizată.</p>`;
+  if (d.lessons.length > 40) {
+    // Large histories: per-chapter summary + weakest lessons, keeps the print document light.
+    const byCh = new Map<string, { n: number; sum: number }>();
+    d.lessons.forEach((l) => { const k = l.chapterTitle ?? "Alte lecții"; const g = byCh.get(k) ?? { n: 0, sum: 0 }; g.n++; g.sum += l.score; byCh.set(k, g); });
+    const weakest = d.lessons.slice(0, 15);
+    return `<table><thead><tr><th>Capitol</th><th>Lecții finalizate</th><th>Medie</th></tr></thead><tbody>${[...byCh.entries()]
+      .map(([k, g]) => `<tr><td>${esc(k)}</td><td>${g.n}</td><td>${scoreBadge(Math.round(g.sum / g.n))}</td></tr>`).join("")}</tbody></table>
+      <p class="sub" style="margin:6px 0 2px">Cele mai slabe ${weakest.length} lecții:</p>
+      <table><tbody>${weakest.map((l) => `<tr><td>${esc(l.title)}</td><td>${scoreBadge(l.score)}</td><td>${fmtDate(l.completedAt)}</td></tr>`).join("")}</tbody></table>`;
+  }
   return `<table>
     <thead><tr><th>Lecție</th><th>Capitol</th><th>Scor</th><th>Data</th></tr></thead>
     <tbody>
@@ -258,7 +307,6 @@ export function buildParentSectionHtml(d: StudentReportData, withPageBreak = tru
   }).join("");
 
   const todo: string[] = [];
-  d.challenges.filter((c) => c.status === "missing").slice(0, 5).forEach((c) => todo.push(`Tema „${c.groupTitle}”: ${c.title}`));
   d.weakLessons.slice(0, 3).forEach((l) => todo.push(`Reluarea lecției „${l.title}” (${l.score}%)`));
   if (todo.length === 0 && d.missingLessons[0]) todo.push(`Următoarea lecție recomandată: „${d.missingLessons[0].title}”`);
 
@@ -285,7 +333,7 @@ export function buildParentSectionHtml(d: StudentReportData, withPageBreak = tru
       <table><thead><tr><th>Abilitate</th><th>Stadiu</th></tr></thead><tbody>${skills}</tbody></table>
       <p class="sub" style="margin-top:4px">Stadiul ține cont atât de corectitudinea răspunsurilor, cât și de cât din materie a parcurs.</p>
     </div>
-    <div class="section"><h2>🏁 Teme (provocări)</h2>${challengesHtml(d)}</div>
+    <div class="section"><h2>🏁 Teme (provocări)</h2>${parentChallengesHtml(d)}</div>
   </div>`;
 }
 
