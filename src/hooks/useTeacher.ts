@@ -245,6 +245,23 @@ export function useDeleteChallenge() {
   });
 }
 
+export function useRemoveClassMember() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ classId, studentId }: { classId: string; studentId: string }) => {
+      const { error } = await supabase
+        .from("class_members")
+        .delete()
+        .eq("class_id", classId)
+        .eq("student_id", studentId);
+      if (error) throw error;
+    },
+    onSuccess: (_data, vars) => {
+      qc.invalidateQueries({ queryKey: ["class-members", vars.classId] });
+    },
+  });
+}
+
 export function useTeacherReferralCodes() {
   const { user } = useAuth();
   return useQuery({

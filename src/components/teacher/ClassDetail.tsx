@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { useClassMembers, useClassChallenges, useDeleteChallenge, useUpdateChallengeDueDate, useUpdateChallengeGroup, useDeleteChallengeGroup } from "@/hooks/useTeacher";
+import { useClassMembers, useClassChallenges, useDeleteChallenge, useUpdateChallengeDueDate, useUpdateChallengeGroup, useDeleteChallengeGroup, useRemoveClassMember } from "@/hooks/useTeacher";
 import { groupChallenges, type ChallengeGroup } from "@/lib/challengeGroups";
 import { useChapters } from "@/hooks/useChapters";
 import { useProblems } from "@/hooks/useProblems";
@@ -17,7 +17,17 @@ import StudentCompetencyView from "./StudentCompetencyView";
 import StudentReport from "./StudentReport";
 import CoTeachersSection from "./CoTeachersSection";
 
-import { ArrowLeft, Copy, Trash2, Target, BookOpen, Code, Zap, Flame, CheckCircle, XCircle, ChevronDown, ChevronRight, BarChart3, FileText, Clock, Users, Eye } from "lucide-react";
+import { ArrowLeft, Copy, Trash2, Target, BookOpen, Code, Zap, Flame, CheckCircle, XCircle, ChevronDown, ChevronRight, BarChart3, FileText, Clock, Users, Eye, UserMinus } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import { sortByDisplayName } from "@/lib/sortStudents";
 import { isChallengeExpired, formatDueDate, isCompletedLate } from "@/lib/challengeDeadline";
@@ -49,6 +59,21 @@ const ClassDetail = ({ classId, className: clsName, joinCode, onBack, isOwner = 
   const [viewingResultsTitle, setViewingResultsTitle] = useState<string>("");
   const [expandedStudentId, setExpandedStudentId] = useState<string | null>(null);
   const [reportStudentId, setReportStudentId] = useState<string | null>(null);
+  const [removingMember, setRemovingMember] = useState<{ studentId: string; name: string } | null>(null);
+  const removeMember = useRemoveClassMember();
+
+  const handleRemoveMember = async () => {
+    if (!removingMember) return;
+    try {
+      await removeMember.mutateAsync({ classId, studentId: removingMember.studentId });
+      toast.success(`${removingMember.name} a fost eliminat din clasă.`);
+      if (expandedStudentId === removingMember.studentId) setExpandedStudentId(null);
+    } catch {
+      toast.error("Nu am putut elimina elevul din clasă.");
+    } finally {
+      setRemovingMember(null);
+    }
+  };
 
   const [studentsOpen, setStudentsOpen] = useState(false);
   const [testsOpen, setTestsOpen] = useState(false);
@@ -436,6 +461,23 @@ const ClassDetail = ({ classId, className: clsName, joinCode, onBack, isOwner = 
                             <span className="flex items-center gap-1">
                               <Flame className="h-3 w-3 text-warning" /> {m.profile?.streak ?? 0}
                             </span>
+                            {isOwner && (
+                              <button
+                                type="button"
+                                aria-label={`Elimină ${m.profile?.display_name || "elevul"} din clasă`}
+                                title="Elimină din clasă"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setRemovingMember({
+                                    studentId: m.student_id,
+                                    name: m.profile?.display_name || "Elevul",
+                                  });
+                                }}
+                                className="p-1.5 rounded-md hover:bg-destructive/10 text-muted-foreground hover:text-destructive"
+                              >
+                                <UserMinus className="h-3.5 w-3.5" />
+                              </button>
+                            )}
                             {isOpen ? (
                               <ChevronDown className="h-3.5 w-3.5" />
                             ) : (
@@ -576,6 +618,26 @@ const ClassDetail = ({ classId, className: clsName, joinCode, onBack, isOwner = 
           </TabsContent>
         )}
       </Tabs>
+
+      <AlertDialog open={!!removingMember} onOpenChange={(open) => { if (!open) setRemovingMember(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Elimini elevul din clasă?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {removingMember?.name} va fi eliminat din clasa „{clsName}”. Progresul lui în aplicație rămâne salvat, dar nu va mai vedea provocările și testele acestei clase. Poate reveni oricând cu codul de acces al clasei.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Anulează</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleRemoveMember}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Elimină din clasă
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
