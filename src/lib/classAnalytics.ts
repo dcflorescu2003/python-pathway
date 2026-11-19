@@ -163,6 +163,7 @@ export function buildStudentRows(input: ClassAnalyticsInput): StudentRow[] {
       return {
         studentId: m.student_id,
         name,
+        _sortKey: (m.profile?.last_name?.trim() || name).trim(),
         lessons: counts.lesson,
         reviews: counts.review,
         problems: counts.problem,
@@ -176,9 +177,10 @@ export function buildStudentRows(input: ClassAnalyticsInput): StudentRow[] {
         streak: m.profile?.streak ?? 0,
         atRisk: riskReasons.length > 0,
         riskReasons,
-      } satisfies StudentRow;
+      };
     })
-    .sort((a, b) => (b.avgLessonScore ?? -1) - (a.avgLessonScore ?? -1));
+    .sort((a, b) => a._sortKey.localeCompare(b._sortKey, "ro", { sensitivity: "base" }))
+    .map(({ _sortKey, ...row }) => row satisfies StudentRow);
 }
 
 export interface ClassKpis {

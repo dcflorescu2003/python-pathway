@@ -32,6 +32,7 @@ import {
   aggregateClassCompetencies,
   type ClassAnalyticsInput, type StudentRow,
 } from "@/lib/classAnalytics";
+import { sortByDisplayName } from "@/lib/sortStudents";
 import { buildClassReportHtml, buildClassCsv, buildParentClassHtml } from "@/lib/classReportHtml";
 
 interface Props {
@@ -296,7 +297,9 @@ const ClassAnalytics = ({ classId, className: clsName }: Props) => {
 
   const [reportProgress, setReportProgress] = useState<string | null>(null);
   /** Fetch student data in small parallel batches, yielding between them so the UI stays responsive. */
+  const allMembers = members;
   const buildSectionsBatched = async (render: (d: any) => string, skipTestDetail: boolean) => {
+    const members = sortByDisplayName(allMembers as any[]);
     const out: string[] = new Array(members.length);
     const BATCH = 4;
     for (let i = 0; i < members.length; i += BATCH) {

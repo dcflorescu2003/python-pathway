@@ -193,3 +193,18 @@ describe("buildTrend", () => {
     expect(trend.reduce((s, p) => s + p.lessons + p.problems, 0)).toBe(5);
   });
 });
+
+describe("report student order", () => {
+  it("sorts students alphabetically regardless of score", () => {
+    const rows = buildStudentRows(baseInput({
+      members: [
+        { student_id: "z", joined_at: iso(30), profile: { display_name: "Zoe", xp: 0, streak: 0 } },
+        { student_id: "s", joined_at: iso(30), profile: { display_name: "Ștefan", xp: 0, streak: 0 } },
+        { student_id: "a", joined_at: iso(30), profile: { display_name: "Andrei", xp: 0, streak: 0 } },
+      ],
+      completions: [{ user_id: "z", lesson_id: "c1-l1", score: 100, completed_at: iso(1) }],
+      submissions: [],
+    }));
+    expect(rows.map((r) => r.name)).toEqual(["Andrei", "Ștefan", "Zoe"]);
+  });
+});
