@@ -1,3 +1,4 @@
+import { fetchAllPaginated } from "@/lib/supabasePagination";
 import { supabase } from "@/integrations/supabase/client";
 import type { Chapter } from "@/hooks/useChapters";
 import { resolveLessonTitle } from "@/lib/lessonTitles";
@@ -154,10 +155,13 @@ export async function fetchStudentReport(
   const assignmentIds = assignments.map((a) => a.id);
 
   const [{ data: completed }, { data: competencies }, submissionsRes, { data: coverageRows }] = await Promise.all([
-    supabase
-      .from("completed_lessons")
-      .select("lesson_id, score, completed_at, solution_revealed_at")
-      .eq("user_id", studentId),
+    fetchAllPaginated<any>(() =>
+      supabase
+        .from("completed_lessons")
+        .select("lesson_id, score, completed_at, solution_revealed_at")
+        .eq("user_id", studentId)
+        .order("id")
+    ).then((data) => ({ data })),
     (supabase as any).rpc("get_student_competency_profile", {
       p_user_id: studentId,
       p_mode: "blended",

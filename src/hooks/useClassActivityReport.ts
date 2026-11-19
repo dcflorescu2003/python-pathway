@@ -1,3 +1,4 @@
+import { fetchAllPaginated } from "@/lib/supabasePagination";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useTeacherClasses } from "@/hooks/useTeacher";
@@ -47,11 +48,14 @@ export function useClassActivityReport() {
 
       const byStudent: Record<string, Record<string, { count: number; xp: number }>> = {};
       if (studentIds.length) {
-        const { data: completed } = await supabase
-          .from("completed_lessons")
-          .select("user_id, lesson_id, score, completed_at, solution_revealed_at")
-          .in("user_id", studentIds)
-          .gte("completed_at", from.toISOString());
+        const completed = await fetchAllPaginated<any>(() =>
+          supabase
+            .from("completed_lessons")
+            .select("user_id, lesson_id, score, completed_at, solution_revealed_at")
+            .in("user_id", studentIds)
+            .gte("completed_at", from.toISOString())
+            .order("id")
+        );
 
         const completedRows = (completed ?? []) as {
           user_id: string;

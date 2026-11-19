@@ -1,3 +1,4 @@
+import { fetchAllPaginated } from "@/lib/supabasePagination";
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -109,11 +110,13 @@ const ClassAnalytics = ({ classId, className: clsName }: Props) => {
     queryKey: ["analytics-completed", classId, studentIds],
     queryFn: async () => {
       if (studentIds.length === 0) return [];
-      const { data } = await supabase
-        .from("completed_lessons")
-        .select("user_id, lesson_id, score, completed_at")
-        .in("user_id", studentIds);
-      return data || [];
+      return await fetchAllPaginated<any>(() =>
+        supabase
+          .from("completed_lessons")
+          .select("user_id, lesson_id, score, completed_at")
+          .in("user_id", studentIds)
+          .order("id")
+      );
     },
     enabled: studentIds.length > 0,
   });
@@ -130,19 +133,30 @@ const ClassAnalytics = ({ classId, className: clsName }: Props) => {
 
       const assignmentsCount = assignments.length;
       const assignmentIds = assignments.map((a) => a.id);
-      const { data: submissions } = await supabase
-        .from("test_submissions")
-        .select("*")
-        .in("assignment_id", assignmentIds)
-        .not("submitted_at", "is", null);
+      const submissions = await fetchAllPaginated<any>(() =>
+        supabase
+          .from("test_submissions")
+          .select("*")
+          .in("assignment_id", assignmentIds)
+          .not("submitted_at", "is", null)
+          .order("id")
+      );
 
       if (!submissions || submissions.length === 0) return { ...empty, assignmentsCount };
 
       const submissionIds = submissions.map((s) => s.id);
-      const { data: answers } = await supabase
-        .from("test_answers")
-        .select("*, test_items(source_type, source_id, custom_data)")
-        .in("submission_id", submissionIds);
+      // Chunk submission IDs to keep request URLs short, paginate each chunk.
+      const answers: any[] = [];
+      for (let i = 0; i < submissionIds.length; i += 100) {
+        const chunk = submissionIds.slice(i, i + 100);
+        answers.push(...(await fetchAllPaginated<any>(() =>
+          supabase
+            .from("test_answers")
+            .select("*, test_items(source_type, source_id, custom_data)")
+            .in("submission_id", chunk)
+            .order("id")
+        )));
+      }
 
       const exerciseIds = new Set<string>();
       const problemIds = new Set<string>();
