@@ -96,17 +96,32 @@ const ClassDetail = ({ classId, className: clsName, joinCode, onBack, isOwner = 
   // Fetch completed_lessons for all students in the class
   const studentIds = useMemo(() => members.map((m) => m.student_id), [members]);
   const sortedMembers = useMemo(() => sortByDisplayName(members), [members]);
+  const challengeKeys = useMemo(
+    () => Array.from(new Set(challenges.map((c) => (c.item_type === "problem" ? `problem-${c.item_id}` : c.item_id)))).sort(),
+    [challenges]
+  );
   const { data: allCompletedLessons = [] } = useQuery({
-    queryKey: ["class-completed-lessons", classId, studentIds],
+    queryKey: ["class-completed-lessons", classId, studentIds, challengeKeys],
     queryFn: async () => {
-      if (studentIds.length === 0) return [];
-      const { data } = await supabase
-        .from("completed_lessons")
-        .select("user_id, lesson_id, score, solution_revealed_at, completed_at")
-        .in("user_id", studentIds);
-      return data || [];
+      if (studentIds.length === 0 || challengeKeys.length === 0) return [];
+      // Only fetch rows for this class's challenges, paginated past the 1000-row API cap.
+      const rows: any[] = [];
+      const PAGE = 1000;
+      for (let from = 0; ; from += PAGE) {
+        const { data, error } = await supabase
+          .from("completed_lessons")
+          .select("user_id, lesson_id, score, solution_revealed_at, completed_at")
+          .in("user_id", studentIds)
+          .in("lesson_id", challengeKeys)
+          .order("id")
+          .range(from, from + PAGE - 1);
+        if (error) throw error;
+        rows.push(...(data || []));
+        if (!data || data.length < PAGE) break;
+      }
+      return rows;
     },
-    enabled: studentIds.length > 0,
+    enabled: studentIds.length > 0 && challengeKeys.length > 0,
   });
 
   const copyCode = () => {
