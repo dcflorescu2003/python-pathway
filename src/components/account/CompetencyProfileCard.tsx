@@ -307,13 +307,7 @@ const CompetencyProfileCard = ({
                                   {m !== null ? `${Math.round(m * 100)}%` : "—"}
                                 </span>
                               </div>
-                            </div>
-                            <div className="flex items-center gap-1.5 shrink-0">
-                              {m !== null && (
-                                <Badge variant="outline" className="text-[9px] font-mono">
-                                  {Math.round(m * 100)}%
-                                </Badge>
-                              )}
+                              <div className="mt-1.5 flex flex-wrap gap-1.5">
                               <Badge
                                 variant={
                                   meta.tone === "primary"
@@ -326,6 +320,7 @@ const CompetencyProfileCard = ({
                               >
                                 {meta.label}
                               </Badge>
+                              </div>
                             </div>
                             {isOpen ? (
                               <ChevronUp className="h-3 w-3 text-muted-foreground shrink-0" />
