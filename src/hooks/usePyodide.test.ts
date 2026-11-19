@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatStudentPythonError } from "./usePyodide";
+import { formatStudentPythonError, INFINITE_LOOP_MESSAGE } from "./usePyodide";
 
 describe("formatStudentPythonError", () => {
   it("keeps only the student line and final NameError", () => {
@@ -43,5 +43,10 @@ ZeroDivisionError: division by zero`);
 
     expect(result).toBe("Eroare la rularea codului. Verifică instrucțiunile și încearcă din nou.");
     expect(result).not.toMatch(/pyodide|python3|\/lib/i);
+  });
+
+  it("reports an infinite loop with the student's line", () => {
+    const err = new Error('PythonError: Traceback (most recent call last):\n  File "<exec>", line 14, in <module>\n  File "main.py", line 3, in <module>\n  File "<exec>", line 9, in _pyro_guard\nTimeoutError: PYRO_INFINITE_LOOP');
+    expect(formatStudentPythonError(err)).toBe(`Linia 3: ${INFINITE_LOOP_MESSAGE}`);
   });
 });

@@ -8,6 +8,10 @@ declare global {
 
 const PYODIDE_CDN = "https://cdn.jsdelivr.net/pyodide/v0.25.1/full/";
 const TIMEOUT_MS = 10_000;
+export const LOOP_LIMIT_SECONDS = 5;
+export const INFINITE_LOOP_MARKER = "PYRO_INFINITE_LOOP";
+export const INFINITE_LOOP_MESSAGE =
+  "Posibilă buclă infinită! Codul a depășit limita de 5 secunde. Verifică dacă condiția din while devine vreodată falsă sau dacă variabilele se actualizează la fiecare pas.";
 
 export interface FileResult {
   name: string;
@@ -67,6 +71,10 @@ export function formatStudentPythonError(error: unknown): string {
   const normalized = raw.replace(/\r\n/g, "\n");
   const studentFrames = [...normalized.matchAll(/File ["']main\.py["'], line (\d+)/g)];
   const lineNumber = studentFrames.at(-1)?.[1];
+
+  if (raw.includes(INFINITE_LOOP_MARKER)) {
+    return lineNumber ? `Linia ${lineNumber}: ${INFINITE_LOOP_MESSAGE}` : INFINITE_LOOP_MESSAGE;
+  }
 
   const exceptionLines = normalized
     .split("\n")
@@ -162,7 +170,24 @@ sys.stdout = _stdout_capture
                 // Give student code its own virtual filename so traceback line
                 // numbers map exactly to the editor instead of Pyodide's <exec>.
                 pyodide.globals.set("_student_code", code);
-                pyodide.runPython('exec(compile(_student_code, "main.py", "exec"), {"__name__": "__main__"})');
+                // Watchdog: stops infinite loops from inside Python, because a
+                // tight WASM loop blocks the JS thread and setTimeout never fires.
+                pyodide.runPython(`
+import sys as _sys, time as _time
+_pyro_start = _time.time()
+_pyro_steps = 0
+def _pyro_guard(frame, event, arg):
+    global _pyro_steps
+    _pyro_steps += 1
+    if _pyro_steps % 2000 == 0 and _time.time() - _pyro_start > ${LOOP_LIMIT_SECONDS}:
+        raise TimeoutError("${INFINITE_LOOP_MARKER}")
+    return _pyro_guard
+_sys.settrace(_pyro_guard)
+try:
+    exec(compile(_student_code, "main.py", "exec"), {"__name__": "__main__"})
+finally:
+    _sys.settrace(None)
+`);
 
                 const output = pyodide.runPython("_stdout_capture.getvalue()").trim();
                 pyodide.runPython("sys.stdout = sys.__stdout__");
