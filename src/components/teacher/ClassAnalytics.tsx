@@ -370,7 +370,7 @@ const ClassAnalytics = ({ classId, className: clsName }: Props) => {
 
   const SortHead = ({ k, children, align = "right" }: { k: SortKey; children: React.ReactNode; align?: "left" | "right" }) => (
     <TableHead
-      className={`cursor-pointer select-none whitespace-nowrap ${align === "right" ? "text-right" : ""}`}
+      className={`cursor-pointer select-none whitespace-nowrap h-9 px-2 text-xs sticky top-0 z-10 bg-card ${align === "right" ? "text-right" : "left-0 z-20"}`}
       onClick={() => toggleSort(k)}
     >
       <span className="inline-flex items-center gap-1">
@@ -480,8 +480,8 @@ const ClassAnalytics = ({ classId, className: clsName }: Props) => {
             <Award className="h-4 w-4 text-primary" />
             Situația elevilor
           </h3>
-          <div className="overflow-x-auto">
-            <Table>
+          <div className="max-h-[60vh] overflow-auto rounded-md border border-border">
+            <Table className="text-sm">
               <TableHeader>
                 <TableRow>
                   <SortHead k="name" align="left">Elev</SortHead>
@@ -499,18 +499,18 @@ const ClassAnalytics = ({ classId, className: clsName }: Props) => {
               <TableBody>
                 {sortedRows.map((s) => (
                   <TableRow key={s.studentId} className={s.atRisk ? "bg-destructive/5" : undefined}>
-                    <TableCell className="text-sm">
+                    <TableCell className="text-sm py-1.5 px-2 sticky left-0 z-[5] bg-card max-w-[220px]">
                       <div className="flex flex-col">
-                        <span className="text-foreground">{s.name}</span>
+                        <span className="text-foreground truncate" title={s.name}>{s.name}</span>
                         {s.atRisk && (
-                          <span className="text-[10px] text-destructive">{s.riskReasons.join(" · ")}</span>
+                          <span className="text-[10px] text-destructive truncate" title={s.riskReasons.join(" · ")}>{s.riskReasons.join(" · ")}</span>
                         )}
                       </div>
                     </TableCell>
-                    <TableCell className="text-right font-mono text-sm">{s.lessons}</TableCell>
-                    <TableCell className="text-right font-mono text-sm">{s.reviews}</TableCell>
-                    <TableCell className="text-right font-mono text-sm">{s.problems}</TableCell>
-                    <TableCell className="text-right">
+                    <TableCell className="text-right font-mono text-sm py-1.5 px-2">{s.lessons}</TableCell>
+                    <TableCell className="text-right font-mono text-sm py-1.5 px-2">{s.reviews}</TableCell>
+                    <TableCell className="text-right font-mono text-sm py-1.5 px-2">{s.problems}</TableCell>
+                    <TableCell className="text-right py-1.5 px-2">
                       {s.avgLessonScore === null ? (
                         <span className="text-xs text-muted-foreground">-</span>
                       ) : (
@@ -522,17 +522,17 @@ const ClassAnalytics = ({ classId, className: clsName }: Props) => {
                         </Badge>
                       )}
                     </TableCell>
-                    <TableCell className="text-right font-mono text-sm">
+                    <TableCell className="text-right font-mono text-sm py-1.5 px-2">
                       {s.avgTestScore !== null ? `${s.avgTestScore}%` : "-"}
                     </TableCell>
-                    <TableCell className="text-right font-mono text-sm">
+                    <TableCell className="text-right font-mono text-sm py-1.5 px-2">
                       {s.testsSubmitted}{assignmentsCount > 0 ? `/${assignmentsCount}` : ""}
                     </TableCell>
-                    <TableCell className="text-right text-xs text-muted-foreground whitespace-nowrap">
+                    <TableCell className="text-right text-xs text-muted-foreground whitespace-nowrap py-1.5 px-2">
                       {fmtDate(s.lastActivity)}
                     </TableCell>
-                    <TableCell className="text-right font-mono text-sm">{s.streak}</TableCell>
-                    <TableCell className="text-right font-mono text-sm">{s.xp}</TableCell>
+                    <TableCell className="text-right font-mono text-sm py-1.5 px-2">{s.streak}</TableCell>
+                    <TableCell className="text-right font-mono text-sm py-1.5 px-2">{s.xp}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -715,12 +715,12 @@ const ClassAnalytics = ({ classId, className: clsName }: Props) => {
                   {testStats.map((t) => (
                     <TableRow key={t.title}>
                       <TableCell className="text-xs">{t.title}</TableCell>
-                      <TableCell className="text-right font-mono text-sm">{t.avg}%</TableCell>
-                      <TableCell className="text-right font-mono text-sm">{t.median}%</TableCell>
-                      <TableCell className="text-right font-mono text-sm">{t.min}–{t.max}%</TableCell>
-                      <TableCell className="text-right font-mono text-sm">{t.below50}</TableCell>
-                      <TableCell className="text-right font-mono text-sm">{t.count}</TableCell>
-                      <TableCell className="text-right font-mono text-sm">{t.missing}</TableCell>
+                      <TableCell className="text-right font-mono text-sm py-1.5 px-2">{t.avg}%</TableCell>
+                      <TableCell className="text-right font-mono text-sm py-1.5 px-2">{t.median}%</TableCell>
+                      <TableCell className="text-right font-mono text-sm py-1.5 px-2">{t.min}–{t.max}%</TableCell>
+                      <TableCell className="text-right font-mono text-sm py-1.5 px-2">{t.below50}</TableCell>
+                      <TableCell className="text-right font-mono text-sm py-1.5 px-2">{t.count}</TableCell>
+                      <TableCell className="text-right font-mono text-sm py-1.5 px-2">{t.missing}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
