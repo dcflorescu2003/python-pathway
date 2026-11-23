@@ -1,3 +1,4 @@
+import { fetchAllPaginated } from "@/lib/supabasePagination";
 import { useState, useEffect, useMemo, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -174,7 +175,7 @@ const TestResults = ({ testId, testTitle, onBack, initialClassId }: TestResultsP
     if (submissions.length === 0) { setAllAssignmentAnswers([]); return; }
     const fetchAll = async () => {
       const subIds = submissions.map((s: any) => s.id);
-      const { data } = await supabase.from("test_answers").select("*").in("submission_id", subIds);
+      const data = await fetchAllPaginated<any>(() => supabase.from("test_answers").select("*").in("submission_id", subIds).order("id"));
       setAllAssignmentAnswers(data || []);
     };
     fetchAll();
@@ -295,10 +296,9 @@ const TestResults = ({ testId, testTitle, onBack, initialClassId }: TestResultsP
     try {
       // Fetch all answers for all submissions
       const subIds = submissions.map((s: any) => s.id);
-      const { data: allAnswers } = await supabase
-        .from("test_answers")
-        .select("*")
-        .in("submission_id", subIds);
+      const allAnswers = await fetchAllPaginated<any>(() =>
+        supabase.from("test_answers").select("*").in("submission_id", subIds).order("id")
+      );
 
       const rows: string[] = [];
       rows.push(["Elev", "Variantă", "Scor", "Maxim", "Procent", "Trimis la"].map(escapeCSV).join(","));
@@ -360,10 +360,9 @@ const TestResults = ({ testId, testTitle, onBack, initialClassId }: TestResultsP
         .replace(/'/g, "&#39;");
     try {
       const subIds = submissions.map((s: any) => s.id);
-      const { data: allAnswers } = await supabase
-        .from("test_answers")
-        .select("*")
-        .in("submission_id", subIds);
+      const allAnswers = await fetchAllPaginated<any>(() =>
+        supabase.from("test_answers").select("*").in("submission_id", subIds).order("id")
+      );
 
       const className = assignments.find((a: any) => a.id === selectedAssignmentId)?.teacher_classes?.name || "Clasă";
 
