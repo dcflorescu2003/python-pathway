@@ -7,6 +7,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 import { useChallenges } from "@/hooks/useChallenges";
 import { useChapters } from "@/hooks/useChapters";
+import { useProblems } from "@/hooks/useProblems";
+import { ProblemPreview } from "@/components/teacher/ChallengeAssigner";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,7 +16,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import {
   BookOpen, DoorOpen, Trophy, Clock, CheckCircle, FileText,
   Play, History, Pencil, Check, X, ChevronDown, ChevronRight,
-  AlertCircle, RotateCcw
+  AlertCircle, RotateCcw, Eye
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -40,6 +42,8 @@ const StudentTab = ({ memberClassName, onLeaveClass }: StudentTabProps) => {
 
   const { challenges } = useChallenges();
   const { data: chapters = [] } = useChapters();
+  const { data: problemsData } = useProblems();
+  const allProblems = problemsData?.problems ?? [];
 
   // Get profile display_name
   const { data: profile, refetch: refetchProfile } = useQuery({
@@ -249,6 +253,17 @@ const StudentTab = ({ memberClassName, onLeaveClass }: StudentTabProps) => {
                           : `Problemă · ${finished ? "Rezolvată" : "Nerezolvată"}`}
                         {late && <span className="ml-1.5 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium">După termen</span>}
                       </p>
+                      {ch.item_type === "problem" && (() => {
+                        const prob = allProblems.find((p) => p.id === ch.item_id);
+                        return prob ? (
+                          <details className="mt-1">
+                            <summary className="cursor-pointer text-[11px] font-medium text-primary flex items-center gap-1">
+                              <Eye className="h-3 w-3" /> Vezi cerința
+                            </summary>
+                            <div className="mt-1.5"><ProblemPreview problem={prob} full /></div>
+                          </details>
+                        ) : null;
+                      })()}
                     </div>
                     <Button size="sm" variant={finished ? "outline" : "default"} className="gap-1 shrink-0 min-h-[40px]" onClick={() => handleStartChallenge(ch)}>
                       {finished ? <><RotateCcw className="h-3.5 w-3.5" /> Reia</> : <><Play className="h-3.5 w-3.5" /> Începe</>}
