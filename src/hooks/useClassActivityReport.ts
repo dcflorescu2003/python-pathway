@@ -19,6 +19,27 @@ function dayKey(d: Date) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
+const ID_CHUNK = 100;
+/** XP awarded for a review/fixation lesson (id ending in "f"). */
+export const REVIEW_LESSON_XP = 3;
+
+export function chunk<T>(arr: T[], size: number): T[][] {
+  const out: T[][] = [];
+  for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
+  return out;
+}
+
+export function activityXp(
+  r: { lesson_id: string; score: number; solution_revealed_at: string | null },
+  rewards: Map<string, number>
+): number {
+  if (r.solution_revealed_at && r.score === 0) return 1;
+  const known = rewards.get(r.lesson_id);
+  if (known !== undefined) return known;
+  if (!r.lesson_id.startsWith("problem-") && r.lesson_id.endsWith("f")) return REVIEW_LESSON_XP;
+  return 0;
+}
+
 export function useClassActivityReport() {
   const { data: classes = [] } = useTeacherClasses();
   const classIds = classes.map((c) => c.id).sort();
@@ -38,24 +59,31 @@ export function useClassActivityReport() {
       }
       const from = days[0];
 
-      const { data: members } = await supabase
-        .from("class_members")
-        .select("class_id, student_id")
-        .in("class_id", classIds);
+      const members = await fetchAllPaginated<any>(() =>
+        supabase
+          .from("class_members")
+          .select("id, class_id, student_id")
+          .in("class_id", classIds)
+          .order("id")
+      );
 
-      const memberRows = (members ?? []) as { class_id: string; student_id: string }[];
+      const memberRows = members as { class_id: string; student_id: string }[];
       const studentIds = Array.from(new Set(memberRows.map((m) => m.student_id)));
 
       const byStudent: Record<string, Record<string, { count: number; xp: number }>> = {};
       if (studentIds.length) {
-        const completed = await fetchAllPaginated<any>(() =>
-          supabase
-            .from("completed_lessons")
-            .select("user_id, lesson_id, score, completed_at, solution_revealed_at")
-            .in("user_id", studentIds)
-            .gte("completed_at", from.toISOString())
-            .order("id")
-        );
+        const completed: any[] = [];
+        for (const ids of chunk(studentIds, ID_CHUNK)) {
+          const part = await fetchAllPaginated<any>(() =>
+            supabase
+              .from("completed_lessons")
+              .select("id, user_id, lesson_id, score, completed_at, solution_revealed_at")
+              .in("user_id", ids)
+              .gte("completed_at", from.toISOString())
+              .order("id")
+          );
+          completed.push(...part);
+        }
 
         const completedRows = (completed ?? []) as {
           user_id: string;
@@ -65,7 +93,12 @@ export function useClassActivityReport() {
           solution_revealed_at: string | null;
         }[];
         const lessonIds = Array.from(
-          new Set(completedRows.filter((r) => !r.lesson_id.startsWith("problem-")).map((r) => r.lesson_id))
+          new Set(
+            completedRows
+              .filter((r) => !r.lesson_id.startsWith("problem-"))
+              .map((r) => r.lesson_id)
+              .filter((id) => !(id.endsWith("f") && id.length > 1))
+          )
         );
         const problemIds = Array.from(
           new Set(
@@ -75,17 +108,15 @@ export function useClassActivityReport() {
           )
         );
 
-        const [lessonRewardsResult, problemRewardsResult] = await Promise.all([
-          lessonIds.length
-            ? supabase.from("lessons").select("id, xp_reward").in("id", lessonIds)
-            : Promise.resolve({ data: [] as { id: string; xp_reward: number }[] }),
-          problemIds.length
-            ? supabase.from("problems").select("id, xp_reward").in("id", problemIds)
-            : Promise.resolve({ data: [] as { id: string; xp_reward: number }[] }),
-        ]);
         const rewards = new Map<string, number>();
-        (lessonRewardsResult.data ?? []).forEach((item) => rewards.set(item.id, item.xp_reward));
-        (problemRewardsResult.data ?? []).forEach((item) => rewards.set(`problem-${item.id}`, item.xp_reward));
+        for (const ids of chunk(lessonIds, ID_CHUNK)) {
+          const { data } = await supabase.from("lessons").select("id, xp_reward").in("id", ids);
+          (data ?? []).forEach((item) => rewards.set(item.id, item.xp_reward));
+        }
+        for (const ids of chunk(problemIds, ID_CHUNK)) {
+          const { data } = await supabase.from("problems").select("id, xp_reward").in("id", ids);
+          (data ?? []).forEach((item) => rewards.set(`problem-${item.id}`, item.xp_reward));
+        }
 
         completedRows.forEach((r) => {
           if (!r.completed_at) return;
@@ -93,7 +124,7 @@ export function useClassActivityReport() {
           byStudent[r.user_id] = byStudent[r.user_id] || {};
           const current = byStudent[r.user_id][k] ?? { count: 0, xp: 0 };
           current.count += 1;
-          current.xp += r.solution_revealed_at && r.score === 0 ? 1 : (rewards.get(r.lesson_id) ?? 0);
+          current.xp += activityXp(r, rewards);
           byStudent[r.user_id][k] = current;
         });
       }
