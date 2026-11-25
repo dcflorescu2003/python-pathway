@@ -64,6 +64,7 @@ const LearnIndexPage = lazy(() => import("./pages/web/LearnIndexPage"));
 const LearnChapterPage = lazy(() => import("./pages/web/LearnChapterPage"));
 const PseudocodeIndexPage = lazy(() => import("./pages/web/PseudocodeIndexPage"));
 const PseudocodeEditorPage = lazy(() => import("./pages/web/PseudocodeEditorPage"));
+const PseudocodeSimulatorPage = lazy(() => import("./pages/web/PseudocodeSimulatorPage"));
 const PseudocodeLessonPage = lazy(() => import("./pages/web/PseudocodeLessonPage"));
 const PseudocodeProblemPage = lazy(() => import("./pages/web/PseudocodeProblemPage"));
 import WebOnly from "./components/web/WebOnly";
@@ -112,6 +113,7 @@ const AppRoutes = () => {
           <Route path="/invata/:slug" element={<WebOnly><LearnChapterPage /></WebOnly>} />
           <Route path="/pseudocod" element={<WebOnly><PseudocodeIndexPage /></WebOnly>} />
           <Route path="/pseudocod/editor" element={<WebOnly><PseudocodeEditorPage /></WebOnly>} />
+          <Route path="/pseudocod/simulator" element={<WebOnly><PseudocodeSimulatorPage /></WebOnly>} />
           <Route path="/pseudocod/lectii/:slug" element={<WebOnly><PseudocodeLessonPage /></WebOnly>} />
           <Route path="/pseudocod/probleme/:slug" element={<WebOnly><PseudocodeProblemPage /></WebOnly>} />
           <Route path="/tutoriale/elevi" element={<StudentTutorialsIndex />} />

@@ -7,6 +7,20 @@ export interface InterpreterResult {
   error?: string;
 }
 
+export type ScalarValue = number | string | boolean;
+
+export interface ExecutionFrame {
+  line: number;
+  variables: Record<string, ScalarValue>;
+  output: string;
+  inputConsumed: number;
+  condition?: boolean;
+}
+
+interface TraceOptions {
+  record: (frame: ExecutionFrame) => void;
+}
+
 interface Variable {
   [key: string]: number | string | boolean | number[];
 }
@@ -35,7 +49,8 @@ function preprocessVisualSyntax(code: string): string {
           case 'cat_timp':
             result.push('sfarsit cat timp');
             break;
-          // 'repeta' ends with 'pana cand', 'executa' ends with 'cat timp <cond>' - emit nothing
+          default:
+            result.push(''); // Preserve source line numbers for visual block markers.
         }
       }
       continue;
@@ -74,15 +89,33 @@ function preprocessVisualSyntax(code: string): string {
   return result.join('\n');
 }
 
-export function interpretPseudocode(code: string, input: string): InterpreterResult {
+export function interpretPseudocode(code: string, input: string, trace?: TraceOptions): InterpreterResult {
   // Preprocess: convert visual syntax (|, |[]) to standard pseudocode
   const preprocessedCode = preprocessVisualSyntax(code);
   
-  const lines = preprocessedCode.split('\n').map(line => line.trim()).filter(line => line.length > 0);
+  const sourceLines = preprocessedCode.split('\n').map((text, index) => ({ text: text.trim(), line: index + 1 })).filter(entry => entry.text.length > 0);
+  const lines = sourceLines.map(entry => entry.text);
+  let activeLine = 0;
   const inputValues = input.split('\n').map(v => v.trim()).filter(v => v.length > 0);
   let inputIndex = 0;
   const variables: Variable = {};
   const output: string[] = [];
+  const record = (index: number, condition?: boolean) => {
+    if (!trace) return;
+    activeLine = sourceLines[index]?.line ?? activeLine;
+    const scalars: Record<string, ScalarValue> = {};
+    for (const [name, value] of Object.entries(variables)) {
+      if (!Array.isArray(value)) scalars[name] = value;
+    }
+    trace.record({ line: sourceLines[index]?.line ?? activeLine, variables: scalars,
+      output: output.join('\n'), inputConsumed: inputIndex, condition });
+  };
+  const testCondition = (index: number, expression: string) => {
+    activeLine = sourceLines[index]?.line ?? activeLine;
+    const value = Boolean(evaluateExpression(expression));
+    record(index, value);
+    return value;
+  };
 
   const getNextInput = (): string => {
     if (inputIndex < inputValues.length) {
@@ -127,7 +160,7 @@ export function interpretPseudocode(code: string, input: string): InterpreterRes
     for (const [name, value] of sortedVars) {
       const regex = new RegExp(`\\b${name}\\b`, 'g');
       if (typeof value === 'string') {
-        jsExpr = jsExpr.replace(regex, `"${value}"`);
+        jsExpr = jsExpr.replace(regex, () => JSON.stringify(value));
       } else if (Array.isArray(value)) {
         // Skip arrays, handle them separately
         continue;
@@ -166,13 +199,26 @@ export function interpretPseudocode(code: string, input: string): InterpreterRes
     // Apply div operator handling
     jsExpr = handleDiv(jsExpr);
 
+    if (trace) {
+      // The simulator evaluates only scalar expressions, never arbitrary JavaScript.
+      const allowed = jsExpr.replace(/"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'/g, '0')
+        .replace(/\bMath\.(?:floor|sqrt)\b|\b(?:true|false)\b/g, '0');
+      if (/[^\d\s.+\-*/%<>=!&|(),]/.test(allowed)) {
+        throw new Error(`Expresie invalidă sau variabilă neinițializată: ${expr}`);
+      }
+    }
+
     try {
       const result = new Function(`return ${jsExpr}`)();
+      if (trace && (typeof result === 'number' && !Number.isFinite(result))) {
+        throw new Error('Rezultat numeric invalid');
+      }
       return result;
     } catch {
       if (/&&|\|\||==|!=|<|>|!\(/.test(jsExpr)) {
         throw new Error(`Nu pot evalua condiția: ${expr}`);
       }
+      if (trace) throw new Error(`Expresie invalidă sau variabilă neinițializată: ${expr}`);
       // Try to return as number
       const num = parseFloat(expr);
       if (!isNaN(num)) return num;
@@ -198,6 +244,7 @@ export function interpretPseudocode(code: string, input: string): InterpreterRes
         if (depth === 0) return i;
       }
     }
+    if (trace) throw new Error(`Lipsește ${endKeyword}`);
     return lines.length;
   };
 
@@ -213,6 +260,7 @@ export function interpretPseudocode(code: string, input: string): InterpreterRes
   const executeLine = (currentIndex: number): number => {
     if (currentIndex >= lines.length) return currentIndex + 1;
     
+    activeLine = sourceLines[currentIndex]?.line ?? 0;
     const line = lines[currentIndex];
     const lineLower = line.toLowerCase();
     
@@ -277,6 +325,7 @@ export function interpretPseudocode(code: string, input: string): InterpreterRes
         }
       }
       
+      record(currentIndex);
       return currentIndex + 1;
     }
     
@@ -289,6 +338,7 @@ export function interpretPseudocode(code: string, input: string): InterpreterRes
         const numVal = parseFloat(inputVal);
         variables[v] = isNaN(numVal) ? inputVal : numVal;
       }
+      record(currentIndex);
       return currentIndex + 1;
     }
     
@@ -301,6 +351,7 @@ export function interpretPseudocode(code: string, input: string): InterpreterRes
         return String(val);
       });
       output.push(outputParts.join(' '));
+      record(currentIndex);
       return currentIndex + 1;
     }
     
@@ -308,7 +359,7 @@ export function interpretPseudocode(code: string, input: string): InterpreterRes
     if (lineLower.startsWith('daca') || lineLower.startsWith('dacă')) {
       const conditionMatch = line.match(/dac[aă]\s+(.+?)\s+atunci/i);
       if (conditionMatch) {
-        const condition = evaluateExpression(conditionMatch[1]);
+        const condition = testCondition(currentIndex, conditionMatch[1]);
         const endIfIndex = findMatchingEnd(currentIndex, ['daca', 'dacă'], 'sfarsit daca');
         
         // Find altfel if exists
@@ -348,7 +399,7 @@ export function interpretPseudocode(code: string, input: string): InterpreterRes
         let iterations = 0;
         const maxIterations = 10000;
         
-        while (evaluateExpression(conditionStr) && iterations < maxIterations) {
+        while (testCondition(currentIndex, conditionStr) && iterations < maxIterations) {
           executeBlock(currentIndex + 1, endWhileIndex);
           iterations++;
         }
@@ -384,7 +435,7 @@ export function interpretPseudocode(code: string, input: string): InterpreterRes
         const maxIterations = 10000;
         
         // Execute while condition is true
-        while (evaluateExpression(conditionStr) && iterations < maxIterations) {
+        while (testCondition(currentIndex, conditionStr) && iterations < maxIterations) {
           executeBlock(currentIndex + 1, endForIndex);
           
           // Execute increment
@@ -408,19 +459,25 @@ export function interpretPseudocode(code: string, input: string): InterpreterRes
         const startVal = evaluateExpression(forMatch[2]) as number;
         const endVal = evaluateExpression(forMatch[3]) as number;
         const step = forMatch[4] ? (evaluateExpression(forMatch[4]) as number) : 1;
+        if (trace && (![startVal, endVal, step].every(Number.isFinite) || step === 0)) {
+          throw new Error('Limitele buclei trebuie să fie numere finite, iar pasul diferit de zero.');
+        }
         
         if (step > 0) {
           for (let i = startVal; i <= endVal; i += step) {
             variables[varName] = i;
+            record(currentIndex, true);
             executeBlock(currentIndex + 1, endForIndex);
           }
         } else if (step < 0) {
           for (let i = startVal; i >= endVal; i += step) {
             variables[varName] = i;
+            record(currentIndex, true);
             executeBlock(currentIndex + 1, endForIndex);
           }
         }
         
+        record(currentIndex);
         return endForIndex + 1;
       }
       return currentIndex + 1;
@@ -455,10 +512,11 @@ export function interpretPseudocode(code: string, input: string): InterpreterRes
       let iterations = 0;
       const maxIterations = 10000;
       
+      record(currentIndex);
       do {
         executeBlock(currentIndex + 1, endIndex);
         iterations++;
-        if (!evaluateExpression(conditionStr)) break;
+        if (!testCondition(endIndex, conditionStr)) break;
       } while (iterations < maxIterations);
       
       if (iterations >= maxIterations) {
@@ -475,6 +533,7 @@ export function interpretPseudocode(code: string, input: string): InterpreterRes
       let iterations = 0;
       const maxIterations = 10000;
       
+      record(currentIndex);
       do {
         executeBlock(currentIndex + 1, endRepeatIndex);
         iterations++;
@@ -482,7 +541,7 @@ export function interpretPseudocode(code: string, input: string): InterpreterRes
         const conditionLine = lines[endRepeatIndex];
         const conditionMatch = conditionLine.match(/p[aâ]n[aă]\s+c[aâ]nd\s+(.+)/i);
         if (conditionMatch) {
-          if (evaluateExpression(conditionMatch[1])) break;
+          if (testCondition(endRepeatIndex, conditionMatch[1])) break;
         }
       } while (iterations < maxIterations);
       
@@ -512,6 +571,7 @@ export function interpretPseudocode(code: string, input: string): InterpreterRes
         } else {
           variables[varName] = value as number | string | boolean;
         }
+        record(currentIndex);
       }
       return currentIndex + 1;
     }
@@ -522,6 +582,7 @@ export function interpretPseudocode(code: string, input: string): InterpreterRes
       return currentIndex + 1;
     }
     
+    if (trace) throw new Error(`Instrucțiune nerecunoscută: ${line}`);
     return currentIndex + 1;
   };
 
@@ -535,7 +596,7 @@ export function interpretPseudocode(code: string, input: string): InterpreterRes
   } catch (error) {
     return {
       output: output.join('\n'),
-      error: error instanceof Error ? error.message : 'Eroare necunoscută'
+      error: (trace ? `Linia ${activeLine}: ` : '') + (error instanceof Error ? error.message : 'Eroare necunoscută')
     };
   }
 }

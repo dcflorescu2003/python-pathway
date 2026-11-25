@@ -3,6 +3,8 @@ import { Helmet } from "react-helmet-async";
 import WebLayout from "@/components/web/WebLayout";
 import { useSeoHead } from "@/hooks/useSeoHead";
 import PseudocodeRunner from "@/components/web/PseudocodeRunner";
+import { Button } from "@/components/ui/button";
+import { ArrowRight } from "lucide-react";
 
 const EXAMPLE = `// Suma numerelor de la 1 la n
 citeste n
@@ -23,6 +25,9 @@ const PseudocodeEditorPage = () => {
       <div className="mx-auto max-w-4xl px-4 py-12">
         <Link to="/pseudocod" className="text-sm text-muted-foreground hover:text-foreground">← Pseudocod</Link>
         <h1 className="mt-3 text-3xl font-bold">Editor de pseudocod</h1>
+        <Button asChild variant="outline" className="mt-4 min-h-14 gap-2">
+          <Link to="/pseudocod/simulator">Simulator pas cu pas <ArrowRight className="h-4 w-4" /></Link>
+        </Button>
         <p className="mt-2 text-muted-foreground">
           Scrie orice algoritm și rulează-l. Instrucțiuni recunoscute: citeste, scrie, atribuire cu &lt;-,
           daca…atunci…altfel…sfarsit daca, cat timp…executa…sfarsit cat timp, pentru i &lt;- a, b executa…sfarsit pentru,

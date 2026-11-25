@@ -31,6 +31,9 @@ const PseudocodeIndexPage = () => {
           <Button asChild className="mt-6 min-h-[48px] gap-2">
             <Link to="/pseudocod/editor"><Terminal className="h-4 w-4" /> Deschide editorul liber</Link>
           </Button>
+          <Button asChild variant="outline" className="ml-2 mt-6 min-h-[56px] gap-2">
+            <Link to="/pseudocod/simulator"><Code2 className="h-4 w-4" /> Simulator pas cu pas</Link>
+          </Button>
         </div>
       </section>
 
