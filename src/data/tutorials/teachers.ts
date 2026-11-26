@@ -84,6 +84,62 @@ export const teacherTutorials: TutorialArticle[] = [
     ],
   },
   {
+    slug: "cum-functioneaza-testele",
+    title: "Cum funcționează testele",
+    excerpt: "Ce se întâmplă de la pornirea testului până la publicarea notelor: variante, anti-fraudă, întreruperi și dispozitive.",
+    durationMin: 6,
+    sections: [
+      {
+        heading: "Atribuirea testului",
+        body: [
+          "După ce ai creat testul, îl atribui unei clase. Elevii îl văd în contul lor și îl pot începe doar cât timp este activ.",
+          "Fiecare elev primește automat un număr și o variantă (A sau B), după ordinea alfabetică din clasă, ca doi colegi alăturați să nu aibă aceleași cerințe.",
+        ],
+      },
+      {
+        heading: "În timpul testului",
+        body: [
+          "Cronometrul pornește când elevul deschide testul și continuă să curgă chiar dacă elevul iese din test.",
+          "Răspunsurile se salvează pe server pe parcurs, așa că nu se pierd dacă se închide aplicația sau cade internetul.",
+          "Dacă ai permis rularea codului, elevii își pot testa programele înainte de a trimite.",
+        ],
+      },
+      {
+        heading: "Modurile anti-fraudă",
+        body: [
+          "Strict — dacă elevul părăsește ecranul testului mai mult de 1 secundă, testul se trimite automat.",
+          "Normal — testul se trimite automat după 3 secunde în afara ecranului.",
+          "Relaxat — după 5 secunde testul nu se trimite, ci este marcat „Întrerupt”, iar răspunsurile rămân salvate.",
+          "Indiferent de mod, vezi în rezultate de câte ori a ieșit fiecare elev din test.",
+        ],
+      },
+      {
+        heading: "Un singur dispozitiv per elev",
+        body: [
+          "Testul poate fi dat de pe un singur dispozitiv. Dacă cineva îl deschide cu datele elevului de pe alt telefon sau calculator, este blocat și nu vede întrebările.",
+          "În pagina de rezultate vezi lângă fiecare elev dispozitivul folosit (de exemplu „Android · Aplicație” sau „Windows · Chrome”) și un semn roșu dacă cineva a încercat să intre din alt loc.",
+          "Dacă elevului i s-a descărcat telefonul sau trebuie să schimbe calculatorul, apasă „Permite dispozitiv nou”. Elevul continuă de unde a rămas, iar schimbarea rămâne notată în rezultate.",
+        ],
+        tip: "Dacă elevul lucrează pe telefon în bancă, dar în rezultate apare un calculator, merită verificat cine rezolvă de fapt testul.",
+      },
+      {
+        heading: "Întreruperi și reluări",
+        body: [
+          "„Permite continuarea” — pentru un test întrerupt: elevul revine cu răspunsurile păstrate.",
+          "„Permite reluarea” — pentru un test trimis automat din cauza ieșirii din ecran, când consideri că a fost o problemă tehnică.",
+        ],
+      },
+      {
+        heading: "Corectare și publicarea rezultatelor",
+        body: [
+          "Itemii cu răspuns fix se corectează automat. Problemele de cod pot fi evaluate cu AI, iar tu poți modifica orice punctaj.",
+          "Elevii nu văd nota, răspunsurile sau baremul până nu publici tu rezultatele. Astfel poți verifica totul în liniște.",
+        ],
+        image: { src: testResultsAsset.url, alt: "Pagina de rezultate ale testului cu lista elevilor și punctajele" },
+      },
+    ],
+  },
+  {
     slug: "trimite-provocare",
     title: "Cum trimiți o provocare",
     excerpt: "Trimite exerciții și probleme unei clase; elevii le rezolvă în ritmul lor.",
