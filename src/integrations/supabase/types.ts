@@ -1822,6 +1822,11 @@ export type Database = {
           assignment_id: string
           auto_graded: boolean
           auto_submitted_reason: string | null
+          device_blocked_at: string | null
+          device_change_count: number
+          device_label: string | null
+          device_token: string | null
+          device_unlock_allowed: boolean
           draft_answers: Json | null
           draft_updated_at: string | null
           id: string
@@ -1840,6 +1845,11 @@ export type Database = {
           assignment_id: string
           auto_graded?: boolean
           auto_submitted_reason?: string | null
+          device_blocked_at?: string | null
+          device_change_count?: number
+          device_label?: string | null
+          device_token?: string | null
+          device_unlock_allowed?: boolean
           draft_answers?: Json | null
           draft_updated_at?: string | null
           id?: string
@@ -1858,6 +1868,11 @@ export type Database = {
           assignment_id?: string
           auto_graded?: boolean
           auto_submitted_reason?: string | null
+          device_blocked_at?: string | null
+          device_change_count?: number
+          device_label?: string | null
+          device_token?: string | null
+          device_unlock_allowed?: boolean
           draft_answers?: Json | null
           draft_updated_at?: string | null
           id?: string
@@ -2091,6 +2106,10 @@ export type Database = {
         Args: { p_premium: boolean; p_user_id: string }
         Returns: undefined
       }
+      allow_submission_new_device: {
+        Args: { p_submission_id: string }
+        Returns: undefined
+      }
       approve_teacher_request: {
         Args: { p_notes?: string; p_request_id: string }
         Returns: undefined
@@ -2121,6 +2140,10 @@ export type Database = {
       can_teacher_view_test: {
         Args: { _test_id: string; _user_id: string }
         Returns: boolean
+      }
+      claim_submission_device: {
+        Args: { p_label: string; p_submission_id: string; p_token: string }
+        Returns: string
       }
       create_co_teacher_invite: { Args: { p_class_id: string }; Returns: Json }
       deactivate_teacher_mode: { Args: never; Returns: undefined }

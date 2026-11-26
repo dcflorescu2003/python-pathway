@@ -6,7 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
-import { useTestAssignments, useTestSubmissions, useTestAnswers, useTestItems, useUpdateAnswerScore, useToggleScoresReleased, useAllowRetake, useResumeSubmission } from "@/hooks/useTests";
+import { useTestAssignments, useTestSubmissions, useTestAnswers, useTestItems, useUpdateAnswerScore, useToggleScoresReleased, useAllowRetake, useResumeSubmission, useAllowNewDevice } from "@/hooks/useTests";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -83,6 +83,7 @@ const TestResults = ({ testId, testTitle, onBack, initialClassId }: TestResultsP
   const toggleScores = useToggleScoresReleased();
   const allowRetake = useAllowRetake();
   const resumeSubmission = useResumeSubmission();
+  const allowNewDevice = useAllowNewDevice();
   const qc = useQueryClient();
   const [regrading, setRegrading] = useState<Record<string, boolean>>({});
   const autoRegradedRef = useRef<Set<string>>(new Set());
@@ -605,6 +606,30 @@ const TestResults = ({ testId, testTitle, onBack, initialClassId }: TestResultsP
                               ⏸ Întrerupt
                             </span>
                           )}
+                          {sub.device_label && (
+                            <span
+                              title="Dispozitivul de pe care elevul dă testul"
+                              className="inline-flex items-center gap-1 text-[9px] px-1.5 py-0.5 rounded-full bg-muted border border-border text-muted-foreground font-medium"
+                            >
+                              💻 {sub.device_label}
+                            </span>
+                          )}
+                          {sub.device_change_count > 0 && (
+                            <span
+                              title="Testul a fost mutat pe alt dispozitiv cu acordul profesorului"
+                              className="inline-flex items-center gap-1 text-[9px] px-1.5 py-0.5 rounded-full bg-warning/10 border border-warning/30 text-warning font-medium"
+                            >
+                              ⇄ {sub.device_change_count} schimbări dispozitiv
+                            </span>
+                          )}
+                          {sub.device_blocked_at && !sub.submitted_at && !sub.device_unlock_allowed && (
+                            <span
+                              title={`Încercare de deschidere de pe alt dispozitiv: ${new Date(sub.device_blocked_at).toLocaleTimeString("ro-RO")}`}
+                              className="inline-flex items-center gap-1 text-[9px] px-1.5 py-0.5 rounded-full bg-destructive/10 border border-destructive/30 text-destructive font-medium"
+                            >
+                              🔒 Alt dispozitiv blocat
+                            </span>
+                          )}
                           {sub.leave_count > 0 && (
                             <span
                               title={`Elevul a părăsit testul de ${sub.leave_count} ori`}
@@ -633,6 +658,26 @@ const TestResults = ({ testId, testTitle, onBack, initialClassId }: TestResultsP
                             >
                               ▶ Permite continuarea
                             </Button>
+                          )}
+                          {!sub.submitted_at && sub.device_token && (
+                            sub.device_unlock_allowed ? (
+                              <span className="text-[10px] text-muted-foreground">Dispozitiv nou permis</span>
+                            ) : (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  allowNewDevice.mutate(sub.id, {
+                                    onSuccess: () => toast.success("Elevul poate continua de pe un dispozitiv nou."),
+                                    onError: () => toast.error("Nu am putut permite dispozitivul nou."),
+                                  });
+                                }}
+                                className="h-6 text-[10px] px-2 gap-1 border-primary/40 text-primary hover:bg-primary/10"
+                              >
+                                ⇄ Permite dispozitiv nou
+                              </Button>
+                            )
                           )}
                           {sub.auto_submitted_reason && (
                             <AlertDialog>

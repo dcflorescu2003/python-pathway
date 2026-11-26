@@ -18,6 +18,7 @@ import RichContent from "@/components/RichContent";
 import { shuffleOrderIds } from "@/lib/orderShuffle";
 
 import LoadingScreen from "@/components/states/LoadingScreen";
+import { claimSubmissionDevice } from "@/lib/testDevice";
 import {
   DndContext,
   closestCenter,
@@ -74,6 +75,7 @@ const TakeTestPage = () => {
   const [answers, setAnswers] = useState<Record<string, any>>({});
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
   const [submitted, setSubmitted] = useState(false);
+  const [deviceLocked, setDeviceLocked] = useState(false);
   const [confirmSubmitOpen, setConfirmSubmitOpen] = useState(false);
   const [fullscreenReady, setFullscreenReady] = useState(false);
   const [assignedSlot, setAssignedSlot] = useState<{ variant: string; roster_number: number | null } | null>(null);
@@ -183,6 +185,15 @@ const TakeTestPage = () => {
           });
           subId = result.id;
           setAssignedSlot({ variant, roster_number: rosterNumber });
+        }
+        try {
+          if ((await claimSubmissionDevice(subId)) === "locked") {
+            setDeviceLocked(true);
+            setLoading(false);
+            return;
+          }
+        } catch (e) {
+          console.error("Device claim failed:", e);
         }
         setSubmissionId(subId);
 
@@ -610,6 +621,17 @@ const TakeTestPage = () => {
   }, [submissionId, submitted, items, answers, submitTest]);
 
 
+  // Single-device lock: re-check every 15s; if another device took over, lock this screen.
+  useEffect(() => {
+    if (!submissionId || submitted) return;
+    const id = window.setInterval(async () => {
+      try {
+        if ((await claimSubmissionDevice(submissionId)) === "locked") setDeviceLocked(true);
+      } catch { /* offline: ignore */ }
+    }, 15000);
+    return () => window.clearInterval(id);
+  }, [submissionId, submitted]);
+
   // Anti-cheat mode: strict = 1s + final submit; normal = 3s + final submit;
   // relaxed = 5s + save-as-interrupted (student can resume).
   const antiCheatMode: "strict" | "normal" | "relaxed" =
@@ -860,6 +882,25 @@ const TakeTestPage = () => {
   }, [submissionId, navigate]);
 
   if (loading) return <LoadingScreen />;
+  if (deviceLocked) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-6 bg-background">
+        <Card className="max-w-md w-full border-destructive/40">
+          <CardContent className="p-6 space-y-4 text-center">
+            <AlertTriangle className="h-10 w-10 text-destructive mx-auto" />
+            <h1 className="text-lg font-bold">Testul este deschis pe alt dispozitiv</h1>
+            <p className="text-sm text-muted-foreground">
+              Din motive de securitate, testul poate fi dat de pe un singur dispozitiv. Dacă ai schimbat telefonul sau calculatorul, roagă profesorul să apese „Permite dispozitiv nou”, apoi încearcă din nou.
+            </p>
+            <div className="flex flex-col gap-2">
+              <Button className="min-h-12" onClick={() => window.location.reload()}>Încearcă din nou</Button>
+              <Button variant="outline" className="min-h-12" onClick={() => navigate(-1)}>Înapoi</Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   // Fullscreen gate (only shown when teacher requires fullscreen and browser supports it)
   if (needsFullscreenGate && !submitted) {

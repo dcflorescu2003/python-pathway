@@ -459,6 +459,18 @@ export function useAllowRetake() {
   });
 }
 
+// Teacher allows the student to continue the test on a new device
+export function useAllowNewDevice() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (submissionId: string) => {
+      const { error } = await (supabase as any).rpc("allow_submission_new_device", { p_submission_id: submissionId });
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["test-submissions"] }),
+  });
+}
+
 // Resume an INTERRUPTED submission (keeps started_at, draft_answers, leave_count)
 export function useResumeSubmission() {
   const qc = useQueryClient();
